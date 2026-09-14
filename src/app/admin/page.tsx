@@ -501,6 +501,27 @@ function AdminDashboard({
     }
   };
 
+  const handleShareTempPassword = async () => {
+    if (!appointResult) return;
+    const adminUrl = `${window.location.origin}/admin`;
+    const message = `🎉 ${appointResult.name}님, 덤핑점핑 관리자로 임명됐어요!\n\n관리자 페이지: ${adminUrl}\n임시 비밀번호: ${appointResult.tempPassword}\n\n로그인 후 꼭 "비밀번호 변경"으로 새 비밀번호로 바꿔주세요.`;
+
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({ title: "덤핑점핑 관리자 임명", text: message });
+      } catch {
+        // 사용자가 공유를 취소한 경우 — 무시
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(message);
+      alert("메시지를 클립보드에 복사했어요. 전달할 곳에 붙여넣어주세요.");
+    } catch {
+      alert(message);
+    }
+  };
+
   const removeAdmin = async (admin: AdminUser) => {
     if (!confirm(`${admin.name}(${admin.role}) 관리자 권한을 해제할까요?`)) return;
     setRemovingAdminId(admin.id);
@@ -1428,6 +1449,13 @@ function AdminDashboard({
                 복사
               </button>
             </div>
+            <button
+              onClick={handleShareTempPassword}
+              className="w-full font-bold rounded-xl py-3.5 mb-2.5"
+              style={{ background: "#FEE500", color: "#3C1E1E" }}
+            >
+              📤 축하 메시지와 함께 보내기
+            </button>
             <button
               onClick={() => setAppointResult(null)}
               className="w-full text-white font-bold rounded-xl py-3.5"
