@@ -38,13 +38,19 @@ function DealDetailPageInner() {
   // 흐름과는 완전히 별개라 상태도 분리해뒀습니다.
   const [memberPhone, setMemberPhone] = useState<string | null>(null);
   const [isMember, setIsMember] = useState(false);
+  const [ownRefCode, setOwnRefCode] = useState<string | null>(null);
   const [showBridgeForm, setShowBridgeForm] = useState(false);
   const [bridgePhone, setBridgePhone] = useState("");
   const [bridgeSubmitting, setBridgeSubmitting] = useState(false);
   const [bridgeError, setBridgeError] = useState<string | null>(null);
 
   const handleShare = async () => {
-    const url = typeof window !== "undefined" ? window.location.href : "";
+    const url =
+      typeof window !== "undefined"
+        ? ownRefCode
+          ? `${window.location.origin}${window.location.pathname}?ref=${ownRefCode}`
+          : window.location.href
+        : "";
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({ title: deal.title, text: `${deal.title} · ${formatPrice(deal.deal_price)}`, url });
@@ -75,10 +81,11 @@ function DealDetailPageInner() {
       setIsMember(true);
       const { data: member } = await supabase
         .from("members")
-        .select("phone")
+        .select("phone, ref_code")
         .eq("id", userData.user.id)
         .maybeSingle();
       if (member?.phone) setMemberPhone(member.phone);
+      if (member?.ref_code) setOwnRefCode(member.ref_code);
     })();
   }, []);
 
