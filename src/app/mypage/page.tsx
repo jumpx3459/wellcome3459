@@ -23,6 +23,9 @@ type ReferralItem = {
   member_no: number | null;
   is_business: boolean;
   created_at: string;
+  phone: string;
+  company_name: string | null;
+  business_verified: boolean;
 };
 
 type PartnerStatus = "none" | "pending" | "approved" | "rejected";
@@ -760,18 +763,33 @@ export default function MyPage() {
                   <div>
                     <div className="text-sm font-bold text-gray900">
                       {r.member_no != null ? formatMemberNo(r.member_no) : "회원번호 없음"}
+                      {r.company_name && (
+                        <span className="text-xs font-medium text-gray500 ml-1.5">{r.company_name}</span>
+                      )}
                     </div>
                     <div className="text-xs text-gray500 mt-0.5">
+                      {r.phone}
+                      {" · "}
                       {new Date(r.created_at).toLocaleDateString("ko-KR")} 가입
                       {r.is_business && " · 사업자"}
                     </div>
                   </div>
-                  <span
-                    className="text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0"
-                    style={{ background: "#E8F8EC", color: "#1D8A44" }}
-                  >
-                    가입완료
-                  </span>
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                    <span
+                      className="text-xs font-bold px-2.5 py-1 rounded-full"
+                      style={{ background: "#E8F8EC", color: "#1D8A44" }}
+                    >
+                      가입완료
+                    </span>
+                    {r.business_verified && (
+                      <span
+                        className="text-xs font-bold px-2.5 py-1 rounded-full"
+                        style={{ background: "#E8F8EC", color: "#1D8A44" }}
+                      >
+                        ✓ 인증된 사업자
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
