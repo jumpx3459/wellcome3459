@@ -430,6 +430,16 @@ alter table seller_requests add column if not exists reviewed_by text;
 --   insert into admin_users (name, role, password_hash)
 --   values ('담당자 이름', '최고관리자', crypt('원하는 비밀번호', gen_salt('bf')));
 
+-- 관리자 인증(admin_users, 비밀번호)과 회원 인증(휴대폰 인증)이 분리돼 있어서
+-- 마이페이지에서 "이 회원이 관리자인지" 판별할 방법이 없었습니다. admin_users에
+-- phone을 연결해서 회원 로그인 상태로도 관리자 여부를 조회할 수 있게 합니다
+-- (src/app/api/is-admin/route.ts 참고). 조회는 항상 service role로만 이루어지므로
+-- RLS 정책은 추가하지 않습니다.
+alter table admin_users add column if not exists phone text unique;
+
+-- 기존 관리자 계정에 phone을 채워 넣으세요 (SQL Editor에서 한 번만, 본인 계정에 맞게 값 수정):
+--   update admin_users set phone = '01012345678' where name = '담당자 이름';
+
 -- ---------------- Storage (매물 사진 저장용) ----------------
 -- 아래는 SQL Editor가 아니라 Supabase 대시보드 → Storage 메뉴에서 수동으로 설정하세요:
 -- 1. "New bucket" → 이름: deal-images, Public bucket 체크 (누구나 읽기 가능하게)

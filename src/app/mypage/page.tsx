@@ -27,6 +27,8 @@ type ReferralItem = {
 
 type PartnerStatus = "none" | "pending" | "approved" | "rejected";
 
+type AdminInfo = { name: string; role: string };
+
 export default function MyPage() {
   const [loading, setLoading] = useState(true);
   const [phone, setPhone] = useState("");
@@ -57,6 +59,7 @@ export default function MyPage() {
   const [partnerForm, setPartnerForm] = useState({ businessType: "", channelInfo: "", message: "" });
   const [partnerSubmitting, setPartnerSubmitting] = useState(false);
   const [partnerError, setPartnerError] = useState("");
+  const [adminInfo, setAdminInfo] = useState<AdminInfo | null>(null);
   const { message: toastMessage, showToast } = useToast();
 
   useEffect(() => {
@@ -140,6 +143,17 @@ export default function MyPage() {
         })
           .then((res) => res.json())
           .then((data) => setReferrals(data.items ?? []))
+          .catch(() => {});
+
+        fetch("/api/is-admin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accessToken: sessionToken }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.isAdmin) setAdminInfo({ name: data.name, role: data.role });
+          })
           .catch(() => {});
       }
 
@@ -393,6 +407,18 @@ export default function MyPage() {
       </div>
 
       <div className="flex-1 px-5 py-5 flex flex-col gap-6">
+        {adminInfo && (
+          <Link
+            href="/admin"
+            className="flex items-center justify-between rounded-2xl px-4 py-3.5 text-white"
+            style={{ background: "#0B2540" }}
+          >
+            <span className="text-sm font-bold">
+              🛡️ {adminInfo.name} · {adminInfo.role}
+            </span>
+            <span className="text-xs font-bold text-white/70">관리자 화면 →</span>
+          </Link>
+        )}
         <div>
           <label className="mb-2 flex items-center justify-between">
             <span className="text-base font-bold text-navy">관심 카테고리</span>
