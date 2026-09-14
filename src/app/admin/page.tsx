@@ -68,6 +68,15 @@ type Member = {
   regions: string[];
 };
 
+type AdminUser = {
+  id: string;
+  name: string;
+  phone: string | null;
+  role: string;
+  last_login_at: string | null;
+  created_at: string;
+};
+
 function isToday(dateStr: string) {
   const d = new Date(dateStr);
   const now = new Date();
@@ -277,6 +286,21 @@ function AdminDashboard({
   const [leadSearch, setLeadSearch] = useState("");
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const [bulkProcessing, setBulkProcessing] = useState(false);
+  const [admins, setAdmins] = useState<AdminUser[]>([]);
+  const [appointFor, setAppointFor] = useState<Member | null>(null);
+  const [appointName, setAppointName] = useState("");
+  const [appointRole, setAppointRole] = useState<"관리자" | "최고관리자">("관리자");
+  const [appointSubmitting, setAppointSubmitting] = useState(false);
+  const [appointError, setAppointError] = useState("");
+  const [appointResult, setAppointResult] = useState<{ name: string; tempPassword: string } | null>(null);
+  const [removingAdminId, setRemovingAdminId] = useState<string | null>(null);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newPassword2, setNewPassword2] = useState("");
+  const [changePwSubmitting, setChangePwSubmitting] = useState(false);
+  const [changePwError, setChangePwError] = useState("");
+  const [changePwSuccess, setChangePwSuccess] = useState(false);
 
   const viewBusinessLicense = async (memberId: string) => {
     setLicenseLoadingId(memberId);
@@ -328,6 +352,9 @@ function AdminDashboard({
       fetch("/api/admin/partner-requests", { headers: { "x-admin-key": adminKey } })
         .then((r) => r.json())
         .then((d) => setPartnerRequests(d.items ?? [])),
+      fetch("/api/admin/admins", { headers: { "x-admin-key": adminKey } })
+        .then((r) => r.json())
+        .then((d) => setAdmins(d.items ?? [])),
     ])
       .then(([reqData, dealData, interestData, buyData, memberData]) => {
         setRequests(reqData.items ?? []);
@@ -438,6 +465,93 @@ function AdminDashboard({
     setPartnerRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
   }
 
+  const adminPhones = new Set(admins.map((a) => a.phone).filter(Boolean));
+
+  const openAppoint = (member: Member) => {
+    setAppointFor(member);
+    setAppointName(member.nickname || member.company_name || "");
+    setAppointRole("관리자");
+    setAppointError("");
+  };
+
+  const submitAppoint = async () => {
+    if (!appointFor) return;
+    if (!appointName.trim()) {
+      setAppointError("이름을 입력해주세요.");
+      return;
+    }
+    setAppointSubmitting(true);
+    setAppointError("");
+    try {
+      const res = await fetch("/api/admin/admins", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({ memberId: appointFor.id, name: appointName.trim(), role: appointRole }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAppointError(data.error ?? "임명에 실패했어요.");
+        return;
+      }
+      setAppointFor(null);
+      setAppointResult({ name: data.admin.name, tempPassword: data.tempPassword });
+      load();
+    } finally {
+      setAppointSubmitting(false);
+    }
+  };
+
+  const removeAdmin = async (admin: AdminUser) => {
+    if (!confirm(`${admin.name}(${admin.role}) 관리자 권한을 해제할까요?`)) return;
+    setRemovingAdminId(admin.id);
+    try {
+      const res = await fetch("/api/admin/admins", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({ id: admin.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error ?? "해제에 실패했어요.");
+        return;
+      }
+      setAdmins((prev) => prev.filter((a) => a.id !== admin.id));
+    } finally {
+      setRemovingAdminId(null);
+    }
+  };
+
+  const submitChangePassword = async () => {
+    setChangePwError("");
+    if (!oldPassword || !newPassword) {
+      setChangePwError("현재/새 비밀번호를 모두 입력해주세요.");
+      return;
+    }
+    if (newPassword !== newPassword2) {
+      setChangePwError("새 비밀번호가 서로 달라요.");
+      return;
+    }
+    setChangePwSubmitting(true);
+    try {
+      const res = await fetch("/api/admin/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({ oldPassword, newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setChangePwError(data.error ?? "변경에 실패했어요.");
+        return;
+      }
+      setChangePwSuccess(true);
+      setOldPassword("");
+      setNewPassword("");
+      setNewPassword2("");
+    } finally {
+      setChangePwSubmitting(false);
+    }
+  };
+
   if (authError) {
     return (
       <main className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
@@ -483,9 +597,21 @@ function AdminDashboard({
             </div>
           )}
         </div>
-        <button onClick={onLogout} className="text-sm text-white/70 font-bold">
-          로그아웃
-        </button>
+        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+          <button
+            onClick={() => {
+              setShowChangePassword(true);
+              setChangePwError("");
+              setChangePwSuccess(false);
+            }}
+            className="text-xs text-white/70 font-bold underline"
+          >
+            비밀번호 변경
+          </button>
+          <button onClick={onLogout} className="text-sm text-white/70 font-bold">
+            로그아웃
+          </button>
+        </div>
       </div>
 
       <div className="px-5 pt-4">
@@ -660,14 +786,24 @@ function AdminDashboard({
             {m.referrer_phone && (
               <div className="text-xs text-gray500 mt-1">추천인: {m.referrer_phone}</div>
             )}
-            <div className="text-xs text-gray500 mt-1.5">
-              {new Date(m.created_at).toLocaleString("ko-KR", {
-                month: "long",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}{" "}
-              가입
+            <div className="flex items-center justify-between mt-1.5">
+              <div className="text-xs text-gray500">
+                {new Date(m.created_at).toLocaleString("ko-KR", {
+                  month: "long",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}{" "}
+                가입
+              </div>
+              {adminRole === "최고관리자" && !adminPhones.has(m.phone) && (
+                <button
+                  onClick={() => openAppoint(m)}
+                  className="text-xs font-bold rounded-lg px-2.5 py-1 border border-gray200 text-navy"
+                >
+                  관리자로 임명
+                </button>
+              )}
             </div>
           </div>
         ))}
@@ -1178,6 +1314,192 @@ function AdminDashboard({
           </div>
         ))}
       </div>
+
+      {adminRole === "최고관리자" && (
+        <div className="px-5 pt-4 pb-8 flex flex-col gap-3">
+          <div className="text-sm font-bold text-gray500">관리자 목록 ({admins.length}명)</div>
+          {admins.map((a) => (
+            <div
+              key={a.id}
+              className="bg-white border border-gray200 rounded-2xl px-4 py-3.5 flex items-center justify-between gap-2"
+            >
+              <div>
+                <div className="text-base font-bold text-gray900">
+                  {a.name}
+                  <span
+                    className="text-xs font-bold px-2 py-0.5 rounded-full ml-1.5"
+                    style={{ background: "#EAF0F7", color: "#1B3A5C" }}
+                  >
+                    {a.role}
+                  </span>
+                </div>
+                <div className="text-xs text-gray500 mt-1">{a.phone ?? "번호 미연결"}</div>
+                <div className="text-xs text-gray500 mt-0.5">
+                  {a.last_login_at
+                    ? `마지막 로그인 ${new Date(a.last_login_at).toLocaleString("ko-KR", {
+                        month: "long",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}`
+                    : "아직 로그인 기록 없음"}
+                </div>
+              </div>
+              <button
+                onClick={() => removeAdmin(a)}
+                disabled={removingAdminId === a.id}
+                className="flex-shrink-0 text-xs font-bold rounded-lg px-3 py-1.5 border border-gray200 text-orange disabled:opacity-60"
+              >
+                {removingAdminId === a.id ? "처리 중..." : "해제"}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {appointFor && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center"
+          style={{ background: "rgba(0,0,0,0.5)" }}
+          onClick={() => setAppointFor(null)}
+        >
+          <div className="bg-white w-full max-w-md rounded-t-3xl p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="font-display text-xl text-navy mb-1">관리자로 임명</div>
+            <div className="text-sm text-gray500 mb-5">{appointFor.phone}</div>
+
+            <label className="text-xs font-bold text-gray500 mb-1 block">이름</label>
+            <input
+              className="w-full border-2 border-gray200 rounded-xl px-4 mb-4 text-base outline-none focus:border-orange"
+              style={{ height: "48px" }}
+              value={appointName}
+              onChange={(e) => setAppointName(e.target.value)}
+              placeholder="담당자 이름"
+            />
+
+            <label className="text-xs font-bold text-gray500 mb-1 block">역할</label>
+            <div className="flex gap-2 mb-5">
+              {(["관리자", "최고관리자"] as const).map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setAppointRole(r)}
+                  className="flex-1 text-sm font-bold rounded-xl py-3"
+                  style={
+                    appointRole === r
+                      ? { background: "#0B2540", color: "#fff" }
+                      : { background: "#F5F6F8", color: "#6B7480" }
+                  }
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+
+            {appointError && <div className="text-xs text-orange font-medium mb-3">{appointError}</div>}
+
+            <button
+              onClick={submitAppoint}
+              disabled={appointSubmitting}
+              className="w-full text-white font-bold rounded-xl py-3.5 disabled:opacity-60"
+              style={{ background: "#0B2540" }}
+            >
+              {appointSubmitting ? "임명 중..." : "임명하기"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {appointResult && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center"
+          style={{ background: "rgba(0,0,0,0.5)" }}
+          onClick={() => setAppointResult(null)}
+        >
+          <div className="bg-white w-full max-w-md rounded-t-3xl p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="font-display text-xl text-navy mb-2">✅ 임명 완료</div>
+            <p className="text-sm text-gray500 mb-4">
+              {appointResult.name}님의 임시 비밀번호예요. 이 화면을 닫으면 다시 볼 수 없으니 지금 전달해주세요.
+            </p>
+            <div className="bg-gray100 rounded-xl px-4 py-3.5 flex items-center justify-between gap-2 mb-5">
+              <span className="font-mono text-lg font-bold text-navy">{appointResult.tempPassword}</span>
+              <button
+                onClick={() => navigator.clipboard?.writeText(appointResult.tempPassword)}
+                className="text-xs font-bold text-navy underline flex-shrink-0"
+              >
+                복사
+              </button>
+            </div>
+            <button
+              onClick={() => setAppointResult(null)}
+              className="w-full text-white font-bold rounded-xl py-3.5"
+              style={{ background: "#0B2540" }}
+            >
+              확인했어요
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showChangePassword && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center"
+          style={{ background: "rgba(0,0,0,0.5)" }}
+          onClick={() => setShowChangePassword(false)}
+        >
+          <div className="bg-white w-full max-w-md rounded-t-3xl p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="font-display text-xl text-navy mb-5">비밀번호 변경</div>
+
+            {changePwSuccess ? (
+              <>
+                <p className="text-sm text-gray900 mb-5">비밀번호가 변경됐어요.</p>
+                <button
+                  onClick={() => setShowChangePassword(false)}
+                  className="w-full text-white font-bold rounded-xl py-3.5"
+                  style={{ background: "#0B2540" }}
+                >
+                  확인
+                </button>
+              </>
+            ) : (
+              <>
+                <label className="text-xs font-bold text-gray500 mb-1 block">현재 비밀번호</label>
+                <input
+                  type="password"
+                  className="w-full border-2 border-gray200 rounded-xl px-4 mb-3 text-base outline-none focus:border-orange"
+                  style={{ height: "48px" }}
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                />
+                <label className="text-xs font-bold text-gray500 mb-1 block">새 비밀번호 (8자 이상)</label>
+                <input
+                  type="password"
+                  className="w-full border-2 border-gray200 rounded-xl px-4 mb-3 text-base outline-none focus:border-orange"
+                  style={{ height: "48px" }}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+                <label className="text-xs font-bold text-gray500 mb-1 block">새 비밀번호 확인</label>
+                <input
+                  type="password"
+                  className="w-full border-2 border-gray200 rounded-xl px-4 mb-4 text-base outline-none focus:border-orange"
+                  style={{ height: "48px" }}
+                  value={newPassword2}
+                  onChange={(e) => setNewPassword2(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && submitChangePassword()}
+                />
+                {changePwError && <div className="text-xs text-orange font-medium mb-3">{changePwError}</div>}
+                <button
+                  onClick={submitChangePassword}
+                  disabled={changePwSubmitting}
+                  className="w-full text-white font-bold rounded-xl py-3.5 disabled:opacity-60"
+                  style={{ background: "#0B2540" }}
+                >
+                  {changePwSubmitting ? "변경 중..." : "변경하기"}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }

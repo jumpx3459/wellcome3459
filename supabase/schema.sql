@@ -440,6 +440,47 @@ alter table admin_users add column if not exists phone text unique;
 -- 기존 관리자 계정에 phone을 채워 넣으세요 (SQL Editor에서 한 번만, 본인 계정에 맞게 값 수정):
 --   update admin_users set phone = '01012345678' where name = '담당자 이름';
 
+-- 지금까지는 관리자를 추가하려면 SQL Editor에서 insert문을 직접 실행해야 했는데,
+-- placeholder 값을 그대로 실행하는 사고가 실제로 있었습니다. 이제 관리자 대시보드
+-- UI(회원 목록 → "관리자로 임명")에서 처리하도록, 비밀번호 해싱을 DB 함수로 옮깁니다.
+-- 두 함수 모두 service_role에서만 호출하므로(anon/authenticated에게는 EXECUTE 권한을
+-- 아예 주지 않음) verify_admin_login처럼 세션 토큰만으로 신원을 이미 검증한 API 라우트
+-- (src/app/api/admin/admins/route.ts, src/app/api/admin/change-password/route.ts)를
+-- 거쳐야만 실행됩니다.
+create or replace function create_admin_user(p_name text, p_phone text, p_role text, p_password text)
+returns table (id uuid, name text, role text)
+language sql
+security definer
+as $$
+  insert into admin_users (name, phone, role, password_hash)
+  values (p_name, p_phone, p_role, crypt(p_password, gen_salt('bf')))
+  returning id, name, role;
+$$;
+revoke all on function create_admin_user(text, text, text, text) from public;
+
+create or replace function update_admin_password(p_id uuid, p_old_password text, p_new_password text)
+returns boolean
+language plpgsql
+security definer
+as $$
+declare
+  matched boolean;
+begin
+  select exists(
+    select 1 from admin_users
+    where id = p_id and password_hash = crypt(p_old_password, password_hash)
+  ) into matched;
+
+  if not matched then
+    return false;
+  end if;
+
+  update admin_users set password_hash = crypt(p_new_password, gen_salt('bf')) where id = p_id;
+  return true;
+end;
+$$;
+revoke all on function update_admin_password(uuid, text, text) from public;
+
 -- ---------------- Storage (매물 사진 저장용) ----------------
 -- 아래는 SQL Editor가 아니라 Supabase 대시보드 → Storage 메뉴에서 수동으로 설정하세요:
 -- 1. "New bucket" → 이름: deal-images, Public bucket 체크 (누구나 읽기 가능하게)
