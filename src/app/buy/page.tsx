@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { mockCategories, mockRegions, categoryIcons } from "@/lib/mockData";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
+import CategoryScroller from "@/components/CategoryScroller";
 
 export default function BuyPage() {
   const [productName, setProductName] = useState("");
@@ -122,7 +123,7 @@ export default function BuyPage() {
               선택
             </span>
           </label>
-          <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
+          <CategoryScroller className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
             {mockCategories.map((c) => {
               const picked = category === c;
               return (
@@ -141,7 +142,7 @@ export default function BuyPage() {
                 </button>
               );
             })}
-          </div>
+          </CategoryScroller>
         </div>
 
         <div>
@@ -151,7 +152,7 @@ export default function BuyPage() {
               선택
             </span>
           </label>
-          <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
+          <CategoryScroller className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
             <button
               onClick={() => setRegion("")}
               className={`flex-shrink-0 text-sm py-2 px-4 rounded-full border-2 font-bold text-center whitespace-nowrap ${
@@ -171,7 +172,7 @@ export default function BuyPage() {
                 {r}
               </button>
             ))}
-          </div>
+          </CategoryScroller>
         </div>
 
         <div className="flex gap-3">

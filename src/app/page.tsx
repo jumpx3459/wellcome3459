@@ -9,6 +9,7 @@ import SplashScreen from "@/components/SplashScreen";
 import InstallAppButton from "@/components/InstallAppButton";
 import KakaoChannelButton from "@/components/KakaoChannelButton";
 import ScrollHint from "@/components/ScrollHint";
+import CategoryScroller from "@/components/CategoryScroller";
 
 const TODAY_BADGE_THRESHOLD = 5; // 이보다 적으면 "오늘 N건" 배너를 아예 숨김 (빈약한 숫자 노출 방지)
 
@@ -131,7 +132,7 @@ export default function Home() {
             스크롤 없이 안 보이던 문제 — 가로 스크롤 칩 한 줄로 축소. 카테고리 구분은
             여전히 아이콘 배지 색상만으로(카드 배경은 통일). */}
         <div className="relative">
-          <div className="no-scrollbar flex gap-2 overflow-x-auto px-5 pb-1">
+          <CategoryScroller className="no-scrollbar flex gap-2 overflow-x-auto px-5 pb-1">
             {mockCategories.map((c) => {
               const color = categoryColors[c];
               return (
@@ -150,7 +151,7 @@ export default function Home() {
                 </Link>
               );
             })}
-          </div>
+          </CategoryScroller>
           {/* 스크롤바를 숨겨놔서(no-scrollbar) 더 있다는 힌트가 없던 문제 —
               오른쪽 끝에 살짝 페이드 처리해서 "옆으로 더 있다"는 걸 알려줌 */}
           <div
