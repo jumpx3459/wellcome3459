@@ -9,21 +9,22 @@
 덤핑점핑(JumpX 알림 MVP) — B2B 덤핑정보 알림 웹앱.
 Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 설명은 `README.md` 참고.
 
-## ⚠️ 브랜치 상태 주의 (2026-09-14 확인)
+## 브랜치 상태 (2026-09-14 해결됨)
 
-이 저장소에 로컬 브랜치 `main`과 `claude/dumping-alert-app-rb20gt`(GitHub 기본 브랜치)가
-서로 다른 커밋으로 갈라져 있었음 (예: 카테고리/지역 가로 스크롤 칩 전환이 두 브랜치에
-각각 별도 커밋으로 존재). 확인 결과 `main`이 시각적으로 더 최신(관리자 다중계정 인증,
-파트너 신청 등 최근 작업이 모두 main에 있음)이라 **이 세션은 `main`을 기준으로 작업**함.
-다음 세션에서도 반드시 `git log --oneline main..origin/claude/dumping-alert-app-rb20gt`와
-반대 방향을 먼저 확인해서 두 브랜치가 여전히 갈라져 있는지, 합쳐야 하는지 사용자에게
-확인할 것 — 원인 파악 전에 임의로 강제 병합/삭제하지 말 것.
+이전에 로컬 `main`과 GitHub 저장소의 `origin/HEAD`가 가리키는 브랜치가 서로 달라
+혼란이 있었으나, 사용자가 `git remote set-head origin -a`로 갱신 확인 → GitHub 쪽
+기본 브랜치도 이미 `main`으로 바뀌어 있었음. 지금은 로컬 `main` = GitHub 기본 브랜치로
+정리된 상태. (과거 `claude/dumping-alert-app-rb20gt` 브랜치는 더 이상 작업 기준이 아님)
 
 ## 현재 상태
 
-- 작업 기준 브랜치: `main` (위 주의사항 참고 — GitHub 기본 브랜치는 여전히 `claude/dumping-alert-app-rb20gt`로 설정되어 있음)
-- 열려 있는 PR: #11 (관리자 계정을 mypage에서 인식 — admin_users.phone 연결, 병합 전 Supabase SQL 수동 실행 필요)
-- 병합 완료 (기본 브랜치에 모두 반영됨): PR #1~#10 (견적함 메뉴+Toast, 회원가입 개선, PWA 배너 수정, 회원번호+추천 공유, 프로필/사업자인증, 관리자 다중계정 인증 등)
+- 기본 브랜치: `main` (로컬/GitHub 모두 일치, `origin/HEAD -> origin/main`)
+- 열려 있는 PR:
+  - #12 (관리자 대시보드에서 관리자 임명/해제 + 비밀번호 변경 — `create_admin_user`/
+    `update_admin_password` SQL 함수 추가, 병합 전 Supabase SQL 수동 실행 필요)
+- 병합 완료 (기본 브랜치에 모두 반영됨): PR #1~#11 (견적함 메뉴+Toast, 회원가입 개선,
+  PWA 배너 수정, 회원번호+추천 공유, 프로필/사업자인증, 관리자 다중계정 인증,
+  mypage 관리자 인식 배지 등)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
 ## 최근 작업 (2026-09-14)
@@ -34,10 +35,15 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 2. **매물 공유 링크에 추천인 코드 반영** — `src/app/deals/[id]/page.tsx`의 `handleShare`가
    로그인한 회원의 `ref_code`를 붙여서 공유하도록 수정 (`?ref=` 쿼리, 기존 `resolve-ref`/가입
    흐름과 동일한 규칙). → `main`에 직접 커밋.
-3. **관리자 계정을 mypage에서 인식** — `admin_users.phone` 컬럼 추가(스키마에 마이그레이션
-   문구 추가, 실제 DB엔 아직 미적용) + `/api/is-admin` 라우트 + mypage 네이비 배지/`/admin`
-   이동 링크. 카카오 로그인·경매 등 기존 핵심 기능은 아니지만 "관리자 인식/권한" 관련이라
-   CLAUDE.md 4번 규칙에 따라 `feature/admin-mypage-badge` 브랜치 + PR #11로 진행 (main에
+3. **관리자 계정을 mypage에서 인식** — `admin_users.phone` 컬럼 추가 + `/api/is-admin` 라우트
+   + mypage 네이비 배지/`/admin` 이동 링크. → `feature/admin-mypage-badge` 브랜치 + PR #11,
+   **병합됨**.
+4. **관리자 임명/해제 + 비밀번호 변경 UI** — SQL Editor에서 직접 insert하던 관리자 등록을
+   대시보드 UI로 이전. `create_admin_user`/`update_admin_password` SQL 함수(둘 다 public/
+   anon/authenticated에서 EXECUTE 권한 회수) + `/api/admin/admins`(GET/POST/DELETE) +
+   `/api/admin/change-password` + 회원 목록의 "관리자로 임명" 버튼·"관리자 목록" 섹션·
+   "비밀번호 변경" 모달. 카카오 로그인·경매 등 기존 핵심 기능은 아니지만 "관리자 권한"
+   관련이라 CLAUDE.md 4번 규칙에 따라 `feature/admin-manage-admins` 브랜치 + PR #12로 진행 (main에
    직접 커밋하지 않음).
 
 ## 최근 작업 (이번 세션, 시간순)
@@ -54,7 +60,8 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 
 ## 다음에 할 일
 
-- [ ] PR #11 병합 전, Supabase SQL Editor에서 `admin_users`에 `phone` 컬럼 추가 + 기존 관리자 계정에 실제 번호 채우기 (schema.sql 해당 주석 참고), 그 다음 PR #11 리뷰/병합
+- [ ] PR #12 병합 전, Supabase SQL Editor에서 `create_admin_user`/`update_admin_password` 함수 2개 생성 (schema.sql 해당 블록 그대로 실행), 그 다음 PR #12 리뷰/병합
+- [x] PR #11 병합됨 — `admin_users.phone` 컬럼 추가 + 기존 관리자 계정에 실제 번호 채우기는 여전히 Supabase SQL Editor에서 수동 실행 필요 (schema.sql 해당 주석 참고, 아직 실행 확인 안 됨)
 - [x] Supabase 대시보드 → Storage에 `business-licenses` 버킷 생성 완료 (2026-09-03, 사용자 확인)
 - [ ] 실제 Supabase 프로젝트의 SQL Editor에서 `supabase/schema.sql`의 마이그레이션 블록을 아직 실행 안 했다면 실행 필요 — `member_no`, `name`/`email`/`business_license_path` 컬럼과 `protect_business_verified` 트리거까지 전부 포함 (이 세션엔 연결된 Supabase 프로젝트가 없어 로컬에서 직접 검증하지 못했음)
 - [ ] 위 두 가지가 끝나면, 실제 업로드 → 관리자 열람 → 인증 완료 처리까지 전체 흐름을 한 번 직접 확인해보는 걸 권장
