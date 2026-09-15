@@ -14,6 +14,18 @@ import CategoryScroller from "@/components/CategoryScroller";
 
 const TODAY_BADGE_THRESHOLD = 5; // 이보다 적으면 "오늘 N건" 배너를 아예 숨김 (빈약한 숫자 노출 방지)
 
+function formatRelativeTime(iso?: string | null) {
+  if (!iso) return null;
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diffMs / 60000);
+  if (min < 1) return "방금 등록";
+  if (min < 60) return `${min}분 전`;
+  const hour = Math.floor(min / 60);
+  if (hour < 24) return `${hour}시간 전`;
+  const day = Math.floor(hour / 24);
+  return `${day}일 전`;
+}
+
 const EXAMPLE_DEALS = mockDeals.filter((d) => d.status !== "closed").slice(0, 3);
 
 export default function Home() {
@@ -45,7 +57,7 @@ export default function Home() {
         supabase
           .from("deals")
           .select(
-            "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, location, images, categories(name), regions(name)"
+            "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, created_at, location, images, categories(name), regions(name)"
           )
           .eq("status", "active")
           .gt("closes_at", new Date().toISOString())
@@ -67,6 +79,7 @@ export default function Home() {
             total_qty: d.total_qty,
             remaining_qty: d.remaining_qty,
             closes_at: d.closes_at,
+            created_at: d.created_at,
             images: d.images ?? [],
           }))
         );
@@ -97,11 +110,14 @@ export default function Home() {
         {/* 신뢰 지표 — 실제 IR 확인 수치만 표기 */}
         <div className="inline-flex items-center gap-1.5 bg-white/10 rounded-full px-3 py-1.5 mb-4">
           <span style={{ color: "#5EEAD4" }}>✔</span>
-          <span className="text-xs font-bold text-white/90">전국 B2B 사업자 830명 이용 중</span>
+          <span className="text-xs font-bold text-white/90">
+            전국 B2B 사업자 830명 이용 중
+            {todayCount > 0 && ` · 오늘 등록 ${todayCount}건`}
+          </span>
         </div>
 
         <h1 className="font-display text-3xl leading-snug drop-shadow-sm">
-          <span style={{ color: "#F2891F" }}>덤핑재고,</span> 남보다 먼저 잡으세요.
+          <span style={{ color: "#F2891F" }}>남는 재고는 빠르게 알리고,</span> 급한 재고는 남보다 먼저 잡으세요.
         </h1>
         <p className="text-white/85 text-base mt-4 leading-relaxed">
           전국의 임박·과잉·폐업·재고처분 매물을 찾아 원하는 상품이 나오면 가장 먼저 알려드립니다.
@@ -207,6 +223,15 @@ export default function Home() {
                     <div className="text-xs text-gray500 mt-0.5">
                       {d.category} · {d.location}
                     </div>
+                    <div className="text-[11px] text-gray400 mt-0.5 flex items-center gap-1.5">
+                      <span>{d.remaining_qty}/{d.total_qty} 남음</span>
+                      {formatRelativeTime(d.created_at) && (
+                        <>
+                          <span>·</span>
+                          <span>{formatRelativeTime(d.created_at)}</span>
+                        </>
+                      )}
+                    </div>
                     <div className="flex items-baseline gap-1.5 mt-1.5">
                       <span className="text-lg font-black" style={{ color: color.text }}>
                         {formatPrice(d.deal_price)}
@@ -259,7 +284,7 @@ export default function Home() {
           style={{ background: "rgba(242,137,31,0.10)", border: "2px solid #F2891F", padding: "16px 20px" }}
         >
           <div>
-            <div className="text-base font-black text-navy">📦 재고가 남으셨나요?</div>
+            <div className="text-base font-black text-navy">📦 잠든 재고, 깨워서 현금으로</div>
             <div className="text-xs font-bold mt-0.5" style={{ color: "#D9531E" }}>
               판매 등록은 무료 · 지금 등록하기
             </div>
