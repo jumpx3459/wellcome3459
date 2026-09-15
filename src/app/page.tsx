@@ -6,6 +6,7 @@ import { mockCategories, mockDeals, categoryIcons, categoryColors, type Deal } f
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { formatPrice } from "@/lib/format";
 import SplashScreen from "@/components/SplashScreen";
+import OnboardingIntro from "@/components/OnboardingIntro";
 import InstallAppButton from "@/components/InstallAppButton";
 import KakaoChannelButton from "@/components/KakaoChannelButton";
 import ScrollHint from "@/components/ScrollHint";
@@ -78,6 +79,7 @@ export default function Home() {
 
   return (
     <SplashScreen>
+    <OnboardingIntro />
     <main className="flex flex-col min-h-screen">
       <div
         className="px-5 pt-6 pb-7 text-white"
@@ -85,7 +87,7 @@ export default function Home() {
       >
         <div className="flex items-center gap-2 mb-5">
           <div className="bg-white rounded-xl px-3 py-2 inline-block">
-            <img src="/images/logo.png" alt="덤핑점핑" className="h-10 w-auto" />
+            <img src="/images/logo.png" alt="덤핑점핑" className="h-10 w-auto animate-logo-jump" />
           </div>
           <span className="text-white/70 text-sm tracking-wide self-end mb-1">
             Powered by JumpX
