@@ -327,9 +327,14 @@ export default function Home() {
 
         <Link
           href="/buy"
-          className="flex items-center justify-between rounded-2xl bg-white border border-gray200"
+          className="flex items-center gap-3 rounded-2xl bg-white border border-gray200"
           style={{ padding: "14px 20px" }}
         >
+          <img
+            src="/images/manager.png"
+            alt="점핑매니저"
+            className="w-14 h-14 rounded-xl object-contain bg-gray100 flex-shrink-0"
+          />
           <div>
             <div className="text-sm font-bold text-navy">🔍 이런 재고 찾습니다</div>
             <div className="text-xs text-gray500 mt-0.5">구매 희망 등록 →</div>
