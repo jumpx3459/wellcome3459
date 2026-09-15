@@ -2,11 +2,7 @@
 export default function ScrollHint() {
   return (
     <div className="flex justify-center mt-3" aria-hidden="true">
-      <img
-        src="/images/manager.png"
-        alt=""
-        className="w-12 h-12 rounded-xl object-contain bg-white animate-scroll-hint"
-      />
+      <span className="text-2xl animate-scroll-hint">👇</span>
     </div>
   );
 }
