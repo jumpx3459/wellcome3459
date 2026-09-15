@@ -40,6 +40,8 @@ export default function MyPage() {
   const [memberId, setMemberId] = useState<string | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
   const [regions, setRegions] = useState<string[]>([]);
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [regionOpen, setRegionOpen] = useState(false);
   const [interests, setInterests] = useState<InterestItem[]>([]);
   const [referrals, setReferrals] = useState<ReferralItem[]>([]);
   const [shareDeal, setShareDeal] = useState<{ id: string; title: string; deal_price: number } | null>(null);
@@ -434,69 +436,137 @@ export default function MyPage() {
           </Link>
         )}
         <div>
-          <label className="mb-2 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setCategoryOpen((v) => !v)}
+            className="w-full flex items-center justify-between mb-2"
+          >
             <span className="text-base font-bold text-navy">관심 카테고리</span>
-            <button
-              type="button"
-              onClick={() =>
-                setCategories(categories.length === mockCategories.length ? [] : [...mockCategories])
-              }
-              className="text-xs font-bold text-orange"
-            >
-              {categories.length === mockCategories.length ? "전체 해제" : "전체 선택"}
-            </button>
-          </label>
-          <div className="grid grid-cols-3 gap-2">
-            {mockCategories.map((c) => {
-              const picked = categories.includes(c);
-              return (
+            <span className="text-xs font-bold text-gray400">
+              {categoryOpen ? "접기 ▲" : "변경하기 ▾"}
+            </span>
+          </button>
+          {!categoryOpen && (
+            <div className="flex flex-wrap gap-1.5 mb-1">
+              {categories.length === 0 ? (
+                <span className="text-xs text-gray500">선택된 카테고리 없음</span>
+              ) : (
+                <>
+                  {categories.slice(0, 6).map((c) => (
+                    <span
+                      key={c}
+                      className="text-xs font-bold px-2.5 py-1 rounded-full"
+                      style={{ background: "#F2891F", color: "#fff" }}
+                    >
+                      {categoryIcons[c]} {c}
+                    </span>
+                  ))}
+                  {categories.length > 6 && (
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-gray100 text-gray500">
+                      +{categories.length - 6}개 더
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+          {categoryOpen && (
+            <>
+              <div className="flex justify-end mb-1.5">
                 <button
-                  key={c}
-                  onClick={() => toggle(categories, setCategories, c)}
-                  className="flex flex-col items-center justify-center gap-1 rounded-xl border py-3.5 px-1 text-center"
-                  style={
-                    picked
-                      ? { background: "#F2891F", borderColor: "#F2891F", color: "#fff" }
-                      : { background: "#F5F6F8", borderColor: "#F5F6F8", color: "#1B3A5C" }
+                  type="button"
+                  onClick={() =>
+                    setCategories(categories.length === mockCategories.length ? [] : [...mockCategories])
                   }
+                  className="text-xs font-bold text-orange"
                 >
-                  <span className="text-2xl leading-none">{categoryIcons[c]}</span>
-                  <span className="text-sm font-bold leading-tight">{c}</span>
+                  {categories.length === mockCategories.length ? "전체 해제" : "전체 선택"}
                 </button>
-              );
-            })}
-          </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {mockCategories.map((c) => {
+                  const picked = categories.includes(c);
+                  return (
+                    <button
+                      key={c}
+                      onClick={() => toggle(categories, setCategories, c)}
+                      className="flex flex-col items-center justify-center gap-1 rounded-xl border py-3.5 px-1 text-center"
+                      style={
+                        picked
+                          ? { background: "#F2891F", borderColor: "#F2891F", color: "#fff" }
+                          : { background: "#F5F6F8", borderColor: "#F5F6F8", color: "#1B3A5C" }
+                      }
+                    >
+                      <span className="text-2xl leading-none">{categoryIcons[c]}</span>
+                      <span className="text-sm font-bold leading-tight">{c}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
 
         <div>
-          <label className="mb-2 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setRegionOpen((v) => !v)}
+            className="w-full flex items-center justify-between mb-2"
+          >
             <span className="text-sm font-bold text-navy">관심 지역</span>
-            <button
-              type="button"
-              onClick={() =>
-                setRegions(regions.length === mockRegions.length ? [] : [...mockRegions])
-              }
-              className="text-xs font-bold text-orange"
-            >
-              {regions.length === mockRegions.length ? "전체 해제" : "전체 선택"}
-            </button>
-          </label>
-          <p className="text-xs text-gray500 -mt-1 mb-2">
-            선택 안 하면 전국 매물 알림을 다 받아요
-          </p>
-          <div className="grid grid-cols-4 gap-2">
-            {mockRegions.map((r) => (
-              <button
-                key={r}
-                onClick={() => toggle(regions, setRegions, r)}
-                className={`text-sm py-2.5 rounded-full border-2 font-bold text-center ${
-                  regions.includes(r) ? "bg-navy text-white border-navy" : "border-gray200 text-gray500"
-                }`}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
+            <span className="text-xs font-bold text-gray400">
+              {regionOpen ? "접기 ▲" : "변경하기 ▾"}
+            </span>
+          </button>
+          {!regionOpen && (
+            <div className="flex flex-wrap gap-1.5 mb-1">
+              {regions.length === 0 ? (
+                <span className="text-xs text-gray500">전국 매물 알림 받는 중</span>
+              ) : (
+                <>
+                  {regions.slice(0, 8).map((r) => (
+                    <span key={r} className="text-xs font-bold px-2.5 py-1 rounded-full bg-navy text-white">
+                      {r}
+                    </span>
+                  ))}
+                  {regions.length > 8 && (
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-gray100 text-gray500">
+                      +{regions.length - 8}개 더
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+          {regionOpen && (
+            <>
+              <p className="text-xs text-gray500 mb-2">선택 안 하면 전국 매물 알림을 다 받아요</p>
+              <div className="flex justify-end mb-1.5">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setRegions(regions.length === mockRegions.length ? [] : [...mockRegions])
+                  }
+                  className="text-xs font-bold text-orange"
+                >
+                  {regions.length === mockRegions.length ? "전체 해제" : "전체 선택"}
+                </button>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {mockRegions.map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => toggle(regions, setRegions, r)}
+                    className={`text-sm py-2.5 rounded-full border-2 font-bold text-center ${
+                      regions.includes(r) ? "bg-navy text-white border-navy" : "border-gray200 text-gray500"
+                    }`}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         <button
