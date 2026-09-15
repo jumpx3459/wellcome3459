@@ -738,8 +738,11 @@ export default function MyPage() {
               {referrals.length}명 추천함
             </span>
           </div>
-          <p className="text-xs text-gray500 mb-3 leading-relaxed">
+          <p className="text-xs text-gray500 mb-1 leading-relaxed">
             아래 링크로 가입하면 내가 추천한 회원으로 따로 관리돼요.
+          </p>
+          <p className="text-xs font-bold mb-3" style={{ color: "#966B00" }}>
+            🎁 지금 추천해두면, 리워드 제도 도입 시 먼저 혜택 받아요
           </p>
           <div className="flex gap-2">
             <div className="flex-1 min-w-0 border-2 border-gray200 rounded-xl px-3.5 flex items-center text-sm text-gray500 truncate" style={{ height: "48px" }}>
@@ -772,23 +775,32 @@ export default function MyPage() {
                 alt="추천 링크 QR 코드"
                 className="w-32 h-32 rounded-xl border border-gray200"
               />
-              <p className="text-xs text-gray500 mt-2">거래처 방문 시 QR로 바로 보여주세요</p>
+              <p className="text-xs text-gray500 mt-2">명함 대신 QR로 보여주세요 · 스캔하면 제 추천으로 가입돼요</p>
             </div>
           )}
 
           <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
             <h3 className="font-bold text-amber-900">🏅 공식 점핑파트너</h3>
-            <p className="mt-1 text-xs leading-relaxed text-amber-800">
-              이미 덤핑·재고 유통업, 도매업, 밴드/카톡채널/블로그 등 SNS 운영자, 대기업 대리점,
-              제조·수입·커뮤니티 운영자로 활동 중이신가요? 공급자이자 수요자 역할을 함께 할 수 있는
-              리더에게 드리는 공식 등급입니다.
-            </p>
-            <ul className="mt-2 space-y-1 text-xs text-amber-800">
-              <li>✓ 공식 파트너 배지 표시</li>
-              <li>✓ 향후 리워드 제도 도입 시 우선 적용</li>
-              <li>✓ 점핑매니저와 우선 연결</li>
-              <li>✓ 내 판매·구매 신청 현황을 마이페이지에서 한 번에 확인</li>
-            </ul>
+            {!isOfficialPartner && (
+              <>
+                <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                  이미 덤핑·재고 유통업, 도매업, 밴드/카톡채널/블로그 등 SNS 운영자, 대기업 대리점,
+                  제조·수입·커뮤니티 운영자로 활동 중이신가요? 공급자이자 수요자 역할을 함께 할 수 있는
+                  리더에게 드리는 공식 등급입니다.
+                </p>
+                <ul className="mt-2 space-y-1 text-xs text-amber-800">
+                  <li>✓ 공식 파트너 배지 표시</li>
+                  <li>✓ 향후 리워드 제도 도입 시 우선 적용</li>
+                  <li>✓ 점핑매니저와 우선 연결</li>
+                  <li>✓ 내 판매·구매 신청 현황을 마이페이지에서 한 번에 확인</li>
+                </ul>
+              </>
+            )}
+            {isOfficialPartner && (
+              <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                공식 파트너 배지 · 우선 리워드 · 점핑매니저 우선 연결 혜택을 받고 계세요.
+              </p>
+            )}
 
             {isOfficialPartner ? (
               <p className="mt-3 rounded-lg bg-amber-100 p-2 text-center text-sm font-semibold text-amber-900">
@@ -835,47 +847,53 @@ export default function MyPage() {
             )}
           </div>
 
-          {referrals.length > 0 && (
-            <div className="flex flex-col gap-2 mt-3">
-              {referrals.map((r, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between bg-white border border-gray200 rounded-xl px-4 py-3"
-                >
-                  <div>
-                    <div className="text-sm font-bold text-gray900">
-                      {r.member_no != null ? formatMemberNo(r.member_no) : "회원번호 없음"}
-                      {r.company_name && (
-                        <span className="text-xs font-medium text-gray500 ml-1.5">{r.company_name}</span>
-                      )}
+          <div className="flex flex-col gap-2 mt-3">
+            {referrals.length === 0 ? (
+              <p className="text-xs text-gray500 text-center py-4">
+                아직 추천으로 가입한 회원이 없어요. 위 링크를 공유해보세요!
+              </p>
+            ) : (
+              <>
+                {referrals.map((r, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between bg-white border border-gray200 rounded-xl px-4 py-3"
+                  >
+                    <div>
+                      <div className="text-sm font-bold text-gray900">
+                        {r.member_no != null ? formatMemberNo(r.member_no) : "회원번호 없음"}
+                        {r.company_name && (
+                          <span className="text-xs font-medium text-gray500 ml-1.5">{r.company_name}</span>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray500 mt-0.5">
+                        {r.phone}
+                        {" · "}
+                        {new Date(r.created_at).toLocaleDateString("ko-KR")} 가입
+                        {r.is_business && " · 사업자"}
+                      </div>
                     </div>
-                    <div className="text-xs text-gray500 mt-0.5">
-                      {r.phone}
-                      {" · "}
-                      {new Date(r.created_at).toLocaleDateString("ko-KR")} 가입
-                      {r.is_business && " · 사업자"}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    <span
-                      className="text-xs font-bold px-2.5 py-1 rounded-full"
-                      style={{ background: "#E8F8EC", color: "#1D8A44" }}
-                    >
-                      가입완료
-                    </span>
-                    {r.business_verified && (
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
                       <span
                         className="text-xs font-bold px-2.5 py-1 rounded-full"
                         style={{ background: "#E8F8EC", color: "#1D8A44" }}
                       >
-                        ✓ 인증된 사업자
+                        가입완료
                       </span>
-                    )}
+                      {r.business_verified && (
+                        <span
+                          className="text-xs font-bold px-2.5 py-1 rounded-full"
+                          style={{ background: "#E8F8EC", color: "#1D8A44" }}
+                        >
+                          ✓ 인증된 사업자
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </>
+            )}
+          </div>
         </div>
 
         <div className="border-t border-gray200 pt-5">
