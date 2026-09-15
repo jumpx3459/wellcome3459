@@ -350,16 +350,16 @@ export default function Home() {
         {isMember ? (
           <Link
             href="/mypage"
-            className="block text-center font-bold rounded-2xl"
+            className="flex items-center justify-center gap-1.5 text-center font-bold rounded-full"
             style={{
               background: "#E8F8EC",
-              border: "2px solid #34C471",
+              border: "1px solid #34C471",
               color: "#1D8A44",
-              padding: "18px 0",
-              fontSize: "19px",
+              padding: "10px 0",
+              fontSize: "14px",
             }}
           >
-            ✓ 덤핑 알림받는 중
+            ✓ 알림받는 중 · 설정 변경 →
           </Link>
         ) : (
           <Link

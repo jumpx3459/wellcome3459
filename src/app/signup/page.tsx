@@ -18,6 +18,8 @@ function maskPhone(phone: string): string {
   return `${digits.slice(0, 3)}****${digits.slice(-4)}`;
 }
 
+const KAKAO_CHANNEL_URL = "https://pf.kakao.com/_xbwDJX/friend";
+
 export default function SignupPage() {
   return (
     <Suspense fallback={null}>
@@ -50,6 +52,7 @@ function SignupPageInner() {
   const [isBusiness, setIsBusiness] = useState(true);
   const [companyName, setCompanyName] = useState("");
   const [agreed, setAgreed] = useState(false);
+  const [addKakaoChannel, setAddKakaoChannel] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [pushStatus, setPushStatus] = useState<"idle" | "granted" | "denied" | "unsupported">(
     "idle"
@@ -185,6 +188,11 @@ function SignupPageInner() {
       setShowSelectionPrompt(true);
       return;
     }
+
+    // 팝업 차단 회피 — 사용자 클릭과 같은 동기 호출 스택에서 빈 창을 먼저 열어두고,
+    // upsert 성공 후에 카카오 채널 URL로 이동시킵니다(비동기 호출 이후에 열면 팝업이 막힘).
+    const kakaoWindow = addKakaoChannel ? window.open("", "_blank") : null;
+
     setSubmitting(true);
 
     // 알라미와 동일하게, 카카오톡 같은 중간 채널 없이 기기에 직접 알림을
@@ -196,6 +204,9 @@ function SignupPageInner() {
 
     if (!isSupabaseConfigured || !supabase) {
       // 데모 모드: 실제 저장 없이 다음 화면으로 이동
+      if (kakaoWindow) {
+        kakaoWindow.close();
+      }
       await new Promise((r) => setTimeout(r, 500));
       setSubmitting(false);
       router.push(returnTo || "/deals");
@@ -237,6 +248,9 @@ function SignupPageInner() {
         ...(referredById ? { referred_by: referredById } : {}),
       });
       if (memberError) {
+        if (kakaoWindow) {
+          kakaoWindow.close();
+        }
         setError(
           memberError.code === "23505"
             ? "이미 사용 중인 휴대폰 번호예요. 다른 번호로 시도하거나 고객센터로 문의해주세요."
@@ -244,6 +258,10 @@ function SignupPageInner() {
         );
         setSubmitting(false);
         return;
+      }
+
+      if (kakaoWindow) {
+        kakaoWindow.location.href = KAKAO_CHANNEL_URL;
       }
 
       const { data: catRows } = await supabase
@@ -280,6 +298,9 @@ function SignupPageInner() {
 
       router.push(returnTo || "/deals");
     } catch {
+      if (kakaoWindow) {
+        kakaoWindow.close();
+      }
       setError("가입 처리 중 오류가 발생했습니다.");
     } finally {
       setSubmitting(false);
@@ -561,6 +582,18 @@ function SignupPageInner() {
               개인정보 처리방침
             </a>{" "}
             동의
+          </span>
+        </label>
+
+        <label className="flex items-start gap-2.5 cursor-pointer mt-2">
+          <input
+            type="checkbox"
+            checked={addKakaoChannel}
+            onChange={(e) => setAddKakaoChannel(e.target.checked)}
+            className="mt-0.5 accent-orange w-5 h-5 flex-shrink-0"
+          />
+          <span className="text-sm text-gray500 leading-relaxed">
+            카카오톡 채널도 함께 추가할게요 · 공지·이벤트 소식
           </span>
         </label>
 
