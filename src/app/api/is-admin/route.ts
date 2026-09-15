@@ -31,11 +31,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ isAdmin: false });
   }
 
-  const { data: admin } = await supabaseAdmin
-    .from("admin_users")
-    .select("name, role")
-    .eq("phone", member.phone)
-    .maybeSingle();
+  // admin_users.phone은 SQL Editor에서 수동으로 입력되는 값이라 대시가 섞여
+  // 들어갈 수 있는데, member.phone은 항상 숫자만 있는 형태라 exact match가
+  // 안 될 수 있음 — 숫자만 남겨서 비교합니다.
+  const memberPhoneDigits = member.phone.replace(/[^0-9]/g, "");
+  const { data: admins } = await supabaseAdmin.from("admin_users").select("name, role, phone");
+  const admin = admins?.find((a) => a.phone?.replace(/[^0-9]/g, "") === memberPhoneDigits);
   if (!admin) {
     return NextResponse.json({ isAdmin: false });
   }

@@ -33,12 +33,19 @@ export default function Home() {
   const [preview, setPreview] = useState<Deal[]>(EXAMPLE_DEALS);
   const [isExample, setIsExample] = useState(true);
   const [isMember, setIsMember] = useState(false);
+  const [signupPending, setSignupPending] = useState(false);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
     supabase.auth.getSession().then(({ data }) => {
       setIsMember(!!data.session?.user);
     });
+  }, []);
+
+  useEffect(() => {
+    try {
+      setSignupPending(localStorage.getItem("dj_signup_pending") === "1");
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -93,6 +100,15 @@ export default function Home() {
   return (
     <SplashScreen>
     <OnboardingIntro />
+    {signupPending && (
+      <Link
+        href="/signup"
+        className="block bg-[#FFF4E0] px-5 py-3 text-sm font-bold text-center"
+        style={{ color: "#966B00" }}
+      >
+        ⚠️ 인증은 완료됐는데 가입이 안 끝났어요! 가입 마저 하기 →
+      </Link>
+    )}
     <main className="flex flex-col min-h-screen">
       <div
         className="px-5 pt-6 pb-7 text-white"

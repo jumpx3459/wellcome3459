@@ -69,7 +69,10 @@ function SignupPageInner() {
     }
     setAuthUserId(user?.id ?? null);
     if (user?.phone) {
-      setPhone(`0${user.phone.replace(/^\+82/, "")}`);
+      setPhone(`0${user.phone.replace(/^\+?82/, "")}`);
+      try {
+        localStorage.setItem("dj_signup_pending", "1");
+      } catch {}
     }
   };
 
@@ -99,6 +102,19 @@ function SignupPageInner() {
       .maybeSingle()
       .then(({ data }) => setAlreadyMember(Boolean(data)));
   }, [authUserId]);
+
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      try {
+        if (localStorage.getItem("dj_signup_pending") === "1") {
+          e.preventDefault();
+          e.returnValue = "";
+        }
+      } catch {}
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, []);
 
   const toggle = (list: string[], set: (v: string[]) => void, value: string) => {
     set(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
@@ -249,6 +265,10 @@ function SignupPageInner() {
           body: JSON.stringify({ memberId: userId, subscription: pushResult.subscription }),
         });
       }
+
+      try {
+        localStorage.removeItem("dj_signup_pending");
+      } catch {}
 
       router.push(returnTo || "/deals");
     } catch {

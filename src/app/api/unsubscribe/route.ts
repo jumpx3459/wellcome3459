@@ -3,7 +3,11 @@ import { createClient } from "@supabase/supabase-js";
 
 export async function POST(req: NextRequest) {
   const { phone } = await req.json();
-  if (!phone) {
+  // members.phone은 대시 없는 "010XXXXXXXX" 형태로 저장되는데, 이 페이지 입력
+  // placeholder("010-0000-0000")대로 대시를 넣어 입력하면 매칭이 안 되던 문제 —
+  // 숫자만 남겨서 비교합니다.
+  const normalizedPhone = typeof phone === "string" ? phone.replace(/[^0-9]/g, "") : "";
+  if (!normalizedPhone) {
     return NextResponse.json({ error: "휴대폰 번호를 입력해주세요." }, { status: 400 });
   }
 
@@ -20,7 +24,7 @@ export async function POST(req: NextRequest) {
   const { data: member } = await supabaseAdmin
     .from("members")
     .select("id")
-    .eq("phone", phone)
+    .eq("phone", normalizedPhone)
     .single();
 
   if (!member) {
