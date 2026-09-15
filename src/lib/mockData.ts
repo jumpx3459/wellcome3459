@@ -127,6 +127,15 @@ export const mockCategories = [
   "전자제품",
   "산업원자재",
   "기계설비",
+  "가공식품·잡화",
+  "가구",
+  "건강·위생용품",
+  "IT·사무기기",
+  "사무용품·비품",
+  "자동차용품",
+  "반려동물용품",
+  "완구·유아용품",
+  "혼합재고",
   "기타",
 ];
 
@@ -139,6 +148,15 @@ export const categoryIcons: Record<string, string> = {
   전자제품: "🔌",
   산업원자재: "🏗️",
   기계설비: "⚙️",
+  "가공식품·잡화": "🥫",
+  가구: "🛋️",
+  "건강·위생용품": "🧴",
+  "IT·사무기기": "💻",
+  "사무용품·비품": "🗄️",
+  자동차용품: "🚗",
+  반려동물용품: "🐾",
+  "완구·유아용품": "🧸",
+  혼합재고: "🔀",
   기타: "🗂️",
 };
 
@@ -152,6 +170,15 @@ export const categoryColors: Record<string, { bg: string; text: string; solid: s
   전자제품: { bg: "#EDEBFF", text: "#4C3FB8", solid: "#6C5CE7" },
   산업원자재: { bg: "#F5EDE4", text: "#7A5230", solid: "#A9744F" },
   기계설비: { bg: "#EAEDF5", text: "#3D4A66", solid: "#5C6B8C" },
+  "가공식품·잡화": { bg: "#FFF4E0", text: "#966B00", solid: "#F5A623" },
+  가구: { bg: "#FDE9E0", text: "#B84A24", solid: "#E8794A" },
+  "건강·위생용품": { bg: "#E6F9F1", text: "#0F7A5C", solid: "#2BB894" },
+  "IT·사무기기": { bg: "#E7F0FF", text: "#1D4FA0", solid: "#3E7BFA" },
+  "사무용품·비품": { bg: "#EEF1F5", text: "#45505E", solid: "#7C8BA0" },
+  자동차용품: { bg: "#FDEBEA", text: "#A32B2B", solid: "#E5484D" },
+  반려동물용품: { bg: "#FFF6DE", text: "#8A6100", solid: "#F2B705" },
+  "완구·유아용품": { bg: "#E9F6FF", text: "#0B6FA6", solid: "#38B6FF" },
+  혼합재고: { bg: "#F2F1E6", text: "#6B6420", solid: "#B5A642" },
   기타: { bg: "#F1F1EF", text: "#5C5C57", solid: "#8A8A82" },
 };
 

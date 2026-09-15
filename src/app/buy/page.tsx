@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { mockCategories, mockRegions, categoryIcons } from "@/lib/mockData";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
-import CategoryScroller from "@/components/CategoryScroller";
 
 export default function BuyPage() {
   const [productName, setProductName] = useState("");
@@ -123,14 +122,14 @@ export default function BuyPage() {
               선택
             </span>
           </label>
-          <CategoryScroller className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {mockCategories.map((c) => {
               const picked = category === c;
               return (
                 <button
                   key={c}
                   onClick={() => setCategory(picked ? "" : c)}
-                  className="flex-shrink-0 flex items-center gap-1.5 rounded-full border py-2 px-3.5 text-center"
+                  className="flex items-center justify-center gap-1.5 rounded-full border py-2 px-3.5"
                   style={
                     picked
                       ? { background: "#F2891F", borderColor: "#F2891F", color: "#fff" }
@@ -138,11 +137,11 @@ export default function BuyPage() {
                   }
                 >
                   <span className="text-lg leading-none">{categoryIcons[c]}</span>
-                  <span className="text-sm font-bold leading-tight whitespace-nowrap">{c}</span>
+                  <span className="text-sm font-bold leading-tight">{c}</span>
                 </button>
               );
             })}
-          </CategoryScroller>
+          </div>
         </div>
 
         <div>
@@ -152,10 +151,10 @@ export default function BuyPage() {
               선택
             </span>
           </label>
-          <CategoryScroller className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             <button
               onClick={() => setRegion("")}
-              className={`flex-shrink-0 text-sm py-2 px-4 rounded-full border-2 font-bold text-center whitespace-nowrap ${
+              className={`text-sm py-2 px-2 rounded-full border-2 font-bold text-center whitespace-nowrap ${
                 region === "" ? "bg-navy text-white border-navy" : "border-gray200 text-gray500"
               }`}
             >
@@ -165,14 +164,14 @@ export default function BuyPage() {
               <button
                 key={r}
                 onClick={() => setRegion(r)}
-                className={`flex-shrink-0 text-sm py-2 px-4 rounded-full border-2 font-bold text-center whitespace-nowrap ${
+                className={`text-sm py-2 px-2 rounded-full border-2 font-bold text-center whitespace-nowrap ${
                   region === r ? "bg-navy text-white border-navy" : "border-gray200 text-gray500"
                 }`}
               >
                 {r}
               </button>
             ))}
-          </CategoryScroller>
+          </div>
         </div>
 
         <div className="flex gap-3">
