@@ -131,10 +131,8 @@ export default function Home() {
           </span>
         </div>
 
-        <h1 className="font-display text-2xl leading-snug drop-shadow-sm">
-          <span style={{ color: "#F2891F" }}>남는 재고는 빠르게 알리고,</span>
-          <br />
-          급한 재고는 남보다 먼저 잡으세요.
+        <h1 className="font-display text-xl leading-snug drop-shadow-sm">
+          <span style={{ color: "#F2891F" }}>남는 재고는 빠르게 알리고,</span> 급한 재고는 남보다 먼저 잡으세요.
         </h1>
         <p className="text-white/85 text-base mt-4 leading-relaxed">
           <span className="hidden sm:inline">
