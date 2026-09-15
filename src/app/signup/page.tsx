@@ -171,6 +171,7 @@ function SignupPageInner() {
   };
 
   const submit = async () => {
+    let kakaoRedirected = false;
     setError(null);
     if (!authUserId) {
       setError("휴대폰 인증을 먼저 진행해주세요.");
@@ -262,6 +263,7 @@ function SignupPageInner() {
 
       if (kakaoWindow) {
         kakaoWindow.location.href = KAKAO_CHANNEL_URL;
+        kakaoRedirected = true;
       }
 
       const { data: catRows } = await supabase
@@ -298,7 +300,7 @@ function SignupPageInner() {
 
       router.push(returnTo || "/deals");
     } catch {
-      if (kakaoWindow) {
+      if (kakaoWindow && !kakaoRedirected) {
         kakaoWindow.close();
       }
       setError("가입 처리 중 오류가 발생했습니다.");
