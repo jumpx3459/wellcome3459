@@ -100,7 +100,15 @@ function SignupPageInner() {
       .select("id")
       .eq("id", authUserId)
       .maybeSingle()
-      .then(({ data }) => setAlreadyMember(Boolean(data)));
+      .then(({ data }) => {
+        const already = Boolean(data);
+        setAlreadyMember(already);
+        if (already) {
+          try {
+            localStorage.removeItem("dj_signup_pending");
+          } catch {}
+        }
+      });
   }, [authUserId]);
 
   useEffect(() => {
