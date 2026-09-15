@@ -9,7 +9,6 @@ import SplashScreen from "@/components/SplashScreen";
 import OnboardingIntro from "@/components/OnboardingIntro";
 import InstallAppButton from "@/components/InstallAppButton";
 import KakaoChannelButton from "@/components/KakaoChannelButton";
-import ScrollHint from "@/components/ScrollHint";
 import CategoryScroller from "@/components/CategoryScroller";
 
 const TODAY_BADGE_THRESHOLD = 5; // 이보다 적으면 "오늘 N건" 배너를 아예 숨김 (빈약한 숫자 노출 방지)
@@ -111,7 +110,7 @@ export default function Home() {
     )}
     <main className="flex flex-col min-h-screen">
       <div
-        className="px-5 pt-6 pb-7 text-white"
+        className="px-5 pt-4 pb-4 text-white"
         style={{ background: "linear-gradient(135deg, #0B2540, #1B3A5C)" }}
       >
         <div className="flex items-center gap-2 mb-5">
@@ -127,16 +126,21 @@ export default function Home() {
         <div className="inline-flex items-center gap-1.5 bg-white/10 rounded-full px-3 py-1.5 mb-4">
           <span style={{ color: "#5EEAD4" }}>✔</span>
           <span className="text-xs font-bold text-white/90">
-            전국 B2B 사업자 830명 이용 중
+            890명+ 덤핑재고 알림 받는 중
             {todayCount > 0 && ` · 오늘 등록 ${todayCount}건`}
           </span>
         </div>
 
-        <h1 className="font-display text-3xl leading-snug drop-shadow-sm">
-          <span style={{ color: "#F2891F" }}>남는 재고는 빠르게 알리고,</span> 급한 재고는 남보다 먼저 잡으세요.
+        <h1 className="font-display text-2xl leading-snug drop-shadow-sm">
+          <span style={{ color: "#F2891F" }}>남는 재고는 빠르게 알리고,</span>
+          <br />
+          급한 재고는 남보다 먼저 잡으세요.
         </h1>
         <p className="text-white/85 text-base mt-4 leading-relaxed">
-          전국의 임박·과잉·폐업·재고처분 매물을 찾아 원하는 상품이 나오면 가장 먼저 알려드립니다.
+          <span className="hidden sm:inline">
+            전국의 임박·과잉·폐업·재고처분 매물을 찾아 원하는 상품이 나오면 가장 먼저 알려드립니다.
+          </span>
+          <span className="sm:hidden">임박·과잉·폐업 재고, 가장 먼저 알려드립니다.</span>
         </p>
 
         {/* 긴급성 — 실제 오늘 등록 건수가 일정 수준 이상일 때만 노출 (빈약한 숫자 노출 방지) */}
@@ -149,15 +153,6 @@ export default function Home() {
             🔥 오늘 등록된 덤핑 매물 {todayCount}건 · 지금 확인하기 →
           </Link>
         )}
-
-        <ScrollHint />
-      </div>
-
-      {/* 상단은 핵심 전환(회원가입→맞춤 알림)에만 집중 — 카카오톡 채널 추가는
-          같은 "카카오 버튼" 스타일로 나란히 있으면 가입과 중복돼 보여서
-          매물을 먼저 보여준 뒤(아래) 저관여 위치로 옮김. */}
-      <div className="px-5 pt-5">
-        <InstallAppButton />
       </div>
 
       <div className="pt-5">
@@ -193,6 +188,13 @@ export default function Home() {
             style={{ background: "linear-gradient(to right, rgba(245,246,248,0), rgba(245,246,248,1))" }}
           />
         </div>
+      </div>
+
+      {/* 상단은 핵심 전환(회원가입→맞춤 알림)에만 집중 — 카카오톡 채널 추가는
+          같은 "카카오 버튼" 스타일로 나란히 있으면 가입과 중복돼 보여서
+          매물을 먼저 보여준 뒤(아래) 저관여 위치로 옮김. */}
+      <div className="px-5 pt-5">
+        <InstallAppButton />
       </div>
 
       {/* 매물 예시 — 실제 매물이 있으면 실제로, 없으면 예시로 "이런 특가가 온다"는 감을 줌 */}
