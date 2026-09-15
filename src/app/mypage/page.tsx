@@ -47,6 +47,7 @@ export default function MyPage() {
   const [shared, setShared] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [notLoggedIn, setNotLoggedIn] = useState(false);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState("");
@@ -270,29 +271,39 @@ export default function MyPage() {
     if (!supabase) return;
     setSaving(true);
     setSaved(false);
+    setSaveError(null);
     try {
       const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) return;
+      if (!userData.user) {
+        setSaveError("로그인이 만료됐어요. 다시 로그인해주세요.");
+        return;
+      }
       const userId = userData.user.id;
 
-      await supabase.from("member_categories").delete().eq("member_id", userId);
-      await supabase.from("member_regions").delete().eq("member_id", userId);
+      const { error: delCatError } = await supabase.from("member_categories").delete().eq("member_id", userId);
+      if (delCatError) throw delCatError;
+      const { error: delRegError } = await supabase.from("member_regions").delete().eq("member_id", userId);
+      if (delRegError) throw delRegError;
 
       const { data: catRows } = await supabase.from("categories").select("id, name").in("name", categories);
       const { data: regRows } = await supabase.from("regions").select("id, name").in("name", regions);
 
       if (catRows?.length) {
-        await supabase
+        const { error: insCatError } = await supabase
           .from("member_categories")
           .insert(catRows.map((c) => ({ member_id: userId, category_id: c.id })));
+        if (insCatError) throw insCatError;
       }
       if (regRows?.length) {
-        await supabase
+        const { error: insRegError } = await supabase
           .from("member_regions")
           .insert(regRows.map((r) => ({ member_id: userId, region_id: r.id })));
+        if (insRegError) throw insRegError;
       }
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
+    } catch {
+      setSaveError("저장 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");
     } finally {
       setSaving(false);
     }
@@ -496,6 +507,7 @@ export default function MyPage() {
         >
           {saving ? "저장 중..." : saved ? "✓ 저장됐어요" : "설정 저장"}
         </button>
+        {saveError && <div className="text-sm text-orange font-medium">{saveError}</div>}
 
         <div className="border-t border-gray200 pt-5 flex flex-col gap-4">
           {profileComplete && !editingProfile ? (
