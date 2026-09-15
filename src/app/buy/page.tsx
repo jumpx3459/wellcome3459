@@ -13,6 +13,8 @@ export default function BuyPage() {
   const [hopePrice, setHopePrice] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [description, setDescription] = useState("");
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [regionOpen, setRegionOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -116,62 +118,14 @@ export default function BuyPage() {
         </div>
 
         <div>
-          <label className="text-sm font-bold text-navy mb-2 flex items-center gap-1.5">
-            카테고리
-            <span className="text-xs font-medium text-gray500 bg-gray100 px-2 py-0.5 rounded-full">
-              선택
-            </span>
-          </label>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {mockCategories.map((c) => {
-              const picked = category === c;
-              return (
-                <button
-                  key={c}
-                  onClick={() => setCategory(picked ? "" : c)}
-                  className="flex items-center justify-center gap-1.5 rounded-full border py-2 px-3.5"
-                  style={
-                    picked
-                      ? { background: "#F2891F", borderColor: "#F2891F", color: "#fff" }
-                      : { background: "#F5F6F8", borderColor: "#F5F6F8", color: "#1B3A5C" }
-                  }
-                >
-                  <span className="text-lg leading-none">{categoryIcons[c]}</span>
-                  <span className="text-sm font-bold leading-tight">{c}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div>
-          <label className="text-sm font-bold text-navy mb-2 flex items-center gap-1.5">
-            희망 지역
-            <span className="text-xs font-medium text-gray500 bg-gray100 px-2 py-0.5 rounded-full">
-              선택
-            </span>
-          </label>
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-            <button
-              onClick={() => setRegion("")}
-              className={`text-sm py-2 px-2 rounded-full border-2 font-bold text-center whitespace-nowrap ${
-                region === "" ? "bg-navy text-white border-navy" : "border-gray200 text-gray500"
-              }`}
-            >
-              전국 가능
-            </button>
-            {mockRegions.map((r) => (
-              <button
-                key={r}
-                onClick={() => setRegion(r)}
-                className={`text-sm py-2 px-2 rounded-full border-2 font-bold text-center whitespace-nowrap ${
-                  region === r ? "bg-navy text-white border-navy" : "border-gray200 text-gray500"
-                }`}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
+          <label className="text-sm font-bold text-navy mb-2 block">연락처 *</label>
+          <input
+            className="w-full border-2 border-gray200 rounded-xl px-4 text-base outline-none focus:border-orange"
+            style={{ height: "52px" }}
+            value={contactPhone}
+            onChange={(e) => setContactPhone(e.target.value)}
+            placeholder="010-0000-0000"
+          />
         </div>
 
         <div className="flex gap-3">
@@ -215,14 +169,93 @@ export default function BuyPage() {
         </div>
 
         <div>
-          <label className="text-sm font-bold text-navy mb-2 block">연락처 *</label>
-          <input
-            className="w-full border-2 border-gray200 rounded-xl px-4 text-base outline-none focus:border-orange"
-            style={{ height: "52px" }}
-            value={contactPhone}
-            onChange={(e) => setContactPhone(e.target.value)}
-            placeholder="010-0000-0000"
-          />
+          <button
+            type="button"
+            onClick={() => setCategoryOpen((v) => !v)}
+            className="w-full flex items-center justify-between text-sm font-bold text-navy mb-2"
+          >
+            <span className="flex items-center gap-1.5">
+              카테고리
+              <span className="text-xs font-medium text-gray500 bg-gray100 px-2 py-0.5 rounded-full">
+                선택
+              </span>
+              {!categoryOpen && category && (
+                <span className="text-xs font-bold text-white bg-[#F2891F] px-2 py-0.5 rounded-full ml-1">
+                  {categoryIcons[category]} {category}
+                </span>
+              )}
+            </span>
+            <span className="text-gray400 text-xs">{categoryOpen ? "접기 ▲" : "선택하기 ▾"}</span>
+          </button>
+          {categoryOpen && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {mockCategories.map((c) => {
+                const picked = category === c;
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCategory(picked ? "" : c)}
+                    className="flex items-center justify-center gap-1.5 rounded-full border py-2 px-3.5"
+                    style={
+                      picked
+                        ? { background: "#F2891F", borderColor: "#F2891F", color: "#fff" }
+                        : { background: "#F5F6F8", borderColor: "#F5F6F8", color: "#1B3A5C" }
+                    }
+                  >
+                    <span className="text-lg leading-none">{categoryIcons[c]}</span>
+                    <span className="text-sm font-bold leading-tight">{c}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <button
+            type="button"
+            onClick={() => setRegionOpen((v) => !v)}
+            className="w-full flex items-center justify-between text-sm font-bold text-navy mb-2"
+          >
+            <span className="flex items-center gap-1.5">
+              희망 지역
+              <span className="text-xs font-medium text-gray500 bg-gray100 px-2 py-0.5 rounded-full">
+                선택
+              </span>
+              {!regionOpen && (
+                <span className="text-xs font-bold text-white bg-navy px-2 py-0.5 rounded-full ml-1">
+                  {region === "" ? "전국 가능" : region}
+                </span>
+              )}
+            </span>
+            <span className="text-gray400 text-xs">{regionOpen ? "접기 ▲" : "선택하기 ▾"}</span>
+          </button>
+          {regionOpen && (
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              <button
+                type="button"
+                onClick={() => setRegion("")}
+                className={`text-sm py-2 px-2 rounded-full border-2 font-bold text-center whitespace-nowrap ${
+                  region === "" ? "bg-navy text-white border-navy" : "border-gray200 text-gray500"
+                }`}
+              >
+                전국 가능
+              </button>
+              {mockRegions.map((r) => (
+                <button
+                  type="button"
+                  key={r}
+                  onClick={() => setRegion(r)}
+                  className={`text-sm py-2 px-2 rounded-full border-2 font-bold text-center whitespace-nowrap ${
+                    region === r ? "bg-navy text-white border-navy" : "border-gray200 text-gray500"
+                  }`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div>
