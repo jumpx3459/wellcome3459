@@ -1,29 +1,13 @@
 /* ==========================================================================
    덤핑점핑 디자인 토큰 v1 — 2026-09
+
+   색상/radius는 globals.css의 @theme 블록으로 이관됨
+   (기존 --color-brandOrange/--color-orange 유지 + 신규 --color-urgent/
+   --color-verified/--color-line/--radius-token 3+1종만 추가).
+   여기 남은 건 typography/spacing과, 그 값을 쓰는 유틸리티 클래스뿐.
    ========================================================================== */
 
 :root {
-  /* --- Color: Base --- */
-  --ink-900:      #16202A;  /* 본문 텍스트, 헤더 */
-  --ink-600:      #4A5560;  /* 보조 텍스트 (메타정보) */
-  --paper-50:     #F4F5F2;  /* 배경 */
-  --surface-0:    #FFFFFF;  /* 카드/입력창 표면 */
-
-  /* --- Color: Brand & Status (역할 분리) --- */
-  --brand-500:    #FF7A1A;  /* CTA, 선택 상태 (기존 오렌지 유지) */
-  --brand-600:    #E56A0F;  /* hover/active */
-  --urgent-500:   #E5484D;  /* 마감임박·품절 전용 */
-  --verified-500: #2F9E44;  /* 사업자/실사 인증 배지 */
-
-  /* --- Color: Line (3:1 기준, 텍스트 4.5:1과 분리) --- */
-  --line-200:     #DDE1DC;  /* 구분선, 카드 보더 */
-  --line-300:     #C7CCC7;  /* 아이콘 stroke, input 보더 */
-
-  /* --- Radius: 통일 (직각/둥근 혼용 금지) --- */
-  --radius-sm:    6px;   /* 배지, 칩 */
-  --radius-md:    10px;  /* 카드, 입력창 */
-  --radius-full:  999px; /* 필터 pill, 아바타 */
-
   /* --- Typography --- */
   --font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
 
@@ -57,12 +41,12 @@
   padding: 0 20px;
   font-size: var(--text-body);
   font-weight: 600;
-  background: var(--brand-500);
-  color: var(--surface-0);
-  border-radius: var(--radius-md);
+  background: var(--color-brandOrange);
+  color: #fff;
+  border-radius: var(--radius-token);
   border: none;
 }
-.btn-primary:hover { background: var(--brand-600); }
+.btn-primary:hover { background: var(--color-brandOrangeDeep); }
 
 .btn-secondary {
   height: var(--tap-min);
@@ -70,9 +54,9 @@
   font-size: var(--text-body);
   font-weight: 500;
   background: transparent;
-  color: var(--ink-900);
-  border: 1.5px solid var(--ink-900);
-  border-radius: var(--radius-md);
+  color: var(--color-gray900);
+  border: 1.5px solid var(--color-gray900);
+  border-radius: var(--radius-token);
 }
 
 .btn-tertiary {
@@ -80,7 +64,7 @@
   padding: 10px 8px; /* 히트박스는 44px 확보 */
   font-size: var(--text-caption);
   font-weight: 500;
-  color: var(--ink-600);
+  color: var(--color-gray500);
   text-decoration: underline;
   background: none;
   border: none;
@@ -92,7 +76,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-full);
+  border-radius: 9999px; /* 필터 pill/아바타는 기존 rounded-full 그대로, 별도 토큰 없음 */
 }
 
 /* ==========================================================================
@@ -100,17 +84,17 @@
    ========================================================================== */
 
 .badge-urgent {
-  background: color-mix(in srgb, var(--urgent-500) 12%, white);
-  color: var(--urgent-500);
-  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-urgent) 12%, white);
+  color: var(--color-urgent);
+  border-radius: 6px;
   padding: 2px 8px;
   font-size: var(--text-caption);
   font-weight: 600;
 }
 .badge-verified {
-  background: color-mix(in srgb, var(--verified-500) 12%, white);
-  color: var(--verified-500);
-  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-verified) 12%, white);
+  color: var(--color-verified);
+  border-radius: 6px;
   padding: 2px 8px;
   font-size: var(--text-caption);
   font-weight: 600;
@@ -124,7 +108,7 @@
   font-size: var(--text-price);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: var(--ink-900);
+  color: var(--color-gray900);
 }
 
 /* ==========================================================================
@@ -133,17 +117,25 @@
 
 .deal-row {
   padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--line-200);
+  border-bottom: 1px solid var(--color-line);
   /* box-shadow 사용 금지 */
 }
 
 /* ==========================================================================
    Accessibility
+
+   인풋류는 기존 focus:border-{색} 방식을 그대로 쓰므로 이 outline에서 제외
+   (건드리지 않기로 결정 — 46건 전부 미변경)
    ========================================================================== */
 
 :focus-visible {
-  outline: 2px solid var(--brand-500);
+  outline: 2px solid var(--color-brandOrange, #f2891f);
   outline-offset: 2px;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

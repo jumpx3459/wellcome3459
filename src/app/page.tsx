@@ -229,7 +229,7 @@ export default function Home() {
                     </div>
                   )}
                   <div
-                    className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
+                    className="w-14 h-14 rounded-token flex items-center justify-center text-2xl flex-shrink-0"
                     style={{ background: color.bg }}
                   >
                     {categoryIcons[d.category] ?? "🗂️"}

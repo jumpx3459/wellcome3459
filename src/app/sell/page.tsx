@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { CheckCircle } from "lucide-react";
 import { mockCategories, mockRegions, categoryIcons, categoryColors, quantityUnits } from "@/lib/mockData";
 import ImageUploader from "@/components/ImageUploader";
 import VideoUploader from "@/components/VideoUploader";
@@ -75,7 +76,7 @@ export default function SellPage() {
   if (done) {
     return (
       <main className="flex flex-col items-center min-h-screen px-6 pt-20 text-center">
-        <div className="text-5xl mb-4">✅</div>
+        <CheckCircle className="w-12 h-12 mb-4 text-verified" />
         <h1 className="font-display text-2xl text-navy mb-2">신청이 접수됐어요</h1>
         <p className="text-gray500 text-base leading-relaxed mb-6">
           점핑매니저가 검토 후 24시간 이내에

@@ -14,6 +14,12 @@
   --color-orange: #e8622c; /* 긴급성(마감임박·재고소진) 전용 — 절대 기본 액션에 쓰지 않음 */
   --color-dangerBg: #fdeee8;
 
+  /* 디자인 토큰 v1 — 신규 3색 (기존 색상은 위 값 그대로 유지) */
+  --color-urgent: #E5484D; /* 마감임박/품절 전용 — 기존 --color-orange와 구분되는 배지색 */
+  --color-verified: #2F9E44; /* 인증 배지 전용 */
+  --color-line: #DDE1DC; /* 구분선 */
+  --radius-token: 12px; /* rounded-xl(최다 사용) 표준화용 */
+
   --font-sans: "Noto Sans KR", sans-serif;
   --font-display: "Noto Sans KR", sans-serif;
   --font-mono: "Roboto Mono", monospace;
