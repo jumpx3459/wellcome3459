@@ -87,7 +87,8 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - [x] Supabase 대시보드 → Storage에 `business-licenses` 버킷 생성 완료 (2026-09-03, 사용자 확인)
 - [ ] 실제 Supabase 프로젝트의 SQL Editor에서 `supabase/schema.sql`의 마이그레이션 블록을 아직 실행 안 했다면 실행 필요 — `member_no`, `name`/`email`/`business_license_path` 컬럼과 `protect_business_verified` 트리거까지 전부 포함 (이 세션엔 연결된 Supabase 프로젝트가 없어 로컬에서 직접 검증하지 못했음)
 - [ ] 위 두 가지가 끝나면, 실제 업로드 → 관리자 열람 → 인증 완료 처리까지 전체 흐름을 한 번 직접 확인해보는 걸 권장
-- [ ] **디자인 토큰 v1 — 2라운드 "위계/액센트 재정비" 대기 중** (사용자 지시로 미착수): 점프엑스 브랜드 컬러 마이그레이션 마무리 후 시작 예정. 상세 항목(아이콘 filled 전환, 색상 역할별 분리, 배지/버튼 구분, 정보 위계 등)은 클라우드 세션 쪽 기록 참고
+- [ ] **디자인 토큰 v2 "위계/액센트 재정비"** — `feature/design-tokens-v2` 브랜치, PR #14 (머지 대기, 스크린샷 확인 필요): 선택 칩/CTA 색상 오렌지 통일, BottomNav를 `@phosphor-icons/react`로 교체(lucide는 outline 전용이라 filled 강제 시 아이콘이 깨져서 라이브러리 교체 — Flame만 lucide 유지), `trustBlue`(존재하지 않는 색 참조) 수정, sell.tsx 카테고리 선택 색 통일까지 완료. 남은 단계(Step 4 정보 위계, Step 5 마감임박/할인율 색 거리)는 PR #14 정리 이후 계속
+- [ ] **카테고리/지역 선택 UI — "인기 항목 1~2개 노출 + 더보기" 구조 개선** (2라운드에서 조사만 하고 보류, 별도 기능 개발 과제로 분류): 신규 공용 컴포넌트 설계(다중선택 mypage.tsx vs 단일선택 buy.tsx 겸용 필요 — 현재 두 파일 완전 독립 구현), mypage/buy/signup 3개 파일 리팩터(signup.tsx는 지금 아코디언 자체가 없이 항상 전체 펼침), `member_categories`/`member_regions` 집계 쿼리 신규 개발(인기 항목 판단용 — 현재 이런 집계가 어디에도 없음, 없으면 고정 목록으로 시작 가능)
 - [ ] "견적함" 실제 기능 기획/개발 (현재는 "준비중" 자리표시자만 있음)
 - [ ] (선택) `Toast.tsx`를 다른 화면에서도 재사용할 만한 곳이 있는지 점검
 
