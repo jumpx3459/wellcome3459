@@ -336,7 +336,7 @@ export default function SellPage() {
                     key={r}
                     onClick={() => setRegion(region === r ? "" : r)}
                     className={`text-sm py-2.5 rounded-full border-2 font-bold text-center ${
-                      region === r ? "bg-navy text-white border-navy" : "border-gray200 text-gray500"
+                      region === r ? "bg-[#F2891F] text-white border-[#F2891F]" : "border-gray200 text-gray500"
                     }`}
                   >
                     {r}

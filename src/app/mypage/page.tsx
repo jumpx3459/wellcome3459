@@ -526,7 +526,7 @@ export default function MyPage() {
               ) : (
                 <>
                   {regions.slice(0, 8).map((r) => (
-                    <span key={r} className="text-xs font-bold px-2.5 py-1 rounded-full bg-navy text-white">
+                    <span key={r} className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#F2891F", color: "#fff" }}>
                       {r}
                     </span>
                   ))}
