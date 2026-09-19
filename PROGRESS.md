@@ -20,9 +20,10 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 
 - 기본 브랜치: `main` (로컬/GitHub 모두 일치, `origin/HEAD -> origin/main`)
 - 열려 있는 PR: 없음
-- 병합 완료 (기본 브랜치에 모두 반영됨): PR #1~#13 (견적함 메뉴+Toast, 회원가입 개선,
+- 병합 완료 (기본 브랜치에 모두 반영됨): PR #1~#14 (견적함 메뉴+Toast, 회원가입 개선,
   PWA 배너 수정, 회원번호+추천 공유, 프로필/사업자인증, 관리자 다중계정 인증,
-  mypage 관리자 인식 배지, 관리자 임명/비밀번호 변경, 디자인 토큰 v1 1라운드)
+  mypage 관리자 인식 배지, 관리자 임명/비밀번호 변경, 디자인 토큰 v1 1라운드,
+  디자인 토큰 v2 위계/액센트 재정비)
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
@@ -43,11 +44,33 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
    `#C2410C`였음)를 `--color-urgent`로 재색상화. 홈 화면 미리보기 카드의 아이콘 박스
    `rounded-xl`→`rounded-token` 1곳만 적용. `feature/design-tokens-v1` 브랜치 + PR #13,
    **병합 완료, 프로덕션 배포 확인됨**.
-   - **다음 라운드 대기 중** (사용자 지시로 착수 보류): 아이콘 filled 스타일 전환,
-     역할별 색상 정책 일원화(버튼/토글/선택칩 구분), 배지·버튼 시각 구분, 파란색(홈 화면
-     추가 배너) 브랜드 팔레트 편입 여부, 카테고리 아이콘 무지개색 통일 여부, 매물 상세
-     정보 위계(라벨/값 대비), 마감임박·할인율 배지 색 구분 강화 — 상세 목록은 클라우드
-     세션 쪽에 기록됨.
+3. **디자인 토큰 v2 — 위계/액센트 재정비 (PR #14, 병합됨)** — Step 1 grep 조사(아이콘
+   스타일/카테고리 색/선택 상태 로직/CTA 색/블루 배너/파트너 배지 6개 항목) → 정책
+   확정 후 적용:
+   - 지역 선택칩 `bg-navy` → 오렌지(`#F2891F`)로 카테고리와 통일 (signup/mypage/buy/
+     sell 4개 파일, 아코디언 요약 배지 포함 총 7곳)
+   - 소비자 화면 솔리드 네이비 CTA 3곳(mypage 설정저장/공유, deals/[id] JUMP X
+     이동하기) → 오렌지 그라디언트로 통일. admin 대시보드 13곳은 내부 운영툴이라는
+     이유로 의도적으로 네이비 유지
+   - `admin/page.tsx`의 `focus:border-trustBlue`(`@theme`에 없는 죽은 색 참조) →
+     `focus:border-navy`
+   - `sell.tsx` 카테고리 선택기가 혼자 `categoryColors[c].solid`(무지개색)를 쓰던 것
+     발견 → 균일 오렌지로 통일 (`categoryColors` 자체는 매물 카드 표시용으로 계속 사용)
+   - `BottomNav` 아이콘을 outline→filled로: `lucide-react`는 outline 전용 설계라
+     fill 강제 적용 시 Search/Bell/Handshake/User가 깨짐(SVG 소스 직접 확인) →
+     진짜 solid weight를 제공하는 `@phosphor-icons/react`로 5개 교체(Flame만 단일
+     도형이라 lucide 유지)
+   - 추가 라운드: (A) "카테고리 선택 전부 오렌지로 보임" 제보 → Playwright로 `/signup`
+     실제 렌더링 후 computed style 측정, 재현 안 됨(코드 정상) 확인. (B) 홈 화면
+     로고만 `h-10`(나머지 9개 화면은 이미 `h-8`) → `h-8`로 통일, 히어로 카피(신뢰배지+
+     헤드라인+설명)는 마케팅 자산이라 유지 결정. (C) "전국 화물 배차 신청" 배너를
+     메인 재고 흐름에서 빼서 페이지 최하단 "점프엑스 생태계 서비스" 구역으로 이동
+   - 병합 후 실서비스(dumpingjumping.com)에서 로고 크기(`h-8`)/배너 순서(구매희망→
+     생태계 서비스→화물배차)/BottomNav phosphor 아이콘 렌더링을 직접 HTML grep으로
+     재확인 완료
+   - **다음 라운드 대기 중**: Step 4(매물 상세 정보 위계, 라벨/값 대비), Step 5(마감임박
+     vs 할인율 배지 색 거리 확보), 화물배차 배너 대안 노출 위치(거래완료/낙찰 화면)
+     검토, "카테고리/지역 선택 UI 인기항목+더보기" 구조 개선(별도 기능 개발 과제로 분류)
 
 ## 최근 작업 (2026-09-14)
 
@@ -87,9 +110,10 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - [x] Supabase 대시보드 → Storage에 `business-licenses` 버킷 생성 완료 (2026-09-03, 사용자 확인)
 - [ ] 실제 Supabase 프로젝트의 SQL Editor에서 `supabase/schema.sql`의 마이그레이션 블록을 아직 실행 안 했다면 실행 필요 — `member_no`, `name`/`email`/`business_license_path` 컬럼과 `protect_business_verified` 트리거까지 전부 포함 (이 세션엔 연결된 Supabase 프로젝트가 없어 로컬에서 직접 검증하지 못했음)
 - [ ] 위 두 가지가 끝나면, 실제 업로드 → 관리자 열람 → 인증 완료 처리까지 전체 흐름을 한 번 직접 확인해보는 걸 권장
-- [ ] **디자인 토큰 v2 "위계/액센트 재정비"** — `feature/design-tokens-v2` 브랜치, PR #14 (머지 대기, 스크린샷 확인 필요): 선택 칩/CTA 색상 오렌지 통일, BottomNav를 `@phosphor-icons/react`로 교체(lucide는 outline 전용이라 filled 강제 시 아이콘이 깨져서 라이브러리 교체 — Flame만 lucide 유지), `trustBlue`(존재하지 않는 색 참조) 수정, sell.tsx 카테고리 선택 색 통일, 홈 화면 화물배차 배너를 재고 흐름 밖 "점프엑스 생태계 서비스" 하단 구역으로 이동, 홈 로고 크기(h-10→h-8, 다른 9개 화면과 통일)까지 완료. 남은 단계(Step 4 정보 위계, Step 5 마감임박/할인율 색 거리, 홈 히어로 카피 분량 자체를 줄일지 여부)는 PR #14 정리 이후 계속
-- [ ] **전국 화물 배차 배너 — 대안 노출 위치(거래완료/낙찰 화면)** 검토 (2라운드에서 "하단 분리"만 적용, 이건 별도 검토 대상으로 보류): 현재 거래완료/낙찰 전용 화면이 있는지부터 확인 필요
-- [ ] **카테고리/지역 선택 UI — "인기 항목 1~2개 노출 + 더보기" 구조 개선** (2라운드에서 조사만 하고 보류, 별도 기능 개발 과제로 분류): 신규 공용 컴포넌트 설계(다중선택 mypage.tsx vs 단일선택 buy.tsx 겸용 필요 — 현재 두 파일 완전 독립 구현), mypage/buy/signup 3개 파일 리팩터(signup.tsx는 지금 아코디언 자체가 없이 항상 전체 펼침), `member_categories`/`member_regions` 집계 쿼리 신규 개발(인기 항목 판단용 — 현재 이런 집계가 어디에도 없음, 없으면 고정 목록으로 시작 가능)
+- [x] 디자인 토큰 v2 "위계/액센트 재정비" — PR #14 병합 완료, 프로덕션 배포 확인됨. 상세는 위 "최근 작업 (2026-09-19)" 참고
+- [ ] 디자인 토큰 v3 (다음 라운드): Step 4(매물 상세 정보 위계), Step 5(마감임박 vs 할인율 배지 색 거리)
+- [ ] 전국 화물 배차 배너 — 대안 노출 위치(거래완료/낙찰 화면) 검토 (현재 하단 분리만 적용됨, 거래완료/낙찰 전용 화면이 있는지부터 확인 필요)
+- [ ] 카테고리/지역 선택 UI — "인기 항목 1~2개 노출 + 더보기" 구조 개선 (별도 기능 개발 과제): 신규 공용 컴포넌트 설계(다중선택 mypage.tsx vs 단일선택 buy.tsx 겸용), mypage/buy/signup 3개 파일 리팩터, `member_categories`/`member_regions` 집계 쿼리 신규 개발(없으면 고정 목록으로 시작 가능)
 - [ ] "견적함" 실제 기능 기획/개발 (현재는 "준비중" 자리표시자만 있음)
 - [ ] (선택) `Toast.tsx`를 다른 화면에서도 재사용할 만한 곳이 있는지 점검
 
