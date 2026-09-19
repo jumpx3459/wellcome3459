@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { CheckCircle } from "lucide-react";
-import { mockCategories, mockRegions, categoryIcons, categoryColors, quantityUnits } from "@/lib/mockData";
+import { mockCategories, mockRegions, categoryIcons, quantityUnits } from "@/lib/mockData";
 import ImageUploader from "@/components/ImageUploader";
 import VideoUploader from "@/components/VideoUploader";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
@@ -305,7 +305,6 @@ export default function SellPage() {
               <div className="grid grid-cols-3 gap-2">
                 {mockCategories.map((c) => {
                   const picked = category === c;
-                  const color = categoryColors[c];
                   return (
                     <button
                       key={c}
@@ -313,8 +312,8 @@ export default function SellPage() {
                       className="flex flex-col items-center justify-center gap-1 rounded-xl border py-3.5 px-1 text-center"
                       style={
                         picked
-                          ? { background: color.solid, borderColor: color.solid, color: "#fff" }
-                          : { background: color.bg, borderColor: color.bg, color: color.text }
+                          ? { background: "#F2891F", borderColor: "#F2891F", color: "#fff" }
+                          : { background: "#F5F6F8", borderColor: "#F5F6F8", color: "#1B3A5C" }
                       }
                     >
                       <span className="text-2xl leading-none">{categoryIcons[c]}</span>
@@ -336,7 +335,7 @@ export default function SellPage() {
                     key={r}
                     onClick={() => setRegion(region === r ? "" : r)}
                     className={`text-sm py-2.5 rounded-full border-2 font-bold text-center ${
-                      region === r ? "bg-navy text-white border-navy" : "border-gray200 text-gray500"
+                      region === r ? "bg-[#F2891F] text-white border-[#F2891F]" : "border-gray200 text-gray500"
                     }`}
                   >
                     {r}

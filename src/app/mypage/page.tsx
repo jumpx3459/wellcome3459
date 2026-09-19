@@ -526,7 +526,7 @@ export default function MyPage() {
               ) : (
                 <>
                   {regions.slice(0, 8).map((r) => (
-                    <span key={r} className="text-xs font-bold px-2.5 py-1 rounded-full bg-navy text-white">
+                    <span key={r} className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#F2891F", color: "#fff" }}>
                       {r}
                     </span>
                   ))}
@@ -559,7 +559,7 @@ export default function MyPage() {
                     key={r}
                     onClick={() => toggle(regions, setRegions, r)}
                     className={`text-sm py-2.5 rounded-full border-2 font-bold text-center ${
-                      regions.includes(r) ? "bg-navy text-white border-navy" : "border-gray200 text-gray500"
+                      regions.includes(r) ? "bg-[#F2891F] text-white border-[#F2891F]" : "border-gray200 text-gray500"
                     }`}
                   >
                     {r}
@@ -574,7 +574,7 @@ export default function MyPage() {
           onClick={save}
           disabled={saving}
           className="text-white font-bold rounded-2xl text-base disabled:opacity-60"
-          style={{ background: "#0B2540", padding: "14px 0" }}
+          style={{ background: "linear-gradient(135deg, #D9531E, #F2891F)", padding: "14px 0" }}
         >
           {saving ? (
             "저장 중..."
@@ -772,7 +772,7 @@ export default function MyPage() {
                 setTimeout(() => setCopied(false), 2000);
               }}
               className="text-white font-bold rounded-xl px-4 text-sm whitespace-nowrap flex-shrink-0"
-              style={{ background: "#0B2540" }}
+              style={{ background: "linear-gradient(135deg, #D9531E, #F2891F)" }}
             >
               {copied ? (
                 <span className="inline-flex items-center justify-center gap-1">

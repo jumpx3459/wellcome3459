@@ -225,7 +225,7 @@ export default function BuyPage() {
                 선택
               </span>
               {!regionOpen && (
-                <span className="text-xs font-bold text-white bg-navy px-2 py-0.5 rounded-full ml-1">
+                <span className="text-xs font-bold text-white bg-[#F2891F] px-2 py-0.5 rounded-full ml-1">
                   {region === "" ? "전국 가능" : region}
                 </span>
               )}
@@ -238,7 +238,7 @@ export default function BuyPage() {
                 type="button"
                 onClick={() => setRegion("")}
                 className={`text-sm py-2 px-2 rounded-full border-2 font-bold text-center whitespace-nowrap ${
-                  region === "" ? "bg-navy text-white border-navy" : "border-gray200 text-gray500"
+                  region === "" ? "bg-[#F2891F] text-white border-[#F2891F]" : "border-gray200 text-gray500"
                 }`}
               >
                 전국 가능
@@ -249,7 +249,7 @@ export default function BuyPage() {
                   key={r}
                   onClick={() => setRegion(r)}
                   className={`text-sm py-2 px-2 rounded-full border-2 font-bold text-center whitespace-nowrap ${
-                    region === r ? "bg-navy text-white border-navy" : "border-gray200 text-gray500"
+                    region === r ? "bg-[#F2891F] text-white border-[#F2891F]" : "border-gray200 text-gray500"
                   }`}
                 >
                   {r}

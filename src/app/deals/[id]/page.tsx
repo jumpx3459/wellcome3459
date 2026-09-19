@@ -512,7 +512,7 @@ function DealDetailPageInner() {
                     onClick={submitBridgePhone}
                     disabled={bridgeSubmitting}
                     className="text-white font-bold rounded-xl px-5 whitespace-nowrap flex-shrink-0 disabled:opacity-60"
-                    style={{ background: "#0B2540" }}
+                    style={{ background: "linear-gradient(135deg, #D9531E, #F2891F)" }}
                   >
                     {bridgeSubmitting ? "이동 중..." : "이동하기"}
                   </button>

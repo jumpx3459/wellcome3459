@@ -540,7 +540,7 @@ function SignupPageInner() {
                 onClick={() => toggle(regions, setRegions, r)}
                 className={`text-sm py-2.5 rounded-full border-2 font-bold text-center ${
                   regions.includes(r)
-                    ? "bg-navy text-white border-navy"
+                    ? "bg-[#F2891F] text-white border-[#F2891F]"
                     : "border-gray200 text-gray500"
                 }`}
               >

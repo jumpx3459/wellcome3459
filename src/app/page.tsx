@@ -115,7 +115,7 @@ export default function Home() {
       >
         <div className="flex items-center gap-2 mb-5">
           <div className="bg-white rounded-xl px-3 py-2 inline-block">
-            <img src="/images/logo.png" alt="덤핑점핑" className="h-10 w-auto animate-logo-jump" />
+            <img src="/images/logo.png" alt="덤핑점핑" className="h-8 w-auto animate-logo-jump" />
           </div>
           <span className="text-white/70 text-sm tracking-wide self-end mb-1">
             Powered by JumpX
@@ -308,23 +308,6 @@ export default function Home() {
           <span className="text-xl" style={{ color: "#F2891F" }}>→</span>
         </Link>
 
-        {/* 전국 화물 배차 — 매물(스팟성)과 달리 상시 반복 수요라 재방문을 만드는
-            리텐션 훅. 판매/구매(둘 다 "매물 등록" 계열)와 성격이 달라서 톤을
-            네이비/블루로 분리해 같은 종류의 액션처럼 뭉개지지 않게 함. */}
-        <Link
-          href="/logistics"
-          className="flex items-center justify-between rounded-2xl"
-          style={{ background: "rgba(11,37,64,0.06)", border: "2px solid #1B3A5C", padding: "16px 20px" }}
-        >
-          <div>
-            <div className="text-base font-black text-navy">🚚 전국 화물 배차 신청</div>
-            <div className="text-xs font-bold mt-0.5" style={{ color: "#1B3A5C" }}>
-              배차는 언제든 3분 컷 · 지금 신청하기
-            </div>
-          </div>
-          <span className="text-xl" style={{ color: "#1B3A5C" }}>→</span>
-        </Link>
-
         <Link
           href="/buy"
           className="flex items-center gap-3 rounded-2xl bg-white border border-gray200"
@@ -340,6 +323,28 @@ export default function Home() {
             <div className="text-xs text-gray500 mt-0.5">구매 희망 등록 →</div>
           </div>
         </Link>
+
+        {/* 점프엑스 생태계 서비스 — 재고 알림(이 앱의 유일한 역할)과 무관한 별도
+            서비스라, 메인 재고 흐름과 섞이지 않게 하단에 별도 구역으로 분리.
+            전국 화물 배차: 매물(스팟성)과 달리 상시 반복 수요라 재방문을 만드는
+            리텐션 훅이지만, 판매/구매("매물 등록" 계열)와는 성격이 달라서 톤도
+            네이비/블루로 분리. */}
+        <div className="mt-3 pt-4" style={{ borderTop: "1px solid #EEF0F2" }}>
+          <div className="text-xs font-bold text-gray500 mb-2">점프엑스 생태계 서비스</div>
+          <Link
+            href="/logistics"
+            className="flex items-center justify-between rounded-2xl"
+            style={{ background: "rgba(11,37,64,0.06)", border: "2px solid #1B3A5C", padding: "16px 20px" }}
+          >
+            <div>
+              <div className="text-base font-black text-navy">🚚 전국 화물 배차 신청</div>
+              <div className="text-xs font-bold mt-0.5" style={{ color: "#1B3A5C" }}>
+                배차는 언제든 3분 컷 · 지금 신청하기
+              </div>
+            </div>
+            <span className="text-xl" style={{ color: "#1B3A5C" }}>→</span>
+          </Link>
+        </div>
       </div>
 
       {/* 메인 CTA — 항상 화면 하단에 고정 */}
