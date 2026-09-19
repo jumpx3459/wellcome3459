@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { CheckCircle } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockCategories, mockRegions, categoryIcons } from "@/lib/mockData";
 import { formatPrice, formatMemberNo } from "@/lib/format";
@@ -575,7 +576,15 @@ export default function MyPage() {
           className="text-white font-bold rounded-2xl text-base disabled:opacity-60"
           style={{ background: "#0B2540", padding: "14px 0" }}
         >
-          {saving ? "저장 중..." : saved ? "✓ 저장됐어요" : "설정 저장"}
+          {saving ? (
+            "저장 중..."
+          ) : saved ? (
+            <span className="inline-flex items-center justify-center gap-1">
+              <CheckCircle className="w-4 h-4" /> 저장됐어요
+            </span>
+          ) : (
+            "설정 저장"
+          )}
         </button>
         {saveError && <div className="text-sm text-orange font-medium">{saveError}</div>}
 
@@ -675,7 +684,15 @@ export default function MyPage() {
                   className="flex-1 font-bold rounded-2xl text-base disabled:opacity-60 border-2 border-gray200 text-navy"
                   style={{ padding: "14px 0" }}
                 >
-                  {profileSaving ? "저장 중..." : profileSaved ? "✓ 저장됐어요" : "프로필 저장"}
+                  {profileSaving ? (
+                    "저장 중..."
+                  ) : profileSaved ? (
+                    <span className="inline-flex items-center justify-center gap-1">
+                      <CheckCircle className="w-4 h-4" /> 저장됐어요
+                    </span>
+                  ) : (
+                    "프로필 저장"
+                  )}
                 </button>
                 {profileComplete && (
                   <button
@@ -757,14 +774,26 @@ export default function MyPage() {
               className="text-white font-bold rounded-xl px-4 text-sm whitespace-nowrap flex-shrink-0"
               style={{ background: "#0B2540" }}
             >
-              {copied ? "복사됨 ✓" : "복사"}
+              {copied ? (
+                <span className="inline-flex items-center justify-center gap-1">
+                  복사됨 <CheckCircle className="w-3.5 h-3.5" />
+                </span>
+              ) : (
+                "복사"
+              )}
             </button>
             <button
               onClick={handleShareRefLink}
               aria-label="추천 링크 공유"
               className="font-bold rounded-xl px-4 text-sm whitespace-nowrap flex-shrink-0 border-2 border-gray200 text-navy"
             >
-              {shared ? "공유됨 ✓" : "공유 ↗"}
+              {shared ? (
+                <span className="inline-flex items-center justify-center gap-1">
+                  공유됨 <CheckCircle className="w-3.5 h-3.5" />
+                </span>
+              ) : (
+                "공유 ↗"
+              )}
             </button>
           </div>
 
@@ -789,10 +818,18 @@ export default function MyPage() {
                   리더에게 드리는 공식 등급입니다.
                 </p>
                 <ul className="mt-2 space-y-1 text-xs text-amber-800">
-                  <li>✓ 공식 파트너 배지 표시</li>
-                  <li>✓ 향후 리워드 제도 도입 시 우선 적용</li>
-                  <li>✓ 점핑매니저와 우선 연결</li>
-                  <li>✓ 내 판매·구매 신청 현황을 마이페이지에서 한 번에 확인</li>
+                  <li className="flex items-start gap-1">
+                    <CheckCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> 공식 파트너 배지 표시
+                  </li>
+                  <li className="flex items-start gap-1">
+                    <CheckCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> 향후 리워드 제도 도입 시 우선 적용
+                  </li>
+                  <li className="flex items-start gap-1">
+                    <CheckCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> 점핑매니저와 우선 연결
+                  </li>
+                  <li className="flex items-start gap-1">
+                    <CheckCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> 내 판매·구매 신청 현황을 마이페이지에서 한 번에 확인
+                  </li>
                 </ul>
               </>
             )}
@@ -803,8 +840,8 @@ export default function MyPage() {
             )}
 
             {isOfficialPartner ? (
-              <p className="mt-3 rounded-lg bg-amber-100 p-2 text-center text-sm font-semibold text-amber-900">
-                ✅ 공식 점핑파트너입니다
+              <p className="mt-3 rounded-lg bg-amber-100 p-2 text-center text-sm font-semibold text-amber-900 flex items-center justify-center gap-1">
+                <CheckCircle className="w-4 h-4" /> 공식 점핑파트너입니다
               </p>
             ) : partnerStatus === "pending" ? (
               <p className="mt-3 rounded-lg bg-amber-100 p-2 text-center text-sm text-amber-900">
@@ -882,10 +919,10 @@ export default function MyPage() {
                       </span>
                       {r.business_verified && (
                         <span
-                          className="text-xs font-bold px-2.5 py-1 rounded-full"
+                          className="text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1"
                           style={{ background: "#E8F8EC", color: "#1D8A44" }}
                         >
-                          ✓ 인증된 사업자
+                          <CheckCircle className="w-3 h-3" /> 인증된 사업자
                         </span>
                       )}
                     </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { CheckCircle } from "lucide-react";
 import { mockCategories, mockRegions, categoryIcons, quantityUnits } from "@/lib/mockData";
 import ImageUploader from "@/components/ImageUploader";
 import VideoUploader from "@/components/VideoUploader";
@@ -764,10 +765,10 @@ function AdminDashboard({
                 )}
                 {m.business_verified && (
                   <span
-                    className="text-xs font-bold px-2 py-1 rounded-full"
+                    className="text-xs font-bold px-2 py-1 rounded-full inline-flex items-center gap-1"
                     style={{ background: "#E8F8EC", color: "#1D8A44" }}
                   >
-                    ✓ 인증된 사업자
+                    <CheckCircle className="w-3 h-3" /> 인증된 사업자
                   </span>
                 )}
               </div>
@@ -991,8 +992,8 @@ function AdminDashboard({
                     <span className="ml-1.5 text-xs font-bold text-navy">· 사업자</span>
                   )}
                   {i.members?.business_verified && (
-                    <span className="ml-1.5 text-xs font-bold" style={{ color: "#1D8A44" }}>
-                      · ✓ 인증된 사업자
+                    <span className="ml-1.5 text-xs font-bold inline-flex items-center gap-1" style={{ color: "#1D8A44" }}>
+                      · <CheckCircle className="w-3 h-3" /> 인증된 사업자
                     </span>
                   )}
                 </div>
@@ -1044,10 +1045,10 @@ function AdminDashboard({
                     });
                     load();
                   }}
-                  className="flex-1 text-xs font-bold rounded-lg py-2"
+                  className="flex-1 text-xs font-bold rounded-lg py-2 inline-flex items-center justify-center gap-1"
                   style={{ background: "#E8F8EC", color: "#1D8A44" }}
                 >
-                  ✓ 거래 성사
+                  <CheckCircle className="w-3.5 h-3.5" /> 거래 성사
                 </button>
                 <button
                   onClick={async () => {
@@ -1436,7 +1437,9 @@ function AdminDashboard({
           onClick={() => setAppointResult(null)}
         >
           <div className="bg-white w-full max-w-md rounded-t-3xl p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="font-display text-xl text-navy mb-2">✅ 임명 완료</div>
+            <div className="font-display text-xl text-navy mb-2 flex items-center gap-1.5">
+              <CheckCircle className="w-5 h-5" /> 임명 완료
+            </div>
             <p className="text-sm text-gray500 mb-4">
               {appointResult.name}님의 임시 비밀번호예요. 이 화면을 닫으면 다시 볼 수 없으니 지금 전달해주세요.
             </p>

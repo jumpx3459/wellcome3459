@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { CheckCircle } from "lucide-react";
 import { mockCategories, mockRegions, categoryIcons } from "@/lib/mockData";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
 
@@ -52,7 +53,7 @@ export default function BuyPage() {
   if (done) {
     return (
       <main className="flex flex-col items-center min-h-screen px-6 pt-20 text-center">
-        <div className="text-5xl mb-4">✅</div>
+        <CheckCircle className="w-12 h-12 mb-4 text-verified" />
         <h1 className="font-display text-2xl text-navy mb-2">등록됐어요</h1>
         <p className="text-gray500 text-base leading-relaxed mb-6">
           점핑매니저가 확인 후, 조건에 맞는 판매자를 찾으면

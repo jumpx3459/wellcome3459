@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { CheckCircle } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { sendOtp, verifyOtp } from "@/lib/auth";
@@ -312,7 +313,7 @@ function SignupPageInner() {
   if (alreadyMember) {
     return (
       <main className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
-        <div className="text-4xl mb-4">✅</div>
+        <CheckCircle className="w-10 h-10 mb-4 text-verified" />
         <h1 className="font-display text-xl text-navy mb-2">이미 가입된 번호예요</h1>
         <p className="text-gray500 text-base leading-relaxed mb-6">
           카테고리·지역 알림 설정은 마이페이지에서 바꿀 수 있어요.
@@ -445,7 +446,7 @@ function SignupPageInner() {
                 className="flex items-center gap-1.5 text-sm font-bold rounded-xl px-4 mb-3"
                 style={{ height: "44px", background: "#E8F8EC", color: "#1D8A44" }}
               >
-                ✓ 휴대폰 인증 완료 ({maskPhone(phone)})
+                <CheckCircle className="w-4 h-4" /> 휴대폰 인증 완료 ({maskPhone(phone)})
               </div>
 
               <div className="mt-4">

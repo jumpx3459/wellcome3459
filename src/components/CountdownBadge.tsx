@@ -25,8 +25,8 @@ export default function CountdownBadge({
   if (size === "lg") {
     return (
       <div className="bg-dangerBg rounded-2xl px-4 py-4 flex items-center justify-between">
-        <span className="text-sm font-bold" style={{ color: "#C2410C" }}>⏱ 마감까지</span>
-        <span className="text-2xl font-black font-mono" style={{ color: "#C2410C" }}>{label}</span>
+        <span className="text-sm font-bold" style={{ color: "var(--color-urgent)" }}>⏱ 마감까지</span>
+        <span className="text-2xl font-black font-mono" style={{ color: "var(--color-urgent)" }}>{label}</span>
       </div>
     );
   }
@@ -34,7 +34,7 @@ export default function CountdownBadge({
   return (
     <span
       className="text-xs font-bold text-white px-2.5 py-1.5 rounded-full flex items-center gap-1"
-      style={{ background: "#C2410C" }}
+      style={{ background: "var(--color-urgent)" }}
     >
       ⏱ {label}
     </span>
