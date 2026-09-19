@@ -1,6 +1,6 @@
 # PROGRESS
 
-마지막 업데이트: 2026-09-14
+마지막 업데이트: 2026-09-19
 
 새 세션을 시작할 때 이 파일을 먼저 읽고, 아래 "다음에 할 일"부터 확인하세요.
 
@@ -19,13 +19,35 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 ## 현재 상태
 
 - 기본 브랜치: `main` (로컬/GitHub 모두 일치, `origin/HEAD -> origin/main`)
-- 열려 있는 PR:
-  - #12 (관리자 대시보드에서 관리자 임명/해제 + 비밀번호 변경 — `create_admin_user`/
-    `update_admin_password` SQL 함수 추가, 병합 전 Supabase SQL 수동 실행 필요)
-- 병합 완료 (기본 브랜치에 모두 반영됨): PR #1~#11 (견적함 메뉴+Toast, 회원가입 개선,
+- 열려 있는 PR: 없음
+- 병합 완료 (기본 브랜치에 모두 반영됨): PR #1~#13 (견적함 메뉴+Toast, 회원가입 개선,
   PWA 배너 수정, 회원번호+추천 공유, 프로필/사업자인증, 관리자 다중계정 인증,
-  mypage 관리자 인식 배지 등)
+  mypage 관리자 인식 배지, 관리자 임명/비밀번호 변경, 디자인 토큰 v1 1라운드)
+- GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
+
+## 최근 작업 (2026-09-19)
+
+1. **GitHub Actions 자동배포** — `.github/workflows/deploy.yml` 추가, `VERCEL_TOKEN`/
+   `VERCEL_ORG_ID`/`VERCEL_PROJECT_ID` 시크릿 등록. 초기 빌드 실패 2건을 순차로 해결:
+   `NEXT_PUBLIC_VAPID_PUBLIC_KEY`(형식이 URL-safe base64가 아니었음, 새 키 재발급)와
+   `NEXT_PUBLIC_SUPABASE_URL`(값 손상) — 둘 다 Vercel REST API로 직접 재등록.
+   `ADMIN_SESSION_SECRET`/`NEXT_PUBLIC_SITE_URL`(`https://www.dumpingjumping.com`)도
+   신규 등록. → `main`에 직접 커밋(설정/인프라 작업, 화면 기능 아님).
+2. **디자인 토큰 v1 — 1라운드 (PR #13, 병합됨)** — `src/styles/design-tokens.css` 신설
+   (globals.css에서 import), `@theme`에 `--color-urgent`/`--color-verified`/
+   `--color-line`/`--radius-token`(12px) 추가(기존 `--color-brandOrange`/`--color-orange`는
+   그대로 유지). `lucide-react` 도입 → `BottomNav` 이모지 아이콘 교체, `✓`/`✅`/`✔` 혼용을
+   `CheckCircle`로 통일(mypage/admin/signup/buy/sell). `/deals`, `/deals/[id]`의
+   `CountdownBadge`(마감임박 카운트다운, 기존엔 `--color-orange`가 아니라 하드코딩된
+   `#C2410C`였음)를 `--color-urgent`로 재색상화. 홈 화면 미리보기 카드의 아이콘 박스
+   `rounded-xl`→`rounded-token` 1곳만 적용. `feature/design-tokens-v1` 브랜치 + PR #13,
+   **병합 완료, 프로덕션 배포 확인됨**.
+   - **다음 라운드 대기 중** (사용자 지시로 착수 보류): 아이콘 filled 스타일 전환,
+     역할별 색상 정책 일원화(버튼/토글/선택칩 구분), 배지·버튼 시각 구분, 파란색(홈 화면
+     추가 배너) 브랜드 팔레트 편입 여부, 카테고리 아이콘 무지개색 통일 여부, 매물 상세
+     정보 위계(라벨/값 대비), 마감임박·할인율 배지 색 구분 강화 — 상세 목록은 클라우드
+     세션 쪽에 기록됨.
 
 ## 최근 작업 (2026-09-14)
 
@@ -60,11 +82,12 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 
 ## 다음에 할 일
 
-- [ ] PR #12 병합 전, Supabase SQL Editor에서 `create_admin_user`/`update_admin_password` 함수 2개 생성 (schema.sql 해당 블록 그대로 실행), 그 다음 PR #12 리뷰/병합
+- [x] PR #12 병합됨 (2026-09-14) — `create_admin_user`/`update_admin_password` 함수가 Supabase에 실제로 생성돼 있는지는 git 이력만으론 확인 불가, 관리자 임명 기능 써볼 때 한 번 확인 권장
 - [x] PR #11 병합됨 — `admin_users.phone` 컬럼 추가 + 기존 관리자 계정에 실제 번호 채우기는 여전히 Supabase SQL Editor에서 수동 실행 필요 (schema.sql 해당 주석 참고, 아직 실행 확인 안 됨)
 - [x] Supabase 대시보드 → Storage에 `business-licenses` 버킷 생성 완료 (2026-09-03, 사용자 확인)
 - [ ] 실제 Supabase 프로젝트의 SQL Editor에서 `supabase/schema.sql`의 마이그레이션 블록을 아직 실행 안 했다면 실행 필요 — `member_no`, `name`/`email`/`business_license_path` 컬럼과 `protect_business_verified` 트리거까지 전부 포함 (이 세션엔 연결된 Supabase 프로젝트가 없어 로컬에서 직접 검증하지 못했음)
 - [ ] 위 두 가지가 끝나면, 실제 업로드 → 관리자 열람 → 인증 완료 처리까지 전체 흐름을 한 번 직접 확인해보는 걸 권장
+- [ ] **디자인 토큰 v1 — 2라운드 "위계/액센트 재정비" 대기 중** (사용자 지시로 미착수): 점프엑스 브랜드 컬러 마이그레이션 마무리 후 시작 예정. 상세 항목(아이콘 filled 전환, 색상 역할별 분리, 배지/버튼 구분, 정보 위계 등)은 클라우드 세션 쪽 기록 참고
 - [ ] "견적함" 실제 기능 기획/개발 (현재는 "준비중" 자리표시자만 있음)
 - [ ] (선택) `Toast.tsx`를 다른 화면에서도 재사용할 만한 곳이 있는지 점검
 
