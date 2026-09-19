@@ -1855,7 +1855,7 @@ function DealForm({
       </div>
 
       <textarea
-        className="border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-trustBlue"
+        className="border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-navy"
         rows={2}
         placeholder="소비기한, 보관상태 등 상세 설명 (선택)"
         value={description}
