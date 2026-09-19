@@ -1,5 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Roboto+Mono:wght@500&display=swap");
 @import "tailwindcss";
+@import "../styles/design-tokens.css";
 
 @theme {
   --color-navy: #0b2540;
