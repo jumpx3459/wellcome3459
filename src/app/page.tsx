@@ -115,7 +115,7 @@ export default function Home() {
       >
         <div className="flex items-center gap-2 mb-5">
           <div className="bg-white rounded-xl px-3 py-2 inline-block">
-            <img src="/images/logo.png" alt="덤핑점핑" className="h-10 w-auto animate-logo-jump" />
+            <img src="/images/logo.png" alt="덤핑점핑" className="h-8 w-auto animate-logo-jump" />
           </div>
           <span className="text-white/70 text-sm tracking-wide self-end mb-1">
             Powered by JumpX
