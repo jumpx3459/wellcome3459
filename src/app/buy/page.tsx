@@ -181,7 +181,7 @@ export default function BuyPage() {
                 선택
               </span>
               {!categoryOpen && category && (
-                <span className="text-xs font-bold text-white bg-[#F2891F] px-2 py-0.5 rounded-full ml-1">
+                <span className="text-xs font-bold text-white bg-[#FF6F0F] px-2 py-0.5 rounded-full ml-1">
                   {categoryIcons[category]} {category}
                 </span>
               )}
@@ -200,7 +200,7 @@ export default function BuyPage() {
                     className="flex items-center justify-center gap-1.5 rounded-full border py-2 px-3.5"
                     style={
                       picked
-                        ? { background: "#F2891F", borderColor: "#F2891F", color: "#fff" }
+                        ? { background: "#FF6F0F", borderColor: "#FF6F0F", color: "#fff" }
                         : { background: "#F5F6F8", borderColor: "#F5F6F8", color: "#1B3A5C" }
                     }
                   >
@@ -225,7 +225,7 @@ export default function BuyPage() {
                 선택
               </span>
               {!regionOpen && (
-                <span className="text-xs font-bold text-white bg-[#F2891F] px-2 py-0.5 rounded-full ml-1">
+                <span className="text-xs font-bold text-white bg-[#FF6F0F] px-2 py-0.5 rounded-full ml-1">
                   {region === "" ? "전국 가능" : region}
                 </span>
               )}
@@ -238,7 +238,7 @@ export default function BuyPage() {
                 type="button"
                 onClick={() => setRegion("")}
                 className={`text-sm py-2 px-2 rounded-full border-2 font-bold text-center whitespace-nowrap ${
-                  region === "" ? "bg-[#F2891F] text-white border-[#F2891F]" : "border-gray200 text-gray500"
+                  region === "" ? "bg-[#FF6F0F] text-white border-[#FF6F0F]" : "border-gray200 text-gray500"
                 }`}
               >
                 전국 가능
@@ -249,7 +249,7 @@ export default function BuyPage() {
                   key={r}
                   onClick={() => setRegion(r)}
                   className={`text-sm py-2 px-2 rounded-full border-2 font-bold text-center whitespace-nowrap ${
-                    region === r ? "bg-[#F2891F] text-white border-[#F2891F]" : "border-gray200 text-gray500"
+                    region === r ? "bg-[#FF6F0F] text-white border-[#FF6F0F]" : "border-gray200 text-gray500"
                   }`}
                 >
                   {r}
@@ -283,7 +283,7 @@ export default function BuyPage() {
           onClick={submit}
           disabled={submitting}
           className="w-full text-white font-bold rounded-2xl text-lg disabled:opacity-60"
-          style={{ background: "linear-gradient(135deg, #D9531E, #F2891F)", padding: "18px 0" }}
+          style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)", padding: "18px 0" }}
         >
           {submitting ? "등록 중..." : "구매 희망 등록하기"}
         </button>

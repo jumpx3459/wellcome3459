@@ -42,7 +42,7 @@ export default function SplashScreen({ children }: { children: React.ReactNode }
             className="w-8 h-8 rounded-full animate-spin"
             style={{
               border: "3px solid rgba(255,255,255,0.2)",
-              borderTopColor: "#F2891F",
+              borderTopColor: "#FF6F0F",
             }}
           />
 

@@ -312,7 +312,7 @@ export default function SellPage() {
                       className="flex flex-col items-center justify-center gap-1 rounded-xl border py-3.5 px-1 text-center"
                       style={
                         picked
-                          ? { background: "#F2891F", borderColor: "#F2891F", color: "#fff" }
+                          ? { background: "#FF6F0F", borderColor: "#FF6F0F", color: "#fff" }
                           : { background: "#F5F6F8", borderColor: "#F5F6F8", color: "#1B3A5C" }
                       }
                     >
@@ -335,7 +335,7 @@ export default function SellPage() {
                     key={r}
                     onClick={() => setRegion(region === r ? "" : r)}
                     className={`text-sm py-2.5 rounded-full border-2 font-bold text-center ${
-                      region === r ? "bg-[#F2891F] text-white border-[#F2891F]" : "border-gray200 text-gray500"
+                      region === r ? "bg-[#FF6F0F] text-white border-[#FF6F0F]" : "border-gray200 text-gray500"
                     }`}
                   >
                     {r}
@@ -413,7 +413,7 @@ export default function SellPage() {
           onClick={submit}
           disabled={submitting}
           className="w-full text-white font-bold rounded-2xl text-lg disabled:opacity-60"
-          style={{ background: "linear-gradient(135deg, #D9531E, #F2891F)", padding: "18px 0" }}
+          style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)", padding: "18px 0" }}
         >
           {submitting ? "처리 중..." : "등록 신청하기"}
         </button>

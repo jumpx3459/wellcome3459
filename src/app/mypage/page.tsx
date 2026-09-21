@@ -372,7 +372,7 @@ export default function MyPage() {
         <Link
           href="/signup"
           className="text-white text-center font-bold rounded-2xl text-base px-8"
-          style={{ background: "linear-gradient(135deg, #D9531E, #F2891F)", padding: "14px 32px" }}
+          style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)", padding: "14px 32px" }}
         >
           알림 받기 시작
         </Link>
@@ -457,7 +457,7 @@ export default function MyPage() {
                     <span
                       key={c}
                       className="text-xs font-bold px-2.5 py-1 rounded-full"
-                      style={{ background: "#F2891F", color: "#fff" }}
+                      style={{ background: "#FF6F0F", color: "#fff" }}
                     >
                       {categoryIcons[c]} {c}
                     </span>
@@ -494,7 +494,7 @@ export default function MyPage() {
                       className="flex flex-col items-center justify-center gap-1 rounded-xl border py-3.5 px-1 text-center"
                       style={
                         picked
-                          ? { background: "#F2891F", borderColor: "#F2891F", color: "#fff" }
+                          ? { background: "#FF6F0F", borderColor: "#FF6F0F", color: "#fff" }
                           : { background: "#F5F6F8", borderColor: "#F5F6F8", color: "#1B3A5C" }
                       }
                     >
@@ -526,7 +526,7 @@ export default function MyPage() {
               ) : (
                 <>
                   {regions.slice(0, 8).map((r) => (
-                    <span key={r} className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#F2891F", color: "#fff" }}>
+                    <span key={r} className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#FF6F0F", color: "#fff" }}>
                       {r}
                     </span>
                   ))}
@@ -559,7 +559,7 @@ export default function MyPage() {
                     key={r}
                     onClick={() => toggle(regions, setRegions, r)}
                     className={`text-sm py-2.5 rounded-full border-2 font-bold text-center ${
-                      regions.includes(r) ? "bg-[#F2891F] text-white border-[#F2891F]" : "border-gray200 text-gray500"
+                      regions.includes(r) ? "bg-[#FF6F0F] text-white border-[#FF6F0F]" : "border-gray200 text-gray500"
                     }`}
                   >
                     {r}
@@ -574,7 +574,7 @@ export default function MyPage() {
           onClick={save}
           disabled={saving}
           className="text-white font-bold rounded-2xl text-base disabled:opacity-60"
-          style={{ background: "linear-gradient(135deg, #D9531E, #F2891F)", padding: "14px 0" }}
+          style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)", padding: "14px 0" }}
         >
           {saving ? (
             "저장 중..."
@@ -772,7 +772,7 @@ export default function MyPage() {
                 setTimeout(() => setCopied(false), 2000);
               }}
               className="text-white font-bold rounded-xl px-4 text-sm whitespace-nowrap flex-shrink-0"
-              style={{ background: "linear-gradient(135deg, #D9531E, #F2891F)" }}
+              style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)" }}
             >
               {copied ? (
                 <span className="inline-flex items-center justify-center gap-1">

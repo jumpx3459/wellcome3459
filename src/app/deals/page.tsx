@@ -155,7 +155,7 @@ function DealsPageInner() {
             <Link href="/mypage" className="text-sm text-white/70 font-bold py-2 -my-2">
               내 정보
             </Link>
-            <Link href="/support" className="text-sm font-bold py-2 -my-2" style={{ color: "#FBB454" }}>
+            <Link href="/support" className="text-sm font-bold py-2 -my-2" style={{ color: "var(--color-brandOrangeAccent)" }}>
               🏛️ 정부지원금
             </Link>
           </div>

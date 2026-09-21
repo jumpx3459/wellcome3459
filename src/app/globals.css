@@ -5,8 +5,10 @@
 @theme {
   --color-navy: #0b2540;
   --color-navySoft: #1b3a5c;
-  --color-brandOrange: #f2891f; /* 로고와 통일된 기본 액션(CTA) 컬러 */
-  --color-brandOrangeDeep: #d9531e; /* 그라디언트 강조용 */
+  --color-navyDeepest: #04101C; /* 다크 히어로/요약 카드 그라디언트 시작점 전용 */
+  --color-brandOrange: #FF6F0F; /* 로고와 통일된 기본 액션(CTA) 컬러 — 당근마켓 톤 리브랜딩 확정값 */
+  --color-brandOrangeDeep: #E25100; /* 그라디언트 강조용 */
+  --color-brandOrangeAccent: #FFA24D; /* 다크 네이비 배경 위 숫자/하이라이트 텍스트 전용 */
   --color-gray900: #1a1f26;
   --color-gray500: #6b7480;
   --color-gray200: #e4e7eb;
@@ -19,6 +21,9 @@
   --color-verified: #2F9E44; /* 인증 배지 전용 */
   --color-line: #DDE1DC; /* 구분선 */
   --radius-token: 12px; /* rounded-xl(최다 사용) 표준화용 */
+
+  /* design-v2 — Claude Design 리디자인 라운드에서 확정 */
+  --color-toggleOn: #1B7F5A; /* 알림 수신 스위치 ON 전용 — 오렌지(CTA)와 색 역할 분리 */
 
   --font-sans: "Noto Sans KR", sans-serif;
   --font-display: "Noto Sans KR", sans-serif;

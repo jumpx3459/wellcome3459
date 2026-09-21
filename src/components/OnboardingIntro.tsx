@@ -66,7 +66,7 @@ export default function OnboardingIntro() {
           <span
             key={i}
             className="w-2 h-2 rounded-full"
-            style={{ background: i === step ? "#F2891F" : "rgba(255,255,255,0.3)" }}
+            style={{ background: i === step ? "#FF6F0F" : "rgba(255,255,255,0.3)" }}
           />
         ))}
       </div>

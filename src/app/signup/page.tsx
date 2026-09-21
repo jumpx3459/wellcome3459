@@ -321,7 +321,7 @@ function SignupPageInner() {
         <Link
           href={returnTo || "/mypage"}
           className="text-white text-center font-bold rounded-2xl text-base px-8"
-          style={{ background: "linear-gradient(135deg, #D9531E, #F2891F)", padding: "14px 32px" }}
+          style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)", padding: "14px 32px" }}
         >
           {returnTo ? "매물 보러 가기" : "마이페이지로 이동"}
         </Link>
@@ -387,7 +387,7 @@ function SignupPageInner() {
                   onClick={handleSendOtp}
                   disabled={otpSending || phone.length < 9}
                   className="w-full mt-3 flex items-center justify-center gap-2 rounded-2xl font-bold disabled:opacity-60"
-                  style={{ background: "#F2891F", color: "#fff", height: "56px", fontSize: "17px" }}
+                  style={{ background: "#FF6F0F", color: "#fff", height: "56px", fontSize: "17px" }}
                 >
                   {otpSending ? "발송 중..." : "📱 인증번호 받기"}
                 </button>
@@ -412,7 +412,7 @@ function SignupPageInner() {
                   onClick={handleVerifyOtp}
                   disabled={otpVerifying || otpCode.length < 4}
                   className="w-full mt-3 rounded-2xl font-bold disabled:opacity-60"
-                  style={{ background: "#F2891F", color: "#fff", height: "56px", fontSize: "17px" }}
+                  style={{ background: "#FF6F0F", color: "#fff", height: "56px", fontSize: "17px" }}
                 >
                   {otpVerifying ? "확인 중..." : "인증 확인"}
                 </button>
@@ -469,7 +469,7 @@ function SignupPageInner() {
         <div
           ref={categoriesRef}
           style={{
-            boxShadow: highlight === "categories" ? "0 0 0 3px rgba(242,137,31,0.5)" : "none",
+            boxShadow: highlight === "categories" ? "0 0 0 3px rgba(255,111,15,0.5)" : "none",
             borderRadius: "16px",
             transition: "box-shadow 0.3s",
           }}
@@ -498,7 +498,7 @@ function SignupPageInner() {
                   className="flex flex-col items-center justify-center gap-1 rounded-xl border py-3.5 px-1 text-center"
                   style={
                     picked
-                      ? { background: "#F2891F", borderColor: "#F2891F", color: "#fff" }
+                      ? { background: "#FF6F0F", borderColor: "#FF6F0F", color: "#fff" }
                       : { background: "#F5F6F8", borderColor: "#F5F6F8", color: "#1B3A5C" }
                   }
                 >
@@ -513,7 +513,7 @@ function SignupPageInner() {
         <div
           ref={regionsRef}
           style={{
-            boxShadow: highlight === "regions" ? "0 0 0 3px rgba(242,137,31,0.5)" : "none",
+            boxShadow: highlight === "regions" ? "0 0 0 3px rgba(255,111,15,0.5)" : "none",
             borderRadius: "16px",
             transition: "box-shadow 0.3s",
           }}
@@ -540,7 +540,7 @@ function SignupPageInner() {
                 onClick={() => toggle(regions, setRegions, r)}
                 className={`text-sm py-2.5 rounded-full border-2 font-bold text-center ${
                   regions.includes(r)
-                    ? "bg-[#F2891F] text-white border-[#F2891F]"
+                    ? "bg-[#FF6F0F] text-white border-[#FF6F0F]"
                     : "border-gray200 text-gray500"
                 }`}
               >
@@ -636,7 +636,7 @@ function SignupPageInner() {
           onClick={submit}
           disabled={submitting || !authUserId}
           className="w-full text-white font-bold rounded-2xl text-lg disabled:opacity-60"
-          style={{ background: "linear-gradient(135deg, #D9531E, #F2891F)", padding: "18px 0" }}
+          style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)", padding: "18px 0" }}
         >
           {submitting ? "처리 중..." : "알림 받기 시작"}
         </button>
@@ -662,7 +662,7 @@ function SignupPageInner() {
               <button
                 onClick={selectAllAndClose}
                 className="w-full text-white font-bold rounded-2xl text-base"
-                style={{ background: "linear-gradient(135deg, #D9531E, #F2891F)", padding: "16px 0" }}
+                style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)", padding: "16px 0" }}
               >
                 🎯 전체 카테고리·지역 다 받을게요
               </button>

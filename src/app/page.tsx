@@ -132,7 +132,7 @@ export default function Home() {
         </div>
 
         <h1 className="font-display text-xl leading-snug drop-shadow-sm">
-          <span style={{ color: "#F2891F" }}>남는 재고는 빠르게 알리고,</span> 급한 재고는 남보다 먼저 잡으세요.
+          <span style={{ color: "#FF6F0F" }}>남는 재고는 빠르게 알리고,</span> 급한 재고는 남보다 먼저 잡으세요.
         </h1>
         <p className="text-white/85 text-base mt-4 leading-relaxed">
           <span className="hidden sm:inline">
@@ -146,7 +146,7 @@ export default function Home() {
           <Link
             href="/deals"
             className="inline-flex items-center gap-1.5 mt-4 text-xs font-bold px-3 py-2 rounded-full"
-            style={{ background: "rgba(242,137,31,0.18)", color: "#FBB454" }}
+            style={{ background: "rgba(255,111,15,0.2)", color: "var(--color-brandOrangeAccent)" }}
           >
             🔥 오늘 등록된 덤핑 매물 {todayCount}건 · 지금 확인하기 →
           </Link>
@@ -223,7 +223,7 @@ export default function Home() {
                   {discountPct > 0 && (
                     <div
                       className="absolute top-0 right-0 text-sm font-black text-white px-3 py-1.5 rounded-bl-2xl"
-                      style={{ background: "linear-gradient(135deg, #D9531E, #F2891F)" }}
+                      style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)" }}
                     >
                       -{discountPct}%
                     </div>
@@ -297,15 +297,15 @@ export default function Home() {
         <Link
           href="/sell"
           className="flex items-center justify-between rounded-2xl mt-1"
-          style={{ background: "rgba(242,137,31,0.10)", border: "2px solid #F2891F", padding: "16px 20px" }}
+          style={{ background: "rgba(255,111,15,0.10)", border: "2px solid #FF6F0F", padding: "16px 20px" }}
         >
           <div>
             <div className="text-base font-black text-navy">📦 잠든 재고, 깨워서 현금으로</div>
-            <div className="text-xs font-bold mt-0.5" style={{ color: "#D9531E" }}>
+            <div className="text-xs font-bold mt-0.5" style={{ color: "#E25100" }}>
               판매 등록은 무료 · 지금 등록하기
             </div>
           </div>
-          <span className="text-xl" style={{ color: "#F2891F" }}>→</span>
+          <span className="text-xl" style={{ color: "#FF6F0F" }}>→</span>
         </Link>
 
         <Link
@@ -371,10 +371,10 @@ export default function Home() {
             href="/signup"
             className="block text-white text-center font-bold rounded-2xl shadow-lg"
             style={{
-              background: "linear-gradient(135deg, #D9531E, #F2891F)",
+              background: "linear-gradient(135deg, #E25100, #FF6F0F)",
               padding: "20px 0",
               fontSize: "19px",
-              boxShadow: "0 10px 24px rgba(217,83,30,0.35)",
+              boxShadow: "0 10px 24px rgba(226,81,0,0.35)",
             }}
           >
             🔔 무료 알림받기

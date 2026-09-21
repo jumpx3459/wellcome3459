@@ -635,7 +635,7 @@ function ShippingMatchTeaser() {
           target="_blank"
           rel="noopener noreferrer"
           className="block text-center text-white font-bold rounded-xl py-3.5"
-          style={{ background: "#F2891F" }}
+          style={{ background: "#FF6F0F" }}
         >
           카고링크에서 화물 견적 받기 →
         </a>

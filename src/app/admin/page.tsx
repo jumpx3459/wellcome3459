@@ -944,7 +944,7 @@ function AdminDashboard({
                   ? "#E4E7EB"
                   : i.contacted
                   ? "#E4E7EB"
-                  : "#F2891F",
+                  : "#FF6F0F",
             }}
           >
             <div className="flex items-center gap-3">
@@ -1074,7 +1074,7 @@ function AdminDashboard({
         <button
           onClick={() => setOpenFormFor(openFormFor === "new" ? null : "new")}
           className="w-full text-white font-bold rounded-xl text-base"
-          style={{ background: "linear-gradient(135deg, #D9531E, #F2891F)", padding: "14px 0" }}
+          style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)", padding: "14px 0" }}
         >
           {openFormFor === "new" ? "닫기" : "+ 새 매물 직접 등록"}
         </button>

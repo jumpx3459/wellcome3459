@@ -287,7 +287,7 @@ function DealDetailPageInner() {
           {remainPct <= 30 && (
             <div
               className="text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap flex-shrink-0"
-              style={{ background: "#F2891F", color: "#fff" }}
+              style={{ background: "#FF6F0F", color: "#fff" }}
             >
               🔥 소진임박 · {deal.remaining_qty}{deal.quantity_unit || "개"} 남음
             </div>
@@ -448,7 +448,7 @@ function DealDetailPageInner() {
             <Link
               href={ref ? `/signup?ref=${ref}` : "/signup"}
               className="inline-block text-white text-center font-bold rounded-xl text-sm px-6"
-              style={{ background: "linear-gradient(135deg, #D9531E, #F2891F)", padding: "12px 24px" }}
+              style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)", padding: "12px 24px" }}
             >
               덤핑정보 알림 받기
             </Link>
@@ -512,7 +512,7 @@ function DealDetailPageInner() {
                     onClick={submitBridgePhone}
                     disabled={bridgeSubmitting}
                     className="text-white font-bold rounded-xl px-5 whitespace-nowrap flex-shrink-0 disabled:opacity-60"
-                    style={{ background: "linear-gradient(135deg, #D9531E, #F2891F)" }}
+                    style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)" }}
                   >
                     {bridgeSubmitting ? "이동 중..." : "이동하기"}
                   </button>
@@ -557,7 +557,7 @@ function DealDetailPageInner() {
                     onClick={submitQuickInterest}
                     disabled={quickSubmitting}
                     className="text-white font-bold rounded-xl px-5 whitespace-nowrap flex-shrink-0 disabled:opacity-60"
-                    style={{ background: "#F2891F" }}
+                    style={{ background: "#FF6F0F" }}
                   >
                     {quickSubmitting ? "전송 중..." : "전달하기"}
                   </button>
@@ -577,7 +577,7 @@ function DealDetailPageInner() {
                   disabled={interested}
                   className="w-full text-white text-center font-bold rounded-2xl text-lg disabled:opacity-60"
                   style={{
-                    background: interested ? "#8A8A82" : "linear-gradient(135deg, #D9531E, #F2891F)",
+                    background: interested ? "#8A8A82" : "linear-gradient(135deg, #E25100, #FF6F0F)",
                     padding: "18px 0",
                   }}
                 >
@@ -634,7 +634,7 @@ function DealDetailPageInner() {
                   style={{
                     width: "48px",
                     height: "48px",
-                    border: (activeImage ?? images[0]) === url ? "2px solid #F2891F" : "2px solid transparent",
+                    border: (activeImage ?? images[0]) === url ? "2px solid #FF6F0F" : "2px solid transparent",
                     opacity: (activeImage ?? images[0]) === url ? 1 : 0.5,
                   }}
                 >
