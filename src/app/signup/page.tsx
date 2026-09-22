@@ -8,6 +8,7 @@ import { mockCategories, mockRegions, categoryIcons, categoryColors } from "@/li
 import { subscribeToPush } from "@/lib/pushClient";
 import { generateRefCode } from "@/lib/refCode";
 import Toast, { useToast } from "@/components/Toast";
+import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 
 // "01012345678" -> "010****5678" 형태로 화면에만 일부 가려서 보여줍니다
 function maskPhone(phone: string): string {
@@ -74,14 +75,14 @@ function SignupPageInner() {
     "idle"
   );
   const [error, setError] = useState<string | null>(null);
-  const [debugInfo, setDebugInfo] = useState<string>(""); // TEMP DEBUG — 세션 소실 버그 진단용
 
   const applySession = (user: { id: string; phone?: string | null } | null | undefined) => {
+    // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
+    debugLog(`[signup] applySession user=${user ? user.id.slice(0, 8) : "null"} phone=${JSON.stringify(user?.phone)}`);
     if (user && !user.phone) {
       // 카카오 로그인 시절 만들어진, 전화번호가 없는 낡은 세션 — 로그아웃시켜
       // 정상적인 문자 인증 흐름으로 다시 시작하게 합니다.
-      // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
-      setDebugInfo(`⚠️ signOut 발동! user.id=${user.id.slice(0, 8)} user.phone=${JSON.stringify(user.phone)}`);
+      debugLog(`[signup] ⚠️ signOut 발동! user.id=${user.id.slice(0, 8)} user.phone=${JSON.stringify(user.phone)}`);
       supabase?.auth.signOut();
       return;
     }
@@ -100,12 +101,15 @@ function SignupPageInner() {
       return;
     }
     supabase.auth.getSession().then(({ data }) => {
+      debugLog(`[signup] mount getSession -> ${data.session ? "EXISTS" : "NULL"}`);
       applySession(data.session?.user);
       setAuthChecked(true);
     });
     // 인증번호 확인(verifyOtp)이 성공하면 Supabase가 세션을 발급하고, 이 구독이
     // 자동으로 authUserId를 채워줍니다.
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
+      debugLog(`[signup] onAuthStateChange event=${event} session=${session ? "EXISTS" : "NULL"} phone=${JSON.stringify(session?.user?.phone)}`);
       applySession(session?.user);
     });
     return () => sub.subscription.unsubscribe();
@@ -113,12 +117,13 @@ function SignupPageInner() {
 
   useEffect(() => {
     if (!authUserId || !supabase) return;
+    debugLog(`[signup] members-check effect fired for authUserId=${authUserId.slice(0, 8)}`);
     supabase
       .from("members")
       .select("id")
       .eq("id", authUserId)
       .maybeSingle()
-      .then(async ({ data }) => {
+      .then(async ({ data, error: queryError }) => {
         const already = Boolean(data);
         setAlreadyMember(already);
         if (already) {
@@ -128,10 +133,11 @@ function SignupPageInner() {
         }
         // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
         const { data: sessionCheck } = await supabase!.auth.getSession();
-        setDebugInfo(
-          `already=${already} authUserId=${authUserId.slice(0, 8)} session=${
-            sessionCheck.session ? "EXISTS" : "NULL"
-          } sessionUserId=${sessionCheck.session?.user?.id?.slice(0, 8) ?? "none"}`
+        debugLog(
+          `[signup] members-check result already=${already} queryError=${queryError?.message ?? "none"} ` +
+            `authUserId=${authUserId.slice(0, 8)} sessionNow=${
+              sessionCheck.session ? "EXISTS" : "NULL"
+            } sessionUserId=${sessionCheck.session?.user?.id?.slice(0, 8) ?? "none"}`
         );
       });
   }, [authUserId]);
@@ -183,6 +189,8 @@ function SignupPageInner() {
     setOtpVerifying(true);
     const result = await verifyOtp(phone, code);
     setOtpVerifying(false);
+    // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
+    debugLog(`[signup] verifyOtp result ok=${result.ok} ${result.ok ? `id=${result.data.id.slice(0, 8)} phone=${result.data.phone}` : `error=${result.error}`}`);
     if (!result.ok) {
       setOtpError(result.error);
       setOtpCode("");
@@ -424,11 +432,6 @@ function SignupPageInner() {
 
   return (
     <main className="flex flex-col min-h-screen bg-white">
-      {debugInfo && (
-        <div style={{ background: "#000", color: "#0F0", fontSize: 11, fontFamily: "monospace", padding: "6px 10px", wordBreak: "break-all" }}>
-          🐛 DEBUG: {debugInfo}
-        </div>
-      )}
       <div style={{ padding: "20px 22px 14px", borderBottom: "1px solid #EEF0F2" }}>
         <div className="flex items-center gap-3">
           <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#6B7480", padding: 0, lineHeight: 1 }}>

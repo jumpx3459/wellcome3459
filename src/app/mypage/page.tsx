@@ -9,6 +9,7 @@ import { formatPrice, formatMemberNo, formatRelativeTime, dealUrgencyState } fro
 import { generateRefCode } from "@/lib/refCode";
 import Toast, { useToast } from "@/components/Toast";
 import BusinessLicenseUploader from "@/components/BusinessLicenseUploader";
+import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 
 type InterestItem = {
   id: string;
@@ -68,7 +69,6 @@ export default function MyPage() {
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [notLoggedIn, setNotLoggedIn] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<string>(""); // TEMP DEBUG — 세션 소실 버그 진단용
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState("");
   const [fullName, setFullName] = useState("");
@@ -96,8 +96,8 @@ export default function MyPage() {
       // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
       const { data: sessionCheck } = await supabase.auth.getSession();
       const { data: userData, error: userError } = await supabase.auth.getUser();
-      setDebugInfo(
-        `getSession=${sessionCheck.session ? "EXISTS" : "NULL"}` +
+      debugLog(
+        `[mypage] getSession=${sessionCheck.session ? "EXISTS" : "NULL"}` +
           `(user=${sessionCheck.session?.user?.id?.slice(0, 8) ?? "none"}) ` +
           `getUser=${userData.user ? "EXISTS" : "NULL"}(user=${userData.user?.id?.slice(0, 8) ?? "none"}) ` +
           `getUserError=${userError?.message ?? "none"}`
@@ -405,11 +405,6 @@ export default function MyPage() {
   if (notLoggedIn) {
     return (
       <main className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
-        {debugInfo && (
-          <div style={{ background: "#000", color: "#0F0", fontSize: 11, fontFamily: "monospace", padding: "8px 10px", wordBreak: "break-all", marginBottom: 16, width: "100%" }}>
-            🐛 DEBUG: {debugInfo}
-          </div>
-        )}
         <div className="text-4xl mb-4">🔒</div>
         <h1 className="font-display text-xl text-navy mb-2">로그인이 필요해요</h1>
         <p className="text-gray500 text-base leading-relaxed mb-6">
@@ -428,11 +423,6 @@ export default function MyPage() {
 
   return (
     <main className="flex flex-col min-h-screen">
-      {debugInfo && (
-        <div style={{ background: "#000", color: "#0F0", fontSize: 11, fontFamily: "monospace", padding: "6px 10px", wordBreak: "break-all" }}>
-          🐛 DEBUG: {debugInfo}
-        </div>
-      )}
       <div
         className="px-5 py-5 text-white"
         style={{ background: "linear-gradient(135deg,#04101C,#0D2B47)" }}
