@@ -1,6 +1,6 @@
 # PROGRESS
 
-마지막 업데이트: 2026-09-22 (최종 스모크테스트 + about:blank 버그 수정 반영)
+마지막 업데이트: 2026-09-22 (PR #15 병합 + 프로덕션 배포 완료)
 
 새 세션을 시작할 때 이 파일을 먼저 읽고, 아래 "다음에 할 일"부터 확인하세요.
 
@@ -23,7 +23,8 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 병합 완료 (기본 브랜치에 모두 반영됨): PR #1~#14 (견적함 메뉴+Toast, 회원가입 개선,
   PWA 배너 수정, 회원번호+추천 공유, 프로필/사업자인증, 관리자 다중계정 인증,
   mypage 관리자 인식 배지, 관리자 임명/비밀번호 변경, 디자인 토큰 v1 1라운드,
-  디자인 토큰 v2 위계/액센트 재정비)
+  디자인 토큰 v2 위계/액센트 재정비), **PR #15 (design-v2 전면 리디자인, 2026-09-22
+  병합 완료 · 머지 커밋 `e9e54b2`)** — 상세는 아래 "최근 작업 (2026-09-22)" 참고
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
@@ -57,7 +58,11 @@ Claude Design 세션(별도, GitHub 저장소 읽기전용 연결)이 몇 라운
 전 과정에서 목업에 없지만 실제 서비스에 필요한 기능(사업자 회원 토글,
 JUMP X 입찰 브릿지, 관심있어요 리드 캡처, 실제 SMS 인증 등)은 전부 보존하고
 데모용 가짜 로직(더미 인증, 즉시발행 가정 등)은 채택하지 않음.
-`feature/design-v2-full` → PR #15로 올라가 있음, Vercel 프리뷰로 리뷰 진행 중.
+`feature/design-v2-full` → **PR #15, 2026-09-22 main에 병합 완료(머지 커밋
+`e9e54b2`), GitHub Actions 자동배포로 프로덕션(dumpingjumping.com) 반영 확인됨**
+(핵심 화면 5개 — 홈/signup/sell/mypage/admin — 전부 200 + 정상 타이틀 응답
+curl로 확인. 단, 이 세션엔 브라우저 접근이 없어 육안 확인은 못 했음 — 사용자가
+직접 육안 확인 필요).
 
 ### PR #15 프리뷰 리뷰 중 발견/수정 (2026-09-22)
 
@@ -78,18 +83,31 @@ JUMP X 입찰 브릿지, 관심있어요 리드 캡처, 실제 SMS 인증 등)�
   분기하면서 빠졌던 걸 발견, 알림 조건 카드 아래에 `/sell` 배너로 복원.
   (`BottomNav`에는 원래부터 판매 탭이 없었음 — 확인됨.)
 - **세션 소실 버그(간헐적, "이미 가입된 번호" 인증 후 mypage 세션 없음) — 낮은
-  우선순위로 관찰 중**: devtools 대신 localStorage 기반 디버그 로그(`src/lib/debugLog.ts`
-  + 전역 `DebugPanel.tsx`, `AppShell.tsx`에 마운트)로 재현 시도했으나 정상 트레이스만
-  확인됨 (재현 안 됨). 코드 버그로 확정되지 않았으므로 디버그 인프라는 **PR 머지 전
-  최종 정리 시점까지 유지** — `debugLog`/`DebugPanel` 호출부는 `signup/page.tsx`,
-  `mypage/page.tsx`, `AppShell.tsx`, `DebugPanel.tsx`, `lib/debugLog.ts` 5개 파일에
-  한정돼 있음 (grep으로 확인).
+  우선순위로 관찰 계속 중 (머지 후에도 유지)**: devtools 대신 localStorage 기반
+  디버그 로그(`src/lib/debugLog.ts` + 전역 `DebugPanel.tsx`, `AppShell.tsx`에 마운트)로
+  재현 시도했으나 정상 트레이스만 확인됨 (재현 안 됨). 코드 버그로 확정되지 않아서
+  디버그 인프라는 **머지 후에도 계속 유지** — 세션 버그가 몇 차례 더 관찰돼서
+  완전히 해소됐다고 판단될 때 제거. `debugLog`/`DebugPanel` 호출부는
+  `signup/page.tsx`, `mypage/page.tsx`, `AppShell.tsx`, `DebugPanel.tsx`,
+  `lib/debugLog.ts` 5개 파일에 한정돼 있음. **단, `DebugPanel.tsx`가 hostname이
+  `dumpingjumping.com`(www 포함)일 때는 렌더링 자체를 안 하도록 가드 추가** —
+  일반 사용자에게는 안 보이고, 프리뷰(`*.vercel.app`)/로컬에서는 계속 보여서
+  관찰 가능. `debugLog()`의 localStorage 기록 자체는 프로덕션에서도 계속 동작.
+- **휴대폰 번호 형식 검증 보강**: `sendOtp()`에만 있던 형식 검증(`/^01[0-9]{8,9}$/`)을
+  `lib/auth.ts`의 `isValidKoreanPhone()`으로 단일화해서 signup 사전체크/버튼
+  비활성화, sell/buy `submit()`, `/api/seller-requests`·`/api/buy-requests` 서버
+  라우트까지 전부 동일 규칙 적용(이전엔 클라이언트를 우회해 직접 POST하면 형식
+  검증 없이 저장 가능했음). sell 폼의 연락처 자동입력이 `members.phone` 정규화
+  형식(`+8210...`)을 그대로 채워서 로그인 회원이 자동입력값 그대로 제출하면
+  방금 추가한 검증에 걸리는 문제를 같이 발견 → `fromE164Phone()` 역변환 헬퍼로
+  로컬 형식(`010...`) 표시하도록 수정. `/api/seller-requests`·`/api/buy-requests`를
+  `vercel curl`로 직접 실행해서 정상/비정상 번호 각각 기대대로 동작하는지 확인함.
 - **최종 스모크테스트(2026-09-22)**: tsc/eslint/build 전부 통과 확인. `npx eslint src`
   전체 스캔에서 `admin/page.tsx:246`(`SessionCountdown`의 `useState(expiresAt - Date.now())`,
   react-hooks/purity 에러) 1건 발견 — **git diff로 main 대비 미변경 확인, 리디자인
   이전부터 있던 기존 버그라 이번 PR 범위 밖**으로 판단, 손대지 않음. 다음에 이
   파일을 건드릴 일이 생기면 (mypage에서 이미 썼던 `dealUrgencyState()` 패턴처럼)
-  `Date.now()`를 헬퍼로 감싸서 같이 고칠 것.
+  `Date.now()`를 헬퍼로 감싸서 같이 고칠 것. → **다음에 할 일에 백로그 등록.**
 
 ## 최근 작업 (2026-09-19)
 
@@ -169,6 +187,18 @@ JUMP X 입찰 브릿지, 관심있어요 리드 캡처, 실제 SMS 인증 등)�
 
 ## 다음에 할 일
 
+- [x] **PR #15 병합 완료 (2026-09-22, 머지 커밋 `e9e54b2`)** — design-v2 전면
+  리디자인. GitHub Actions 자동배포로 프로덕션 반영 확인(curl로 홈/signup/sell/
+  mypage/admin 5개 화면 200 응답 + 타이틀 확인). **사용자 직접 육안 확인 아직
+  안 됨** — 브라우저 접근이 없는 세션이라 이 부분만 사용자가 확인 필요
+- [ ] **세션 소실 버그 관찰 계속** — 몇 차례 더 재현/관찰해서 완전히 해소됐다고
+  판단되면 디버그 인프라(`src/lib/debugLog.ts`, `src/components/DebugPanel.tsx`,
+  `AppShell.tsx`의 마운트, `signup/page.tsx`·`mypage/page.tsx`의 `debugLog()`
+  호출부) 통째로 제거할 것. 현재는 프로덕션(dumpingjumping.com)에서는 hostname
+  가드로 패널이 안 보이고, 프리뷰/로컬에서는 계속 보임
+- [ ] `admin/page.tsx:246` `SessionCountdown`의 `useState(expiresAt - Date.now())` —
+  react-hooks/purity 에러 (리디자인 이전부터 있던 기존 버그, design-v2 범위 밖이라
+  손 안 댐). mypage의 `dealUrgencyState()` 헬퍼 패턴처럼 `Date.now()`를 감싸서 고칠 것
 - [x] PR #12 병합됨 (2026-09-14) — `create_admin_user`/`update_admin_password` 함수가 Supabase에 실제로 생성돼 있는지는 git 이력만으론 확인 불가, 관리자 임명 기능 써볼 때 한 번 확인 권장
 - [x] PR #11 병합됨 — `admin_users.phone` 컬럼 추가 + 기존 관리자 계정에 실제 번호 채우기는 여전히 Supabase SQL Editor에서 수동 실행 필요 (schema.sql 해당 주석 참고, 아직 실행 확인 안 됨)
 - [x] Supabase 대시보드 → Storage에 `business-licenses` 버킷 생성 완료 (2026-09-03, 사용자 확인)
