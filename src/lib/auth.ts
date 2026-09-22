@@ -18,6 +18,19 @@ export function toE164Phone(input: string): string {
   return `+82${withoutLeadingZero}`;
 }
 
+/** toE164Phone()의 역변환 — DB에 정규화 저장된 "+821012345678"를 화면 표시/수정용
+ * 로컬 형식 "01012345678"로 되돌린다. */
+export function fromE164Phone(e164: string): string {
+  return `0${e164.replace(/^\+?82/, "")}`;
+}
+
+/** 국내 휴대폰 번호 형식 검증 (01[0-9] + 8~9자리, 총 10~11자리). sendOtp()의 형식
+ * 검증과 동일 규칙을 공유해서, 폼 입력 단계의 UI 검증과 실제 API 게이트가 어긋나지
+ * 않게 한다. */
+export function isValidKoreanPhone(input: string): boolean {
+  return /^01[0-9]{8,9}$/.test(input.replace(/[^0-9]/g, ""));
+}
+
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
 
 interface OtpRateLimitResult {
@@ -42,7 +55,7 @@ function formatOtpRateLimitMessage(result: OtpRateLimitResult): string {
 /** 1단계: 휴대폰 번호로 SMS 인증번호 발송 (요청 전 phone별 rate limit 확인 —
  * 어뷰징으로 인한 SMS 비용 폭탄 방지, otp_request_log/check_and_log_otp_request 참고) */
 export async function sendOtp(phoneInput: string): Promise<Result<null>> {
-  if (!/^01[0-9]{8,9}$/.test(phoneInput.replace(/-/g, ""))) {
+  if (!isValidKoreanPhone(phoneInput)) {
     return { ok: false, error: "휴대폰 번호를 정확히 입력해주세요." };
   }
   if (!isSupabaseConfigured || !supabase) {

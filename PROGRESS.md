@@ -1,6 +1,6 @@
 # PROGRESS
 
-마지막 업데이트: 2026-09-19
+마지막 업데이트: 2026-09-22 (최종 스모크테스트 + about:blank 버그 수정 반영)
 
 새 세션을 시작할 때 이 파일을 먼저 읽고, 아래 "다음에 할 일"부터 확인하세요.
 
@@ -26,6 +26,70 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
   디자인 토큰 v2 위계/액센트 재정비)
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
+
+## 최근 작업 (2026-09-22) — design-v2 전면 리디자인
+
+Claude Design 세션(별도, GitHub 저장소 읽기전용 연결)이 몇 라운드에 걸쳐 만든
+전체 화면 리디자인 목업(당근마켓 톤 리브랜딩 — 오렌지 #FF6F0F/#E25100 CTA,
+다크 네이비 히어로)을 `feature/design-v2-full` 브랜치에서 로컬 구현. 6단계로
+나눠 진행, 각 단계 tsc/build 통과 확인 후 커밋:
+
+1. **색상 토큰 전면 교체** — `--color-brandOrange`/`--color-brandOrangeDeep`
+   값 교체 + 신규 토큰(`--color-brandOrangeAccent`/`--color-navyDeepest`/
+   `--color-toggleOn`) 추가. 45곳 inline hex 직접 사용처를 전부 찾아 교체.
+2. **온보딩+가입+홈** — 온보딩 인트로를 자동 캐러셀→다크 히어로 정적 화면으로,
+   가입 화면을 단일 스크롤 폼→4단계 위저드(카테고리→지역→알림채널→전화인증)로
+   재구성. 홈은 비회원(기존 마케팅 랜딩 유지)/회원(신규 알림함 UI, 실제
+   member_categories/regions 매칭) 분기.
+3. **매물 리스트/상세** — 기존 구현이 이미 목업과 구조적으로 가까워서 정렬
+   토글·할인율 배지 등 차이점만 반영.
+4. **구매/판매 등록 폼** — 아코디언→상시 노출 칩 UI로, 이메일 알림 채널
+   "준비중" placeholder 추가.
+5. **MY 페이지** — 프로필 헤더를 다크 네이비 통계 카드로, "최근 받은 알림"
+   신규 추가(기존에 아무도 안 읽던 `notification_logs` 테이블을 처음 조회).
+   **이 과정에서 이 테이블에 RLS가 아예 빠져있던 보안 구멍 발견 → 수정 완료**
+   (RLS 정책을 Supabase SQL Editor에서 직접 실행해 적용 확인함, 2026-09-22).
+6. **어드민** — 목업이 데스크톱 사이드바+멀티패널 대시보드라 지금 구조(모바일
+   싱글페이지)와 완전히 달라 구조 변경은 보류(백로그 항목 참고), 색상/일관성만
+   수정: 파트너 승인 큐 버튼 그린→네이비 통일, 헤더 그라디언트 통일, 중복
+   컬러 페어 정리.
+
+전 과정에서 목업에 없지만 실제 서비스에 필요한 기능(사업자 회원 토글,
+JUMP X 입찰 브릿지, 관심있어요 리드 캡처, 실제 SMS 인증 등)은 전부 보존하고
+데모용 가짜 로직(더미 인증, 즉시발행 가정 등)은 채택하지 않음.
+`feature/design-v2-full` → PR #15로 올라가 있음, Vercel 프리뷰로 리뷰 진행 중.
+
+### PR #15 프리뷰 리뷰 중 발견/수정 (2026-09-22)
+
+- **프리뷰 피드백 4건 반영**: 판매 등록 폼 연락처 자동 채움(로그인 회원의
+  `members.phone`), 마이페이지 헤더 라벨 명확화("사업자 인증 대기중"),
+  파트너 섹션 문구를 "관리할 수 있다"는 과장 없이 정직하게 수정, MY페이지
+  3번째 통계 타일("추천 회원" 수, `referrals.length`) 추가.
+- **🔴 회원가입 4단계 최종 제출 시 about:blank 버그 — 원인 확정, 수정 완료**:
+  카카오 채널 연동 시 팝업 차단 회피용으로 빈 창을 미리 열어두는데(`window.open`),
+  그 직후 `subscribeToPush()`가 브라우저 알림 권한 네이티브 다이얼로그를 기다리며
+  무한정 멈출 수 있어 미리 연 창이 리다이렉트되지 못한 채 about:blank로 방치됐음
+  (모바일에서는 새 탭이 즉시 전면으로 전환되므로 "쓰던 탭이 블랭크됐다"처럼 보임).
+  리디자인 이전 원본 코드에도 있던 순서 문제(회귀 아님) — members upsert 성공 직후
+  카카오 창을 먼저 리다이렉트시키고 푸시 권한 요청은 그 다음으로 미루도록 수정.
+  사용자가 실기기로 재현 테스트 후 **해결 확인** (accounts.kakao.com 정상 이동).
+- **🔴 로그인 회원용 홈(알림함)에 판매 등록 진입점 없음 — 수정 완료**: 리디자인 전
+  마케팅 홈에 있던 "판매 등록" 배너가 회원용 알림함 홈(`AlertInboxHome.tsx`)으로
+  분기하면서 빠졌던 걸 발견, 알림 조건 카드 아래에 `/sell` 배너로 복원.
+  (`BottomNav`에는 원래부터 판매 탭이 없었음 — 확인됨.)
+- **세션 소실 버그(간헐적, "이미 가입된 번호" 인증 후 mypage 세션 없음) — 낮은
+  우선순위로 관찰 중**: devtools 대신 localStorage 기반 디버그 로그(`src/lib/debugLog.ts`
+  + 전역 `DebugPanel.tsx`, `AppShell.tsx`에 마운트)로 재현 시도했으나 정상 트레이스만
+  확인됨 (재현 안 됨). 코드 버그로 확정되지 않았으므로 디버그 인프라는 **PR 머지 전
+  최종 정리 시점까지 유지** — `debugLog`/`DebugPanel` 호출부는 `signup/page.tsx`,
+  `mypage/page.tsx`, `AppShell.tsx`, `DebugPanel.tsx`, `lib/debugLog.ts` 5개 파일에
+  한정돼 있음 (grep으로 확인).
+- **최종 스모크테스트(2026-09-22)**: tsc/eslint/build 전부 통과 확인. `npx eslint src`
+  전체 스캔에서 `admin/page.tsx:246`(`SessionCountdown`의 `useState(expiresAt - Date.now())`,
+  react-hooks/purity 에러) 1건 발견 — **git diff로 main 대비 미변경 확인, 리디자인
+  이전부터 있던 기존 버그라 이번 PR 범위 밖**으로 판단, 손대지 않음. 다음에 이
+  파일을 건드릴 일이 생기면 (mypage에서 이미 썼던 `dealUrgencyState()` 패턴처럼)
+  `Date.now()`를 헬퍼로 감싸서 같이 고칠 것.
 
 ## 최근 작업 (2026-09-19)
 
@@ -116,6 +180,7 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - [ ] 카테고리/지역 선택 UI — "인기 항목 1~2개 노출 + 더보기" 구조 개선 (별도 기능 개발 과제): 신규 공용 컴포넌트 설계(다중선택 mypage.tsx vs 단일선택 buy.tsx 겸용), mypage/buy/signup 3개 파일 리팩터, `member_categories`/`member_regions` 집계 쿼리 신규 개발(없으면 고정 목록으로 시작 가능)
 - [ ] "견적함" 실제 기능 기획/개발 (현재는 "준비중" 자리표시자만 있음)
 - [ ] (선택) `Toast.tsx`를 다른 화면에서도 재사용할 만한 곳이 있는지 점검
+- [ ] 어드민 데스크톱 전면 재구축 (2번째 운영자 생기면 검토) — Claude Design 목업(design-reference/, `덤핑점핑 어드민.dc.html`)이 사이드바+스탯카드+멀티패널 데스크톱 대시보드로 그려져 있는데, 지금 `admin/page.tsx`는 사이드바 없는 모바일 싱글페이지 구조라 구조 자체가 다름. design-v2 6단계에서는 구조 변경 없이 색상/일관성만 맞췄고(파트너 승인 버튼 네이비 통일 등), 전면 재구축은 운영자가 한 명뿐인 지금은 과잉투자라 보류. 목업 원본은 이 저장소를 처음 만든 로컬 환경의 design-reference/ 폴더에 보존돼 있음 — 다만 .gitignore 처리돼 있어 git에는 없고 그 로컬 디스크에만 있음. 다른 환경에서 재구축을 시작한다면 원본 zip(Claude Design 세션 산출물)을 다시 받아와야 함.
 
 ## 개발 환경 참고사항
 

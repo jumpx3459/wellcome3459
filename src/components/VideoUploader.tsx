@@ -244,7 +244,7 @@ export default function VideoUploader({
               type="button"
               onClick={doTrim}
               className="flex-1 text-sm font-bold text-white rounded-xl py-2.5"
-              style={{ background: "#F2891F" }}
+              style={{ background: "#FF6F0F" }}
             >
               이 구간으로 자르기
             </button>

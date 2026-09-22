@@ -1,0 +1,278 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { mockDeals, categoryIcons, categoryColors, mockRegions, type Deal } from "@/lib/mockData";
+import { formatPrice } from "@/lib/format";
+import { formatCountdown } from "@/lib/format";
+import InstallAppButton from "@/components/InstallAppButton";
+import Toast, { useToast } from "@/components/Toast";
+
+const INSTALL_DISMISS_KEY = "dj_home_install_dismissed";
+
+type FeedGroup = { label: string; items: Deal[] };
+
+// 실제 등록 시각 기준 시간대 버킷 — Claude Design 원안은 고정 개수로
+// 슬라이스했지만(데모 데이터 8건 한정), 실제 데이터는 건수가 들쭉날쭉해서
+// created_at 기준 진짜 시간 구간으로 나눈다.
+function bucketDeals(deals: Deal[]): FeedGroup[] {
+  const buckets: Record<string, Deal[]> = { "오늘 · 방금": [], "오늘": [], "어제": [], "이전": [] };
+  for (const d of deals) {
+    if (!d.created_at) {
+      buckets["이전"].push(d);
+      continue;
+    }
+    const hours = (Date.now() - new Date(d.created_at).getTime()) / 3600000;
+    if (hours < 3) buckets["오늘 · 방금"].push(d);
+    else if (hours < 24) buckets["오늘"].push(d);
+    else if (hours < 48) buckets["어제"].push(d);
+    else buckets["이전"].push(d);
+  }
+  return Object.entries(buckets)
+    .map(([label, items]) => ({ label, items }))
+    .filter((g) => g.items.length > 0);
+}
+
+export default function AlertInboxHome() {
+  const [categories, setCategories] = useState<string[]>([]);
+  const [regions, setRegions] = useState<string[]>([]);
+  const [deals, setDeals] = useState<Deal[]>([]);
+  const [showInstall, setShowInstall] = useState(true);
+  const [, setTick] = useState(0);
+  const { message: toastMessage, showToast } = useToast();
+
+  useEffect(() => {
+    try {
+      setShowInstall(localStorage.getItem(INSTALL_DISMISS_KEY) !== "1");
+    } catch {}
+  }, []);
+
+  // 마감 카운트다운 실시간 갱신
+  useEffect(() => {
+    const t = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) {
+      setDeals(mockDeals.filter((d) => d.status !== "closed"));
+      return;
+    }
+    (async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData.user?.id;
+      if (!userId) return;
+
+      const [{ data: catRows }, { data: regRows }, { data: dealRows }] = await Promise.all([
+        supabase.from("member_categories").select("categories(name)").eq("member_id", userId),
+        supabase.from("member_regions").select("regions(name)").eq("member_id", userId),
+        supabase
+          .from("deals")
+          .select(
+            "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, created_at, location, images, categories(name), regions(name)"
+          )
+          .eq("status", "active")
+          .gt("closes_at", new Date().toISOString())
+          .order("created_at", { ascending: false })
+          .limit(20),
+      ]);
+
+      setCategories(
+        (catRows ?? [])
+          .map((r) => (r.categories as unknown as { name: string } | null)?.name)
+          .filter((n): n is string => Boolean(n))
+      );
+      setRegions(
+        (regRows ?? [])
+          .map((r) => (r.regions as unknown as { name: string } | null)?.name)
+          .filter((n): n is string => Boolean(n))
+      );
+      setDeals(
+        (dealRows ?? []).map((d) => ({
+          id: d.id,
+          title: d.title,
+          category: (d.categories as unknown as { name: string } | null)?.name ?? "기타",
+          region: (d.regions as unknown as { name: string } | null)?.name ?? "",
+          location: d.location ?? "",
+          original_price: d.original_price,
+          deal_price: d.deal_price,
+          total_qty: d.total_qty,
+          remaining_qty: d.remaining_qty,
+          closes_at: d.closes_at,
+          created_at: d.created_at,
+          images: d.images ?? [],
+        }))
+      );
+    })();
+  }, []);
+
+  const condCats =
+    categories.length > 0
+      ? categories.slice(0, 2).join("·") + (categories.length > 2 ? ` 외 ${categories.length - 2}` : "")
+      : "전체 카테고리";
+  const allRegionsOn = regions.length > 0 && regions.length === mockRegions.length;
+  const condRegions =
+    regions.length === 0 || allRegionsOn
+      ? "전 지역"
+      : regions.slice(0, 2).join("·") + (regions.length > 2 ? ` 외 ${regions.length - 2}` : "");
+  const myCondText = `${condCats} · ${condRegions}`;
+  const estAlertsWide = Math.max(2, categories.length * 4 + (regions.length === 0 ? 6 : regions.length * 2)) + 14;
+
+  const matches = (d: Deal) =>
+    categories.length > 0 && categories.includes(d.category) && (regions.length === 0 || regions.includes(d.region));
+
+  const groups = bucketDeals(deals);
+
+  const dismissInstall = () => {
+    setShowInstall(false);
+    try {
+      localStorage.setItem(INSTALL_DISMISS_KEY, "1");
+    } catch {}
+  };
+
+  return (
+    <main className="flex flex-col min-h-screen bg-white" style={{ paddingBottom: 64 }}>
+      <div className="sticky top-0 z-10 bg-white" style={{ borderBottom: "1px solid #EEF0F2" }}>
+        <div className="flex items-center justify-between" style={{ padding: "16px 20px 12px" }}>
+          <div className="flex items-center gap-2">
+            <img src="/images/logo.png" alt="덤핑점핑" style={{ height: 22, width: "auto" }} />
+            <span className="font-black" style={{ fontSize: 17, color: "#0B2540", letterSpacing: "-0.02em" }}>
+              알림함
+            </span>
+          </div>
+          <button
+            onClick={() => showToast("전부 읽음으로 처리했어요")}
+            className="rounded-full font-bold"
+            style={{ background: "#F5F6F8", border: "none", fontSize: 11.5, color: "#6B7480", padding: "7px 12px" }}
+          >
+            읽음 처리
+          </button>
+        </div>
+        <Link
+          href="/mypage#alerts"
+          className="flex items-center gap-2 w-full text-left"
+          style={{ borderTop: "1px solid #F1F3F5", padding: "11px 20px" }}
+        >
+          <span style={{ fontSize: 13 }}>⚙️</span>
+          <span className="flex-1 min-w-0">
+            <span className="block font-bold truncate" style={{ fontSize: 12.5, color: "#0B2540" }}>{myCondText}</span>
+            <span className="block mt-0.5" style={{ fontSize: 11, color: "#6B7480" }}>임박·과잉·폐업 재고를 가장 먼저</span>
+          </span>
+          <span className="flex-shrink-0 font-bold" style={{ fontSize: 11.5, color: "#E25100" }}>조건 수정</span>
+        </Link>
+      </div>
+
+      {showInstall && (
+        <div className="flex items-center gap-2.5" style={{ borderBottom: "1px solid #F1F3F5", padding: "12px 20px", background: "#FAFBFC" }}>
+          <div className="flex-1 min-w-0">
+            <InstallAppButton />
+          </div>
+          <button onClick={dismissInstall} className="flex-shrink-0" style={{ border: "none", background: "none", color: "#9AA3AD", fontSize: 16, width: 28, height: 28 }}>
+            ×
+          </button>
+        </div>
+      )}
+
+      {groups.map((g) => (
+        <div key={g.label}>
+          <div className="flex items-center gap-2" style={{ padding: "18px 20px 9px" }}>
+            <span className="font-black" style={{ fontSize: 12, color: "#0B2540", letterSpacing: "0.02em" }}>{g.label}</span>
+            <span className="flex-1" style={{ height: 1, background: "#EEF0F2" }} />
+            <span className="font-mono font-bold" style={{ fontSize: 11, color: "#6B7480" }}>{g.items.length}건</span>
+          </div>
+          {g.items.map((d) => {
+            const match = matches(d);
+            const color = categoryColors[d.category] ?? categoryColors["기타"];
+            const cd = formatCountdown(d.closes_at);
+            const pct = d.original_price ? Math.round(((d.original_price - d.deal_price) / d.original_price) * 100) : 0;
+            return (
+              <Link
+                key={d.id}
+                href={`/deals/${d.id}`}
+                className="block w-full text-left"
+                style={{ borderBottom: "1px solid #F1F3F5", padding: "14px 20px", background: match ? "#FFFCF8" : "#fff" }}
+              >
+                <div className="flex items-center gap-1.5" style={{ marginBottom: 8 }}>
+                  <span
+                    className="font-black rounded"
+                    style={{ fontSize: 10.5, padding: "3px 8px", background: match ? "#FDEEE8" : "#F1F3F5", color: match ? "#E25100" : "#6B7480" }}
+                  >
+                    {match ? "내 조건 매칭" : "추천"}
+                  </span>
+                  <span style={{ fontSize: 11, color: "#6B7480" }}>{d.location}</span>
+                  <span className="font-mono font-bold ml-auto" style={{ fontSize: 11, color: cd.urgent ? "var(--color-urgent)" : "#6B7480" }}>
+                    ⏱ {cd.label}
+                  </span>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <span
+                    className="rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ width: 46, height: 46, fontSize: 22, background: color.bg }}
+                  >
+                    {categoryIcons[d.category] ?? "🗂️"}
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block font-bold leading-snug" style={{ fontSize: 14.5, color: "#1A1F26" }}>{d.title}</span>
+                    <span className="block mt-0.5" style={{ fontSize: 11.5, color: "#6B7480" }}>
+                      {d.category} · {d.location} · 잔여 {d.remaining_qty}
+                    </span>
+                    <span className="flex items-baseline gap-1.5 mt-1.5">
+                      {pct > 0 && (
+                        <span className="font-black text-white rounded" style={{ fontSize: 10.5, padding: "2px 6px", background: "#E25100" }}>
+                          -{pct}%
+                        </span>
+                      )}
+                      <span className="font-black" style={{ fontSize: 17, color: "#0B2540" }}>{formatPrice(d.deal_price)}</span>
+                      <span style={{ fontSize: 11.5, color: "#6B7480", textDecoration: "line-through" }}>{formatPrice(d.original_price)}</span>
+                    </span>
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      ))}
+
+      {groups.length === 0 && (
+        <div className="text-center" style={{ padding: "48px 20px", color: "#6B7480", fontSize: 14 }}>
+          아직 조건에 맞는 매물이 없어요. 매물이 뜨면 가장 먼저 알려드릴게요.
+        </div>
+      )}
+
+      <div style={{ padding: "22px 20px 30px" }}>
+        <div className="rounded-2xl text-center" style={{ background: "#F5F6F8", padding: 18 }}>
+          <img src="/images/manager.png" alt="점핑매니저" style={{ width: 72, height: 72, objectFit: "contain", margin: "0 auto" }} />
+          <div className="font-bold mt-1" style={{ fontSize: 13.5, color: "#0B2540" }}>
+            조건을 넓히면 주 {estAlertsWide}건까지 받을 수 있어요
+          </div>
+          <Link
+            href="/mypage#alerts"
+            className="inline-block font-bold text-white rounded-xl mt-3"
+            style={{ background: "#0B2540", fontSize: 13, padding: "11px 20px" }}
+          >
+            알림 조건 넓히기
+          </Link>
+        </div>
+
+        {/* 회원용 알림함 홈에도 판매 등록 진입점을 유지 — 예전 비회원용 마케팅
+            홈에 있던 배너가 리디자인 과정에서 빠졌던 걸 복원 */}
+        <Link
+          href="/sell"
+          className="flex items-center justify-between rounded-2xl mt-3"
+          style={{ background: "rgba(255,111,15,.1)", border: "2px solid var(--color-brandOrange)", padding: "16px 20px" }}
+        >
+          <div>
+            <div className="text-base font-black" style={{ color: "#0B2540" }}>📦 잠든 재고, 깨워서 현금으로</div>
+            <div className="text-xs font-bold mt-0.5" style={{ color: "#E25100" }}>
+              판매 등록은 무료 · 지금 등록하기
+            </div>
+          </div>
+          <span className="text-xl" style={{ color: "var(--color-brandOrange)" }}>→</span>
+        </Link>
+      </div>
+
+      <Toast message={toastMessage} />
+    </main>
+  );
+}

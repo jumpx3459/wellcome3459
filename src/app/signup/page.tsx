@@ -1,16 +1,14 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { CheckCircle } from "lucide-react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { sendOtp, verifyOtp } from "@/lib/auth";
-import { mockCategories, mockRegions, categoryIcons } from "@/lib/mockData";
+import { sendOtp, verifyOtp, isValidKoreanPhone } from "@/lib/auth";
+import { mockCategories, mockRegions, categoryIcons, categoryColors } from "@/lib/mockData";
 import { subscribeToPush } from "@/lib/pushClient";
 import { generateRefCode } from "@/lib/refCode";
-import ScrollHint from "@/components/ScrollHint";
-import InstallAppButton from "@/components/InstallAppButton";
+import Toast, { useToast } from "@/components/Toast";
+import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 
 // "01012345678" -> "010****5678" 형태로 화면에만 일부 가려서 보여줍니다
 function maskPhone(phone: string): string {
@@ -19,7 +17,12 @@ function maskPhone(phone: string): string {
   return `${digits.slice(0, 3)}****${digits.slice(-4)}`;
 }
 
+function fmtLeft(s: number): string {
+  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+}
+
 const KAKAO_CHANNEL_URL = "https://pf.kakao.com/_xbwDJX/friend";
+const TOTAL_STEPS = 4;
 
 export default function SignupPage() {
   return (
@@ -34,40 +37,52 @@ function SignupPageInner() {
   const searchParams = useSearchParams();
   const returnTo = searchParams.get("returnTo");
   const refCode = searchParams.get("ref"); // 추천인의 member id (점핑파트너 트래킹용)
+  const { message: toastMessage, showToast } = useToast();
+
+  const [obStep, setObStep] = useState(1);
 
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [alreadyMember, setAlreadyMember] = useState(false);
   const [phone, setPhone] = useState("");
 
-  // 휴대폰 SMS 인증 2단계 상태 — 카카오 로그인 대신 schema.sql 설계 원안대로
-  // Supabase Auth phone OTP를 직접 씁니다(src/lib/auth.ts 참고).
-  const [otpStep, setOtpStep] = useState<"phone" | "code">("phone");
+  // 휴대폰 SMS 인증 — schema.sql 설계 원안대로 Supabase Auth phone OTP를 직접 씁니다
+  // (src/lib/auth.ts 참고). 데모/목업과 달리 실제 발송·검증 API를 그대로 호출합니다.
+  const [codeSent, setCodeSent] = useState(false);
+  const [codeLeft, setCodeLeft] = useState(180);
   const [otpCode, setOtpCode] = useState("");
   const [otpSending, setOtpSending] = useState(false);
   const [otpVerifying, setOtpVerifying] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
 
-  const [categories, setCategories] = useState<string[]>(["농수축산물", "냉동냉장식품"]);
-  const [regions, setRegions] = useState<string[]>(["서울"]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [regions, setRegions] = useState<string[]>([]);
+  const [push, setPush] = useState(true);
+  // 카카오톡 채널 연동 ON = 카카오톡 알림톡(마케팅성 정보 포함)을 받겠다는 동의와
+  // 실질적으로 같은 의미라, 3단계의 채널 토글과 4단계의 마케팅 수신 동의 항목이
+  // 이 값 하나를 공유합니다 (Claude Design 원안 그대로).
+  const [kakao, setKakao] = useState(true);
+  const [agreeTos, setAgreeTos] = useState(false);
+  const [agreePrivacy, setAgreePrivacy] = useState(false);
+
+  // 사업자 회원 여부 + 업체명 — 새 4단계 화면에는 없지만 members.is_business를
+  // 채울 수 있는 곳이 가입 화면뿐이라, 4단계(휴대폰 인증) 하단에 그대로 유지합니다.
   const [isBusiness, setIsBusiness] = useState(true);
   const [companyName, setCompanyName] = useState("");
-  const [agreed, setAgreed] = useState(false);
-  const [addKakaoChannel, setAddKakaoChannel] = useState(true);
+
   const [submitting, setSubmitting] = useState(false);
   const [pushStatus, setPushStatus] = useState<"idle" | "granted" | "denied" | "unsupported">(
     "idle"
   );
   const [error, setError] = useState<string | null>(null);
-  const [showSelectionPrompt, setShowSelectionPrompt] = useState(false);
-  const [highlight, setHighlight] = useState<"categories" | "regions" | null>(null);
-  const categoriesRef = useRef<HTMLDivElement>(null);
-  const regionsRef = useRef<HTMLDivElement>(null);
 
   const applySession = (user: { id: string; phone?: string | null } | null | undefined) => {
+    // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
+    debugLog(`[signup] applySession user=${user ? user.id.slice(0, 8) : "null"} phone=${JSON.stringify(user?.phone)}`);
     if (user && !user.phone) {
       // 카카오 로그인 시절 만들어진, 전화번호가 없는 낡은 세션 — 로그아웃시켜
       // 정상적인 문자 인증 흐름으로 다시 시작하게 합니다.
+      debugLog(`[signup] ⚠️ signOut 발동! user.id=${user.id.slice(0, 8)} user.phone=${JSON.stringify(user.phone)}`);
       supabase?.auth.signOut();
       return;
     }
@@ -86,12 +101,15 @@ function SignupPageInner() {
       return;
     }
     supabase.auth.getSession().then(({ data }) => {
+      debugLog(`[signup] mount getSession -> ${data.session ? "EXISTS" : "NULL"}`);
       applySession(data.session?.user);
       setAuthChecked(true);
     });
     // 인증번호 확인(verifyOtp)이 성공하면 Supabase가 세션을 발급하고, 이 구독이
-    // 자동으로 authUserId를 채워줍니다 — handleVerifyOtp에서 따로 세팅할 필요 없음.
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    // 자동으로 authUserId를 채워줍니다.
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
+      debugLog(`[signup] onAuthStateChange event=${event} session=${session ? "EXISTS" : "NULL"} phone=${JSON.stringify(session?.user?.phone)}`);
       applySession(session?.user);
     });
     return () => sub.subscription.unsubscribe();
@@ -99,12 +117,13 @@ function SignupPageInner() {
 
   useEffect(() => {
     if (!authUserId || !supabase) return;
+    debugLog(`[signup] members-check effect fired for authUserId=${authUserId.slice(0, 8)}`);
     supabase
       .from("members")
       .select("id")
       .eq("id", authUserId)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(async ({ data, error: queryError }) => {
         const already = Boolean(data);
         setAlreadyMember(already);
         if (already) {
@@ -112,6 +131,14 @@ function SignupPageInner() {
             localStorage.removeItem("dj_signup_pending");
           } catch {}
         }
+        // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
+        const { data: sessionCheck } = await supabase!.auth.getSession();
+        debugLog(
+          `[signup] members-check result already=${already} queryError=${queryError?.message ?? "none"} ` +
+            `authUserId=${authUserId.slice(0, 8)} sessionNow=${
+              sessionCheck.session ? "EXISTS" : "NULL"
+            } sessionUserId=${sessionCheck.session?.user?.id?.slice(0, 8) ?? "none"}`
+        );
       });
   }, [authUserId]);
 
@@ -128,26 +155,22 @@ function SignupPageInner() {
     return () => window.removeEventListener("beforeunload", handler);
   }, []);
 
-  const toggle = (list: string[], set: (v: string[]) => void, value: string) => {
+  // 인증번호 재전송 카운트다운
+  useEffect(() => {
+    if (!codeSent || authUserId || codeLeft <= 0) return;
+    const t = setInterval(() => setCodeLeft((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(t);
+  }, [codeSent, authUserId, codeLeft]);
+
+  const toggleIn = (list: string[], set: (v: string[]) => void, value: string) => {
     set(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
   };
 
-  const selectAllAndClose = () => {
-    if (categories.length === 0) setCategories([...mockCategories]);
-    if (regions.length === 0) setRegions([...mockRegions]);
-    setShowSelectionPrompt(false);
-  };
-
-  const goPickManually = () => {
-    setShowSelectionPrompt(false);
-    const missing = categories.length === 0 ? "categories" : "regions";
-    const ref = missing === "categories" ? categoriesRef : regionsRef;
-    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    setHighlight(missing);
-    setTimeout(() => setHighlight(null), 1500);
-  };
-
   const handleSendOtp = async () => {
+    if (!isValidKoreanPhone(phone)) {
+      setOtpError("휴대폰 번호를 정확히 입력해주세요.");
+      return;
+    }
     setOtpError(null);
     setOtpSending(true);
     const result = await sendOtp(phone);
@@ -156,58 +179,86 @@ function SignupPageInner() {
       setOtpError(result.error);
       return;
     }
-    setOtpStep("code");
+    setCodeSent(true);
+    setCodeLeft(180);
+    setOtpCode("");
   };
 
-  const handleVerifyOtp = async () => {
+  const handleVerifyOtp = async (code: string) => {
     setOtpError(null);
     setOtpVerifying(true);
-    const result = await verifyOtp(phone, otpCode);
+    const result = await verifyOtp(phone, code);
     setOtpVerifying(false);
+    // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
+    debugLog(`[signup] verifyOtp result ok=${result.ok} ${result.ok ? `id=${result.data.id.slice(0, 8)} phone=${result.data.phone}` : `error=${result.error}`}`);
     if (!result.ok) {
       setOtpError(result.error);
+      setOtpCode("");
       return;
     }
     // authUserId는 위 onAuthStateChange 구독이 세션 발급과 동시에 자동으로 채워줍니다.
+  };
+
+  const onCodeChange = (value: string) => {
+    const v = value.replace(/[^0-9]/g, "").slice(0, 6);
+    setOtpCode(v);
+    if (v.length === 6 && !authUserId && !otpVerifying) {
+      handleVerifyOtp(v);
+    }
+  };
+
+  const tryDifferentNumber = async () => {
+    await supabase?.auth.signOut();
+    setAlreadyMember(false);
+    setAuthUserId(null);
+    setPhone("");
+    setOtpCode("");
+    setCodeSent(false);
   };
 
   const submit = async () => {
     let kakaoRedirected = false;
     setError(null);
     if (!authUserId) {
-      setError("휴대폰 인증을 먼저 진행해주세요.");
+      setError("휴대폰 인증을 먼저 완료해주세요.");
       return;
     }
-    if (!/^01[0-9]{8,9}$/.test(phone.replace(/-/g, ""))) {
-      setError("휴대폰 번호를 정확히 입력해주세요.");
+    if (!agreeTos || !agreePrivacy) {
+      setError("필수 약관에 동의해주세요.");
       return;
     }
-    if (!agreed) {
-      setError("기기 알림 수신 동의는 필수예요.");
+    if (!push && !kakao) {
+      setObStep(3);
+      setError("알림 받을 방법을 하나 이상 선택해주세요.");
       return;
     }
     if (categories.length === 0) {
-      setShowSelectionPrompt(true);
+      setObStep(1);
+      setError("관심 카테고리를 선택해주세요.");
       return;
     }
 
     // 팝업 차단 회피 — 사용자 클릭과 같은 동기 호출 스택에서 빈 창을 먼저 열어두고,
     // upsert 성공 후에 카카오 채널 URL로 이동시킵니다(비동기 호출 이후에 열면 팝업이 막힘).
-    const kakaoWindow = addKakaoChannel ? window.open("", "_blank") : null;
+    const kakaoWindow = kakao ? window.open("", "_blank") : null;
+    debugLog(`[signup] submit start kakao=${kakao} kakaoWindow=${kakaoWindow ? (kakaoWindow === window ? "SELF(same-tab)" : "new-window") : "null(blocked?)"}`);
 
     setSubmitting(true);
 
-    // 알라미와 동일하게, 카카오톡 같은 중간 채널 없이 기기에 직접 알림을
-    // 띄우기 위해 브라우저 알림 권한 + 푸시 구독을 먼저 받습니다.
-    const pushResult = await subscribeToPush();
-    if (pushResult.status === "denied") setPushStatus("denied");
-    else if (pushResult.status === "unsupported") setPushStatus("unsupported");
-    else setPushStatus("granted");
-
+    // 버그 수정: 예전엔 이 시점에 곧바로 subscribeToPush()를 기다렸는데,
+    // 이 함수는 브라우저 알림 권한 요청(Notification.requestPermission())을
+    // 포함해서 사용자가 응답할 때까지 무한정 멈춰 있을 수 있다. 그러는 동안
+    // 위에서 미리 열어둔 카카오 창은 리다이렉트되지 않은 채 about:blank로
+    // 방치돼 "빈 화면으로 이동한 채 멈췄다"처럼 보인다. 그래서 푸시 권한
+    // 요청은 카카오 창의 운명(리다이렉트 또는 닫기)이 결정된 뒤로 미룬다.
     if (!isSupabaseConfigured || !supabase) {
       // 데모 모드: 실제 저장 없이 다음 화면으로 이동
-      if (kakaoWindow) {
-        kakaoWindow.close();
+      if (kakaoWindow) kakaoWindow.close();
+      if (push) {
+        const pushResult = await subscribeToPush();
+        if (pushResult.status === "denied") setPushStatus("denied");
+        else if (pushResult.status === "unsupported") setPushStatus("unsupported");
+        else setPushStatus("granted");
       }
       await new Promise((r) => setTimeout(r, 500));
       setSubmitting(false);
@@ -250,9 +301,8 @@ function SignupPageInner() {
         ...(referredById ? { referred_by: referredById } : {}),
       });
       if (memberError) {
-        if (kakaoWindow) {
-          kakaoWindow.close();
-        }
+        debugLog(`[signup] members upsert error code=${memberError.code} closing kakaoWindow=${!!kakaoWindow}`);
+        if (kakaoWindow) kakaoWindow.close();
         setError(
           memberError.code === "23505"
             ? "이미 사용 중인 휴대폰 번호예요. 다른 번호로 시도하거나 고객센터로 문의해주세요."
@@ -263,8 +313,17 @@ function SignupPageInner() {
       }
 
       if (kakaoWindow) {
+        debugLog(`[signup] redirecting kakaoWindow -> ${KAKAO_CHANNEL_URL}`);
         kakaoWindow.location.href = KAKAO_CHANNEL_URL;
         kakaoRedirected = true;
+      }
+
+      let pushResult: Awaited<ReturnType<typeof subscribeToPush>> | null = null;
+      if (push) {
+        pushResult = await subscribeToPush();
+        if (pushResult.status === "denied") setPushStatus("denied");
+        else if (pushResult.status === "unsupported") setPushStatus("unsupported");
+        else setPushStatus("granted");
       }
 
       const { data: catRows } = await supabase
@@ -287,7 +346,7 @@ function SignupPageInner() {
         );
       }
 
-      if (pushResult.status === "subscribed" && pushResult.subscription.endpoint) {
+      if (pushResult?.status === "subscribed" && pushResult.subscription.endpoint) {
         await fetch("/api/push/subscribe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -300,383 +359,515 @@ function SignupPageInner() {
       } catch {}
 
       router.push(returnTo || "/deals");
-    } catch {
-      if (kakaoWindow && !kakaoRedirected) {
-        kakaoWindow.close();
-      }
+    } catch (e) {
+      debugLog(`[signup] submit catch ${e instanceof Error ? e.message : String(e)} closing kakaoWindow=${!!(kakaoWindow && !kakaoRedirected)}`);
+      if (kakaoWindow && !kakaoRedirected) kakaoWindow.close();
       setError("가입 처리 중 오류가 발생했습니다.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (alreadyMember) {
-    return (
-      <main className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
-        <CheckCircle className="w-10 h-10 mb-4 text-verified" />
-        <h1 className="font-display text-xl text-navy mb-2">이미 가입된 번호예요</h1>
-        <p className="text-gray500 text-base leading-relaxed mb-6">
-          카테고리·지역 알림 설정은 마이페이지에서 바꿀 수 있어요.
-        </p>
-        <Link
-          href={returnTo || "/mypage"}
-          className="text-white text-center font-bold rounded-2xl text-base px-8"
-          style={{ background: "linear-gradient(135deg, #D9531E, #F2891F)", padding: "14px 32px" }}
-        >
-          {returnTo ? "매물 보러 가기" : "마이페이지로 이동"}
-        </Link>
-      </main>
-    );
-  }
+  // ---- 파생 값 (Claude Design 원안의 estAlerts/condCats/condRegions 로직과 동일) ----
+  const reqAgreed = agreeTos && agreePrivacy;
+  const anyChannel = push || kakao;
+  const verified = Boolean(authUserId);
+  const step4Ready = verified && reqAgreed && anyChannel;
+  const estAlerts = Math.max(2, categories.length * 4 + (regions.length === 0 ? 6 : regions.length * 2));
+  const condCats =
+    categories.length > 0
+      ? categories.slice(0, 2).join("·") + (categories.length > 2 ? ` 외 ${categories.length - 2}` : "")
+      : "전체 카테고리";
+  const allRegionsOn = regions.length === mockRegions.length;
+  const condRegions =
+    regions.length === 0 || allRegionsOn
+      ? "전 지역"
+      : regions.slice(0, 2).join("·") + (regions.length > 2 ? ` 외 ${regions.length - 2}` : "");
+  const myCondText = `${condCats} · ${condRegions}`;
+
+  const obCtaLabel =
+    obStep === 1
+      ? categories.length
+        ? `${categories.length}개 선택 · 다음`
+        : "카테고리를 골라주세요"
+      : obStep === 4
+      ? !verified
+        ? "휴대폰 인증이 필요해요"
+        : !reqAgreed
+        ? "필수 항목에 동의해주세요"
+        : !anyChannel
+        ? "알림 받을 방법을 골라주세요"
+        : "동의하고 알림 받기 시작"
+      : "다음";
+  const obCtaDisabled = (obStep === 1 && categories.length === 0) || (obStep === 4 && !step4Ready);
+
+  const goBack = () => {
+    if (obStep <= 1) {
+      router.push("/");
+      return;
+    }
+    setObStep((s) => s - 1);
+  };
+
+  const goNext = () => {
+    if (obStep === 1 && categories.length === 0) {
+      showToast("관심 카테고리를 1개 이상 골라주세요");
+      return;
+    }
+    if (obStep === 4) {
+      if (!verified) {
+        showToast("휴대폰 인증을 먼저 완료해주세요");
+        return;
+      }
+      if (!reqAgreed) {
+        showToast("필수 동의 항목을 확인해주세요");
+        return;
+      }
+      if (!anyChannel) {
+        setObStep(3);
+        showToast("앱 푸시나 카카오톡 중 하나는 켜주세요");
+        return;
+      }
+      submit();
+      return;
+    }
+    setObStep((s) => Math.min(TOTAL_STEPS, s + 1));
+  };
+
+  const pickAllCategories = () => {
+    setCategories([...mockCategories]);
+    showToast("전체 카테고리로 받습니다 · 나중에 좁힐 수 있어요");
+  };
+
+  const pickAllRegions = () => {
+    setRegions(allRegionsOn ? [] : [...mockRegions]);
+    showToast(allRegionsOn ? "지역 선택을 비웠어요" : "전국 모든 지역으로 받습니다");
+  };
+
+  if (!authChecked) return null;
 
   return (
-    <main className="flex flex-col min-h-screen">
-      <div
-        className="px-5 pt-8 pb-6 text-white"
-        style={{ background: "linear-gradient(135deg, #0B2540, #1B3A5C)" }}
-      >
-        <div className="flex items-center gap-2 mb-3">
-          <Link href="/" className="bg-white rounded-lg px-3.5 py-2.5 inline-block">
-            <img src="/images/logo.png" alt="덤핑점핑" className="h-8 w-auto" />
-          </Link>
-          <span className="text-white/70 text-sm tracking-wide">Powered by JumpX</span>
+    <main className="flex flex-col min-h-screen bg-white">
+      <div style={{ padding: "20px 22px 14px", borderBottom: "1px solid #EEF0F2" }}>
+        <div className="flex items-center gap-3">
+          <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#6B7480", padding: 0, lineHeight: 1 }}>
+            ←
+          </button>
+          <div className="flex-1 rounded-full overflow-hidden" style={{ height: 5, background: "#E4E7EB" }}>
+            <div
+              style={{
+                height: "100%",
+                background: "var(--color-brandOrange)",
+                borderRadius: 99,
+                transition: "width .3s ease",
+                width: `${Math.round((obStep / TOTAL_STEPS) * 100)}%`,
+              }}
+            />
+          </div>
+          <span className="font-mono text-xs font-bold" style={{ color: "#6B7480" }}>{obStep}/{TOTAL_STEPS}</span>
         </div>
-        <div className="text-sm font-bold tracking-widest" style={{ color: "#FFD166" }}>
-          문자 인증 한 번이면 끝나요
-        </div>
-        <h1 className="font-display text-2xl mt-2 leading-snug">
-          알림 받을 카테고리와
-          <br />
-          지역만 골라주세요
-        </h1>
-        <ScrollHint />
       </div>
 
-      <div className="flex-1 px-5 py-5 flex flex-col gap-6" style={{ paddingBottom: "108px" }}>
-        <InstallAppButton />
-
-        <div
-          className="rounded-2xl p-5"
-          style={{ background: "linear-gradient(135deg, #FFF7DE, #FFFFFF)", border: "2px solid #FFE49C" }}
-        >
-          <div className="flex items-center gap-1.5 mb-3">
-            <span className="text-base font-bold text-navy">휴대폰 인증</span>
-            <span className="text-xs font-bold text-orange bg-white px-2 py-0.5 rounded-full">
-              문자 인증번호
-            </span>
+      <div className="flex-1" style={{ padding: "24px 22px 20px" }}>
+        {alreadyMember ? (
+          <div className="flex flex-col items-center text-center" style={{ padding: "32px 6px 0" }}>
+            <div
+              className="rounded-full flex items-center justify-center"
+              style={{ width: 76, height: 76, background: "#E8F8EC", fontSize: 34 }}
+            >
+              ✔
+            </div>
+            <h2 className="font-display mt-4.5" style={{ fontSize: 23, color: "#0B2540", letterSpacing: "-0.02em" }}>
+              이미 가입된 번호예요
+            </h2>
+            <p className="mt-2.5" style={{ fontSize: 14, color: "#6B7480", lineHeight: 1.7 }}>
+              이 번호로 등록된 계정이 있어요.
+              <br />
+              기존 알림 조건 그대로 바로 이용하실 수 있습니다.
+            </p>
+            <div className="w-full rounded-2xl mt-5 text-left" style={{ background: "#F5F6F8", padding: "15px 16px" }}>
+              <div className="text-xs font-bold" style={{ color: "#6B7480" }}>가입된 번호</div>
+              <div className="mt-1 font-bold" style={{ fontSize: 16, color: "#0B2540", fontVariantNumeric: "tabular-nums" }}>
+                {maskPhone(phone)}
+              </div>
+            </div>
+            <button
+              onClick={() => router.push(returnTo || "/mypage")}
+              className="w-full text-white font-bold rounded-2xl mt-4.5"
+              style={{ padding: "17px 0", fontSize: 16.5, background: "linear-gradient(135deg,#E25100,#FF6F0F)", boxShadow: "0 8px 20px rgba(226,81,0,.3)" }}
+            >
+              {returnTo ? "매물 보러 가기" : "마이페이지로 이동"}
+            </button>
+            <button
+              onClick={tryDifferentNumber}
+              className="mt-2.5"
+              style={{ background: "none", border: "none", color: "#6B7480", fontSize: 13.5, fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 4, padding: 10 }}
+            >
+              다른 번호로 가입하기
+            </button>
           </div>
+        ) : null}
 
-          {!authChecked ? (
-            <div className="text-sm text-gray500 py-3">확인 중...</div>
-          ) : !authUserId ? (
-            otpStep === "phone" ? (
-              <>
+        {!alreadyMember && obStep === 1 && (
+          <div>
+            <h2 className="font-display" style={{ fontSize: 23, color: "#0B2540", letterSpacing: "-0.02em" }}>
+              어떤 재고를 찾고 계세요?
+            </h2>
+            <p className="mt-2" style={{ fontSize: 14, color: "#6B7480", lineHeight: 1.6 }}>
+              고른 카테고리에 매물이 뜨면 즉시 알려드려요. 여러 개 고를 수 있어요.
+            </p>
+            <div className="grid grid-cols-2 gap-2.5 mt-5">
+              {mockCategories.map((c) => {
+                const picked = categories.includes(c);
+                return (
+                  <button
+                    key={c}
+                    onClick={() => toggleIn(categories, setCategories, c)}
+                    className="flex items-center gap-2.5 text-left rounded-2xl"
+                    style={{
+                      padding: "12px 11px",
+                      background: picked ? "rgba(255,111,15,.08)" : "#fff",
+                      border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
+                    }}
+                  >
+                    <span
+                      className="rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ width: 30, height: 30, fontSize: 15, background: categoryColors[c].bg }}
+                    >
+                      {categoryIcons[c]}
+                    </span>
+                    <span className="text-sm font-bold leading-tight" style={{ color: picked ? "#E25100" : "#1A1F26" }}>
+                      {c}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={pickAllCategories}
+              className="mt-4"
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#6B7480", textDecoration: "underline", textUnderlineOffset: 4, padding: "8px 0" }}
+            >
+              아직 잘 모르겠어요 · 전체 받기 →
+            </button>
+          </div>
+        )}
+
+        {!alreadyMember && obStep === 2 && (
+          <div>
+            <h2 className="font-display" style={{ fontSize: 23, color: "#0B2540", letterSpacing: "-0.02em" }}>
+              어느 지역까지 받으시겠어요?
+            </h2>
+            <p className="mt-2" style={{ fontSize: 14, color: "#6B7480", lineHeight: 1.6 }}>
+              직접 실사·상차 가능한 지역을 고르세요. 화물 배차는 앱에서 바로 신청할 수 있어요.
+            </p>
+            <div className="flex flex-wrap gap-2 mt-5">
+              {mockRegions.map((r) => {
+                const picked = regions.includes(r);
+                return (
+                  <button
+                    key={r}
+                    onClick={() => toggleIn(regions, setRegions, r)}
+                    className="rounded-full font-bold"
+                    style={{
+                      padding: "11px 16px",
+                      fontSize: 14,
+                      background: picked ? "rgba(255,111,15,.1)" : "#fff",
+                      border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
+                      color: picked ? "#E25100" : "#1A1F26",
+                    }}
+                  >
+                    {r}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={pickAllRegions}
+              className="mt-4"
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#6B7480", textDecoration: "underline", textUnderlineOffset: 4, padding: "8px 0" }}
+            >
+              {allRegionsOn ? "전국 전체 선택됨 · 해제하기" : "전국 어디든 괜찮아요 →"}
+            </button>
+          </div>
+        )}
+
+        {!alreadyMember && obStep === 3 && (
+          <div>
+            <h2 className="font-display" style={{ fontSize: 23, color: "#0B2540", letterSpacing: "-0.02em" }}>
+              어디로 알려드릴까요?
+            </h2>
+            <div className="rounded-2xl mt-4.5 text-white" style={{ padding: 18, background: "linear-gradient(135deg,#04101C,#0D2B47)" }}>
+              <div className="text-xs font-bold" style={{ color: "rgba(255,255,255,.7)" }}>내 조건 요약</div>
+              <div className="font-bold mt-1.5" style={{ fontSize: 17, lineHeight: 1.5 }}>{myCondText}</div>
+              <div className="flex items-baseline gap-1.5 mt-3.5" style={{ paddingTop: 14, borderTop: "1px solid rgba(255,255,255,.15)" }}>
+                <span className="text-xs" style={{ color: "rgba(255,255,255,.7)" }}>주간 예상 알림</span>
+                <span className="font-mono font-bold" style={{ fontSize: 22, color: "var(--color-brandOrangeAccent)" }}>{estAlerts}건</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setPush(!push)}
+              className="w-full flex items-center gap-3 text-left rounded-2xl mt-3.5"
+              style={{ padding: "15px 16px", background: "#fff", border: push ? "2px solid var(--color-toggleOn)" : "1.5px solid #E4E7EB" }}
+            >
+              <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 38, height: 38, background: "#FDEEE8", fontSize: 18 }}>🔔</span>
+              <span className="flex-1">
+                <span className="block text-sm font-bold" style={{ color: "#0B2540" }}>앱 푸시 알림</span>
+                <span className="block text-xs mt-0.5" style={{ color: "#6B7480" }}>조건에 맞는 매물이 뜨는 즉시</span>
+              </span>
+              <span className="rounded-full flex-shrink-0 relative" style={{ width: 46, height: 27, background: push ? "var(--color-toggleOn)" : "#D5D9DE", transition: "background .2s" }}>
+                <span className="absolute rounded-full bg-white" style={{ top: 3, width: 21, height: 21, left: push ? 22 : 3, transition: "left .2s", boxShadow: "0 1px 3px rgba(0,0,0,.25)" }} />
+              </span>
+            </button>
+
+            <button
+              onClick={() => setKakao(!kakao)}
+              className="w-full flex items-center gap-3 text-left rounded-2xl mt-2.5"
+              style={{ padding: "15px 16px", background: "#fff", border: kakao ? "2px solid var(--color-toggleOn)" : "1.5px solid #E4E7EB" }}
+            >
+              <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 38, height: 38, background: "#FEE500", fontSize: 18 }}>💬</span>
+              <span className="flex-1">
+                <span className="block text-sm font-bold" style={{ color: "#0B2540" }}>카카오톡 채널 연동</span>
+                <span className="block text-xs mt-0.5" style={{ color: "#6B7480" }}>
+                  {kakao ? "연동됨 · 알림톡으로도 받는 중" : "앱을 안 켜도 카톡으로 받기"}
+                </span>
+              </span>
+              <span className="rounded-full flex-shrink-0 relative" style={{ width: 46, height: 27, background: kakao ? "var(--color-toggleOn)" : "#D5D9DE", transition: "background .2s" }}>
+                <span className="absolute rounded-full bg-white" style={{ top: 3, width: 21, height: 21, left: kakao ? 22 : 3, transition: "left .2s", boxShadow: "0 1px 3px rgba(0,0,0,.25)" }} />
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => showToast("곧 지원 예정이에요")}
+              className="w-full flex items-center gap-3 text-left rounded-2xl mt-2.5"
+              style={{ padding: "15px 16px", background: "#F5F6F8", border: "1.5px solid #E4E7EB", cursor: "default" }}
+            >
+              <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 38, height: 38, background: "#E4E7EB", fontSize: 18 }}>📧</span>
+              <span className="flex-1">
+                <span className="block text-sm font-bold" style={{ color: "#9AA3AD" }}>이메일 리포트 (준비중)</span>
+                <span className="block text-xs mt-0.5" style={{ color: "#9AA3AD" }}>일간 요약을 이메일로 받기</span>
+              </span>
+              <span className="rounded-full flex-shrink-0" style={{ width: 46, height: 27, background: "#E4E7EB", position: "relative" }}>
+                <span className="absolute rounded-full" style={{ top: 3, left: 3, width: 21, height: 21, background: "#C9CFD6" }} />
+              </span>
+            </button>
+
+            <p className="mt-3.5" style={{ fontSize: 11.5, color: "#6B7480", lineHeight: 1.6 }}>
+              두 가지 모두 기본으로 켜져 있어요. 카카오톡 채널은 앱을 안 켜도 알림톡으로 특가를 받아볼 수 있습니다.
+            </p>
+          </div>
+        )}
+
+        {!alreadyMember && obStep === 4 && (
+          <div>
+            <h2 className="font-display" style={{ fontSize: 23, color: "#0B2540", letterSpacing: "-0.02em" }}>
+              휴대폰 인증만 하면 끝이에요
+            </h2>
+            <p className="mt-2" style={{ fontSize: 14, color: "#6B7480", lineHeight: 1.6 }}>
+              인증된 번호로 알림을 보내고, 판매자 연락처 열람도 이 번호로 확인합니다.
+            </p>
+
+            <div className="text-sm font-bold mt-5.5 mb-2" style={{ color: "#0B2540" }}>휴대폰 번호</div>
+            <div className="flex gap-2">
+              <input
+                className="flex-1 min-w-0 rounded-xl outline-none"
+                style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: 15, fontVariantNumeric: "tabular-nums" }}
+                placeholder="010-0000-0000"
+                inputMode="numeric"
+                value={phone}
+                disabled={verified}
+                onChange={(e) => setPhone(e.target.value.replace(/[^\d-]/g, "").slice(0, 13))}
+              />
+              <button
+                onClick={handleSendOtp}
+                disabled={otpSending || verified || !isValidKoreanPhone(phone)}
+                className="flex-shrink-0 rounded-xl font-bold disabled:opacity-60"
+                style={{ border: "1.5px solid #0B2540", background: "#fff", padding: "0 15px", fontSize: 13.5, color: "#0B2540", whiteSpace: "nowrap" }}
+              >
+                {otpSending ? "발송 중..." : codeSent ? "다시 받기" : "인증번호 받기"}
+              </button>
+            </div>
+
+            {codeSent && !verified && (
+              <div>
+                <div className="flex items-center justify-between mt-4.5 mb-2">
+                  <span className="text-sm font-bold" style={{ color: "#0B2540" }}>인증번호 6자리</span>
+                  <span className="font-mono text-xs font-bold" style={{ color: "#E5484D" }}>{fmtLeft(codeLeft)}</span>
+                </div>
                 <input
-                  className="w-full border-2 border-gray200 rounded-xl px-4 text-lg outline-none focus:border-orange"
-                  style={{ height: "56px" }}
-                  placeholder="010-0000-0000"
-                  inputMode="numeric"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                />
-                <p className="text-xs text-gray500 mt-1.5">
-                  점핑매니저 연락 및 알림 계정 확인용으로만 사용해요.
-                </p>
-                {otpError && <p className="text-sm text-orange font-medium mt-2">{otpError}</p>}
-                <button
-                  onClick={handleSendOtp}
-                  disabled={otpSending || phone.length < 9}
-                  className="w-full mt-3 flex items-center justify-center gap-2 rounded-2xl font-bold disabled:opacity-60"
-                  style={{ background: "#F2891F", color: "#fff", height: "56px", fontSize: "17px" }}
-                >
-                  {otpSending ? "발송 중..." : "📱 인증번호 받기"}
-                </button>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-gray500 mb-2">
-                  {maskPhone(phone)}(으)로 보낸 인증번호를 입력하세요
-                </p>
-                <input
-                  className="w-full border-2 border-gray200 rounded-xl px-4 text-2xl font-mono font-semibold tracking-[0.3em] text-center outline-none focus:border-orange"
-                  style={{ height: "56px" }}
+                  className="w-full rounded-xl outline-none text-center font-mono font-bold"
+                  style={{ border: "1.5px solid var(--color-brandOrange)", padding: 14, fontSize: 20, letterSpacing: "0.32em" }}
                   inputMode="numeric"
                   maxLength={6}
                   placeholder="000000"
                   value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, ""))}
+                  onChange={(e) => onCodeChange(e.target.value)}
                   autoFocus
                 />
-                {otpError && <p className="text-sm text-orange font-medium mt-2">{otpError}</p>}
-                <button
-                  onClick={handleVerifyOtp}
-                  disabled={otpVerifying || otpCode.length < 4}
-                  className="w-full mt-3 rounded-2xl font-bold disabled:opacity-60"
-                  style={{ background: "#F2891F", color: "#fff", height: "56px", fontSize: "17px" }}
-                >
-                  {otpVerifying ? "확인 중..." : "인증 확인"}
-                </button>
-                <div className="flex items-center justify-center gap-3 mt-2.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOtpStep("phone");
-                      setOtpCode("");
-                      setOtpError(null);
-                    }}
-                    className="text-xs font-bold text-gray500"
-                  >
-                    번호 다시 입력
-                  </button>
-                  <span className="text-gray200">|</span>
-                  <button
-                    type="button"
-                    onClick={handleSendOtp}
-                    disabled={otpSending}
-                    className="text-xs font-bold text-gray500 disabled:opacity-60"
-                  >
-                    인증번호 재전송
-                  </button>
-                </div>
-              </>
-            )
-          ) : (
-            <>
-              <div
-                className="flex items-center gap-1.5 text-sm font-bold rounded-xl px-4 mb-3"
-                style={{ height: "44px", background: "#E8F8EC", color: "#1D8A44" }}
-              >
-                <CheckCircle className="w-4 h-4" /> 휴대폰 인증 완료 ({maskPhone(phone)})
+                {otpError && <p className="text-sm font-medium mt-2" style={{ color: "#E5484D" }}>{otpError}</p>}
+                {!otpError && (
+                  <p className="mt-2" style={{ fontSize: 11.5, color: "#6B7480", lineHeight: 1.55 }}>
+                    문자가 오지 않으면 스팸함을 확인하거나 &quot;다시 받기&quot;를 눌러주세요.
+                  </p>
+                )}
               </div>
+            )}
 
-              <div className="mt-4">
-                <label className="text-sm font-bold text-navy mb-2 block">업체명 (선택)</label>
+            <div className="flex items-center gap-2.5 rounded-2xl mt-4.5" style={{ padding: "14px 16px", background: verified ? "#E8F8EC" : "#F5F6F8" }}>
+              <span style={{ fontSize: 16 }}>📱</span>
+              <span className="flex-1 text-xs font-bold" style={{ lineHeight: 1.5, color: verified ? "#2F9E44" : "#6B7480" }}>
+                {verified ? "✔ 인증 완료 · 이 번호로 알림을 보냅니다" : "인증된 번호로만 판매자 연락처를 열람할 수 있어요"}
+              </span>
+            </div>
+
+            {verified && (
+              <div className="mt-4.5">
+                <label className="text-sm font-bold mb-2 block" style={{ color: "#0B2540" }}>업체명 (선택)</label>
                 <input
-                  className="w-full border-2 border-gray200 rounded-xl px-4 text-base outline-none focus:border-orange"
-                  style={{ height: "52px" }}
+                  className="w-full rounded-xl outline-none"
+                  style={{ border: "1.5px solid #E4E7EB", padding: "13px 14px", fontSize: 15 }}
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   placeholder="예: 웰컴코리아(주)"
                 />
-                <p className="text-xs text-gray500 mt-1.5">
-                  입력하시면 점핑매니저가 더 빠르게 도와드려요
-                </p>
+                <label className="flex items-center justify-between mt-3" style={{ minHeight: 44 }}>
+                  <span className="text-sm" style={{ color: "#1A1F26" }}>사업자 회원이에요 · 점핑매니저 검증에 활용</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsBusiness(!isBusiness)}
+                    className="rounded-full relative flex-shrink-0"
+                    style={{ width: 46, height: 27, background: isBusiness ? "var(--color-toggleOn)" : "#D5D9DE", transition: "background .2s" }}
+                  >
+                    <span className="absolute rounded-full bg-white" style={{ top: 3, width: 21, height: 21, left: isBusiness ? 22 : 3, transition: "left .2s", boxShadow: "0 1px 3px rgba(0,0,0,.25)" }} />
+                  </button>
+                </label>
               </div>
-            </>
-          )}
-        </div>
-
-        <div
-          ref={categoriesRef}
-          style={{
-            boxShadow: highlight === "categories" ? "0 0 0 3px rgba(242,137,31,0.5)" : "none",
-            borderRadius: "16px",
-            transition: "box-shadow 0.3s",
-          }}
-        >
-          <label className="mb-2 flex items-center justify-between">
-            <span className="text-base font-bold text-navy">관심 카테고리</span>
-            <button
-              type="button"
-              onClick={() =>
-                setCategories(categories.length === mockCategories.length ? [] : [...mockCategories])
-              }
-              className="text-xs font-bold text-orange"
-            >
-              {categories.length === mockCategories.length ? "전체 해제" : "전체 선택"}
-            </button>
-          </label>
-          {/* 홈 화면 컬러톤 정리와 통일: 카테고리별 파스텔 대신, 선택 여부만
-              브랜드 오렌지 단색으로 표현 (미선택 = 중성 회색, 선택 = 오렌지) */}
-          <div className="grid grid-cols-3 gap-2">
-            {mockCategories.map((c) => {
-              const picked = categories.includes(c);
-              return (
-                <button
-                  key={c}
-                  onClick={() => toggle(categories, setCategories, c)}
-                  className="flex flex-col items-center justify-center gap-1 rounded-xl border py-3.5 px-1 text-center"
-                  style={
-                    picked
-                      ? { background: "#F2891F", borderColor: "#F2891F", color: "#fff" }
-                      : { background: "#F5F6F8", borderColor: "#F5F6F8", color: "#1B3A5C" }
-                  }
-                >
-                  <span className="text-2xl leading-none">{categoryIcons[c]}</span>
-                  <span className="text-sm font-bold leading-tight">{c}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div
-          ref={regionsRef}
-          style={{
-            boxShadow: highlight === "regions" ? "0 0 0 3px rgba(242,137,31,0.5)" : "none",
-            borderRadius: "16px",
-            transition: "box-shadow 0.3s",
-          }}
-        >
-          <label className="mb-2 flex items-center justify-between">
-            <span className="text-base font-bold text-navy">관심 지역</span>
-            <button
-              type="button"
-              onClick={() =>
-                setRegions(regions.length === mockRegions.length ? [] : [...mockRegions])
-              }
-              className="text-xs font-bold text-orange"
-            >
-              {regions.length === mockRegions.length ? "전체 해제" : "전체 선택"}
-            </button>
-          </label>
-          <p className="text-xs text-gray500 -mt-1 mb-2">
-            선택 안 하면 전국 매물 알림을 다 받아요
-          </p>
-          <div className="grid grid-cols-4 gap-2">
-            {mockRegions.map((r) => (
-              <button
-                key={r}
-                onClick={() => toggle(regions, setRegions, r)}
-                className={`text-sm py-2.5 rounded-full border-2 font-bold text-center ${
-                  regions.includes(r)
-                    ? "bg-[#F2891F] text-white border-[#F2891F]"
-                    : "border-gray200 text-gray500"
-                }`}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <button
-          onClick={() => setIsBusiness(!isBusiness)}
-          className="flex items-center justify-between border-2 border-gray200 rounded-xl px-4 text-left"
-          style={{ minHeight: "64px" }}
-        >
-          <div>
-            <div className="text-base font-medium text-gray900">사업자 회원이에요</div>
-            <div className="text-xs text-gray500 mt-0.5">선택 · 점핑매니저 검증에 활용</div>
-          </div>
-          <div
-            className={`w-12 h-7 rounded-full relative transition-colors flex-shrink-0 ${
-              isBusiness ? "bg-orange" : "bg-gray200"
-            }`}
-          >
-            <div
-              className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all ${
-                isBusiness ? "left-6" : "left-1"
-              }`}
-            />
-          </div>
-        </button>
-
-        <label className="flex items-start gap-2.5 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={agreed}
-            onChange={(e) => setAgreed(e.target.checked)}
-            className="mt-0.5 accent-orange w-5 h-5 flex-shrink-0"
-          />
-          <span className="text-sm text-gray500 leading-relaxed">
-            <b className="text-gray900">[필수]</b> 기기 알림(푸시) 수신 및{" "}
-            <a href="/privacy" target="_blank" className="text-orange font-bold underline">
-              개인정보 처리방침
-            </a>{" "}
-            동의
-          </span>
-        </label>
-
-        <label className="flex items-start gap-2.5 cursor-pointer mt-2">
-          <input
-            type="checkbox"
-            checked={addKakaoChannel}
-            onChange={(e) => setAddKakaoChannel(e.target.checked)}
-            className="mt-0.5 accent-orange w-5 h-5 flex-shrink-0"
-          />
-          <span className="text-sm text-gray500 leading-relaxed">
-            카카오톡 채널도 함께 추가할게요 · 공지·이벤트 소식
-          </span>
-        </label>
-
-        {pushStatus === "denied" && (
-          <div className="text-sm text-orange bg-dangerBg rounded-lg px-4 py-3">
-            브라우저 알림이 차단돼 있어요. 주소창 왼쪽 자물쇠 아이콘에서 알림을 허용해주세요.
-          </div>
-        )}
-        {pushStatus === "unsupported" && (
-          <div className="text-sm text-gray500 bg-gray100 rounded-lg px-4 py-3 leading-relaxed">
-            {typeof navigator !== "undefined" && /iPhone|iPad/.test(navigator.userAgent) ? (
-              <>
-                아이폰은 <b className="text-gray900">공유 버튼 → &quot;홈 화면에 추가&quot;</b>로 앱을 설치해야
-                알림을 받을 수 있어요. 지금은 가입만 진행하고, 나중에 홈 화면에 추가한 뒤 다시 접속하시면
-                알림이 활성화돼요.
-              </>
-            ) : (
-              "현재 브라우저에서는 기기 알림을 지원하지 않아요. 매물은 리스트에서 계속 확인할 수 있어요."
             )}
-          </div>
-        )}
 
-        {error && <div className="text-sm text-orange font-medium">{error}</div>}
-      </div>
-
-      <div
-        className="fixed left-1/2 -translate-x-1/2 w-full max-w-md px-5 pb-6 pt-3 bg-white"
-        style={{ boxShadow: "0 -8px 20px rgba(11,37,64,0.08)", bottom: "64px" }}
-      >
-        {authUserId && (categories.length === 0 || !agreed) && (
-          <div className="text-xs text-gray500 mb-2 flex flex-col gap-0.5">
-            {categories.length === 0 && <span>○ 관심 카테고리를 선택해주세요</span>}
-            {!agreed && <span>○ 개인정보 처리방침에 동의해주세요</span>}
-          </div>
-        )}
-        <button
-          onClick={submit}
-          disabled={submitting || !authUserId}
-          className="w-full text-white font-bold rounded-2xl text-lg disabled:opacity-60"
-          style={{ background: "linear-gradient(135deg, #D9531E, #F2891F)", padding: "18px 0" }}
-        >
-          {submitting ? "처리 중..." : "알림 받기 시작"}
-        </button>
-      </div>
-
-      {showSelectionPrompt && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center"
-          style={{ background: "rgba(0,0,0,0.5)" }}
-          onClick={() => setShowSelectionPrompt(false)}
-        >
-          <div
-            className="bg-white w-full max-w-md rounded-t-3xl p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="font-display text-xl text-navy mb-1.5">
-              관심 카테고리를 골라주세요
+            <div className="mt-5" style={{ borderTop: "1px solid #EEF0F2", paddingTop: 16 }}>
+              <div className="text-xs font-bold mb-2" style={{ color: "#0B2540" }}>받기로 한 알림</div>
+              {anyChannel ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {push && (
+                    <span className="text-xs font-bold rounded-full" style={{ padding: "7px 12px", background: "rgba(255,111,15,.1)", color: "#E25100" }}>🔔 앱 푸시</span>
+                  )}
+                  {kakao && (
+                    <span className="text-xs font-bold rounded-full" style={{ padding: "7px 12px", background: "#FFF6DE", color: "#8A6100" }}>💬 카카오톡 알림톡</span>
+                  )}
+                  <span className="text-xs font-bold rounded-full" style={{ padding: "7px 12px", color: "#6B7480", background: "#F5F6F8" }}>주간 약 {estAlerts}건</span>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setObStep(3)}
+                  className="flex items-center gap-2.5 w-full text-left rounded-2xl"
+                  style={{ border: "1.5px solid #E5484D", background: "#FDEEE8", padding: "13px 15px" }}
+                >
+                  <span style={{ fontSize: 15 }}>⚠️</span>
+                  <span className="flex-1 text-xs font-bold" style={{ color: "#E5484D", lineHeight: 1.5 }}>
+                    알림 받을 방법이 없어요 · 앱 푸시나 카카오톡 중 하나를 켜주세요
+                  </span>
+                  <span className="text-xs flex-shrink-0" style={{ color: "#E5484D" }}>수정 ›</span>
+                </button>
+              )}
             </div>
-            <p className="text-sm text-gray500 mb-5 leading-relaxed">
-              어떤 매물 알림을 받을지 알아야 딱 맞는 특가만 보내드릴 수 있어요.
+
+            <div className="mt-5 rounded-2xl overflow-hidden" style={{ border: "1.5px solid #E4E7EB" }}>
+              <button
+                onClick={() => {
+                  const all = agreeTos && agreePrivacy && kakao;
+                  setAgreeTos(!all);
+                  setAgreePrivacy(!all);
+                  setKakao(!all);
+                }}
+                className="flex items-center gap-2.5 w-full text-left"
+                style={{ borderBottom: "1px solid #EEF0F2", background: "#FAFBFC", padding: "14px 15px" }}
+              >
+                <span
+                  className="rounded-md flex items-center justify-center flex-shrink-0 text-white font-black"
+                  style={{
+                    width: 22,
+                    height: 22,
+                    fontSize: 13,
+                    background: agreeTos && agreePrivacy && kakao ? "var(--color-brandOrange)" : "#fff",
+                    border: agreeTos && agreePrivacy && kakao ? "1.5px solid var(--color-brandOrange)" : "1.5px solid #C9CFD6",
+                  }}
+                >
+                  {agreeTos && agreePrivacy && kakao ? "✓" : ""}
+                </span>
+                <span className="text-sm font-bold" style={{ color: "#0B2540" }}>약관 전체 동의</span>
+              </button>
+
+              {[
+                { key: "tos", label: "서비스 이용약관 동의", tag: "필수", on: agreeTos, toggle: () => setAgreeTos(!agreeTos) },
+                { key: "privacy", label: "개인정보 수집·이용 동의", tag: "필수", on: agreePrivacy, toggle: () => setAgreePrivacy(!agreePrivacy) },
+                { key: "marketing", label: "마케팅·광고 정보 수신 (카카오톡 알림톡)", tag: "선택", on: kakao, toggle: () => setKakao(!kakao) },
+              ].map((a) => (
+                <button
+                  key={a.key}
+                  onClick={a.toggle}
+                  className="flex items-center gap-2.5 w-full text-left"
+                  style={{ borderBottom: "1px solid #F1F3F5", background: "#fff", padding: "12px 15px" }}
+                >
+                  <span
+                    className="rounded flex items-center justify-center flex-shrink-0 text-white font-black"
+                    style={{ width: 20, height: 20, fontSize: 12, background: a.on ? "var(--color-brandOrange)" : "#fff", border: a.on ? "1.5px solid var(--color-brandOrange)" : "1.5px solid #C9CFD6" }}
+                  >
+                    {a.on ? "✓" : ""}
+                  </span>
+                  <span className="text-xs font-bold flex-shrink-0" style={{ color: a.tag === "필수" ? "#E25100" : "#6B7480" }}>[{a.tag}]</span>
+                  <span className="flex-1" style={{ fontSize: 12.5, lineHeight: 1.45, color: a.on ? "#1A1F26" : "#6B7480" }}>{a.label}</span>
+                </button>
+              ))}
+            </div>
+            <p className="mt-3" style={{ fontSize: 11, color: "#6B7480", lineHeight: 1.6 }}>
+              개인정보는 재고 알림 발송·본인 확인 목적으로만 사용하며, 알림 해지 시 즉시 파기합니다. 사업자 인증은 MY에서 언제든 추가할 수 있어요.
             </p>
-            <div className="flex flex-col gap-2.5">
-              <button
-                onClick={selectAllAndClose}
-                className="w-full text-white font-bold rounded-2xl text-base"
-                style={{ background: "linear-gradient(135deg, #D9531E, #F2891F)", padding: "16px 0" }}
-              >
-                🎯 전체 카테고리·지역 다 받을게요
-              </button>
-              <button
-                onClick={goPickManually}
-                className="w-full font-bold rounded-2xl text-base border-2 border-gray200 text-navy"
-                style={{ padding: "16px 0" }}
-              >
-                📋 직접 선택할게요
-              </button>
-            </div>
+
+            {pushStatus === "denied" && (
+              <div className="text-sm rounded-lg mt-3" style={{ color: "var(--color-orange)", background: "var(--color-dangerBg)", padding: "12px 16px" }}>
+                브라우저 알림이 차단돼 있어요. 주소창 왼쪽 자물쇠 아이콘에서 알림을 허용해주세요.
+              </div>
+            )}
+            {pushStatus === "unsupported" && (
+              <div className="text-sm rounded-lg mt-3 leading-relaxed" style={{ color: "#6B7480", background: "#F5F6F8", padding: "12px 16px" }}>
+                {typeof navigator !== "undefined" && /iPhone|iPad/.test(navigator.userAgent) ? (
+                  <>
+                    아이폰은 <b style={{ color: "#1A1F26" }}>공유 버튼 → &quot;홈 화면에 추가&quot;</b>로 앱을 설치해야
+                    알림을 받을 수 있어요. 지금은 가입만 진행하고, 나중에 홈 화면에 추가한 뒤 다시 접속하시면
+                    알림이 활성화돼요.
+                  </>
+                ) : (
+                  "현재 브라우저에서는 기기 알림을 지원하지 않아요. 매물은 리스트에서 계속 확인할 수 있어요."
+                )}
+              </div>
+            )}
+            {error && <div className="text-sm font-medium mt-3" style={{ color: "var(--color-orange)" }}>{error}</div>}
           </div>
+        )}
+      </div>
+
+      {!alreadyMember && (
+        <div style={{ padding: "14px 22px 24px", borderTop: "1px solid #EEF0F2", background: "#fff" }}>
+          <button
+            onClick={goNext}
+            disabled={submitting}
+            className="w-full font-black rounded-2xl text-white disabled:opacity-60"
+            style={{
+              padding: "18px 0",
+              fontSize: 17,
+              transition: "all .2s",
+              background: obCtaDisabled ? "#C9CFD6" : "linear-gradient(135deg,#E25100,#FF6F0F)",
+              boxShadow: obCtaDisabled ? "none" : "0 8px 20px rgba(226,81,0,.3)",
+            }}
+          >
+            {submitting ? "처리 중..." : obCtaLabel}
+          </button>
         </div>
       )}
+
+      <Toast message={toastMessage} />
     </main>
   );
 }

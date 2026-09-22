@@ -45,16 +45,16 @@ export default function InstallAppButton() {
     <>
       <button
         onClick={handleClick}
-        className="w-full flex items-center gap-3 rounded-2xl border-2 border-gray200 px-4 py-3.5 text-left active:scale-[0.98] transition-transform"
+        className="w-full flex items-center gap-2.5 text-left"
+        style={{ background: "none", border: "none", padding: 0 }}
       >
-        <span className="text-2xl flex-shrink-0">📲</span>
+        <span className="flex-shrink-0" style={{ fontSize: 22 }}>📲</span>
         <span className="flex-1 min-w-0">
-          <span className="block text-sm font-bold text-navy">홈 화면에 추가하기</span>
-          <span className="block text-xs text-gray500 mt-0.5">
+          <span className="block font-bold" style={{ fontSize: 13.5, color: "#0B2540" }}>홈 화면에 추가하기</span>
+          <span className="block mt-0.5" style={{ fontSize: 11.5, color: "#6B7480" }}>
             앱처럼 바로 열고, 마감 알림도 놓치지 마세요
           </span>
         </span>
-        <span className="text-gray500 flex-shrink-0">›</span>
       </button>
 
       {showIOSGuide && (

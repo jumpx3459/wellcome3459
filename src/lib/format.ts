@@ -21,6 +21,13 @@ export function formatCountdown(closesAt: string): { label: string; urgent: bool
   };
 }
 
+// closesAt 기준 마감 여부/긴급 여부만 필요할 때(카운트다운 숫자 자체는 필요 없을 때) 사용.
+// Date.now() 호출을 이 함수 안에 가둬서, 호출부(렌더 본문)에서 impure 함수를 직접 쓰지 않게 함.
+export function dealUrgencyState(closesAt: string): { closed: boolean; urgent: boolean } {
+  const diffMs = new Date(closesAt).getTime() - Date.now();
+  return { closed: diffMs <= 0, urgent: diffMs > 0 && diffMs < 1000 * 60 * 60 * 3 };
+}
+
 export function formatPrice(n: number) {
   return n.toLocaleString("ko-KR") + "원";
 }
@@ -46,4 +53,17 @@ export function parsePriceInput(raw: string) {
 export function formatMemberNo(n: number | null | undefined) {
   if (n === null || n === undefined) return "";
   return `JX-${String(n).padStart(5, "0")}`;
+}
+
+// "3시간 전" · "방금" 형태의 상대 시각 — 등록 시각/알림 발송 시각 등 여러 화면에서 재사용.
+export function formatRelativeTime(iso?: string | null): string | null {
+  if (!iso) return null;
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diffMs / 60000);
+  if (min < 1) return "방금";
+  if (min < 60) return `${min}분 전`;
+  const hour = Math.floor(min / 60);
+  if (hour < 24) return `${hour}시간 전`;
+  const day = Math.floor(hour / 24);
+  return `${day}일 전`;
 }

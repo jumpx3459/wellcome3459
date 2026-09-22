@@ -30,6 +30,7 @@ function DealsPageInner() {
     initialCat && mockCategories.includes(initialCat) ? initialCat : "전체"
   );
   const [activeRegion, setActiveRegion] = useState<string>("전체");
+  const [sort, setSort] = useState<"urgent" | "disc">("urgent");
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return; // 데모 모드: mockDeals 사용
@@ -117,7 +118,13 @@ function DealsPageInner() {
   const notExpired = deals.filter((d) => new Date(d.closes_at).getTime() > now);
   const sourceList = view === "active" ? notExpired : closedDeals;
   const byCategory = activeCat === "전체" ? sourceList : sourceList.filter((d) => d.category === activeCat);
-  const filtered = activeRegion === "전체" ? byCategory : byCategory.filter((d) => d.region === activeRegion);
+  const byRegion = activeRegion === "전체" ? byCategory : byCategory.filter((d) => d.region === activeRegion);
+  const filtered = [...byRegion].sort((a, b) => {
+    if (sort === "urgent") return new Date(a.closes_at).getTime() - new Date(b.closes_at).getTime();
+    const discA = a.original_price ? (a.original_price - a.deal_price) / a.original_price : 0;
+    const discB = b.original_price ? (b.original_price - b.deal_price) / b.original_price : 0;
+    return discB - discA;
+  });
 
   // 카테고리별 평균 할인율 — 특정 매물이 같은 카테고리 평균보다 눈에 띄게 저렴하면 배지로 알려줍니다.
   const avgDiscountByCategory: Record<string, number> = {};
@@ -139,7 +146,7 @@ function DealsPageInner() {
     <main className="flex flex-col min-h-screen">
       <div
         className="px-5 pt-5 pb-3 text-white"
-        style={{ background: "linear-gradient(120deg, #0B2540, #2D5A8C)" }}
+        style={{ background: "linear-gradient(120deg, #04101C, #1A4B78)" }}
       >
         <div className="flex items-center gap-2 mb-3">
           <Link href="/" className="bg-white rounded-lg px-3 py-2 inline-block">
@@ -151,14 +158,9 @@ function DealsPageInner() {
           <div className="text-xs font-bold tracking-widest whitespace-nowrap" style={{ color: "#FFD166" }}>
             오늘의 덤핑 매물
           </div>
-          <div className="flex items-center gap-3 whitespace-nowrap">
-            <Link href="/mypage" className="text-sm text-white/70 font-bold py-2 -my-2">
-              내 정보
-            </Link>
-            <Link href="/support" className="text-sm font-bold py-2 -my-2" style={{ color: "#FBB454" }}>
-              🏛️ 정부지원금
-            </Link>
-          </div>
+          <Link href="/support" className="text-sm font-bold py-2 -my-2 whitespace-nowrap" style={{ color: "var(--color-brandOrangeAccent)" }}>
+            🏛️ 정부지원금
+          </Link>
         </div>
         <h1 className="font-display text-2xl mt-1.5">
           {view === "active" ? "지금 놓치면 마감" : "지난 마감 매물"}
@@ -193,11 +195,12 @@ function DealsPageInner() {
           <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
             <button
               onClick={() => setActiveCat("전체")}
-              className={`text-sm px-4 py-2.5 rounded-full font-bold whitespace-nowrap ${
+              className={`text-sm px-4 py-2.5 rounded-full font-bold whitespace-nowrap flex items-center gap-1.5 ${
                 activeCat === "전체" ? "bg-white text-navy" : "text-white"
               }`}
               style={activeCat === "전체" ? {} : { background: "rgba(255,255,255,0.22)" }}
             >
+              <span className="text-base">🗃️</span>
               전체
             </button>
             {mockCategories.map((c) => {
@@ -251,6 +254,17 @@ function DealsPageInner() {
       </div>
 
       <div className="flex-1 bg-gray100 px-4 py-3.5 flex flex-col gap-3">
+        {filtered.length > 0 && (
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-gray500">{filtered.length}건</span>
+            <button
+              onClick={() => setSort(sort === "urgent" ? "disc" : "urgent")}
+              className="text-xs font-bold text-navy bg-white border border-gray200 rounded-full px-3 py-1.5"
+            >
+              {sort === "urgent" ? "마감 임박순" : "할인율순"} ⇅
+            </button>
+          </div>
+        )}
         {filtered.length === 0 && (
           view === "active" ? (
             <EmptyState category={activeCat} region={activeRegion} />
@@ -318,11 +332,18 @@ function DealsPageInner() {
                     ? d.location
                     : `잔여 ${d.remaining_qty}${d.quantity_unit || "개"} · ${d.location}`}
                 </div>
-                <div className="text-lg font-black mt-2" style={{ color: isClosed ? "#6B7480" : "#0B2540" }}>
-                  <span className="text-sm text-gray500 font-normal line-through mr-2">
+                <div className="flex items-baseline gap-1.5 mt-2">
+                  <span className="text-sm text-gray500 font-normal line-through">
                     {formatPrice(d.original_price)}
                   </span>
-                  {formatPrice(d.deal_price)}
+                  <span className="text-lg font-black" style={{ color: isClosed ? "#6B7480" : "#0B2540" }}>
+                    {formatPrice(d.deal_price)}
+                  </span>
+                  {!isClosed && discountPct > 0 && (
+                    <span className="text-sm font-black" style={{ color: "#E25100" }}>
+                      -{Math.round(discountPct)}%
+                    </span>
+                  )}
                 </div>
                 {showHotBadge && (
                   <div

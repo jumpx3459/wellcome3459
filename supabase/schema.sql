@@ -185,6 +185,13 @@ create policy "deals_public_select" on public.deals
 create policy "interests_self" on public.interests
   for all using (auth.uid() = member_id) with check (auth.uid() = member_id);
 
+-- 알림 발송 기록: 마이페이지에서 본인이 받은 알림 개수/목록을 보여주려면 조회가 필요함.
+-- 기록 자체는 항상 service_role(sendPush.ts)이 남기므로 별도 insert 정책은 불필요 —
+-- RLS 없이 방치돼 있던 걸 마이페이지에서 처음 조회하게 되면서 함께 잠갔다.
+alter table public.notification_logs enable row level security;
+create policy "notification_logs_self_select" on public.notification_logs
+  for select using (auth.uid() = member_id);
+
 -- 판매자 등록 신청: 누구나(비회원 포함) 신청서는 제출 가능, 조회/승인은 관리자(서비스 키)만
 alter table public.seller_requests enable row level security;
 create policy "seller_requests_public_insert" on public.seller_requests

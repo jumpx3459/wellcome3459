@@ -4,26 +4,15 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { mockCategories, mockDeals, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatRelativeTime } from "@/lib/format";
 import SplashScreen from "@/components/SplashScreen";
 import OnboardingIntro from "@/components/OnboardingIntro";
 import InstallAppButton from "@/components/InstallAppButton";
 import KakaoChannelButton from "@/components/KakaoChannelButton";
 import CategoryScroller from "@/components/CategoryScroller";
+import AlertInboxHome from "@/components/AlertInboxHome";
 
 const TODAY_BADGE_THRESHOLD = 5; // 이보다 적으면 "오늘 N건" 배너를 아예 숨김 (빈약한 숫자 노출 방지)
-
-function formatRelativeTime(iso?: string | null) {
-  if (!iso) return null;
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const min = Math.floor(diffMs / 60000);
-  if (min < 1) return "방금 등록";
-  if (min < 60) return `${min}분 전`;
-  const hour = Math.floor(min / 60);
-  if (hour < 24) return `${hour}시간 전`;
-  const day = Math.floor(hour / 24);
-  return `${day}일 전`;
-}
 
 const EXAMPLE_DEALS = mockDeals.filter((d) => d.status !== "closed").slice(0, 3);
 
@@ -108,6 +97,9 @@ export default function Home() {
         ⚠️ 인증은 완료됐는데 가입이 안 끝났어요! 가입 마저 하기 →
       </Link>
     )}
+    {isMember ? (
+      <AlertInboxHome />
+    ) : (
     <main className="flex flex-col min-h-screen">
       <div
         className="px-5 pt-4 pb-4 text-white"
@@ -132,7 +124,7 @@ export default function Home() {
         </div>
 
         <h1 className="font-display text-xl leading-snug drop-shadow-sm">
-          <span style={{ color: "#F2891F" }}>남는 재고는 빠르게 알리고,</span> 급한 재고는 남보다 먼저 잡으세요.
+          <span style={{ color: "#FF6F0F" }}>남는 재고는 빠르게 알리고,</span> 급한 재고는 남보다 먼저 잡으세요.
         </h1>
         <p className="text-white/85 text-base mt-4 leading-relaxed">
           <span className="hidden sm:inline">
@@ -146,7 +138,7 @@ export default function Home() {
           <Link
             href="/deals"
             className="inline-flex items-center gap-1.5 mt-4 text-xs font-bold px-3 py-2 rounded-full"
-            style={{ background: "rgba(242,137,31,0.18)", color: "#FBB454" }}
+            style={{ background: "rgba(255,111,15,0.2)", color: "var(--color-brandOrangeAccent)" }}
           >
             🔥 오늘 등록된 덤핑 매물 {todayCount}건 · 지금 확인하기 →
           </Link>
@@ -192,7 +184,9 @@ export default function Home() {
           같은 "카카오 버튼" 스타일로 나란히 있으면 가입과 중복돼 보여서
           매물을 먼저 보여준 뒤(아래) 저관여 위치로 옮김. */}
       <div className="px-5 pt-5">
-        <InstallAppButton />
+        <div className="rounded-2xl border-2 border-gray200 px-4 py-3.5">
+          <InstallAppButton />
+        </div>
       </div>
 
       {/* 매물 예시 — 실제 매물이 있으면 실제로, 없으면 예시로 "이런 특가가 온다"는 감을 줌 */}
@@ -223,7 +217,7 @@ export default function Home() {
                   {discountPct > 0 && (
                     <div
                       className="absolute top-0 right-0 text-sm font-black text-white px-3 py-1.5 rounded-bl-2xl"
-                      style={{ background: "linear-gradient(135deg, #D9531E, #F2891F)" }}
+                      style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)" }}
                     >
                       -{discountPct}%
                     </div>
@@ -297,15 +291,15 @@ export default function Home() {
         <Link
           href="/sell"
           className="flex items-center justify-between rounded-2xl mt-1"
-          style={{ background: "rgba(242,137,31,0.10)", border: "2px solid #F2891F", padding: "16px 20px" }}
+          style={{ background: "rgba(255,111,15,0.10)", border: "2px solid #FF6F0F", padding: "16px 20px" }}
         >
           <div>
             <div className="text-base font-black text-navy">📦 잠든 재고, 깨워서 현금으로</div>
-            <div className="text-xs font-bold mt-0.5" style={{ color: "#D9531E" }}>
+            <div className="text-xs font-bold mt-0.5" style={{ color: "#E25100" }}>
               판매 등록은 무료 · 지금 등록하기
             </div>
           </div>
-          <span className="text-xl" style={{ color: "#F2891F" }}>→</span>
+          <span className="text-xl" style={{ color: "#FF6F0F" }}>→</span>
         </Link>
 
         <Link
@@ -352,36 +346,21 @@ export default function Home() {
         className="fixed left-1/2 -translate-x-1/2 w-full max-w-md px-5 pb-6 pt-3 bg-white"
         style={{ boxShadow: "0 -8px 20px rgba(11,37,64,0.08)", bottom: "64px" }}
       >
-        {isMember ? (
-          <Link
-            href="/mypage"
-            className="flex items-center justify-center gap-1.5 text-center font-bold rounded-full"
-            style={{
-              background: "#E8F8EC",
-              border: "1px solid #34C471",
-              color: "#1D8A44",
-              padding: "10px 0",
-              fontSize: "14px",
-            }}
-          >
-            ✓ 알림받는 중 · 설정 변경 →
-          </Link>
-        ) : (
-          <Link
-            href="/signup"
-            className="block text-white text-center font-bold rounded-2xl shadow-lg"
-            style={{
-              background: "linear-gradient(135deg, #D9531E, #F2891F)",
-              padding: "20px 0",
-              fontSize: "19px",
-              boxShadow: "0 10px 24px rgba(217,83,30,0.35)",
-            }}
-          >
-            🔔 무료 알림받기
-          </Link>
-        )}
+        <Link
+          href="/signup"
+          className="block text-white text-center font-bold rounded-2xl shadow-lg"
+          style={{
+            background: "linear-gradient(135deg, #E25100, #FF6F0F)",
+            padding: "20px 0",
+            fontSize: "19px",
+            boxShadow: "0 10px 24px rgba(226,81,0,0.35)",
+          }}
+        >
+          🔔 무료 알림받기
+        </Link>
       </div>
     </main>
+    )}
     </SplashScreen>
   );
 }

@@ -129,7 +129,7 @@
    ========================================================================== */
 
 :focus-visible {
-  outline: 2px solid var(--color-brandOrange, #f2891f);
+  outline: 2px solid var(--color-brandOrange, #FF6F0F);
   outline-offset: 2px;
 }
 input:focus-visible,
