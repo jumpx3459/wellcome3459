@@ -175,6 +175,12 @@ export default function MyPage() {
         document.getElementById("referral")?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     }
+    if (window.location.hash === "#alerts") {
+      setCategoryOpen(true);
+      requestAnimationFrame(() => {
+        document.getElementById("alerts")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
   }, [loading]);
 
   useEffect(() => {
@@ -436,7 +442,7 @@ export default function MyPage() {
             <span className="text-xs font-bold text-white/70">관리자 화면 →</span>
           </Link>
         )}
-        <div>
+        <div id="alerts">
           <button
             type="button"
             onClick={() => setCategoryOpen((v) => !v)}

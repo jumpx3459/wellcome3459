@@ -10,6 +10,7 @@ import OnboardingIntro from "@/components/OnboardingIntro";
 import InstallAppButton from "@/components/InstallAppButton";
 import KakaoChannelButton from "@/components/KakaoChannelButton";
 import CategoryScroller from "@/components/CategoryScroller";
+import AlertInboxHome from "@/components/AlertInboxHome";
 
 const TODAY_BADGE_THRESHOLD = 5; // 이보다 적으면 "오늘 N건" 배너를 아예 숨김 (빈약한 숫자 노출 방지)
 
@@ -108,6 +109,9 @@ export default function Home() {
         ⚠️ 인증은 완료됐는데 가입이 안 끝났어요! 가입 마저 하기 →
       </Link>
     )}
+    {isMember ? (
+      <AlertInboxHome />
+    ) : (
     <main className="flex flex-col min-h-screen">
       <div
         className="px-5 pt-4 pb-4 text-white"
@@ -192,7 +196,9 @@ export default function Home() {
           같은 "카카오 버튼" 스타일로 나란히 있으면 가입과 중복돼 보여서
           매물을 먼저 보여준 뒤(아래) 저관여 위치로 옮김. */}
       <div className="px-5 pt-5">
-        <InstallAppButton />
+        <div className="rounded-2xl border-2 border-gray200 px-4 py-3.5">
+          <InstallAppButton />
+        </div>
       </div>
 
       {/* 매물 예시 — 실제 매물이 있으면 실제로, 없으면 예시로 "이런 특가가 온다"는 감을 줌 */}
@@ -352,36 +358,21 @@ export default function Home() {
         className="fixed left-1/2 -translate-x-1/2 w-full max-w-md px-5 pb-6 pt-3 bg-white"
         style={{ boxShadow: "0 -8px 20px rgba(11,37,64,0.08)", bottom: "64px" }}
       >
-        {isMember ? (
-          <Link
-            href="/mypage"
-            className="flex items-center justify-center gap-1.5 text-center font-bold rounded-full"
-            style={{
-              background: "#E8F8EC",
-              border: "1px solid #34C471",
-              color: "#1D8A44",
-              padding: "10px 0",
-              fontSize: "14px",
-            }}
-          >
-            ✓ 알림받는 중 · 설정 변경 →
-          </Link>
-        ) : (
-          <Link
-            href="/signup"
-            className="block text-white text-center font-bold rounded-2xl shadow-lg"
-            style={{
-              background: "linear-gradient(135deg, #E25100, #FF6F0F)",
-              padding: "20px 0",
-              fontSize: "19px",
-              boxShadow: "0 10px 24px rgba(226,81,0,0.35)",
-            }}
-          >
-            🔔 무료 알림받기
-          </Link>
-        )}
+        <Link
+          href="/signup"
+          className="block text-white text-center font-bold rounded-2xl shadow-lg"
+          style={{
+            background: "linear-gradient(135deg, #E25100, #FF6F0F)",
+            padding: "20px 0",
+            fontSize: "19px",
+            boxShadow: "0 10px 24px rgba(226,81,0,0.35)",
+          }}
+        >
+          🔔 무료 알림받기
+        </Link>
       </div>
     </main>
+    )}
     </SplashScreen>
   );
 }
