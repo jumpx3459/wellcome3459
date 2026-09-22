@@ -428,8 +428,8 @@ export default function MyPage() {
             </div>
             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
               {memberNo != null && (
-                <span className="font-mono" style={{ fontSize: 11.5, color: "rgba(255,255,255,.65)" }}>
-                  {formatMemberNo(memberNo)}
+                <span style={{ fontSize: 11.5, color: "rgba(255,255,255,.65)" }}>
+                  회원번호 <span className="font-mono">{formatMemberNo(memberNo)}</span>
                 </span>
               )}
               {(businessVerified || hasBusinessLicense) && (
@@ -456,6 +456,10 @@ export default function MyPage() {
           <div className="flex-1 rounded-xl text-center" style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px" }}>
             <div className="font-mono font-bold" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{interests.length}</div>
             <div className="mt-0.5" style={{ fontSize: 10.5, color: "rgba(255,255,255,.65)" }}>관심 매물</div>
+          </div>
+          <div className="flex-1 rounded-xl text-center" style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px" }}>
+            <div className="font-mono font-bold" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{referrals.length}</div>
+            <div className="mt-0.5" style={{ fontSize: 10.5, color: "rgba(255,255,255,.65)" }}>추천 회원</div>
           </div>
         </div>
       </div>
@@ -988,7 +992,10 @@ export default function MyPage() {
             )}
           </div>
 
-          <div className="flex flex-col gap-2 mt-3">
+          <p className="text-xs text-gray500 mt-4 mb-2 leading-relaxed">
+            내가 추천한 회원은 여기서 확인할 수 있어요. 상세 관리 대시보드는 준비 중이에요.
+          </p>
+          <div className="flex flex-col gap-2">
             {referrals.length === 0 ? (
               <p className="text-xs text-gray500 text-center py-4">
                 아직 추천으로 가입한 회원이 없어요. 위 링크를 공유해보세요!

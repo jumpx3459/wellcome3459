@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckCircle } from "lucide-react";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockCategories, mockRegions, categoryIcons, quantityUnits } from "@/lib/mockData";
 import ImageUploader from "@/components/ImageUploader";
 import VideoUploader from "@/components/VideoUploader";
@@ -12,6 +13,22 @@ export default function SellPage() {
   const [companyName, setCompanyName] = useState("");
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
+
+  // 로그인한 회원이면 인증된 번호를 미리 채워준다 — 대리 등록(다른 담당자
+  // 연락처로 접수) 케이스가 있어서 수정은 그대로 허용한다.
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return;
+    (async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return;
+      const { data: member } = await supabase
+        .from("members")
+        .select("phone")
+        .eq("id", userData.user.id)
+        .maybeSingle();
+      if (member?.phone) setContactPhone(member.phone);
+    })();
+  }, []);
   const [category, setCategory] = useState<string>("");
   const [region, setRegion] = useState<string>("");
   const [productName, setProductName] = useState("");
