@@ -414,6 +414,10 @@ function SignupPageInner() {
       showToast("관심 카테고리를 1개 이상 골라주세요");
       return;
     }
+    if (obStep === 3 && !anyChannel) {
+      showToast("앱 푸시나 카카오톡 중 하나는 켜주세요");
+      return;
+    }
     if (obStep === 4) {
       if (!verified) {
         showToast("휴대폰 인증을 먼저 완료해주세요");
@@ -657,6 +661,18 @@ function SignupPageInner() {
             <p className="mt-3.5" style={{ fontSize: 11.5, color: "#6B7480", lineHeight: 1.6 }}>
               두 가지 모두 기본으로 켜져 있어요. 카카오톡 채널은 앱을 안 켜도 알림톡으로 특가를 받아볼 수 있습니다.
             </p>
+
+            {!anyChannel && (
+              <div
+                className="flex items-center gap-2.5 w-full text-left rounded-2xl mt-3.5"
+                style={{ border: "1.5px solid #E5484D", background: "#FDEEE8", padding: "13px 15px" }}
+              >
+                <span style={{ fontSize: 15 }}>⚠️</span>
+                <span className="flex-1 text-xs font-bold" style={{ color: "#E5484D", lineHeight: 1.5 }}>
+                  알림 받을 방법이 없어요 · 앱 푸시나 카카오톡 중 하나를 켜주세요
+                </span>
+              </div>
+            )}
           </div>
         )}
 
