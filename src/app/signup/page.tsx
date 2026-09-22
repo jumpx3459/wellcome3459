@@ -241,20 +241,25 @@ function SignupPageInner() {
     // 팝업 차단 회피 — 사용자 클릭과 같은 동기 호출 스택에서 빈 창을 먼저 열어두고,
     // upsert 성공 후에 카카오 채널 URL로 이동시킵니다(비동기 호출 이후에 열면 팝업이 막힘).
     const kakaoWindow = kakao ? window.open("", "_blank") : null;
+    debugLog(`[signup] submit start kakao=${kakao} kakaoWindow=${kakaoWindow ? (kakaoWindow === window ? "SELF(same-tab)" : "new-window") : "null(blocked?)"}`);
 
     setSubmitting(true);
 
-    let pushResult: Awaited<ReturnType<typeof subscribeToPush>> | null = null;
-    if (push) {
-      pushResult = await subscribeToPush();
-      if (pushResult.status === "denied") setPushStatus("denied");
-      else if (pushResult.status === "unsupported") setPushStatus("unsupported");
-      else setPushStatus("granted");
-    }
-
+    // 버그 수정: 예전엔 이 시점에 곧바로 subscribeToPush()를 기다렸는데,
+    // 이 함수는 브라우저 알림 권한 요청(Notification.requestPermission())을
+    // 포함해서 사용자가 응답할 때까지 무한정 멈춰 있을 수 있다. 그러는 동안
+    // 위에서 미리 열어둔 카카오 창은 리다이렉트되지 않은 채 about:blank로
+    // 방치돼 "빈 화면으로 이동한 채 멈췄다"처럼 보인다. 그래서 푸시 권한
+    // 요청은 카카오 창의 운명(리다이렉트 또는 닫기)이 결정된 뒤로 미룬다.
     if (!isSupabaseConfigured || !supabase) {
       // 데모 모드: 실제 저장 없이 다음 화면으로 이동
       if (kakaoWindow) kakaoWindow.close();
+      if (push) {
+        const pushResult = await subscribeToPush();
+        if (pushResult.status === "denied") setPushStatus("denied");
+        else if (pushResult.status === "unsupported") setPushStatus("unsupported");
+        else setPushStatus("granted");
+      }
       await new Promise((r) => setTimeout(r, 500));
       setSubmitting(false);
       router.push(returnTo || "/deals");
@@ -296,6 +301,7 @@ function SignupPageInner() {
         ...(referredById ? { referred_by: referredById } : {}),
       });
       if (memberError) {
+        debugLog(`[signup] members upsert error code=${memberError.code} closing kakaoWindow=${!!kakaoWindow}`);
         if (kakaoWindow) kakaoWindow.close();
         setError(
           memberError.code === "23505"
@@ -307,8 +313,17 @@ function SignupPageInner() {
       }
 
       if (kakaoWindow) {
+        debugLog(`[signup] redirecting kakaoWindow -> ${KAKAO_CHANNEL_URL}`);
         kakaoWindow.location.href = KAKAO_CHANNEL_URL;
         kakaoRedirected = true;
+      }
+
+      let pushResult: Awaited<ReturnType<typeof subscribeToPush>> | null = null;
+      if (push) {
+        pushResult = await subscribeToPush();
+        if (pushResult.status === "denied") setPushStatus("denied");
+        else if (pushResult.status === "unsupported") setPushStatus("unsupported");
+        else setPushStatus("granted");
       }
 
       const { data: catRows } = await supabase
@@ -344,7 +359,8 @@ function SignupPageInner() {
       } catch {}
 
       router.push(returnTo || "/deals");
-    } catch {
+    } catch (e) {
+      debugLog(`[signup] submit catch ${e instanceof Error ? e.message : String(e)} closing kakaoWindow=${!!(kakaoWindow && !kakaoRedirected)}`);
       if (kakaoWindow && !kakaoRedirected) kakaoWindow.close();
       setError("가입 처리 중 오류가 발생했습니다.");
     } finally {
