@@ -589,7 +589,7 @@ function AdminDashboard({
     <main className="flex flex-col min-h-screen">
       <div
         className="px-5 pt-6 pb-5 text-white flex items-center justify-between"
-        style={{ background: "#0B2540" }}
+        style={{ background: "linear-gradient(120deg,#04101C,#1A4B78)" }}
       >
         <div>
           <div className="flex items-center gap-2 mb-2">
@@ -614,7 +614,7 @@ function AdminDashboard({
             </div>
           )}
           {interests.filter((i) => !i.contacted).length > 0 && (
-            <div className="text-xs font-bold mt-1" style={{ color: "#FF9E7A" }}>
+            <div className="text-xs font-bold mt-1" style={{ color: "var(--color-brandOrangeAccent)" }}>
               🔔 미연락 리드 {interests.filter((i) => !i.contacted).length}건
             </div>
           )}
@@ -780,7 +780,7 @@ function AdminDashboard({
               <div className="flex items-center gap-1.5 mt-2">
                 <span
                   className="text-xs font-bold px-2 py-1 rounded-full flex-shrink-0"
-                  style={{ background: "#FFF6E5", color: "#B45309" }}
+                  style={{ background: "#FFF4E0", color: "#966B00" }}
                 >
                   인증 대기중
                 </span>
