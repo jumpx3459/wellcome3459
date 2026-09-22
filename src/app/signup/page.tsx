@@ -706,6 +706,10 @@ function SignupPageInner() {
               </button>
             </div>
 
+            {/* otpError는 인증번호 발송 전 실패(형식/레이트리밋/서버 오류)와 인증 실패
+                양쪽 모두에서 쓰이므로, codeSent 여부와 무관하게 항상 보이는 위치에 렌더링 */}
+            {otpError && <p className="text-sm font-medium mt-2" style={{ color: "#E5484D" }}>{otpError}</p>}
+
             {codeSent && !verified && (
               <div>
                 <div className="flex items-center justify-between mt-4.5 mb-2">
@@ -722,7 +726,6 @@ function SignupPageInner() {
                   onChange={(e) => onCodeChange(e.target.value)}
                   autoFocus
                 />
-                {otpError && <p className="text-sm font-medium mt-2" style={{ color: "#E5484D" }}>{otpError}</p>}
                 {!otpError && (
                   <p className="mt-2" style={{ fontSize: 11.5, color: "#6B7480", lineHeight: 1.55 }}>
                     문자가 오지 않으면 스팸함을 확인하거나 &quot;다시 받기&quot;를 눌러주세요.
