@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CheckCircle } from "lucide-react";
 import { mockCategories, mockRegions, categoryIcons, quantityUnits } from "@/lib/mockData";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
+import { isValidKoreanPhone } from "@/lib/auth";
 
 export default function BuyPage() {
   const [productName, setProductName] = useState("");
@@ -26,6 +27,10 @@ export default function BuyPage() {
     setError(null);
     if (!productName || !contactPhone) {
       setError("찾는 품목과 연락처는 꼭 입력해주세요.");
+      return;
+    }
+    if (!isValidKoreanPhone(contactPhone)) {
+      setError("올바른 휴대폰 번호를 입력해주세요.");
       return;
     }
     setSubmitting(true);

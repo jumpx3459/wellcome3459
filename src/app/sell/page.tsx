@@ -8,6 +8,7 @@ import { mockCategories, mockRegions, categoryIcons, quantityUnits } from "@/lib
 import ImageUploader from "@/components/ImageUploader";
 import VideoUploader from "@/components/VideoUploader";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
+import { fromE164Phone, isValidKoreanPhone } from "@/lib/auth";
 
 export default function SellPage() {
   const [companyName, setCompanyName] = useState("");
@@ -26,7 +27,7 @@ export default function SellPage() {
         .select("phone")
         .eq("id", userData.user.id)
         .maybeSingle();
-      if (member?.phone) setContactPhone(member.phone);
+      if (member?.phone) setContactPhone(fromE164Phone(member.phone));
     })();
   }, []);
   const [category, setCategory] = useState<string>("");
@@ -53,6 +54,10 @@ export default function SellPage() {
     setError(null);
     if (!productName || !quantity || !contactPhone) {
       setError("매물명 · 수량 · 연락처는 꼭 입력해주세요.");
+      return;
+    }
+    if (!isValidKoreanPhone(contactPhone)) {
+      setError("올바른 휴대폰 번호를 입력해주세요.");
       return;
     }
     setSubmitting(true);

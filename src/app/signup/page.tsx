@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { sendOtp, verifyOtp } from "@/lib/auth";
+import { sendOtp, verifyOtp, isValidKoreanPhone } from "@/lib/auth";
 import { mockCategories, mockRegions, categoryIcons, categoryColors } from "@/lib/mockData";
 import { subscribeToPush } from "@/lib/pushClient";
 import { generateRefCode } from "@/lib/refCode";
@@ -167,7 +167,7 @@ function SignupPageInner() {
   };
 
   const handleSendOtp = async () => {
-    if (phone.replace(/[^0-9]/g, "").length < 10) {
+    if (!isValidKoreanPhone(phone)) {
       setOtpError("휴대폰 번호를 정확히 입력해주세요.");
       return;
     }
@@ -682,7 +682,7 @@ function SignupPageInner() {
               />
               <button
                 onClick={handleSendOtp}
-                disabled={otpSending || verified || phone.replace(/[^0-9]/g, "").length < 10}
+                disabled={otpSending || verified || !isValidKoreanPhone(phone)}
                 className="flex-shrink-0 rounded-xl font-bold disabled:opacity-60"
                 style={{ border: "1.5px solid #0B2540", background: "#fff", padding: "0 15px", fontSize: 13.5, color: "#0B2540", whiteSpace: "nowrap" }}
               >
