@@ -408,14 +408,21 @@ export default function MyPage() {
         <div className="text-4xl mb-4">🔒</div>
         <h1 className="font-display text-xl text-navy mb-2">로그인이 필요해요</h1>
         <p className="text-gray500 text-base leading-relaxed mb-6">
-          내 정보를 보려면 먼저 가입해주세요.
+          이미 가입하셨다면 번호 인증만으로 바로 들어올 수 있어요.
         </p>
         <Link
-          href="/signup"
+          href="/login"
           className="text-white text-center font-bold rounded-2xl text-base px-8"
           style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)", padding: "14px 32px" }}
         >
-          알림 받기 시작
+          휴대폰 번호로 로그인
+        </Link>
+        <Link
+          href="/signup"
+          className="mt-3 text-center"
+          style={{ color: "#6B7480", fontSize: 13.5, fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 4 }}
+        >
+          처음이신가요? 알림 신청하기
         </Link>
       </main>
     );

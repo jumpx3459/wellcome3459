@@ -55,6 +55,11 @@ export function formatMemberNo(n: number | null | undefined) {
   return `JX-${String(n).padStart(5, "0")}`;
 }
 
+// OTP 재전송 남은 시간을 "02:59" 형태로 표시 — signup/login 양쪽에서 재사용.
+export function fmtLeft(s: number): string {
+  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+}
+
 // "3시간 전" · "방금" 형태의 상대 시각 — 등록 시각/알림 발송 시각 등 여러 화면에서 재사용.
 export function formatRelativeTime(iso?: string | null): string | null {
   if (!iso) return null;

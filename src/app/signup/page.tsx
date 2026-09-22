@@ -9,16 +9,13 @@ import { subscribeToPush } from "@/lib/pushClient";
 import { generateRefCode } from "@/lib/refCode";
 import Toast, { useToast } from "@/components/Toast";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
+import { fmtLeft } from "@/lib/format";
 
 // "01012345678" -> "010****5678" 형태로 화면에만 일부 가려서 보여줍니다
 function maskPhone(phone: string): string {
   const digits = phone.replace(/[^0-9]/g, "");
   if (digits.length < 7) return phone;
   return `${digits.slice(0, 3)}****${digits.slice(-4)}`;
-}
-
-function fmtLeft(s: number): string {
-  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
 
 const KAKAO_CHANNEL_URL = "https://pf.kakao.com/_xbwDJX/friend";
