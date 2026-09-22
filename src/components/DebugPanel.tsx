@@ -5,11 +5,21 @@
 import { useEffect, useState } from "react";
 import { readDebugLog, clearDebugLog, DEBUG_LOG_EVENT } from "@/lib/debugLog";
 
+// 실서비스 도메인(dumpingjumping.com)에서는 일반 사용자에게 노출되지 않도록 숨김.
+// 세션 버그가 완전히 해소됐다고 판단되면 이 컴포넌트/AppShell 마운트/debugLog()
+// 호출부를 통째로 제거할 것 — 그 전까지는 프리뷰(*.vercel.app)/로컬에서는 그대로 보임.
+function isProductionHost(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.location.hostname.endsWith("dumpingjumping.com");
+}
+
 export default function DebugPanel() {
   const [logs, setLogs] = useState<string[]>([]);
   const [open, setOpen] = useState(true);
+  const [isProd, setIsProd] = useState(true);
 
   useEffect(() => {
+    setIsProd(isProductionHost());
     const update = () => setLogs(readDebugLog());
     update();
     window.addEventListener(DEBUG_LOG_EVENT, update);
@@ -22,7 +32,7 @@ export default function DebugPanel() {
     };
   }, []);
 
-  if (logs.length === 0) return null;
+  if (isProd || logs.length === 0) return null;
 
   return (
     <div
