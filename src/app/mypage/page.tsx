@@ -442,7 +442,7 @@ export default function MyPage() {
                     color: businessVerified ? "#7EE2A0" : "rgba(255,255,255,.7)",
                   }}
                 >
-                  {businessVerified ? "✔ 사업자 인증" : "인증 대기중"}
+                  {businessVerified ? "✔ 사업자 인증" : "사업자 인증 대기중"}
                 </span>
               )}
             </div>
