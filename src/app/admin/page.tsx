@@ -1208,32 +1208,44 @@ function AdminDashboard({
         ))}
       </div>
 
-      <section className="mt-8">
-        <h2 className="text-lg font-bold">
+      <section className="mt-8 px-5">
+        <h2 className="text-sm font-bold text-navy">
           🏅 공식 점핑파트너 신청 ({partnerRequests.filter((r) => r.status === "pending").length}건 대기)
         </h2>
-        <div className="mt-3 space-y-2">
+        <div className="mt-3 flex flex-col gap-2">
           {partnerRequests.map((r) => (
-            <div key={r.id} className="rounded-lg border p-3 text-sm">
-              <div className="flex justify-between">
-                <span className="font-semibold">{r.members?.company_name ?? r.members?.phone ?? r.member_id}</span>
+            <div key={r.id} className="bg-white border border-gray200 rounded-2xl px-4 py-4 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-bold text-gray900">{r.members?.company_name ?? r.members?.phone ?? r.member_id}</span>
                 <span
-                  className={
-                    r.status === "pending" ? "text-amber-600" : r.status === "approved" ? "text-green-600" : "text-gray-400"
+                  className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+                  style={
+                    r.status === "pending"
+                      ? { background: "#FFF4E0", color: "#966B00" }
+                      : r.status === "approved"
+                      ? { background: "#E8F8EC", color: "#1D8A44" }
+                      : { background: "#F1F1EF", color: "#6B7480" }
                   }
                 >
-                  {r.status}
+                  {r.status === "pending" ? "심사중" : r.status === "approved" ? "승인됨" : "거절됨"}
                 </span>
               </div>
-              <p className="mt-1 text-gray-600">업종: {r.business_type}</p>
-              <p className="text-gray-600">채널: {r.channel_info}</p>
-              {r.message && <p className="text-gray-500">메모: {r.message}</p>}
+              <p className="mt-1.5 text-gray500">업종: {r.business_type}</p>
+              <p className="text-gray500">채널: {r.channel_info}</p>
+              {r.message && <p className="text-gray400">메모: {r.message}</p>}
               {r.status === "pending" && (
-                <div className="mt-2 flex gap-2">
-                  <button onClick={() => reviewPartnerRequest(r.id, "approved")} className="rounded bg-green-600 px-3 py-1 text-xs text-white">
+                <div className="mt-2.5 flex gap-2">
+                  <button
+                    onClick={() => reviewPartnerRequest(r.id, "approved")}
+                    className="text-white font-bold rounded-lg text-xs px-3.5 py-2"
+                    style={{ background: "#0B2540" }}
+                  >
                     승인
                   </button>
-                  <button onClick={() => reviewPartnerRequest(r.id, "rejected")} className="rounded bg-gray-400 px-3 py-1 text-xs text-white">
+                  <button
+                    onClick={() => reviewPartnerRequest(r.id, "rejected")}
+                    className="font-bold rounded-lg text-xs px-3.5 py-2 border border-gray200 text-gray500"
+                  >
                     거절
                   </button>
                 </div>
