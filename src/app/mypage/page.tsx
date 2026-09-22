@@ -868,6 +868,22 @@ export default function MyPage() {
           </div>
         </div>
 
+        <div className="border-t border-gray200 pt-5">
+          <Link
+            href="/sell"
+            className="flex items-center justify-between rounded-2xl"
+            style={{ background: "rgba(255,111,15,0.10)", border: "2px solid #FF6F0F", padding: "16px 20px" }}
+          >
+            <div>
+              <div className="text-base font-black text-navy">📦 긴급 매물 등록하기</div>
+              <div className="text-xs font-bold mt-0.5" style={{ color: "#E25100" }}>
+                남는 재고 있으세요? 무료로 바로 등록
+              </div>
+            </div>
+            <span className="text-xl" style={{ color: "#FF6F0F" }}>→</span>
+          </Link>
+        </div>
+
         <div id="referral" className="border-t border-gray200 pt-5">
           <div className="text-sm font-bold text-navy mb-1 flex items-center gap-1.5">
             🤝 점핑파트너

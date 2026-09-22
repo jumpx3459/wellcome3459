@@ -254,6 +254,15 @@ function DealsPageInner() {
       </div>
 
       <div className="flex-1 bg-gray100 px-4 py-3.5 flex flex-col gap-3">
+        <Link
+          href="/sell"
+          className="flex items-center justify-between rounded-xl"
+          style={{ background: "rgba(255,111,15,0.10)", border: "1.5px solid #FF6F0F", padding: "11px 16px" }}
+        >
+          <span className="text-sm font-bold text-navy">📦 나도 긴급 매물 등록하기</span>
+          <span className="text-sm font-bold" style={{ color: "#FF6F0F" }}>무료 등록 →</span>
+        </Link>
+
         {filtered.length > 0 && (
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-gray500">{filtered.length}건</span>
