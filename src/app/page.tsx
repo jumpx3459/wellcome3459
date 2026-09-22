@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { mockCategories, mockDeals, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatRelativeTime } from "@/lib/format";
 import SplashScreen from "@/components/SplashScreen";
 import OnboardingIntro from "@/components/OnboardingIntro";
 import InstallAppButton from "@/components/InstallAppButton";
@@ -13,18 +13,6 @@ import CategoryScroller from "@/components/CategoryScroller";
 import AlertInboxHome from "@/components/AlertInboxHome";
 
 const TODAY_BADGE_THRESHOLD = 5; // 이보다 적으면 "오늘 N건" 배너를 아예 숨김 (빈약한 숫자 노출 방지)
-
-function formatRelativeTime(iso?: string | null) {
-  if (!iso) return null;
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const min = Math.floor(diffMs / 60000);
-  if (min < 1) return "방금 등록";
-  if (min < 60) return `${min}분 전`;
-  const hour = Math.floor(min / 60);
-  if (hour < 24) return `${hour}시간 전`;
-  const day = Math.floor(hour / 24);
-  return `${day}일 전`;
-}
 
 const EXAMPLE_DEALS = mockDeals.filter((d) => d.status !== "closed").slice(0, 3);
 
