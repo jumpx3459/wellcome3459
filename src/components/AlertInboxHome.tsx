@@ -254,6 +254,22 @@ export default function AlertInboxHome() {
             알림 조건 넓히기
           </Link>
         </div>
+
+        {/* 회원용 알림함 홈에도 판매 등록 진입점을 유지 — 예전 비회원용 마케팅
+            홈에 있던 배너가 리디자인 과정에서 빠졌던 걸 복원 */}
+        <Link
+          href="/sell"
+          className="flex items-center justify-between rounded-2xl mt-3"
+          style={{ background: "rgba(255,111,15,.1)", border: "2px solid var(--color-brandOrange)", padding: "16px 20px" }}
+        >
+          <div>
+            <div className="text-base font-black" style={{ color: "#0B2540" }}>📦 잠든 재고, 깨워서 현금으로</div>
+            <div className="text-xs font-bold mt-0.5" style={{ color: "#E25100" }}>
+              판매 등록은 무료 · 지금 등록하기
+            </div>
+          </div>
+          <span className="text-xl" style={{ color: "var(--color-brandOrange)" }}>→</span>
+        </Link>
       </div>
 
       <Toast message={toastMessage} />

@@ -74,11 +74,14 @@ function SignupPageInner() {
     "idle"
   );
   const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string>(""); // TEMP DEBUG — 세션 소실 버그 진단용
 
   const applySession = (user: { id: string; phone?: string | null } | null | undefined) => {
     if (user && !user.phone) {
       // 카카오 로그인 시절 만들어진, 전화번호가 없는 낡은 세션 — 로그아웃시켜
       // 정상적인 문자 인증 흐름으로 다시 시작하게 합니다.
+      // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
+      setDebugInfo(`⚠️ signOut 발동! user.id=${user.id.slice(0, 8)} user.phone=${JSON.stringify(user.phone)}`);
       supabase?.auth.signOut();
       return;
     }
@@ -115,7 +118,7 @@ function SignupPageInner() {
       .select("id")
       .eq("id", authUserId)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         const already = Boolean(data);
         setAlreadyMember(already);
         if (already) {
@@ -123,6 +126,13 @@ function SignupPageInner() {
             localStorage.removeItem("dj_signup_pending");
           } catch {}
         }
+        // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
+        const { data: sessionCheck } = await supabase!.auth.getSession();
+        setDebugInfo(
+          `already=${already} authUserId=${authUserId.slice(0, 8)} session=${
+            sessionCheck.session ? "EXISTS" : "NULL"
+          } sessionUserId=${sessionCheck.session?.user?.id?.slice(0, 8) ?? "none"}`
+        );
       });
   }, [authUserId]);
 
@@ -414,6 +424,11 @@ function SignupPageInner() {
 
   return (
     <main className="flex flex-col min-h-screen bg-white">
+      {debugInfo && (
+        <div style={{ background: "#000", color: "#0F0", fontSize: 11, fontFamily: "monospace", padding: "6px 10px", wordBreak: "break-all" }}>
+          🐛 DEBUG: {debugInfo}
+        </div>
+      )}
       <div style={{ padding: "20px 22px 14px", borderBottom: "1px solid #EEF0F2" }}>
         <div className="flex items-center gap-3">
           <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#6B7480", padding: 0, lineHeight: 1 }}>
