@@ -266,7 +266,7 @@ export default function BuyPage() {
           onClick={submit}
           disabled={submitting}
           className="w-full font-black rounded-2xl text-white disabled:opacity-60"
-          style={{ background: "#0B2540", padding: "17px 0", fontSize: 16.5 }}
+          style={{ background: "linear-gradient(135deg,#E25100,#FF6F0F)", padding: "17px 0", fontSize: 16.5, boxShadow: "0 8px 20px rgba(226,81,0,.3)" }}
         >
           {submitting ? "등록 중..." : "구매 희망 등록하기"}
         </button>
