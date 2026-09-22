@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from "./supabase";
+import { debugLog } from "./debugLog"; // TEMP DEBUG — "Invalid API key" 원인(레이트리밋 vs 실제 키 오류) 확정용, 확인되면 제거
 
 // 카카오 로그인 대신 휴대폰 SMS OTP만 사용합니다 — 애초 supabase/schema.sql
 // 1번 섹션 주석("휴대폰 인증 기반, Supabase Auth phone 사용")이 원래 의도했던
@@ -69,13 +70,20 @@ export async function sendOtp(phoneInput: string): Promise<Result<null>> {
     "check_and_log_otp_request",
     { p_phone: phoneE164 }
   );
-  if (rateLimitError) return { ok: false, error: rateLimitError.message };
+  if (rateLimitError) {
+    debugLog(`[sendOtp] check_and_log_otp_request RPC error code=${rateLimitError.code} message=${rateLimitError.message}`);
+    return { ok: false, error: rateLimitError.message };
+  }
   if (!(rateLimit as OtpRateLimitResult)?.allowed) {
+    debugLog(`[sendOtp] app-level rate limit blocked: reason=${(rateLimit as OtpRateLimitResult)?.reason} retryAfter=${(rateLimit as OtpRateLimitResult)?.retry_after_seconds}`);
     return { ok: false, error: formatOtpRateLimitMessage(rateLimit as OtpRateLimitResult) };
   }
 
   const { error } = await supabase.auth.signInWithOtp({ phone: phoneE164 });
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    debugLog(`[sendOtp] signInWithOtp error status=${error.status} code=${error.code} name=${error.name} message=${error.message}`);
+    return { ok: false, error: error.message };
+  }
   return { ok: true, data: null };
 }
 
