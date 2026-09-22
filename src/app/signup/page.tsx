@@ -604,6 +604,22 @@ function SignupPageInner() {
               </span>
             </button>
 
+            <button
+              type="button"
+              onClick={() => showToast("곧 지원 예정이에요")}
+              className="w-full flex items-center gap-3 text-left rounded-2xl mt-2.5"
+              style={{ padding: "15px 16px", background: "#F5F6F8", border: "1.5px solid #E4E7EB", cursor: "default" }}
+            >
+              <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 38, height: 38, background: "#E4E7EB", fontSize: 18 }}>📧</span>
+              <span className="flex-1">
+                <span className="block text-sm font-bold" style={{ color: "#9AA3AD" }}>이메일 리포트 (준비중)</span>
+                <span className="block text-xs mt-0.5" style={{ color: "#9AA3AD" }}>일간 요약을 이메일로 받기</span>
+              </span>
+              <span className="rounded-full flex-shrink-0" style={{ width: 46, height: 27, background: "#E4E7EB", position: "relative" }}>
+                <span className="absolute rounded-full" style={{ top: 3, left: 3, width: 21, height: 21, background: "#C9CFD6" }} />
+              </span>
+            </button>
+
             <p className="mt-3.5" style={{ fontSize: 11.5, color: "#6B7480", lineHeight: 1.6 }}>
               두 가지 모두 기본으로 켜져 있어요. 카카오톡 채널은 앱을 안 켜도 알림톡으로 특가를 받아볼 수 있습니다.
             </p>
