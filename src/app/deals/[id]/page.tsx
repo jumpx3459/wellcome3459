@@ -349,84 +349,86 @@ function DealDetailPageInner() {
           <CountdownBadge closesAt={deal.closes_at} size="lg" />
         )}
 
-        <div className="flex items-baseline gap-2.5 flex-wrap">
-          <span className="text-3xl font-black" style={{ color: color.text }}>
-            {formatPrice(deal.deal_price)}
-          </span>
-          <span className="text-base text-gray500 line-through font-semibold">
-            {formatPrice(deal.original_price)}
-          </span>
-          <span
-            className="text-sm font-bold px-2 py-1 rounded-md"
-            style={{ background: color.bg, color: color.text }}
-          >
-            -{percentOff(deal.original_price, deal.deal_price)}%
-          </span>
-          <button
-            type="button"
-            onClick={handleShare}
-            className="ml-auto flex items-center gap-1 text-xs font-bold text-gray500 border border-gray200 rounded-full px-3 py-1.5"
-          >
-            {shareCopied ? "링크 복사됨 ✓" : "공유 ↗"}
-          </button>
+        <div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-xl font-black" style={{ color: "#E25100" }}>
+              -{percentOff(deal.original_price, deal.deal_price)}%
+            </span>
+            <span className="text-3xl font-black" style={{ color: "#0B2540" }}>
+              {formatPrice(deal.deal_price)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-2 mt-1">
+            <span className="text-sm text-gray500">
+              <span className="line-through">{formatPrice(deal.original_price)}</span>
+              {deal.min_order_qty && ` · 최소주문 ${deal.min_order_qty}${deal.quantity_unit || "개"}`}
+            </span>
+            <button
+              type="button"
+              onClick={handleShare}
+              className="flex-shrink-0 flex items-center gap-1 text-xs font-bold text-gray500 border border-gray200 rounded-full px-3 py-1.5"
+            >
+              {shareCopied ? "링크 복사됨 ✓" : "공유 ↗"}
+            </button>
+          </div>
         </div>
         <p className="text-xs text-gray500 -mt-1">창고 출고가 기준이에요 (배송비 별도).</p>
 
         <div>
-          <div className="flex justify-between text-sm text-gray500 mb-1.5">
-            <span>잔여 수량</span>
-            <span>
-              <b style={{ color: color.text }}>{deal.remaining_qty}</b> / {deal.total_qty}
-              {deal.quantity_unit || "개"}
-            </span>
-          </div>
           <div className="h-2.5 bg-gray200 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full"
               style={{ width: `${remainPct}%`, background: color.solid }}
             />
           </div>
-          {deal.min_order_qty && (
-            <div className="text-xs text-gray500 mt-1.5">
-              최소주문수량(MOQ) {deal.min_order_qty}{deal.quantity_unit || "개"}부터 구매 가능
-            </div>
-          )}
+          <div className="flex items-center justify-between mt-1.5">
+            <span className="text-sm font-bold" style={{ color: color.text }}>
+              재고 {remainPct}% 남음{remainPct < 30 ? " · 서두르세요" : ""}
+            </span>
+            <span className="text-sm text-gray500">
+              {deal.remaining_qty}/{deal.total_qty}
+              {deal.quantity_unit || "개"}
+            </span>
+          </div>
         </div>
 
-        <div className="text-sm text-gray500 border-t border-gray200 pt-4 mt-1">
-          <div className="flex justify-between py-1.5">
-            <span>지역</span>
-            <span className="text-gray900 font-medium">{deal.location}</span>
-          </div>
-          <div className="flex justify-between py-1.5">
-            <span>카테고리</span>
-            <span className="text-gray900 font-medium">{deal.category}</span>
-          </div>
-          {deal.package_unit && (
-            <div className="flex justify-between py-1.5">
-              <span>포장 단위</span>
-              <span className="text-gray900 font-medium">{deal.package_unit}</span>
+        <div className="border border-gray200 rounded-2xl overflow-hidden mt-1">
+          {(
+            [
+              { k: "지역", v: deal.location },
+              { k: "카테고리", v: deal.category },
+              deal.package_unit ? { k: "포장 단위", v: deal.package_unit } : null,
+              deal.spec ? { k: "규격", v: deal.spec } : null,
+              deal.origin ? { k: "원산지", v: deal.origin } : null,
+              deal.storage_condition ? { k: "보관조건", v: deal.storage_condition } : null,
+              {
+                k: "수량",
+                v: `${deal.total_qty}${deal.quantity_unit || "개"} 중 ${deal.remaining_qty}${deal.quantity_unit || "개"} 남음`,
+              },
+            ].filter((row): row is { k: string; v: string } => row !== null)
+          ).map((row, i, arr) => (
+            <div key={row.k} className={i < arr.length - 1 ? "flex border-b border-gray200" : "flex"}>
+              <div className="w-24 flex-shrink-0 px-3.5 py-3 text-xs font-bold text-gray500 bg-gray100">
+                {row.k}
+              </div>
+              <div className="flex-1 px-3.5 py-3 text-sm text-gray900">{row.v}</div>
             </div>
-          )}
-          {deal.spec && (
-            <div className="flex justify-between py-1.5">
-              <span>규격</span>
-              <span className="text-gray900 font-medium">{deal.spec}</span>
-            </div>
-          )}
-          {deal.origin && (
-            <div className="flex justify-between py-1.5">
-              <span>원산지</span>
-              <span className="text-gray900 font-medium">{deal.origin}</span>
-            </div>
-          )}
-          {deal.storage_condition && (
-            <div className="flex justify-between py-1.5">
-              <span>보관조건</span>
-              <span className="text-gray900 font-medium">{deal.storage_condition}</span>
-            </div>
-          )}
+          ))}
         </div>
+
+        <Link
+          href="/logistics"
+          className="flex items-center justify-between rounded-2xl"
+          style={{ background: "rgba(11,37,64,.06)", border: "1px solid #1B3A5C", padding: "14px 16px" }}
+        >
+          <span>
+            <span className="block text-sm font-black text-navy">🚚 이 매물 상차 배차 신청</span>
+            <span className="block text-xs mt-0.5" style={{ color: "#1B3A5C" }}>
+              {deal.location} 출발 · 예상 운임 즉시 확인
+            </span>
+          </span>
+          <span style={{ color: "#1B3A5C" }}>→</span>
+        </Link>
 
         {deal.description && (
           <div className="border-t border-gray200 pt-4">
