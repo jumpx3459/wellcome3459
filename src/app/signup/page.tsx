@@ -706,9 +706,11 @@ function SignupPageInner() {
               </button>
             </div>
 
-            {/* otpError는 인증번호 발송 전 실패(형식/레이트리밋/서버 오류)와 인증 실패
-                양쪽 모두에서 쓰이므로, codeSent 여부와 무관하게 항상 보이는 위치에 렌더링 */}
-            {otpError && <p className="text-sm font-medium mt-2" style={{ color: "#E5484D" }}>{otpError}</p>}
+            {/* 발송 전 실패(형식/레이트리밋/서버 오류)는 아직 인증번호 입력칸이 없으니
+                여기서 바로 보여줌. 인증번호 입력 후 실패(오입력 등)는 사용자 시선이
+                아래 인증번호 칸에 있으므로 그 근처에서 별도로 보여줌(아래 블록 참고) —
+                이 자리에 통째로 몰아두면 codeSent 이후엔 화면 위쪽이라 놓치기 쉬웠음. */}
+            {!codeSent && otpError && <p className="text-sm font-medium mt-2" style={{ color: "#E5484D" }}>{otpError}</p>}
 
             {codeSent && !verified && (
               <div>
@@ -726,6 +728,7 @@ function SignupPageInner() {
                   onChange={(e) => onCodeChange(e.target.value)}
                   autoFocus
                 />
+                {otpError && <p className="text-sm font-medium mt-2" style={{ color: "#E5484D" }}>{otpError}</p>}
                 {!otpError && (
                   <p className="mt-2" style={{ fontSize: 11.5, color: "#6B7480", lineHeight: 1.55 }}>
                     문자가 오지 않으면 스팸함을 확인하거나 &quot;다시 받기&quot;를 눌러주세요.
