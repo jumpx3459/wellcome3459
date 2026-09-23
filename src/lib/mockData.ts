@@ -28,8 +28,8 @@ export const quantityUnits = ["개", "박스", "kg", "톤", "팔레트", "세트
 
 const now = Date.now();
 
-// UI 데모용 더미 이미지/영상(picsum.photos, w3schools 샘플 mp4) — 실제 매물 사진/영상
-// 아님. Supabase 미설정(로컬 dev/일부 프리뷰) 상태에서만 쓰이는 fallback 데이터라
+// UI 데모용 더미 이미지/영상(loremflickr.com 키워드 기반 사진, 자동차 소개영상 샘플 1건) —
+// 실제 매물 사진/영상 아님. Supabase 미설정(로컬 dev/일부 프리뷰) 상태에서만 쓰이는 fallback 데이터라
 // 운영 DB(deals 테이블)에는 영향 없음. mockCategories 18개 전부 1건씩 매핑.
 export const mockDeals: Deal[] = [
   {
@@ -43,8 +43,8 @@ export const mockDeals: Deal[] = [
     total_qty: 30,
     remaining_qty: 21,
     closes_at: new Date(now + 1000 * 60 * 60 * 4.2).toISOString(),
-    images: ["https://picsum.photos/seed/frozen-food/800/600", "https://picsum.photos/seed/frozen-food-2/800/600"],
-    video_url: "https://www.w3schools.com/html/mov_bbb.mp4",
+    images: ["https://loremflickr.com/800/600/pork,meat", "https://loremflickr.com/800/600/frozen,meat"],
+    video_url: null,
     description: "냉동 보관 · 박스당 10kg 균일 포장 · 소비기한 여유 3개월 이상",
     package_unit: "10kg 박스",
     origin: "국내산",
@@ -63,8 +63,8 @@ export const mockDeals: Deal[] = [
     total_qty: 55,
     remaining_qty: 12,
     closes_at: new Date(now + 1000 * 60 * 60 * 2.97).toISOString(),
-    images: ["https://picsum.photos/seed/seafood/800/600", "https://picsum.photos/seed/seafood-2/800/600"],
-    video_url: "https://www.w3schools.com/html/mov_bbb.mp4",
+    images: ["https://loremflickr.com/800/600/fish,seafood", "https://loremflickr.com/800/600/fish,market"],
+    video_url: null,
     description: "소비기한 등록일로부터 5일 · 냉동 보관 · 박스당 20kg 균일 포장 · 원산지 증명서 제공 가능",
     package_unit: "20kg 박스",
     origin: "국내산 (제주)",
@@ -83,8 +83,8 @@ export const mockDeals: Deal[] = [
     total_qty: 500,
     remaining_qty: 340,
     closes_at: new Date(now + 1000 * 60 * 60 * 11.66).toISOString(),
-    images: ["https://picsum.photos/seed/tumbler/800/600"],
-    video_url: "https://www.w3schools.com/html/mov_bbb.mp4",
+    images: ["https://loremflickr.com/800/600/tumbler,steel"],
+    video_url: null,
     description: "박스 및 개별 포장 상태 양호 · 사용 흔적 없는 신품 재고 · KC 인증서 보유",
     package_unit: "1개입 개별포장 · 50개입 박스",
     origin: "중국",
@@ -103,8 +103,8 @@ export const mockDeals: Deal[] = [
     total_qty: 1200,
     remaining_qty: 1080,
     closes_at: new Date(now + 1000 * 60 * 60 * 28.2).toISOString(),
-    images: ["https://picsum.photos/seed/umbrella/800/600"],
-    video_url: "https://www.w3schools.com/html/mov_bbb.mp4",
+    images: ["https://loremflickr.com/800/600/umbrella"],
+    video_url: null,
     description: "전 시즌 이월 재고 · 박스 단위(50개입) 판매 · 색상 랜덤 혼합 구성",
   },
   {
@@ -118,8 +118,8 @@ export const mockDeals: Deal[] = [
     total_qty: 800,
     remaining_qty: 512,
     closes_at: new Date(now + 1000 * 60 * 60 * 9.3).toISOString(),
-    images: ["https://picsum.photos/seed/cosmetics/800/600", "https://picsum.photos/seed/cosmetics-2/800/600"],
-    video_url: "https://www.w3schools.com/html/mov_bbb.mp4",
+    images: ["https://loremflickr.com/800/600/lipstick,cosmetics", "https://loremflickr.com/800/600/makeup,cosmetics"],
+    video_url: null,
     description: "정품 인증서 보유 · 색상 혼합 구성 · 유통기한 1년 이상",
   },
   {
@@ -133,8 +133,8 @@ export const mockDeals: Deal[] = [
     total_qty: 3000,
     remaining_qty: 2140,
     closes_at: new Date(now + 1000 * 60 * 60 * 6.5).toISOString(),
-    images: ["https://picsum.photos/seed/earbuds/800/600"],
-    video_url: "https://www.w3schools.com/html/mov_bbb.mp4",
+    images: ["https://loremflickr.com/800/600/earbuds,electronics"],
+    video_url: null,
     description: "박스 개봉·기능 검수 완료 · 정품 충전케이스 포함 · A/S 불가 명시 필요",
   },
   {
@@ -148,8 +148,8 @@ export const mockDeals: Deal[] = [
     total_qty: 10,
     remaining_qty: 4,
     closes_at: new Date(now + 1000 * 60 * 60 * 5.4).toISOString(),
-    images: ["https://picsum.photos/seed/steel/800/600", "https://picsum.photos/seed/steel-2/800/600"],
-    video_url: "https://www.w3schools.com/html/mov_bbb.mp4",
+    images: ["https://loremflickr.com/800/600/steel,industrial", "https://loremflickr.com/800/600/metal,factory"],
+    video_url: null,
     description: "재질 증명서(밀시트) 제공 · 규격 균일 · 직접 방문 실사 가능 · 지게차 상차 지원",
   },
   {
@@ -163,8 +163,8 @@ export const mockDeals: Deal[] = [
     total_qty: 15,
     remaining_qty: 9,
     closes_at: new Date(now + 1000 * 60 * 60 * 20).toISOString(),
-    images: ["https://picsum.photos/seed/machine/800/600"],
-    video_url: "https://www.w3schools.com/html/mov_bbb.mp4",
+    images: ["https://loremflickr.com/800/600/machine,industrial"],
+    video_url: null,
     description: "가동 확인 완료 · 공장 직권 처분 · 상차 지원 가능",
   },
   {
@@ -178,8 +178,8 @@ export const mockDeals: Deal[] = [
     total_qty: 5000,
     remaining_qty: 3200,
     closes_at: new Date(now + 1000 * 60 * 60 * 8.1).toISOString(),
-    images: ["https://picsum.photos/seed/curry/800/600"],
-    video_url: "https://www.w3schools.com/html/mov_bbb.mp4",
+    images: ["https://loremflickr.com/800/600/curry,food"],
+    video_url: null,
     description: "유통기한 3주 이내 · 박스당 40개입 · 상온 보관",
     storage_condition: "상온보관 · 유통기한 임박",
   },
@@ -194,8 +194,8 @@ export const mockDeals: Deal[] = [
     total_qty: 200,
     remaining_qty: 130,
     closes_at: new Date(now + 1000 * 60 * 60 * 33).toISOString(),
-    images: ["https://picsum.photos/seed/desk/800/600"],
-    video_url: "https://www.w3schools.com/html/mov_bbb.mp4",
+    images: ["https://loremflickr.com/800/600/desk,office"],
+    video_url: null,
     description: "전시/반품 재고 · 경미한 스크래치 있음 · 직접 수령 가능",
   },
   {
@@ -209,8 +209,8 @@ export const mockDeals: Deal[] = [
     total_qty: 50000,
     remaining_qty: 41000,
     closes_at: new Date(now + 1000 * 60 * 60 * 15.7).toISOString(),
-    images: ["https://picsum.photos/seed/mask/800/600"],
-    video_url: "https://www.w3schools.com/html/mov_bbb.mp4",
+    images: ["https://loremflickr.com/800/600/mask,medical"],
+    video_url: null,
     description: "KC 인증 완료 · 50매입 박스 단위 · 개별포장",
     quantity_unit: "매",
   },
@@ -225,8 +225,8 @@ export const mockDeals: Deal[] = [
     total_qty: 120,
     remaining_qty: 77,
     closes_at: new Date(now + 1000 * 60 * 60 * 12.4).toISOString(),
-    images: ["https://picsum.photos/seed/laptop/800/600", "https://picsum.photos/seed/laptop-2/800/600"],
-    video_url: "https://www.w3schools.com/html/mov_bbb.mp4",
+    images: ["https://loremflickr.com/800/600/laptop,computer", "https://loremflickr.com/800/600/laptop,office"],
+    video_url: null,
     description: "단순변심 반품 · 미개봉/개봉 혼합 · 개별 검수표 제공",
   },
   {
@@ -240,8 +240,8 @@ export const mockDeals: Deal[] = [
     total_qty: 2000,
     remaining_qty: 1650,
     closes_at: new Date(now + 1000 * 60 * 60 * 40).toISOString(),
-    images: ["https://picsum.photos/seed/paper/800/600"],
-    video_url: "https://www.w3schools.com/html/mov_bbb.mp4",
+    images: ["https://loremflickr.com/800/600/paper,office"],
+    video_url: null,
     description: "박스당 5개입 · 창고 재고 정리",
   },
   {
@@ -255,8 +255,8 @@ export const mockDeals: Deal[] = [
     total_qty: 800,
     remaining_qty: 610,
     closes_at: new Date(now + 1000 * 60 * 60 * 50).toISOString(),
-    images: ["https://picsum.photos/seed/tirechain/800/600"],
-    video_url: "https://www.w3schools.com/html/mov_bbb.mp4",
+    images: ["https://loremflickr.com/800/600/tire,car"],
+    video_url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
     description: "시즌 오프 재고 · 규격별 혼합 구성",
   },
   {
@@ -270,8 +270,8 @@ export const mockDeals: Deal[] = [
     total_qty: 300,
     remaining_qty: 190,
     closes_at: new Date(now + 1000 * 60 * 60 * 18.9).toISOString(),
-    images: ["https://picsum.photos/seed/petfood/800/600"],
-    video_url: "https://www.w3schools.com/html/mov_bbb.mp4",
+    images: ["https://loremflickr.com/800/600/dog,petfood"],
+    video_url: null,
     description: "유통기한 6개월 이상 · 미개봉 · 파렛트 단위 상차",
     storage_condition: "상온보관",
   },
@@ -286,8 +286,8 @@ export const mockDeals: Deal[] = [
     total_qty: 500,
     remaining_qty: 380,
     closes_at: new Date(now + 1000 * 60 * 60 * 24).toISOString(),
-    images: ["https://picsum.photos/seed/toy/800/600"],
-    video_url: "https://www.w3schools.com/html/mov_bbb.mp4",
+    images: ["https://loremflickr.com/800/600/toy,kids"],
+    video_url: null,
     description: "KC 안전인증 완료 · 박스 단위 구성",
   },
   {
@@ -301,8 +301,8 @@ export const mockDeals: Deal[] = [
     total_qty: 20,
     remaining_qty: 14,
     closes_at: new Date(now + 1000 * 60 * 60 * 60).toISOString(),
-    images: ["https://picsum.photos/seed/mixed-pallet/800/600"],
-    video_url: "https://www.w3schools.com/html/mov_bbb.mp4",
+    images: ["https://loremflickr.com/800/600/warehouse,pallet"],
+    video_url: null,
     description: "품목 혼합(생활용품·잡화 등) · 팔레트 단위 일괄 판매 · 직접 실사 권장",
   },
   {
@@ -316,8 +316,8 @@ export const mockDeals: Deal[] = [
     total_qty: 1000,
     remaining_qty: 720,
     closes_at: new Date(now + 1000 * 60 * 60 * 16.2).toISOString(),
-    images: ["https://picsum.photos/seed/misc/800/600"],
-    video_url: "https://www.w3schools.com/html/mov_bbb.mp4",
+    images: ["https://loremflickr.com/800/600/warehouse,goods"],
+    video_url: null,
     description: "분류 미정 잡화 혼합 · 박스 단위 랜덤 구성",
   },
 ];
