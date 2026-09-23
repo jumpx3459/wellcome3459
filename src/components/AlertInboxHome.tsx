@@ -70,7 +70,7 @@ export default function AlertInboxHome() {
         supabase
           .from("deals")
           .select(
-            "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, created_at, location, images, categories(name), regions(name)"
+            "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, created_at, location, images, video_url, categories(name), regions(name)"
           )
           .eq("status", "active")
           .gt("closes_at", new Date().toISOString())
@@ -102,6 +102,7 @@ export default function AlertInboxHome() {
           closes_at: d.closes_at,
           created_at: d.created_at,
           images: d.images ?? [],
+          video_url: d.video_url ?? null,
         }))
       );
     })();
@@ -122,7 +123,17 @@ export default function AlertInboxHome() {
   const matches = (d: Deal) =>
     categories.length > 0 && categories.includes(d.category) && (regions.length === 0 || regions.includes(d.region));
 
+  const [viewer, setViewer] = useState<{ images: string[]; video: string | null; index: number } | null>(null);
+
   const groups = bucketDeals(deals);
+  // 매물 수 적을 땐 큰 카드(임팩트), 많아지면 촘촘한 리스트로 자동 전환
+  const wideLayout = deals.length <= 4;
+
+  const openViewer = (e: React.MouseEvent, images: string[], video: string | null, index = 0) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setViewer({ images, video, index });
+  };
 
   const dismissInstall = () => {
     setShowInstall(false);
@@ -205,13 +216,38 @@ export default function AlertInboxHome() {
                     ⏱ {cd.label}
                   </span>
                 </div>
-                <div className="flex items-start gap-2.5">
-                  <span
-                    className="rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ width: 46, height: 46, fontSize: 22, background: color.bg }}
-                  >
-                    {categoryIcons[d.category] ?? "🗂️"}
-                  </span>
+                <div className={wideLayout ? "flex flex-col gap-2.5" : "flex items-start gap-2.5"}>
+                  {d.images && d.images.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={(e) => openViewer(e, d.images!, d.video_url ?? null)}
+                      className="relative rounded-xl overflow-hidden flex-shrink-0"
+                      style={
+                        wideLayout
+                          ? { width: "100%", aspectRatio: "16/9" }
+                          : { width: 64, height: 64 }
+                      }
+                    >
+                      <img src={d.images[0]} alt={d.title} className="w-full h-full object-cover" />
+                      {d.video_url && (
+                        <span className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,.25)" }}>
+                          <span style={{ fontSize: wideLayout ? 32 : 18, color: "#fff" }}>▶</span>
+                        </span>
+                      )}
+                      {d.images.length > 1 && (
+                        <span className="absolute bottom-1 right-1 rounded font-bold text-white" style={{ fontSize: 10, padding: "1px 5px", background: "rgba(0,0,0,.5)" }}>
+                          1/{d.images.length}
+                        </span>
+                      )}
+                    </button>
+                  ) : (
+                    <span
+                      className="rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={wideLayout ? { width: "100%", height: 120, fontSize: 32, background: color.bg } : { width: 64, height: 64, fontSize: 22, background: color.bg }}
+                    >
+                      {categoryIcons[d.category] ?? "🗂️"}
+                    </span>
+                  )}
                   <span className="flex-1 min-w-0">
                     <span className="block font-bold leading-snug" style={{ fontSize: 14.5, color: "#1A1F26" }}>{d.title}</span>
                     <span className="block mt-0.5" style={{ fontSize: 11.5, color: "#6B7480" }}>
@@ -272,6 +308,33 @@ export default function AlertInboxHome() {
         </Link>
       </div>
 
+      {viewer && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center"
+          style={{ background: "rgba(0,0,0,.92)" }}
+          onClick={() => setViewer(null)}
+        >
+          <button
+            onClick={() => setViewer(null)}
+            className="absolute top-4 right-4 text-white"
+            style={{ fontSize: 28, background: "none", border: "none" }}
+          >
+            ×
+          </button>
+          {viewer.video ? (
+            <video src={viewer.video} controls autoPlay className="max-w-full max-h-[80vh]" onClick={(e) => e.stopPropagation()} />
+          ) : (
+            <img src={viewer.images[viewer.index]} alt="매물 사진" className="max-w-full max-h-[80vh] object-contain" onClick={(e) => e.stopPropagation()} />
+          )}
+          {viewer.images.length > 1 && !viewer.video && (
+            <div className="flex gap-4 mt-4">
+              <button onClick={(e) => { e.stopPropagation(); setViewer({ ...viewer, index: (viewer.index - 1 + viewer.images.length) % viewer.images.length }); }} className="text-white text-xl">‹</button>
+              <span className="text-white text-sm">{viewer.index + 1} / {viewer.images.length}</span>
+              <button onClick={(e) => { e.stopPropagation(); setViewer({ ...viewer, index: (viewer.index + 1) % viewer.images.length }); }} className="text-white text-xl">›</button>
+            </div>
+          )}
+        </div>
+      )}
       <Toast message={toastMessage} />
     </main>
   );
