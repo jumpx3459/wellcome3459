@@ -9,6 +9,9 @@ import CountdownBadge from "@/components/CountdownBadge";
 import AdSlot from "@/components/AdSlot";
 import { formatPrice } from "@/lib/format";
 
+const DEALS_EXAMPLE_THRESHOLD = 5;
+const EXAMPLE_DEALS = mockDeals.filter((d) => d.status !== "closed").slice(0, 4);
+
 export default function DealsPage() {
   return (
     <Suspense fallback={null}>
@@ -125,6 +128,8 @@ function DealsPageInner() {
     const discB = b.original_price ? (b.original_price - b.deal_price) / b.original_price : 0;
     return discB - discA;
   });
+
+  const showExamples = isSupabaseConfigured && view === "active" && filtered.length < DEALS_EXAMPLE_THRESHOLD;
 
   // 카테고리별 평균 할인율 — 특정 매물이 같은 카테고리 평균보다 눈에 띄게 저렴하면 배지로 알려줍니다.
   const avgDiscountByCategory: Record<string, number> = {};
@@ -388,6 +393,41 @@ function DealsPageInner() {
             ? [card, <AdSlot key={`ad-${d.id}`} />]
             : [card];
         })}
+
+        {showExamples && (
+          <div className="mt-2">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs font-bold text-gray500">이런 매물이 올라와요</span>
+              <span className="flex-1" style={{ height: 1, background: "#E4E7EB" }} />
+              <span className="text-[10px] font-bold text-gray500 bg-white border border-gray200 rounded-full" style={{ padding: "2px 7px" }}>예시</span>
+            </div>
+            <div className="flex flex-col gap-3">
+              {EXAMPLE_DEALS.map((d) => {
+                const color = categoryColors[d.category] ?? categoryColors["기타"];
+                return (
+                  <div key={`example-${d.id}`} className="bg-white border border-dashed border-gray200 rounded-2xl px-4 py-4 flex gap-3" style={{ opacity: 0.8 }}>
+                    <div className="w-16 h-16 rounded-xl flex items-center justify-center text-3xl flex-shrink-0" style={{ background: color.bg }}>
+                      {categoryIcons[d.category] ?? "🗂️"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#F1F1EF", color: "#6B7480" }}>
+                        예시 · {d.category}
+                      </div>
+                      <div className="text-base font-bold text-gray900 mt-2">{d.title}</div>
+                      <div className="flex items-baseline gap-1.5 mt-2">
+                        <span className="text-sm text-gray500 font-normal line-through">{formatPrice(d.original_price)}</span>
+                        <span className="text-lg font-black" style={{ color: "#6B7480" }}>{formatPrice(d.deal_price)}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-center text-xs mt-2" style={{ color: "#9AA3AD" }}>
+              실제 매물이 아닌 예시예요 · 매물이 계속 등록되고 있어요
+            </p>
+          </div>
+        )}
 
         <a href="/unsubscribe" className="text-center text-xs text-gray500 underline mt-2 mb-4 py-2">
           알림이 필요 없으신가요? 알림 해지 · 탈퇴

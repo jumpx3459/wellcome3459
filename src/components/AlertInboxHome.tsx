@@ -10,6 +10,8 @@ import InstallAppButton from "@/components/InstallAppButton";
 import Toast, { useToast } from "@/components/Toast";
 
 const INSTALL_DISMISS_KEY = "dj_home_install_dismissed";
+const ALERT_EXAMPLE_THRESHOLD = 5; // 실제 매칭 매물이 이보다 적을 때만 예시 섹션 노출
+const EXAMPLE_DEALS = mockDeals.filter((d) => d.status !== "closed").slice(0, 4);
 
 type FeedGroup = { label: string; items: Deal[] };
 
@@ -277,6 +279,45 @@ export default function AlertInboxHome() {
       {groups.length === 0 && (
         <div className="text-center" style={{ padding: "48px 20px", color: "#6B7480", fontSize: 14 }}>
           아직 조건에 맞는 매물이 없어요. 매물이 뜨면 가장 먼저 알려드릴게요.
+        </div>
+      )}
+
+      {isSupabaseConfigured && deals.length < ALERT_EXAMPLE_THRESHOLD && (
+        <div>
+          <div className="flex items-center gap-2" style={{ padding: "18px 20px 9px" }}>
+            <span className="font-black" style={{ fontSize: 12, color: "#0B2540", letterSpacing: "0.02em" }}>이런 매물이 올라와요</span>
+            <span className="flex-1" style={{ height: 1, background: "#EEF0F2" }} />
+            <span className="text-[10px] font-bold text-gray500 bg-gray100 rounded-full" style={{ padding: "2px 7px" }}>예시</span>
+          </div>
+          {EXAMPLE_DEALS.map((d) => {
+            const color = categoryColors[d.category] ?? categoryColors["기타"];
+            const pct = d.original_price ? Math.round(((d.original_price - d.deal_price) / d.original_price) * 100) : 0;
+            return (
+              <div key={`example-${d.id}`} style={{ borderBottom: "1px solid #F1F3F5", padding: "14px 20px", opacity: 0.8 }}>
+                <div className="flex items-center gap-1.5" style={{ marginBottom: 8 }}>
+                  <span className="font-black rounded" style={{ fontSize: 10.5, padding: "3px 8px", background: "#F1F3F5", color: "#6B7480" }}>예시</span>
+                  <span style={{ fontSize: 11, color: "#6B7480" }}>{d.location}</span>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <span className="rounded-xl flex items-center justify-center flex-shrink-0" style={{ width: 64, height: 64, fontSize: 22, background: color.bg }}>
+                    {categoryIcons[d.category] ?? "🗂️"}
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block font-bold leading-snug" style={{ fontSize: 14.5, color: "#1A1F26" }}>{d.title}</span>
+                    <span className="block mt-0.5" style={{ fontSize: 11.5, color: "#6B7480" }}>{d.category} · {d.location}</span>
+                    <span className="flex items-baseline gap-1.5 mt-1.5">
+                      {pct > 0 && <span className="font-black text-white rounded" style={{ fontSize: 10.5, padding: "2px 6px", background: "#9AA3AD" }}>-{pct}%</span>}
+                      <span className="font-black" style={{ fontSize: 17, color: "#6B7480" }}>{formatPrice(d.deal_price)}</span>
+                      <span style={{ fontSize: 11.5, color: "#9AA3AD", textDecoration: "line-through" }}>{formatPrice(d.original_price)}</span>
+                    </span>
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+          <p className="text-center" style={{ padding: "10px 20px 4px", fontSize: 11.5, color: "#9AA3AD" }}>
+            실제 매물이 아닌 예시예요 · 매물이 등록되면 실시간으로 알려드려요
+          </p>
         </div>
       )}
 
