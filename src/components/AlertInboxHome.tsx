@@ -299,9 +299,18 @@ export default function AlertInboxHome() {
                   <span style={{ fontSize: 11, color: "#6B7480" }}>{d.location}</span>
                 </div>
                 <div className="flex items-start gap-2.5">
-                  <span className="rounded-xl flex items-center justify-center flex-shrink-0" style={{ width: 64, height: 64, fontSize: 22, background: color.bg }}>
-                    {categoryIcons[d.category] ?? "🗂️"}
-                  </span>
+                  {d.images && d.images.length > 0 ? (
+                    <img
+                      src={d.images[0]}
+                      alt={d.title}
+                      className="rounded-xl object-cover flex-shrink-0"
+                      style={{ width: 64, height: 64 }}
+                    />
+                  ) : (
+                    <span className="rounded-xl flex items-center justify-center flex-shrink-0" style={{ width: 64, height: 64, fontSize: 22, background: color.bg }}>
+                      {categoryIcons[d.category] ?? "🗂️"}
+                    </span>
+                  )}
                   <span className="flex-1 min-w-0">
                     <span className="block font-bold leading-snug" style={{ fontSize: 14.5, color: "#1A1F26" }}>{d.title}</span>
                     <span className="block mt-0.5" style={{ fontSize: 11.5, color: "#6B7480" }}>{d.category} · {d.location}</span>

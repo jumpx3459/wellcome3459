@@ -394,9 +394,17 @@ function DealsPageInner() {
                 const color = categoryColors[d.category] ?? categoryColors["기타"];
                 return (
                   <Link key={`example-${d.id}`} href={`/deals/example-${d.id}`} className="bg-white border border-dashed border-gray200 rounded-2xl px-4 py-4 flex gap-3" style={{ opacity: 0.8 }}>
-                    <div className="w-16 h-16 rounded-xl flex items-center justify-center text-3xl flex-shrink-0" style={{ background: color.bg }}>
-                      {categoryIcons[d.category] ?? "🗂️"}
-                    </div>
+                    {d.images && d.images.length > 0 ? (
+                      <img
+                        src={d.images[0]}
+                        alt={d.title}
+                        className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-xl flex items-center justify-center text-3xl flex-shrink-0" style={{ background: color.bg }}>
+                        {categoryIcons[d.category] ?? "🗂️"}
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <div className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#F1F1EF", color: "#6B7480" }}>
                         예시 · {d.category}
