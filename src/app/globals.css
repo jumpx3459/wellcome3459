@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Roboto+Mono:wght@500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@500&display=swap");
 @import "tailwindcss";
 @import "../styles/design-tokens.css";
 
@@ -25,8 +25,8 @@
   /* design-v2 — Claude Design 리디자인 라운드에서 확정 */
   --color-toggleOn: #1B7F5A; /* 알림 수신 스위치 ON 전용 — 오렌지(CTA)와 색 역할 분리 */
 
-  --font-sans: "Noto Sans KR", sans-serif;
-  --font-display: "Noto Sans KR", sans-serif;
+  --font-sans: var(--font-pretendard), -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
+  --font-display: var(--font-pretendard), -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
   --font-mono: "Roboto Mono", monospace;
 }
 

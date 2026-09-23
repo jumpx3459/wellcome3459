@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import AppShell from "@/components/AppShell";
+import { pretendard } from "@/lib/fonts";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://dumpingjumping.vercel.app";
 const DEFAULT_DESCRIPTION =
@@ -52,7 +53,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ko">
+    <html lang="ko" className={pretendard.variable}>
       <body className="font-sans overflow-x-hidden">
         <div className="mx-auto max-w-md min-h-screen bg-white shadow-sm overflow-x-hidden">
           <AppShell>{children}</AppShell>
