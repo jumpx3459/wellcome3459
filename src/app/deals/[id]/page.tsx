@@ -307,6 +307,15 @@ function DealDetailPageInner() {
               <img src={heroImage} alt={deal.title} className="absolute inset-0 w-full h-full object-cover" />
             </button>
           )}
+          <div className="absolute top-2.5 right-2.5">
+            {deal.status === "closed" ? (
+              <span className="text-xs font-bold text-white bg-gray500 px-2.5 py-1.5 rounded-full shadow">마감됨</span>
+            ) : (
+              <div className="rounded-full shadow" style={{ background: "rgba(255,255,255,0.94)" }}>
+                <CountdownBadge closesAt={deal.closes_at} />
+              </div>
+            )}
+          </div>
           {heroImage && (
             <div className="absolute bottom-3 right-3 inline-flex items-center gap-1 text-xs font-bold text-white bg-black/45 px-2.5 py-1 rounded-full pointer-events-none">
               🔍 확대
@@ -358,17 +367,6 @@ function DealDetailPageInner() {
             className="w-full rounded-2xl bg-black"
             style={{ maxHeight: "320px" }}
           />
-        )}
-
-        {deal.status === "closed" ? (
-          <div className="bg-gray100 rounded-2xl px-4 py-4 flex items-center justify-between">
-            <span className="text-sm font-bold text-gray500">이 매물은 마감됐어요</span>
-            <span className="text-sm text-gray500">
-              {new Date(deal.closes_at).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}
-            </span>
-          </div>
-        ) : (
-          <CountdownBadge closesAt={deal.closes_at} size="lg" />
         )}
 
         <div>
@@ -662,10 +660,10 @@ function DealDetailPageInner() {
                 <button
                   onClick={handleInterest}
                   disabled={interested}
-                  className="w-full text-white text-center font-bold rounded-2xl text-lg disabled:opacity-60"
+                  className="w-full text-white text-center font-bold rounded-2xl text-base disabled:opacity-60"
                   style={{
                     background: interested ? "#8A8A82" : "linear-gradient(135deg, #E25100, #FF6F0F)",
-                    padding: "18px 0",
+                    padding: "14px 0",
                   }}
                 >
                   {interested ? "점핑매니저에게 전달됐어요" : "관심있어요 · 점핑매니저 연결"}
