@@ -6,7 +6,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockDeals, categoryIcons, categoryColors, mockRegions, type Deal } from "@/lib/mockData";
 import { formatPrice } from "@/lib/format";
 import { formatCountdown } from "@/lib/format";
-import InstallAppButton from "@/components/InstallAppButton";
+import InstallAppButton, { useInstallPrompt } from "@/components/InstallAppButton";
 import Toast, { useToast } from "@/components/Toast";
 
 const INSTALL_DISMISS_KEY = "dj_home_install_dismissed";
@@ -41,6 +41,7 @@ export default function AlertInboxHome() {
   const [regions, setRegions] = useState<string[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [showInstall, setShowInstall] = useState(true);
+  const { canInstall } = useInstallPrompt();
   const [, setTick] = useState(0);
   const { message: toastMessage, showToast } = useToast();
 
@@ -162,18 +163,6 @@ export default function AlertInboxHome() {
             읽음 처리
           </button>
         </div>
-        <Link
-          href="/mypage#alerts"
-          className="flex items-center gap-2 w-full text-left"
-          style={{ borderTop: "1px solid #F1F3F5", padding: "11px 20px" }}
-        >
-          <span style={{ fontSize: 13 }}>⚙️</span>
-          <span className="flex-1 min-w-0">
-            <span className="block font-bold truncate" style={{ fontSize: 12.5, color: "#0B2540" }}>{myCondText}</span>
-            <span className="block mt-0.5" style={{ fontSize: 11, color: "#6B7480" }}>임박·과잉·폐업 재고를 가장 먼저</span>
-          </span>
-          <span className="flex-shrink-0 font-bold" style={{ fontSize: 11.5, color: "#E25100" }}>조건 수정</span>
-        </Link>
       </div>
 
       <div style={{ padding: "14px 20px 2px" }}>
@@ -187,7 +176,17 @@ export default function AlertInboxHome() {
         </Link>
       </div>
 
-      {showInstall && (
+      <Link
+        href="/mypage#alerts"
+        className="flex items-center gap-2 w-full text-left"
+        style={{ borderBottom: "1px solid #F1F3F5", padding: "9px 20px" }}
+      >
+        <span style={{ fontSize: 12 }}>⚙️</span>
+        <span className="flex-1 min-w-0 truncate" style={{ fontSize: 11.5, color: "#6B7480" }}>{myCondText}</span>
+        <span className="flex-shrink-0 font-bold" style={{ fontSize: 11, color: "#E25100" }}>조건 수정</span>
+      </Link>
+
+      {showInstall && canInstall && (
         <div className="flex items-center gap-2.5" style={{ borderBottom: "1px solid #F1F3F5", padding: "12px 20px", background: "#FAFBFC" }}>
           <div className="flex-1 min-w-0">
             <InstallAppButton />

@@ -1054,6 +1054,9 @@ export default function MyPage() {
           )}
 
           {shareDeals.length > 0 && (
+            <label className="text-xs font-bold text-gray500 mb-1.5 block">공유할 매물 선택</label>
+          )}
+          {shareDeals.length > 0 && (
             <select
               value={selectedShareDealId}
               onChange={(e) => setSelectedShareDealId(e.target.value)}

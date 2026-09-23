@@ -8,11 +8,13 @@ type InstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
-export default function InstallAppButton() {
+// 홈/알림함 등에서 "설치 배너 자체를 보여줄지"를 미리 판단할 때 씁니다.
+// InstallAppButton은 조건이 안 맞으면 null을 반환하는데, 부모가 이걸 모르고
+// 테두리·닫기버튼 같은 감싸는 UI를 먼저 그려버리면 내용 없는 빈 박스만 남습니다.
+export function useInstallPrompt() {
   const [installEvent, setInstallEvent] = useState<InstallPromptEvent | null>(null);
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
-  const [showIOSGuide, setShowIOSGuide] = useState(false);
 
   useEffect(() => {
     const standalone =
@@ -29,16 +31,30 @@ export default function InstallAppButton() {
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
-  if (isStandalone || (!installEvent && !isIOS)) return null;
+  const canInstall = !isStandalone && (!!installEvent || isIOS);
 
-  const handleClick = async () => {
+  const promptInstall = async (): Promise<"prompted" | "ios-guide"> => {
     if (installEvent) {
       await installEvent.prompt();
       const { outcome } = await installEvent.userChoice;
       if (outcome === "accepted") setInstallEvent(null);
-      return;
+      return "prompted";
     }
-    setShowIOSGuide(true);
+    return "ios-guide";
+  };
+
+  return { canInstall, promptInstall };
+}
+
+export default function InstallAppButton() {
+  const { canInstall, promptInstall } = useInstallPrompt();
+  const [showIOSGuide, setShowIOSGuide] = useState(false);
+
+  if (!canInstall) return null;
+
+  const handleClick = async () => {
+    const result = await promptInstall();
+    if (result === "ios-guide") setShowIOSGuide(true);
   };
 
   return (

@@ -51,6 +51,7 @@ type ActiveDeal = {
   created_at: string;
   categories: { name: string } | null;
   regions: { name: string } | null;
+  images: string[] | null;
 };
 
 type Member = {
@@ -982,7 +983,17 @@ function AdminDashboard({
                   )}
                 </div>
                 <div className="text-sm text-gray500 mt-0.5">
-                  {i.members?.phone ?? i.phone ?? "번호 없음"}
+                  {i.members?.phone ?? i.phone ? (
+                    <a
+                      href={`tel:${i.members?.phone ?? i.phone}`}
+                      className="underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {i.members?.phone ?? i.phone}
+                    </a>
+                  ) : (
+                    "번호 없음"
+                  )}
                   {i.members?.member_no != null && (
                     <span className="ml-1.5 text-xs font-bold text-gray500">
                       {formatMemberNo(i.members.member_no)}
@@ -1027,7 +1038,7 @@ function AdminDashboard({
                     : { background: "#0B2540", color: "#fff" }
                 }
               >
-                {i.contacted ? "연락완료" : "연락하기"}
+                {i.contacted ? "✓ 연락완료" : "연락완료로 표시"}
               </button>
             </div>
 
@@ -1558,6 +1569,9 @@ function ActiveDealCard({
 }) {
   const [remainingQty, setRemainingQty] = useState(String(deal.remaining_qty));
   const [saving, setSaving] = useState(false);
+  const [editingPhotos, setEditingPhotos] = useState(false);
+  const [images, setImages] = useState<string[]>(deal.images ?? []);
+  const [deleting, setDeleting] = useState(false);
 
   const patch = async (body: Record<string, unknown>) => {
     setSaving(true);
@@ -1570,6 +1584,21 @@ function ActiveDealCard({
       onChanged();
     } finally {
       setSaving(false);
+    }
+  };
+
+  const deleteDeal = async () => {
+    if (!confirm(`"${deal.title}" 매물을 삭제할까요? 되돌릴 수 없고, 이 매물에 달린 관심표시 기록도 함께 삭제돼요.`)) return;
+    setDeleting(true);
+    try {
+      await fetch("/api/admin/deals/manage", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({ id: deal.id }),
+      });
+      onChanged();
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -1629,6 +1658,42 @@ function ActiveDealCard({
           조기 마감
         </button>
       </div>
+
+      <button
+        type="button"
+        onClick={() => setEditingPhotos((v) => !v)}
+        className="w-full text-xs font-bold text-navy border-2 border-gray200 rounded-lg py-2 mt-2"
+      >
+        {editingPhotos ? "사진 관리 닫기" : `📷 사진 관리 (${images.length}장)`}
+      </button>
+
+      {editingPhotos && (
+        <div className="mt-2.5">
+          <ImageUploader
+            initialUrls={images}
+            onChange={setImages}
+            label="매물 사진"
+            hint="탭해서 사진 추가 · × 로 삭제 후 아래 저장"
+          />
+          <button
+            onClick={() => patch({ images })}
+            disabled={saving}
+            className="w-full text-xs font-bold text-white bg-navy rounded-lg py-2 mt-2 disabled:opacity-50"
+          >
+            사진 저장
+          </button>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={deleteDeal}
+        disabled={deleting}
+        className="w-full text-xs font-bold rounded-lg py-2 mt-2 disabled:opacity-50"
+        style={{ color: "#C2410C", border: "2px solid #FDEEE8", background: "#FFF9F7" }}
+      >
+        {deleting ? "삭제 중..." : "🗑️ 매물 삭제"}
+      </button>
     </div>
   );
 }

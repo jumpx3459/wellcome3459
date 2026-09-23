@@ -35,7 +35,7 @@ export async function PATCH(req: NextRequest) {
   const auth = checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  const { id, remainingQty, closesAt, status } = await req.json();
+  const { id, remainingQty, closesAt, status, images } = await req.json();
   if (!id) return NextResponse.json({ error: "id가 필요합니다." }, { status: 400 });
 
   const supabaseAdmin = getAdminClient();
@@ -43,8 +43,25 @@ export async function PATCH(req: NextRequest) {
   if (remainingQty !== undefined) update.remaining_qty = remainingQty;
   if (closesAt !== undefined) update.closes_at = closesAt;
   if (status !== undefined) update.status = status;
+  if (images !== undefined) update.images = images;
 
   const { error } = await supabaseAdmin.from("deals").update(update).eq("id", id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({ ok: true });
+}
+
+// 매물 삭제 — 되돌릴 수 없음. schema.sql상 interests/quick_leads/messages가
+// deal_id에 on delete cascade라, 이 매물에 달린 관심표시·쪽지 기록도 함께 삭제됩니다.
+export async function DELETE(req: NextRequest) {
+  const auth = checkAdminAuth(req);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
+  const { id } = await req.json();
+  if (!id) return NextResponse.json({ error: "id가 필요합니다." }, { status: 400 });
+
+  const supabaseAdmin = getAdminClient();
+  const { error } = await supabaseAdmin.from("deals").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json({ ok: true });

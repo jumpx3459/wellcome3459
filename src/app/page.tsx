@@ -7,7 +7,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { formatPrice, formatRelativeTime } from "@/lib/format";
 import SplashScreen from "@/components/SplashScreen";
 import OnboardingIntro from "@/components/OnboardingIntro";
-import InstallAppButton from "@/components/InstallAppButton";
+import InstallAppButton, { useInstallPrompt } from "@/components/InstallAppButton";
 import KakaoChannelButton from "@/components/KakaoChannelButton";
 import CategoryScroller from "@/components/CategoryScroller";
 import AlertInboxHome from "@/components/AlertInboxHome";
@@ -22,6 +22,7 @@ export default function Home() {
   const [isExample, setIsExample] = useState(true);
   const [isMember, setIsMember] = useState(false);
   const [signupPending, setSignupPending] = useState(false);
+  const { canInstall } = useInstallPrompt();
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
@@ -183,11 +184,13 @@ export default function Home() {
       {/* 상단은 핵심 전환(회원가입→맞춤 알림)에만 집중 — 카카오톡 채널 추가는
           같은 "카카오 버튼" 스타일로 나란히 있으면 가입과 중복돼 보여서
           매물을 먼저 보여준 뒤(아래) 저관여 위치로 옮김. */}
-      <div className="px-5 pt-5">
-        <div className="rounded-2xl border-2 border-gray200 px-4 py-3.5">
-          <InstallAppButton />
+      {canInstall && (
+        <div className="px-5 pt-5">
+          <div className="rounded-2xl border-2 border-gray200 px-4 py-3.5">
+            <InstallAppButton />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 매물 예시 — 실제 매물이 있으면 실제로, 없으면 예시로 "이런 특가가 온다"는 감을 줌 */}
       {preview.length > 0 && (

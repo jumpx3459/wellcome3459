@@ -21,7 +21,7 @@ export async function sendDealPush(dealId: string) {
 
   const { data: deal, error: dealError } = await supabaseAdmin
     .from("deals")
-    .select("id, title, category_id, region_id, deal_price")
+    .select("id, title, category_id, region_id, deal_price, images")
     .eq("id", dealId)
     .single();
 
@@ -76,6 +76,7 @@ export async function sendDealPush(dealId: string) {
             body: `${deal.title} · ${Number(deal.deal_price).toLocaleString()}원`,
             url: `/deals/${deal.id}`,
             tag: `deal-${deal.id}`,
+            image: deal.images?.[0] || undefined,
           })
         );
       }
