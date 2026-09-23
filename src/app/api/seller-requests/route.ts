@@ -6,6 +6,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const {
     companyName,
+    isAnonymous,
+    memberId,
     contactName,
     contactPhone,
     category,
@@ -51,6 +53,8 @@ export async function POST(req: NextRequest) {
 
   const { error } = await supabaseAdmin.from("seller_requests").insert({
     company_name: companyName || null,
+    is_anonymous: !!isAnonymous,
+    seller_member_id: memberId || null,
     contact_name: contactName || null,
     contact_phone: contactPhone,
     category_id: catRow?.id ?? null,

@@ -37,7 +37,13 @@ function DealDetailPageInner() {
   // JUMP X 인증 브릿지("JUMP X에서 입찰 참여하기") 상태 — 관심있어요(리드 수집)
   // 흐름과는 완전히 별개라 상태도 분리해뒀습니다.
   const [memberPhone, setMemberPhone] = useState<string | null>(null);
+  const [memberId, setMemberId] = useState<string | null>(null);
   const [isMember, setIsMember] = useState(false);
+  const [showMessageForm, setShowMessageForm] = useState(false);
+  const [messageBody, setMessageBody] = useState("");
+  const [messageSending, setMessageSending] = useState(false);
+  const [messageSent, setMessageSent] = useState(false);
+  const [messageError, setMessageError] = useState<string | null>(null);
   const [ownRefCode, setOwnRefCode] = useState<string | null>(null);
   const [showBridgeForm, setShowBridgeForm] = useState(false);
   const [bridgePhone, setBridgePhone] = useState("");
@@ -79,6 +85,7 @@ function DealDetailPageInner() {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
       setIsMember(true);
+      setMemberId(userData.user.id);
       const { data: member } = await supabase
         .from("members")
         .select("phone, ref_code")
@@ -96,7 +103,7 @@ function DealDetailPageInner() {
       const { data } = await supabase
         .from("deals")
         .select(
-          "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, location, images, video_url, description, status, package_unit, origin, spec, storage_condition, quantity_unit, min_order_qty, categories(name), regions(name)"
+          "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, location, images, video_url, description, status, package_unit, origin, spec, storage_condition, quantity_unit, min_order_qty, seller_member_id, seller_display_name, categories(name), regions(name)"
         )
         .eq("id", params.id)
         .single();
@@ -123,6 +130,8 @@ function DealDetailPageInner() {
           storage_condition: data.storage_condition ?? null,
           quantity_unit: data.quantity_unit ?? "개",
           min_order_qty: data.min_order_qty ?? null,
+          seller_member_id: data.seller_member_id ?? null,
+          seller_display_name: data.seller_display_name ?? null,
         });
       }
     })();
@@ -165,6 +174,28 @@ function DealDetailPageInner() {
         setInterestError("처리 중 문제가 발생했어요. 새로고침 후 다시 시도해주세요.");
       }
     }
+  };
+
+  const sendMessage = async () => {
+    setMessageError(null);
+    if (!supabase || !memberId || !deal.seller_member_id) return;
+    if (!messageBody.trim()) {
+      setMessageError("내용을 입력해주세요.");
+      return;
+    }
+    setMessageSending(true);
+    const { error } = await supabase.from("messages").insert({
+      deal_id: deal.id,
+      sender_id: memberId,
+      receiver_id: deal.seller_member_id,
+      body: messageBody.trim(),
+    });
+    if (error) {
+      setMessageError("전송에 실패했어요. 잠시 후 다시 시도해주세요.");
+    } else {
+      setMessageSent(true);
+    }
+    setMessageSending(false);
   };
 
   const submitQuickInterest = async () => {
@@ -415,6 +446,51 @@ function DealDetailPageInner() {
             </div>
           ))}
         </div>
+
+        {deal.seller_display_name && (
+          <div className="border border-gray200 rounded-2xl p-4 flex items-center justify-between gap-3">
+            <div>
+              <div className="text-xs text-gray500 font-bold mb-0.5">판매자</div>
+              <div className="text-sm font-bold text-navy">{deal.seller_display_name}</div>
+            </div>
+            {deal.seller_member_id && isMember && memberId !== deal.seller_member_id && (
+              <button
+                type="button"
+                onClick={() => setShowMessageForm((v) => !v)}
+                className="flex-shrink-0 text-sm font-bold text-white rounded-xl"
+                style={{ background: "#0B2540", padding: "10px 16px" }}
+              >
+                💬 쪽지 보내기
+              </button>
+            )}
+          </div>
+        )}
+
+        {showMessageForm && deal.seller_member_id && (
+          <div className="border-2 border-gray200 rounded-2xl p-4">
+            <textarea
+              value={messageBody}
+              onChange={(e) => setMessageBody(e.target.value)}
+              placeholder="가격·수량 등 궁금한 점을 남겨주세요."
+              className="w-full border-2 border-gray200 rounded-xl p-3 text-sm outline-none focus:border-navy"
+              rows={3}
+            />
+            {messageError && <div className="text-xs text-orange font-medium mt-1.5">{messageError}</div>}
+            {messageSent ? (
+              <div className="text-sm font-bold text-verified mt-2">쪽지를 보냈어요 · 마이페이지에서 답장을 확인하세요.</div>
+            ) : (
+              <button
+                type="button"
+                onClick={sendMessage}
+                disabled={messageSending}
+                className="w-full mt-2 text-white font-bold rounded-xl disabled:opacity-60"
+                style={{ background: "#0B2540", padding: "12px 0" }}
+              >
+                {messageSending ? "보내는 중..." : "쪽지 보내기"}
+              </button>
+            )}
+          </div>
+        )}
 
         <Link
           href="/logistics"

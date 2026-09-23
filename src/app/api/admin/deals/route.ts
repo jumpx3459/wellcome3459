@@ -3,6 +3,11 @@ import { createClient } from "@supabase/supabase-js";
 import { sendDealPush } from "@/lib/sendPush";
 import { checkAdminAuth } from "@/lib/adminAuth";
 
+function maskedSellerName(category: string) {
+  const num = Math.floor(1000 + Math.random() * 9000);
+  return `${category} 판매자 #${num}`;
+}
+
 export async function POST(req: NextRequest) {
   const auth = checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -54,6 +59,22 @@ export async function POST(req: NextRequest) {
     .eq("name", region)
     .single();
 
+  let sellerMemberId: string | null = null;
+  let isAnonymous = false;
+  let sellerDisplayName: string | null = null;
+  if (requestId) {
+    const { data: sr } = await supabaseAdmin
+      .from("seller_requests")
+      .select("company_name, is_anonymous, seller_member_id")
+      .eq("id", requestId)
+      .maybeSingle();
+    if (sr) {
+      sellerMemberId = sr.seller_member_id ?? null;
+      isAnonymous = sr.is_anonymous ?? false;
+      sellerDisplayName = isAnonymous || !sr.company_name ? maskedSellerName(category) : sr.company_name;
+    }
+  }
+
   const { data: deal, error } = await supabaseAdmin
     .from("deals")
     .insert({
@@ -76,6 +97,9 @@ export async function POST(req: NextRequest) {
       origin: origin || null,
       spec: spec || null,
       storage_condition: storageCondition || null,
+      seller_member_id: sellerMemberId,
+      is_anonymous: isAnonymous,
+      seller_display_name: sellerDisplayName,
     })
     .select()
     .single();

@@ -500,4 +500,29 @@ revoke all on function update_admin_password(uuid, text, text) from public;
 -- 2. 업로드·조회 모두 서버(API 라우트, service_role 키)를 통해서만 이루어집니다.
 --    service_role 키는 RLS를 우회하므로 별도 Storage 정책 설정은 필요 없습니다.
 --    (다만 이 버킷은 절대 "Public bucket"으로 만들지 마세요 — 공개로 설정하면 누구나 URL로 접근할 수 있습니다.)
+
+-- ---------------- 쪽지(회원간 메시지) + 매물 등록 시 업체명 비공개 옵션 (2026-09-23) ----------------
+alter table public.seller_requests add column if not exists seller_member_id uuid references public.members(id);
+alter table public.seller_requests add column if not exists is_anonymous boolean default false;
+
+alter table public.deals add column if not exists seller_member_id uuid references public.members(id);
+alter table public.deals add column if not exists is_anonymous boolean default false;
+alter table public.deals add column if not exists seller_display_name text;
+
+create table if not exists public.messages (
+  id uuid primary key default gen_random_uuid(),
+  deal_id uuid references public.deals(id) on delete cascade,
+  sender_id uuid references public.members(id) on delete cascade,
+  receiver_id uuid references public.members(id) on delete cascade,
+  body text not null,
+  created_at timestamptz default now(),
+  read_at timestamptz
+);
+alter table public.messages enable row level security;
+
+create policy "messages_select_own" on public.messages
+  for select using (auth.uid() = sender_id or auth.uid() = receiver_id);
+
+create policy "messages_insert_own" on public.messages
+  for insert with check (auth.uid() = sender_id);
 -- 3. 조회는 관리자 화면에서 요청할 때마다 만료 시간이 짧은 서명된 URL(signed URL)을 그때그때 생성해서 사용합니다.

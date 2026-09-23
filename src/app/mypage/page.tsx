@@ -276,6 +276,70 @@ export default function MyPage() {
     setPartnerStatus("pending");
   }
 
+  type MessageThread = {
+    key: string;
+    dealId: string;
+    dealTitle: string;
+    counterpartId: string;
+    counterpartLabel: string;
+    items: { id: string; body: string; created_at: string; mine: boolean }[];
+  };
+  const [threads, setThreads] = useState<MessageThread[]>([]);
+  const [replyDraft, setReplyDraft] = useState<Record<string, string>>({});
+  const [replySending, setReplySending] = useState<string | null>(null);
+
+  const loadMessages = async () => {
+    if (!isSupabaseConfigured || !supabase || !memberId) return;
+    const { data } = await supabase
+      .from("messages")
+      .select("id, deal_id, sender_id, receiver_id, body, created_at, deals(title, seller_member_id, seller_display_name)")
+      .or(`sender_id.eq.${memberId},receiver_id.eq.${memberId}`)
+      .order("created_at", { ascending: true });
+    if (!data) return;
+    const map = new Map<string, MessageThread>();
+    for (const m of data) {
+      const dealInfo = m.deals as unknown as { title: string; seller_member_id: string | null; seller_display_name: string | null } | null;
+      const counterpartId = m.sender_id === memberId ? m.receiver_id : m.sender_id;
+      const key = `${m.deal_id}__${counterpartId}`;
+      const counterpartLabel =
+        counterpartId === dealInfo?.seller_member_id ? dealInfo?.seller_display_name ?? "판매자" : "구매자";
+      if (!map.has(key)) {
+        map.set(key, { key, dealId: m.deal_id, dealTitle: dealInfo?.title ?? "매물", counterpartId, counterpartLabel, items: [] });
+      }
+      map.get(key)!.items.push({ id: m.id, body: m.body, created_at: m.created_at, mine: m.sender_id === memberId });
+    }
+    setThreads(
+      Array.from(map.values()).sort((a, b) => {
+        const aLast = a.items[a.items.length - 1]?.created_at ?? "";
+        const bLast = b.items[b.items.length - 1]?.created_at ?? "";
+        return bLast.localeCompare(aLast);
+      })
+    );
+  };
+
+  useEffect(() => {
+    loadMessages();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [memberId]);
+
+  const sendReply = async (thread: MessageThread) => {
+    if (!supabase || !memberId) return;
+    const body = (replyDraft[thread.key] || "").trim();
+    if (!body) return;
+    setReplySending(thread.key);
+    const { error } = await supabase.from("messages").insert({
+      deal_id: thread.dealId,
+      sender_id: memberId,
+      receiver_id: thread.counterpartId,
+      body,
+    });
+    if (!error) {
+      setReplyDraft((prev) => ({ ...prev, [thread.key]: "" }));
+      await loadMessages();
+    }
+    setReplySending(null);
+  };
+
   const toggle = (list: string[], set: (v: string[]) => void, value: string) => {
     set(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
   };
@@ -865,6 +929,53 @@ export default function MyPage() {
                 </Link>
               ) : null
             )}
+          </div>
+        </div>
+
+        <div id="messages" className="border-t border-gray200 pt-5">
+          <div className="text-sm font-bold text-navy mb-3">쪽지함 ({threads.length})</div>
+          {threads.length === 0 && (
+            <div className="text-center text-gray500 text-sm py-6">아직 주고받은 쪽지가 없어요.</div>
+          )}
+          <div className="flex flex-col gap-3">
+            {threads.map((t) => (
+              <div key={t.key} className="bg-white border border-gray200 rounded-xl p-3.5">
+                <div className="flex items-center justify-between mb-2">
+                  <Link href={`/deals/${t.dealId}`} className="text-xs font-bold text-gray500 truncate">
+                    {t.dealTitle}
+                  </Link>
+                  <span className="text-xs font-bold text-navy flex-shrink-0 ml-2">{t.counterpartLabel}</span>
+                </div>
+                <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto">
+                  {t.items.map((m) => (
+                    <div
+                      key={m.id}
+                      className={`text-sm rounded-xl px-3 py-2 max-w-[85%] ${m.mine ? "self-end text-white" : "self-start bg-gray100 text-gray900"}`}
+                      style={m.mine ? { background: "#0B2540" } : undefined}
+                    >
+                      {m.body}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2 mt-2.5">
+                  <input
+                    value={replyDraft[t.key] ?? ""}
+                    onChange={(e) => setReplyDraft((prev) => ({ ...prev, [t.key]: e.target.value }))}
+                    placeholder="답장 입력..."
+                    className="flex-1 min-w-0 border-2 border-gray200 rounded-xl px-3 text-sm outline-none focus:border-navy"
+                    style={{ height: "40px" }}
+                  />
+                  <button
+                    onClick={() => sendReply(t)}
+                    disabled={replySending === t.key}
+                    className="text-white font-bold rounded-xl px-4 text-sm flex-shrink-0 disabled:opacity-60"
+                    style={{ background: "#0B2540" }}
+                  >
+                    전송
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 

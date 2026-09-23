@@ -12,6 +12,8 @@ import { fromE164Phone, isValidKoreanPhone } from "@/lib/auth";
 
 export default function SellPage() {
   const [companyName, setCompanyName] = useState("");
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [memberId, setMemberId] = useState<string | null>(null);
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
 
@@ -22,6 +24,7 @@ export default function SellPage() {
     (async () => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
+      setMemberId(userData.user.id);
       const { data: member } = await supabase
         .from("members")
         .select("phone")
@@ -67,6 +70,8 @@ export default function SellPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           companyName: companyName || null,
+          isAnonymous,
+          memberId,
           contactName: contactName || null,
           contactPhone,
           category: category || null,
@@ -335,6 +340,19 @@ export default function SellPage() {
                 onChange={(e) => setCompanyName(e.target.value)}
                 placeholder="예: 웰컴코리아(주)"
               />
+              <label className="flex items-start gap-2.5 rounded-xl mt-2.5" style={{ background: "#F5F6F8", padding: "12px 14px" }}>
+                <input
+                  type="checkbox"
+                  checked={isAnonymous}
+                  onChange={(e) => setIsAnonymous(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span className="text-xs leading-relaxed text-gray500">
+                  <span className="font-bold text-navy">업체명 비공개로 등록</span>
+                  <br />
+                  체크하면 구매자에게는 업체명 대신 임의 표시명이 노출돼요(거래처·경쟁사 노출 걱정 없이 등록 가능). 점핑매니저에게는 항상 실제 업체명이 보여요.
+                </span>
+              </label>
             </div>
 
             <div>
