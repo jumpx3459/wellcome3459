@@ -84,7 +84,7 @@ export const mockDeals: Deal[] = [
     remaining_qty: 340,
     closes_at: new Date(now + 1000 * 60 * 60 * 11.66).toISOString(),
     images: ["/images/mock/tumbler-1.jpg"],
-    video_url: null, // TODO: tumbler.mp4 파일 확보되면 "/videos/mock/tumbler.mp4"로 교체
+    video_url: "/videos/mock/tumbler.mp4",
     description: "박스 및 개별 포장 상태 양호 · 사용 흔적 없는 신품 재고 · KC 인증서 보유",
     package_unit: "1개입 개별포장 · 50개입 박스",
     origin: "중국",
