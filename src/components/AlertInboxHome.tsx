@@ -176,6 +176,17 @@ export default function AlertInboxHome() {
         </Link>
       </div>
 
+      <div style={{ padding: "14px 20px 2px" }}>
+        <Link
+          href="/sell"
+          className="flex items-center justify-between rounded-xl"
+          style={{ background: "rgba(255,111,15,0.10)", border: "1.5px solid #FF6F0F", padding: "13px 16px" }}
+        >
+          <span className="text-sm font-bold text-navy">📦 잠든 재고, 깨워서 현금으로</span>
+          <span className="text-sm font-bold" style={{ color: "#FF6F0F" }}>무료 등록 →</span>
+        </Link>
+      </div>
+
       {showInstall && (
         <div className="flex items-center gap-2.5" style={{ borderBottom: "1px solid #F1F3F5", padding: "12px 20px", background: "#FAFBFC" }}>
           <div className="flex-1 min-w-0">
@@ -298,16 +309,23 @@ export default function AlertInboxHome() {
                   <span className="font-black rounded" style={{ fontSize: 10.5, padding: "3px 8px", background: "#F1F3F5", color: "#6B7480" }}>예시</span>
                   <span style={{ fontSize: 11, color: "#6B7480" }}>{d.location}</span>
                 </div>
-                <div className="flex items-start gap-2.5">
+                <div className="flex flex-col gap-2.5">
                   {d.images && d.images.length > 0 ? (
-                    <img
-                      src={d.images[0]}
-                      alt={d.title}
-                      className="rounded-xl object-cover flex-shrink-0"
-                      style={{ width: 64, height: 64 }}
-                    />
+                    <div className="relative rounded-xl overflow-hidden" style={{ width: "100%", aspectRatio: "16/9" }}>
+                      <img src={d.images[0]} alt={d.title} className="w-full h-full object-cover" />
+                      {d.video_url && (
+                        <span className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,.25)" }}>
+                          <span style={{ fontSize: 30, color: "#fff" }}>▶</span>
+                        </span>
+                      )}
+                      {d.images.length > 1 && (
+                        <span className="absolute bottom-1.5 right-1.5 rounded font-bold text-white" style={{ fontSize: 10, padding: "1px 5px", background: "rgba(0,0,0,.5)" }}>
+                          1/{d.images.length}
+                        </span>
+                      )}
+                    </div>
                   ) : (
-                    <span className="rounded-xl flex items-center justify-center flex-shrink-0" style={{ width: 64, height: 64, fontSize: 22, background: color.bg }}>
+                    <span className="rounded-xl flex items-center justify-center" style={{ width: "100%", height: 120, fontSize: 30, background: color.bg }}>
                       {categoryIcons[d.category] ?? "🗂️"}
                     </span>
                   )}
@@ -331,34 +349,11 @@ export default function AlertInboxHome() {
       )}
 
       <div style={{ padding: "22px 20px 30px" }}>
-        <div className="rounded-2xl text-center" style={{ background: "#F5F6F8", padding: 18 }}>
-          <img src="/images/manager.png" alt="점핑매니저" style={{ width: 72, height: 72, objectFit: "contain", margin: "0 auto" }} />
-          <div className="font-bold mt-1" style={{ fontSize: 13.5, color: "#0B2540" }}>
+        <Link href="/mypage#alerts" className="flex items-center justify-between">
+          <span className="text-xs" style={{ color: "#9AA3AD" }}>
             조건을 넓히면 주 {estAlertsWide}건까지 받을 수 있어요
-          </div>
-          <Link
-            href="/mypage#alerts"
-            className="inline-block font-bold text-white rounded-xl mt-3"
-            style={{ background: "#0B2540", fontSize: 13, padding: "11px 20px" }}
-          >
-            알림 조건 넓히기
-          </Link>
-        </div>
-
-        {/* 회원용 알림함 홈에도 판매 등록 진입점을 유지 — 예전 비회원용 마케팅
-            홈에 있던 배너가 리디자인 과정에서 빠졌던 걸 복원 */}
-        <Link
-          href="/sell"
-          className="flex items-center justify-between rounded-2xl mt-3"
-          style={{ background: "rgba(255,111,15,.1)", border: "2px solid var(--color-brandOrange)", padding: "16px 20px" }}
-        >
-          <div>
-            <div className="text-base font-black" style={{ color: "#0B2540" }}>📦 잠든 재고, 깨워서 현금으로</div>
-            <div className="text-xs font-bold mt-0.5" style={{ color: "#E25100" }}>
-              판매 등록은 무료 · 지금 등록하기
-            </div>
-          </div>
-          <span className="text-xl" style={{ color: "var(--color-brandOrange)" }}>→</span>
+          </span>
+          <span className="text-xs font-bold flex-shrink-0" style={{ color: "#6B7480" }}>넓히기 →</span>
         </Link>
       </div>
 

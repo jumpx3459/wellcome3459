@@ -281,68 +281,37 @@ function DealDetailPageInner() {
 
   return (
     <main className="flex flex-col min-h-screen">
-      <div
-        className="h-[260px] relative flex flex-col justify-between p-5 overflow-hidden"
-        style={
-          heroImage
-            ? {}
-            : { background: `linear-gradient(135deg, ${color.solid}, #0B2540)` }
-        }
-      >
-        {heroImage && (
-          <button
-            onClick={() => setLightboxOpen(true)}
-            className="absolute inset-0 w-full h-full"
-            aria-label="사진 크게 보기"
-          >
-            <img
-              src={heroImage}
-              alt={deal.title}
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-          </button>
+      <div className="flex-shrink-0 flex items-center justify-between gap-2 px-5 py-3" style={{ borderBottom: "1px solid #EEF0F2" }}>
+        <Link href="/" className="flex items-center gap-2 min-w-0">
+          <img src="/images/logo.png" alt="덤핑점핑" className="h-7 w-auto flex-shrink-0" />
+          <span className="text-gray500 text-xs tracking-wide truncate">Powered by JumpX</span>
+        </Link>
+        {remainPct <= 30 && (
+          <div className="text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap flex-shrink-0" style={{ background: "#FF6F0F", color: "#fff" }}>
+            🔥 소진임박 · {deal.remaining_qty}{deal.quantity_unit || "개"} 남음
+          </div>
         )}
+      </div>
+
+      <div className="px-5 pt-4">
         <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0) 35%, rgba(0,0,0,0.6) 100%)" }}
-        />
-
-        <div className="relative z-10 flex items-start justify-between gap-2 pointer-events-none">
-          <div className="flex items-center gap-2 min-w-0">
-            <Link
-              href="/"
-              className="bg-white rounded-lg px-3.5 py-2.5 inline-block flex-shrink-0 pointer-events-auto"
+          className="h-[220px] relative rounded-2xl overflow-hidden"
+          style={heroImage ? {} : { background: `linear-gradient(135deg, ${color.solid}, #0B2540)` }}
+        >
+          {heroImage && (
+            <button
+              onClick={() => setLightboxOpen(true)}
+              className="absolute inset-0 w-full h-full"
+              aria-label="사진 크게 보기"
             >
-              <img src="/images/logo.png" alt="덤핑점핑" className="h-8 w-auto" />
-            </Link>
-            <span className="text-white/70 text-sm tracking-wide truncate">Powered by JumpX</span>
-          </div>
-          {remainPct <= 30 && (
-            <div
-              className="text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap flex-shrink-0"
-              style={{ background: "#FF6F0F", color: "#fff" }}
-            >
-              🔥 소진임박 · {deal.remaining_qty}{deal.quantity_unit || "개"} 남음
-            </div>
-          )}
-        </div>
-
-        <div className="relative z-10 pointer-events-none">
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-white/20 px-3 py-1.5 rounded-full mb-2.5">
-            <span className="text-sm">{categoryIcons[deal.category] ?? "🗂️"}</span>
-            {deal.category}
-          </div>
-          {isExampleId && (
-            <div className="inline-flex ml-2 items-center gap-1 text-xs font-bold text-white px-2.5 py-1 rounded-full mb-2.5" style={{ background: "rgba(226,81,0,.85)" }}>
-              예시 미리보기
-            </div>
+              <img src={heroImage} alt={deal.title} className="absolute inset-0 w-full h-full object-cover" />
+            </button>
           )}
           {heroImage && (
-            <div className="inline-flex ml-2 items-center gap-1 text-xs font-bold text-white bg-black/40 px-2.5 py-1 rounded-full mb-2.5">
+            <div className="absolute bottom-3 right-3 inline-flex items-center gap-1 text-xs font-bold text-white bg-black/45 px-2.5 py-1 rounded-full pointer-events-none">
               🔍 확대
             </div>
           )}
-          <h1 className="font-display text-white text-2xl">{deal.title}</h1>
         </div>
       </div>
 
@@ -364,6 +333,21 @@ function DealDetailPageInner() {
           ))}
         </div>
       )}
+
+      <div className="px-5 pt-3">
+        <div className="flex items-center flex-wrap gap-1.5 mb-2">
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: color.bg, color: color.text }}>
+            <span className="text-sm">{categoryIcons[deal.category] ?? "🗂️"}</span>
+            {deal.category}
+          </span>
+          {isExampleId && (
+            <span className="inline-flex items-center gap-1 text-xs font-bold text-white px-2.5 py-1 rounded-full" style={{ background: "rgba(226,81,0,.85)" }}>
+              예시 미리보기
+            </span>
+          )}
+        </div>
+        <h1 className="font-display text-navy text-2xl leading-snug">{deal.title}</h1>
+      </div>
 
       <div className="flex-1 p-5 flex flex-col gap-4" style={{ paddingBottom: "24px" }}>
         {deal.video_url && (
