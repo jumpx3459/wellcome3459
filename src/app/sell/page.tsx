@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckCircle } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { mockCategories, mockRegions, categoryIcons, quantityUnits } from "@/lib/mockData";
+import { mockCategories, mockRegions, categoryIcons, quantityUnits, guessCategory } from "@/lib/mockData";
 import ImageUploader from "@/components/ImageUploader";
 import VideoUploader from "@/components/VideoUploader";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
@@ -36,8 +36,15 @@ export default function SellPage() {
     })();
   }, []);
   const [category, setCategory] = useState<string>("");
+  const [categoryTouched, setCategoryTouched] = useState(false);
   const [region, setRegion] = useState<string>("");
   const [productName, setProductName] = useState("");
+
+  useEffect(() => {
+    if (categoryTouched || !productName.trim()) return;
+    const guessed = guessCategory(productName);
+    if (guessed) setCategory(guessed);
+  }, [productName, categoryTouched]);
   const [quantity, setQuantity] = useState("");
   const [quantityUnit, setQuantityUnit] = useState(quantityUnits[0]);
   const [minOrderQty, setMinOrderQty] = useState("");
@@ -193,7 +200,10 @@ export default function SellPage() {
                 <button
                   key={c}
                   type="button"
-                  onClick={() => setCategory(picked ? "" : c)}
+                  onClick={() => {
+                    setCategoryTouched(true);
+                    setCategory(picked ? "" : c);
+                  }}
                   className="flex items-center gap-1 rounded-full whitespace-nowrap flex-shrink-0"
                   style={{
                     padding: "9px 13px",

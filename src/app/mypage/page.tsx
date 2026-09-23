@@ -726,17 +726,17 @@ export default function MyPage() {
           {profileComplete && !editingProfile ? (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <div className="text-sm font-bold text-navy">내 정보</div>
+                <div className="text-base font-bold text-navy">내 정보</div>
                 <button type="button" onClick={() => setEditingProfile(true)} className="text-xs font-bold text-orange">
                   정보 수정
                 </button>
               </div>
               <div className="bg-gray100 rounded-xl px-4 py-3 flex flex-col gap-1">
-                <div className="text-sm font-bold text-navy">
+                <div className="font-bold text-navy" style={{ fontSize: 15 }}>
                   {companyName}
                   {fullName && ` · ${fullName}`}
                 </div>
-                {email && <div className="text-xs text-gray500">{email}</div>}
+                {email && <div className="text-gray500" style={{ fontSize: 13 }}>{email}</div>}
                 <span
                   className="text-xs font-bold px-2 py-0.5 rounded-full self-start mt-1"
                   style={
@@ -843,110 +843,8 @@ export default function MyPage() {
           )}
         </div>
 
-        <div className="border-t border-gray200 pt-5">
-          <div className="text-sm font-bold text-navy mb-3">
-            관심 표시한 매물 ({interests.length})
-          </div>
-          {interests.length === 0 && (
-            <div className="text-center text-gray500 text-sm py-6">
-              아직 관심 표시한 매물이 없어요.
-            </div>
-          )}
-          <div className="flex flex-col gap-2">
-            {interests.map((i) =>
-              i.deals ? (
-                <Link
-                  key={i.id}
-                  href={`/deals/${i.deals.id}`}
-                  className="bg-white border border-gray200 rounded-xl px-4 py-3 flex items-center justify-between"
-                >
-                  <div>
-                    <div className="text-sm font-bold text-gray900">{i.deals.title}</div>
-                    <div className="text-sm text-navy font-bold mt-0.5">
-                      {formatPrice(i.deals.deal_price)}
-                    </div>
-                  </div>
-                  <span
-                    className="text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0"
-                    style={
-                      i.deals.status === "active"
-                        ? { background: "#E8F8EC", color: "#1D8A44" }
-                        : { background: "#F5F6F8", color: "#6B7480" }
-                    }
-                  >
-                    {i.deals.status === "active" ? "진행중" : "마감"}
-                  </span>
-                </Link>
-              ) : null
-            )}
-          </div>
-        </div>
-
-        <div id="messages" className="border-t border-gray200 pt-5">
-          <div className="text-sm font-bold text-navy mb-3">쪽지함 ({threads.length})</div>
-          {threads.length === 0 && (
-            <div className="text-center text-gray500 text-sm py-6">아직 주고받은 쪽지가 없어요.</div>
-          )}
-          <div className="flex flex-col gap-3">
-            {threads.map((t) => (
-              <div key={t.key} className="bg-white border border-gray200 rounded-xl p-3.5">
-                <div className="flex items-center justify-between mb-2">
-                  <Link href={`/deals/${t.dealId}`} className="text-xs font-bold text-gray500 truncate">
-                    {t.dealTitle}
-                  </Link>
-                  <span className="text-xs font-bold text-navy flex-shrink-0 ml-2">{t.counterpartLabel}</span>
-                </div>
-                <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto">
-                  {t.items.map((m) => (
-                    <div
-                      key={m.id}
-                      className={`text-sm rounded-xl px-3 py-2 max-w-[85%] ${m.mine ? "self-end text-white" : "self-start bg-gray100 text-gray900"}`}
-                      style={m.mine ? { background: "#0B2540" } : undefined}
-                    >
-                      {m.body}
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-2 mt-2.5">
-                  <input
-                    value={replyDraft[t.key] ?? ""}
-                    onChange={(e) => setReplyDraft((prev) => ({ ...prev, [t.key]: e.target.value }))}
-                    placeholder="답장 입력..."
-                    className="flex-1 min-w-0 border-2 border-gray200 rounded-xl px-3 text-sm outline-none focus:border-navy"
-                    style={{ height: "40px" }}
-                  />
-                  <button
-                    onClick={() => sendReply(t)}
-                    disabled={replySending === t.key}
-                    className="text-white font-bold rounded-xl px-4 text-sm flex-shrink-0 disabled:opacity-60"
-                    style={{ background: "#0B2540" }}
-                  >
-                    전송
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="border-t border-gray200 pt-5">
-          <Link
-            href="/sell"
-            className="flex items-center justify-between rounded-2xl"
-            style={{ background: "rgba(255,111,15,0.10)", border: "2px solid #FF6F0F", padding: "16px 20px" }}
-          >
-            <div>
-              <div className="text-base font-black text-navy">📦 긴급 매물 등록하기</div>
-              <div className="text-xs font-bold mt-0.5" style={{ color: "#E25100" }}>
-                남는 재고 있으세요? 무료로 바로 등록
-              </div>
-            </div>
-            <span className="text-xl" style={{ color: "#FF6F0F" }}>→</span>
-          </Link>
-        </div>
-
         <div id="referral" className="border-t border-gray200 pt-5">
-          <div className="text-sm font-bold text-navy mb-1 flex items-center gap-1.5">
+          <div className="text-base font-bold text-navy mb-1 flex items-center gap-1.5">
             🤝 점핑파트너
             <span className="text-xs font-medium text-gray500 bg-gray100 px-2 py-0.5 rounded-full">
               {referrals.length}명 추천함
@@ -1180,6 +1078,108 @@ export default function MyPage() {
               </>
             )}
           </div>
+        </div>
+
+        <div className="border-t border-gray200 pt-5">
+          <div className="text-base font-bold text-navy mb-3">
+            관심 표시한 매물 ({interests.length})
+          </div>
+          {interests.length === 0 && (
+            <div className="text-center text-gray500 text-sm py-6">
+              아직 관심 표시한 매물이 없어요.
+            </div>
+          )}
+          <div className="flex flex-col gap-2">
+            {interests.map((i) =>
+              i.deals ? (
+                <Link
+                  key={i.id}
+                  href={`/deals/${i.deals.id}`}
+                  className="bg-white border border-gray200 rounded-xl px-4 py-3 flex items-center justify-between"
+                >
+                  <div>
+                    <div className="text-sm font-bold text-gray900">{i.deals.title}</div>
+                    <div className="text-sm text-navy font-bold mt-0.5">
+                      {formatPrice(i.deals.deal_price)}
+                    </div>
+                  </div>
+                  <span
+                    className="text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0"
+                    style={
+                      i.deals.status === "active"
+                        ? { background: "#E8F8EC", color: "#1D8A44" }
+                        : { background: "#F5F6F8", color: "#6B7480" }
+                    }
+                  >
+                    {i.deals.status === "active" ? "진행중" : "마감"}
+                  </span>
+                </Link>
+              ) : null
+            )}
+          </div>
+        </div>
+
+        <div id="messages" className="border-t border-gray200 pt-5">
+          <div className="text-base font-bold text-navy mb-3">쪽지함 ({threads.length})</div>
+          {threads.length === 0 && (
+            <div className="text-center text-gray500 text-sm py-6">아직 주고받은 쪽지가 없어요.</div>
+          )}
+          <div className="flex flex-col gap-3">
+            {threads.map((t) => (
+              <div key={t.key} className="bg-white border border-gray200 rounded-xl p-3.5">
+                <div className="flex items-center justify-between mb-2">
+                  <Link href={`/deals/${t.dealId}`} className="text-xs font-bold text-gray500 truncate">
+                    {t.dealTitle}
+                  </Link>
+                  <span className="text-xs font-bold text-navy flex-shrink-0 ml-2">{t.counterpartLabel}</span>
+                </div>
+                <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto">
+                  {t.items.map((m) => (
+                    <div
+                      key={m.id}
+                      className={`text-sm rounded-xl px-3 py-2 max-w-[85%] ${m.mine ? "self-end text-white" : "self-start bg-gray100 text-gray900"}`}
+                      style={m.mine ? { background: "#0B2540" } : undefined}
+                    >
+                      {m.body}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2 mt-2.5">
+                  <input
+                    value={replyDraft[t.key] ?? ""}
+                    onChange={(e) => setReplyDraft((prev) => ({ ...prev, [t.key]: e.target.value }))}
+                    placeholder="답장 입력..."
+                    className="flex-1 min-w-0 border-2 border-gray200 rounded-xl px-3 text-sm outline-none focus:border-navy"
+                    style={{ height: "40px" }}
+                  />
+                  <button
+                    onClick={() => sendReply(t)}
+                    disabled={replySending === t.key}
+                    className="text-white font-bold rounded-xl px-4 text-sm flex-shrink-0 disabled:opacity-60"
+                    style={{ background: "#0B2540" }}
+                  >
+                    전송
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="border-t border-gray200 pt-5">
+          <Link
+            href="/sell"
+            className="flex items-center justify-between rounded-2xl"
+            style={{ background: "rgba(255,111,15,0.10)", border: "2px solid #FF6F0F", padding: "16px 20px" }}
+          >
+            <div>
+              <div className="text-base font-black text-navy">📦 긴급 매물 등록하기</div>
+              <div className="text-xs font-bold mt-0.5" style={{ color: "#E25100" }}>
+                남는 재고 있으세요? 무료로 바로 등록
+              </div>
+            </div>
+            <span className="text-xl" style={{ color: "#FF6F0F" }}>→</span>
+          </Link>
         </div>
 
         <div className="border-t border-gray200 pt-5">

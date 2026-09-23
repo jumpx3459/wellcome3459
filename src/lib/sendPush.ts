@@ -99,3 +99,39 @@ export async function sendDealPush(dealId: string) {
 
   return { sentCount, total: subs?.length ?? 0 };
 }
+
+export async function sendAdminPush(title: string, body: string, url: string) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceKey || !vapidPublic || !vapidPrivate) return;
+
+  const supabaseAdmin = createClient(supabaseUrl, serviceKey);
+
+  const { data: admins } = await supabaseAdmin.from("admin_users").select("phone");
+  const adminPhoneDigits = new Set(
+    (admins ?? []).map((a) => a.phone?.replace(/[^0-9]/g, "")).filter(Boolean)
+  );
+  if (adminPhoneDigits.size === 0) return;
+
+  const { data: members } = await supabaseAdmin.from("members").select("id, phone");
+  const adminMemberIds = (members ?? [])
+    .filter((m) => adminPhoneDigits.has(m.phone?.replace(/[^0-9]/g, "")))
+    .map((m) => m.id);
+  if (adminMemberIds.length === 0) return;
+
+  const { data: subs } = await supabaseAdmin
+    .from("push_subscriptions")
+    .select("endpoint, p256dh, auth_key")
+    .in("member_id", adminMemberIds);
+
+  for (const sub of subs ?? []) {
+    try {
+      await webpush.sendNotification(
+        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
+        JSON.stringify({ title, body, url, tag: "admin-lead" })
+      );
+    } catch {
+      // 구독 만료 등 — 운영자 알림은 베스트에포트라 조용히 무시
+    }
+  }
+}

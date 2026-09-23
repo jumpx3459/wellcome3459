@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isValidKoreanPhone } from "@/lib/auth";
+import { sendAdminPush } from "@/lib/sendPush";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -43,6 +44,8 @@ export async function POST(req: NextRequest) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  await sendAdminPush("🔍 새 구매 희망 등록", `${productName} 찾는 회원`, "/admin");
 
   return NextResponse.json({ ok: true });
 }

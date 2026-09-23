@@ -174,7 +174,7 @@ function DealsPageInner() {
         <div className="flex gap-2 mt-3">
           <button
             onClick={() => setView("active")}
-            className="flex-1 text-sm py-2 rounded-lg font-bold"
+            className="flex-1 text-sm py-1.5 rounded-lg font-bold"
             style={
               view === "active"
                 ? { background: "#fff", color: "#0B2540" }
@@ -185,7 +185,7 @@ function DealsPageInner() {
           </button>
           <button
             onClick={() => setView("closed")}
-            className="flex-1 text-sm py-2 rounded-lg font-bold"
+            className="flex-1 text-sm py-1.5 rounded-lg font-bold"
             style={
               view === "closed"
                 ? { background: "#fff", color: "#0B2540" }
@@ -196,14 +196,14 @@ function DealsPageInner() {
           </button>
         </div>
 
-        <div className="flex gap-2 mt-4">
+        <div className="flex gap-2 mt-3">
           <div className="relative flex-1 min-w-0">
             <select
               value={activeCat}
               onChange={(e) => setActiveCat(e.target.value)}
               className="w-full text-sm font-bold rounded-full appearance-none outline-none"
               style={{
-                padding: "10px 30px 10px 14px",
+                padding: "8px 28px 8px 12px",
                 background: activeCat === "전체" ? "#fff" : "rgba(255,255,255,0.22)",
                 color: activeCat === "전체" ? "#0B2540" : "#fff",
               }}
@@ -226,7 +226,7 @@ function DealsPageInner() {
               onChange={(e) => setActiveRegion(e.target.value)}
               className="w-full text-sm font-bold rounded-full appearance-none outline-none"
               style={{
-                padding: "10px 30px 10px 14px",
+                padding: "8px 28px 8px 12px",
                 background: activeRegion === "전체" ? "#fff" : "rgba(255,255,255,0.22)",
                 color: activeRegion === "전체" ? "#0B2540" : "#fff",
               }}

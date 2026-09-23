@@ -167,6 +167,11 @@ function DealDetailPageInner() {
     );
     if (!error) {
       setInterested(true);
+      fetch("/api/admin/notify-lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dealId: deal.id }),
+      }).catch(() => {});
     } else {
       console.error("interest upsert failed:", error);
       if (error.code === "23503") {

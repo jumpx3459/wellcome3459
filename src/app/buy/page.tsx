@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckCircle } from "lucide-react";
-import { mockCategories, mockRegions, categoryIcons, quantityUnits } from "@/lib/mockData";
+import { mockCategories, mockRegions, categoryIcons, quantityUnits, guessCategory } from "@/lib/mockData";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
 import { isValidKoreanPhone } from "@/lib/auth";
 
 export default function BuyPage() {
   const [productName, setProductName] = useState("");
   const [category, setCategory] = useState<string>("");
+  const [categoryTouched, setCategoryTouched] = useState(false);
   const [regions, setRegions] = useState<string[]>([]);
   const [quantity, setQuantity] = useState("");
   const [quantityUnit, setQuantityUnit] = useState(quantityUnits[0]);
@@ -19,6 +20,12 @@ export default function BuyPage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (categoryTouched || !productName.trim()) return;
+    const guessed = guessCategory(productName);
+    if (guessed) setCategory(guessed);
+  }, [productName, categoryTouched]);
 
   const allRegionsOn = regions.length === mockRegions.length;
   const toggleRegion = (r: string) => setRegions((prev) => (prev.includes(r) ? prev.filter((v) => v !== r) : [...prev, r]));
@@ -72,7 +79,7 @@ export default function BuyPage() {
       <main className="flex flex-col min-h-screen">
         <div className="flex-shrink-0 flex items-center gap-3 px-5 py-4.5" style={{ borderBottom: "1px solid #EEF0F2" }}>
           <Link href="/" className="text-gray500" style={{ fontSize: 19 }}>←</Link>
-          <span className="font-black" style={{ fontSize: 17, color: "#0B2540", letterSpacing: "-0.02em" }}>
+          <span className="font-black" style={{ fontSize: 20, color: "#0B2540", letterSpacing: "-0.02em" }}>
             이런 재고 찾습니다
           </span>
         </div>
@@ -116,7 +123,7 @@ export default function BuyPage() {
     <main className="flex flex-col min-h-screen bg-white">
       <div className="flex-shrink-0 flex items-center gap-3 px-5 py-4.5" style={{ borderBottom: "1px solid #EEF0F2" }}>
         <Link href="/" className="text-gray500" style={{ fontSize: 19 }}>←</Link>
-        <span className="font-black" style={{ fontSize: 17, color: "#0B2540", letterSpacing: "-0.02em" }}>
+        <span className="font-black" style={{ fontSize: 20, color: "#0B2540", letterSpacing: "-0.02em" }}>
           이런 재고 찾습니다
         </span>
       </div>
@@ -160,7 +167,10 @@ export default function BuyPage() {
                 <button
                   key={c}
                   type="button"
-                  onClick={() => setCategory(picked ? "" : c)}
+                  onClick={() => {
+                    setCategoryTouched(true);
+                    setCategory(picked ? "" : c);
+                  }}
                   className="flex items-center gap-1 rounded-full whitespace-nowrap flex-shrink-0"
                   style={{
                     padding: "9px 13px",

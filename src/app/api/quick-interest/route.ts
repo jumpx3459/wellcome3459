@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { sendAdminPush } from "@/lib/sendPush";
 
 // 비회원이 "관심있어요"를 누를 때, 전체 회원가입 없이 전화번호만으로 바로
 // 점핑매니저에게 리드를 넘기기 위한 경량 엔드포인트입니다.
@@ -26,6 +27,13 @@ export async function POST(req: NextRequest) {
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const { data: deal } = await supabaseAdmin.from("deals").select("title").eq("id", dealId).single();
+  await sendAdminPush(
+    "🙋 새 원클릭 리드",
+    deal?.title ? `${deal.title} · 비회원 관심` : "비회원 관심 표시가 들어왔어요",
+    "/admin"
+  );
 
   return NextResponse.json({ ok: true });
 }
