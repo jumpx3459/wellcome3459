@@ -182,8 +182,8 @@ export default function AlertInboxHome() {
         style={{ borderBottom: "1px solid #F1F3F5", padding: "9px 20px" }}
       >
         <span style={{ fontSize: 12 }}>⚙️</span>
-        <span className="flex-1 min-w-0 truncate" style={{ fontSize: 11.5, color: "#6B7480" }}>{myCondText}</span>
-        <span className="flex-shrink-0 font-bold" style={{ fontSize: 11, color: "#E25100" }}>조건 수정</span>
+        <span className="flex-1 min-w-0 truncate" style={{ fontSize: 12.5, color: "#6B7480" }}>{myCondText}</span>
+        <span className="flex-shrink-0 font-bold" style={{ fontSize: 12, color: "#E25100" }}>조건 수정</span>
       </Link>
 
       {showInstall && canInstall && (
@@ -219,12 +219,12 @@ export default function AlertInboxHome() {
                 <div className="flex items-center gap-1.5" style={{ marginBottom: 8 }}>
                   <span
                     className="font-black rounded"
-                    style={{ fontSize: 10.5, padding: "3px 8px", background: match ? "#FDEEE8" : "#F1F3F5", color: match ? "#E25100" : "#6B7480" }}
+                    style={{ fontSize: 11.5, padding: "3px 8px", background: match ? "#FDEEE8" : "#F1F3F5", color: match ? "#E25100" : "#6B7480" }}
                   >
                     {match ? "내 조건 매칭" : "추천"}
                   </span>
-                  <span style={{ fontSize: 11, color: "#6B7480" }}>{d.location}</span>
-                  <span className="font-mono font-bold ml-auto" style={{ fontSize: 11, color: cd.urgent ? "var(--color-urgent)" : "#6B7480" }}>
+                  <span style={{ fontSize: 12, color: "#6B7480" }}>{d.location}</span>
+                  <span className="font-mono font-bold ml-auto" style={{ fontSize: 12, color: cd.urgent ? "var(--color-urgent)" : "#6B7480" }}>
                     ⏱ {cd.label}
                   </span>
                 </div>
@@ -265,8 +265,8 @@ export default function AlertInboxHome() {
                     </span>
                   )}
                   <span className="flex-1 min-w-0">
-                    <span className="block font-bold leading-snug" style={{ fontSize: 14.5, color: "#1A1F26" }}>{d.title}</span>
-                    <span className="block mt-0.5" style={{ fontSize: 11.5, color: "#6B7480" }}>
+                    <span className="block font-bold leading-snug" style={{ fontSize: 16, color: "#1A1F26" }}>{d.title}</span>
+                    <span className="block mt-0.5" style={{ fontSize: 12.5, color: "#6B7480" }}>
                       {d.category} · {d.location} · 잔여 {d.remaining_qty}
                     </span>
                     <span className="flex items-baseline gap-1.5 mt-1.5">
@@ -275,8 +275,8 @@ export default function AlertInboxHome() {
                           -{pct}%
                         </span>
                       )}
-                      <span className="font-black" style={{ fontSize: 17, color: "#0B2540" }}>{formatPrice(d.deal_price)}</span>
-                      <span style={{ fontSize: 11.5, color: "#6B7480", textDecoration: "line-through" }}>{formatPrice(d.original_price)}</span>
+                      <span className="font-black" style={{ fontSize: 18, color: "#0B2540" }}>{formatPrice(d.deal_price)}</span>
+                      <span style={{ fontSize: 12.5, color: "#6B7480", textDecoration: "line-through" }}>{formatPrice(d.original_price)}</span>
                     </span>
                   </span>
                 </div>
@@ -305,8 +305,8 @@ export default function AlertInboxHome() {
             return (
               <Link key={`example-${d.id}`} href={`/deals/example-${d.id}`} className="block w-full text-left" style={{ borderBottom: "1px solid #F1F3F5", padding: "14px 20px", opacity: 0.8 }}>
                 <div className="flex items-center gap-1.5" style={{ marginBottom: 8 }}>
-                  <span className="font-black rounded" style={{ fontSize: 10.5, padding: "3px 8px", background: "#F1F3F5", color: "#6B7480" }}>예시</span>
-                  <span style={{ fontSize: 11, color: "#6B7480" }}>{d.location}</span>
+                  <span className="font-black rounded" style={{ fontSize: 11.5, padding: "3px 8px", background: "#F1F3F5", color: "#6B7480" }}>예시</span>
+                  <span style={{ fontSize: 12, color: "#6B7480" }}>{d.location}</span>
                 </div>
                 <div className="flex flex-col gap-2.5">
                   {d.images && d.images.length > 0 ? (
@@ -329,12 +329,12 @@ export default function AlertInboxHome() {
                     </span>
                   )}
                   <span className="flex-1 min-w-0">
-                    <span className="block font-bold leading-snug" style={{ fontSize: 14.5, color: "#1A1F26" }}>{d.title}</span>
-                    <span className="block mt-0.5" style={{ fontSize: 11.5, color: "#6B7480" }}>{d.category} · {d.location}</span>
+                    <span className="block font-bold leading-snug" style={{ fontSize: 16, color: "#1A1F26" }}>{d.title}</span>
+                    <span className="block mt-0.5" style={{ fontSize: 12.5, color: "#6B7480" }}>{d.category} · {d.location}</span>
                     <span className="flex items-baseline gap-1.5 mt-1.5">
                       {pct > 0 && <span className="font-black text-white rounded" style={{ fontSize: 10.5, padding: "2px 6px", background: "#9AA3AD" }}>-{pct}%</span>}
-                      <span className="font-black" style={{ fontSize: 17, color: "#6B7480" }}>{formatPrice(d.deal_price)}</span>
-                      <span style={{ fontSize: 11.5, color: "#9AA3AD", textDecoration: "line-through" }}>{formatPrice(d.original_price)}</span>
+                      <span className="font-black" style={{ fontSize: 18, color: "#6B7480" }}>{formatPrice(d.deal_price)}</span>
+                      <span style={{ fontSize: 12.5, color: "#9AA3AD", textDecoration: "line-through" }}>{formatPrice(d.original_price)}</span>
                     </span>
                   </span>
                 </div>
