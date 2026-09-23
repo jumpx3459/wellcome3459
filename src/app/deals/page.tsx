@@ -196,65 +196,53 @@ function DealsPageInner() {
           </button>
         </div>
 
-        <div className="relative">
-          <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
-            <button
-              onClick={() => setActiveCat("전체")}
-              className={`text-sm px-4 py-2.5 rounded-full font-bold whitespace-nowrap flex items-center gap-1.5 ${
-                activeCat === "전체" ? "bg-white text-navy" : "text-white"
-              }`}
-              style={activeCat === "전체" ? {} : { background: "rgba(255,255,255,0.22)" }}
+        <div className="flex gap-2 mt-4">
+          <div className="relative flex-1 min-w-0">
+            <select
+              value={activeCat}
+              onChange={(e) => setActiveCat(e.target.value)}
+              className="w-full text-sm font-bold rounded-full appearance-none outline-none"
+              style={{
+                padding: "10px 30px 10px 14px",
+                background: activeCat === "전체" ? "#fff" : "rgba(255,255,255,0.22)",
+                color: activeCat === "전체" ? "#0B2540" : "#fff",
+              }}
             >
-              <span className="text-base">🗃️</span>
-              전체
-            </button>
-            {mockCategories.map((c) => {
-              const isActive = activeCat === c;
-              return (
-                <button
-                  key={c}
-                  onClick={() => setActiveCat(c)}
-                  className="text-sm px-4 py-2.5 rounded-full font-bold whitespace-nowrap flex items-center gap-1.5"
-                  style={
-                    isActive
-                      ? { background: "#fff", color: categoryColors[c].text }
-                      : { background: "rgba(255,255,255,0.22)", color: "#fff" }
-                  }
-                >
-                  <span className="text-base">{categoryIcons[c]}</span>
-                  {c}
-                </button>
-              );
-            })}
+              <option value="전체">🗃️ 전체 카테고리</option>
+              {mockCategories.map((c) => (
+                <option key={c} value={c}>{categoryIcons[c]} {c}</option>
+              ))}
+            </select>
+            <span
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs"
+              style={{ color: activeCat === "전체" ? "#6B7480" : "#fff" }}
+            >
+              ▾
+            </span>
           </div>
-          <div
-            className="pointer-events-none absolute right-0 top-0 bottom-1 w-10"
-            style={{ background: "linear-gradient(90deg, rgba(30,70,120,0), rgba(30,70,120,0.85))" }}
-          />
-        </div>
-
-        <div className="relative">
-          <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
-            {["전체", ...mockRegions].map((r) => {
-              const isActive = activeRegion === r;
-              return (
-                <button
-                  key={r}
-                  onClick={() => setActiveRegion(r)}
-                  className={`text-sm px-3.5 py-2 rounded-full font-bold whitespace-nowrap ${
-                    isActive ? "bg-white text-navy" : "text-white"
-                  }`}
-                  style={isActive ? {} : { background: "rgba(255,255,255,0.18)" }}
-                >
-                  {r === "전체" ? "전 지역" : r}
-                </button>
-              );
-            })}
+          <div className="relative flex-1 min-w-0">
+            <select
+              value={activeRegion}
+              onChange={(e) => setActiveRegion(e.target.value)}
+              className="w-full text-sm font-bold rounded-full appearance-none outline-none"
+              style={{
+                padding: "10px 30px 10px 14px",
+                background: activeRegion === "전체" ? "#fff" : "rgba(255,255,255,0.22)",
+                color: activeRegion === "전체" ? "#0B2540" : "#fff",
+              }}
+            >
+              <option value="전체">전 지역</option>
+              {mockRegions.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+            <span
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs"
+              style={{ color: activeRegion === "전체" ? "#6B7480" : "#fff" }}
+            >
+              ▾
+            </span>
           </div>
-          <div
-            className="pointer-events-none absolute right-0 top-0 bottom-1 w-10"
-            style={{ background: "linear-gradient(90deg, rgba(30,70,120,0), rgba(30,70,120,0.85))" }}
-          />
         </div>
       </div>
 
