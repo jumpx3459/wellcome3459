@@ -19,7 +19,7 @@ function maskPhone(phone: string): string {
 }
 
 const KAKAO_CHANNEL_URL = "https://pf.kakao.com/_xbwDJX/friend";
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 3;
 
 export default function SignupPage() {
   return (
@@ -54,6 +54,7 @@ function SignupPageInner() {
 
   const [categories, setCategories] = useState<string[]>([]);
   const [regions, setRegions] = useState<string[]>([]);
+  const [regionOpen, setRegionOpen] = useState(false);
   const [push, setPush] = useState(true);
   // 카카오톡 채널 연동 ON = 카카오톡 알림톡(마케팅성 정보 포함)을 받겠다는 동의와
   // 실질적으로 같은 의미라, 3단계의 채널 토글과 4단계의 마케팅 수신 동의 항목이
@@ -225,7 +226,7 @@ function SignupPageInner() {
       return;
     }
     if (!push && !kakao) {
-      setObStep(3);
+      setObStep(2);
       setError("알림 받을 방법을 하나 이상 선택해주세요.");
       return;
     }
@@ -387,7 +388,7 @@ function SignupPageInner() {
       ? categories.length
         ? `${categories.length}개 선택 · 다음`
         : "카테고리를 골라주세요"
-      : obStep === 4
+      : obStep === 3
       ? !verified
         ? "휴대폰 인증이 필요해요"
         : !reqAgreed
@@ -396,7 +397,7 @@ function SignupPageInner() {
         ? "알림 받을 방법을 골라주세요"
         : "동의하고 알림 받기 시작"
       : "다음";
-  const obCtaDisabled = (obStep === 1 && categories.length === 0) || (obStep === 4 && !step4Ready);
+  const obCtaDisabled = (obStep === 1 && categories.length === 0) || (obStep === 3 && !step4Ready);
 
   const goBack = () => {
     if (obStep <= 1) {
@@ -411,11 +412,11 @@ function SignupPageInner() {
       showToast("관심 카테고리를 1개 이상 골라주세요");
       return;
     }
-    if (obStep === 3 && !anyChannel) {
+    if (obStep === 2 && !anyChannel) {
       showToast("앱 푸시나 카카오톡 중 하나는 켜주세요");
       return;
     }
-    if (obStep === 4) {
+    if (obStep === 3) {
       if (!verified) {
         showToast("휴대폰 인증을 먼저 완료해주세요");
         return;
@@ -425,7 +426,7 @@ function SignupPageInner() {
         return;
       }
       if (!anyChannel) {
-        setObStep(3);
+        setObStep(2);
         showToast("앱 푸시나 카카오톡 중 하나는 켜주세요");
         return;
       }
@@ -551,49 +552,62 @@ function SignupPageInner() {
             >
               아직 잘 모르겠어요 · 전체 받기 →
             </button>
+
+            <div className="mt-6" style={{ borderTop: "1px solid #EEF0F2", paddingTop: 18 }}>
+              <button
+                type="button"
+                onClick={() => setRegionOpen((v) => !v)}
+                className="w-full flex items-center justify-between"
+              >
+                <span className="text-sm font-bold" style={{ color: "#0B2540" }}>
+                  🗺️ 지역 좁히기{" "}
+                  <span style={{ color: "#6B7480", fontWeight: 500 }}>(선택 안 하면 전국)</span>
+                </span>
+                <span className="text-xs font-bold" style={{ color: "#6B7480" }}>
+                  {regionOpen
+                    ? "접기 ▲"
+                    : allRegionsOn || regions.length === 0
+                    ? "전국 · 펼치기 ▾"
+                    : `${regions.length}곳 선택됨 · 펼치기 ▾`}
+                </span>
+              </button>
+              {regionOpen && (
+                <div className="mt-3">
+                  <div className="flex flex-wrap gap-2">
+                    {mockRegions.map((r) => {
+                      const picked = regions.includes(r);
+                      return (
+                        <button
+                          key={r}
+                          onClick={() => toggleIn(regions, setRegions, r)}
+                          className="rounded-full font-bold"
+                          style={{
+                            padding: "10px 14px",
+                            fontSize: 13,
+                            background: picked ? "rgba(255,111,15,.1)" : "#fff",
+                            border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
+                            color: picked ? "#E25100" : "#1A1F26",
+                          }}
+                        >
+                          {r}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={pickAllRegions}
+                    className="mt-3"
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12.5, fontWeight: 700, color: "#6B7480", textDecoration: "underline", textUnderlineOffset: 4, padding: "6px 0" }}
+                  >
+                    {allRegionsOn ? "전국 전체 선택됨 · 해제하기" : "전국 어디든 괜찮아요 →"}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
         {!alreadyMember && obStep === 2 && (
-          <div>
-            <h2 className="font-display" style={{ fontSize: 23, color: "#0B2540", letterSpacing: "-0.02em" }}>
-              어느 지역까지 받으시겠어요?
-            </h2>
-            <p className="mt-2" style={{ fontSize: 14, color: "#6B7480", lineHeight: 1.6 }}>
-              직접 실사·상차 가능한 지역을 고르세요. 화물 배차는 앱에서 바로 신청할 수 있어요.
-            </p>
-            <div className="flex flex-wrap gap-2 mt-5">
-              {mockRegions.map((r) => {
-                const picked = regions.includes(r);
-                return (
-                  <button
-                    key={r}
-                    onClick={() => toggleIn(regions, setRegions, r)}
-                    className="rounded-full font-bold"
-                    style={{
-                      padding: "11px 16px",
-                      fontSize: 14,
-                      background: picked ? "rgba(255,111,15,.1)" : "#fff",
-                      border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
-                      color: picked ? "#E25100" : "#1A1F26",
-                    }}
-                  >
-                    {r}
-                  </button>
-                );
-              })}
-            </div>
-            <button
-              onClick={pickAllRegions}
-              className="mt-4"
-              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#6B7480", textDecoration: "underline", textUnderlineOffset: 4, padding: "8px 0" }}
-            >
-              {allRegionsOn ? "전국 전체 선택됨 · 해제하기" : "전국 어디든 괜찮아요 →"}
-            </button>
-          </div>
-        )}
-
-        {!alreadyMember && obStep === 3 && (
           <div>
             <h2 className="font-display" style={{ fontSize: 23, color: "#0B2540", letterSpacing: "-0.02em" }}>
               어디로 알려드릴까요?
@@ -673,7 +687,7 @@ function SignupPageInner() {
           </div>
         )}
 
-        {!alreadyMember && obStep === 4 && (
+        {!alreadyMember && obStep === 3 && (
           <div>
             <h2 className="font-display" style={{ fontSize: 23, color: "#0B2540", letterSpacing: "-0.02em" }}>
               휴대폰 인증만 하면 끝이에요
@@ -779,7 +793,7 @@ function SignupPageInner() {
                 </div>
               ) : (
                 <button
-                  onClick={() => setObStep(3)}
+                  onClick={() => setObStep(2)}
                   className="flex items-center gap-2.5 w-full text-left rounded-2xl"
                   style={{ border: "1.5px solid #E5484D", background: "#FDEEE8", padding: "13px 15px" }}
                 >

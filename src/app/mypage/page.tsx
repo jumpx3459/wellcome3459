@@ -58,8 +58,7 @@ export default function MyPage() {
   const [memberId, setMemberId] = useState<string | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
   const [regions, setRegions] = useState<string[]>([]);
-  const [categoryOpen, setCategoryOpen] = useState(false);
-  const [regionOpen, setRegionOpen] = useState(false);
+  const [alertsOpen, setAlertsOpen] = useState(false);
   const [interests, setInterests] = useState<InterestItem[]>([]);
   const [alertLog, setAlertLog] = useState<AlertLogItem[]>([]);
   const [alertLogCount, setAlertLogCount] = useState(0);
@@ -215,7 +214,7 @@ export default function MyPage() {
       });
     }
     if (window.location.hash === "#alerts") {
-      setCategoryOpen(true);
+      setAlertsOpen(true);
       requestAnimationFrame(() => {
         document.getElementById("alerts")?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
@@ -522,13 +521,13 @@ export default function MyPage() {
             🏪
           </div>
           <div className="flex-1 min-w-0">
-            <div className="font-black truncate" style={{ fontSize: 17, letterSpacing: "-0.02em" }}>
+            <div className="font-black truncate" style={{ fontSize: 18.5, letterSpacing: "-0.02em" }}>
               {companyName || phone || "회원님"}
               {companyName && fullName && ` · ${fullName}`}
             </div>
             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
               {memberNo != null && (
-                <span style={{ fontSize: 11.5, color: "rgba(255,255,255,.65)" }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,.8)" }}>
                   회원번호 <span className="font-mono">{formatMemberNo(memberNo)}</span>
                 </span>
               )}
@@ -551,15 +550,15 @@ export default function MyPage() {
         <div className="flex gap-2 mt-4.5">
           <div className="flex-1 rounded-xl text-center" style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px" }}>
             <div className="font-mono font-bold" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{alertLogCount}</div>
-            <div className="mt-0.5" style={{ fontSize: 10.5, color: "rgba(255,255,255,.65)" }}>받은 알림</div>
+            <div className="mt-0.5 font-bold" style={{ fontSize: 10.5, color: "rgba(255,255,255,.8)" }}>받은 알림</div>
           </div>
           <div className="flex-1 rounded-xl text-center" style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px" }}>
             <div className="font-mono font-bold" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{interests.length}</div>
-            <div className="mt-0.5" style={{ fontSize: 10.5, color: "rgba(255,255,255,.65)" }}>관심 매물</div>
+            <div className="mt-0.5 font-bold" style={{ fontSize: 10.5, color: "rgba(255,255,255,.8)" }}>관심 매물</div>
           </div>
           <div className="flex-1 rounded-xl text-center" style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px" }}>
             <div className="font-mono font-bold" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{referrals.length}</div>
-            <div className="mt-0.5" style={{ fontSize: 10.5, color: "rgba(255,255,255,.65)" }}>추천 회원</div>
+            <div className="mt-0.5 font-bold" style={{ fontSize: 10.5, color: "rgba(255,255,255,.8)" }}>추천 회원</div>
           </div>
         </div>
       </div>
@@ -568,36 +567,102 @@ export default function MyPage() {
         {adminInfo && (
           <Link
             href="/admin"
-            className="flex items-center justify-between rounded-2xl px-4 py-3.5 text-white"
+            className="flex items-center justify-between gap-3 rounded-2xl px-4 py-3.5 text-white"
             style={{ background: "#0B2540" }}
           >
-            <span className="text-sm font-bold">
-              🛡️ {adminInfo.name} · {adminInfo.role}
+            <span className="min-w-0">
+              <span className="block text-sm font-bold">🛡️ 관리자 화면</span>
+              <span className="block mt-0.5 truncate" style={{ fontSize: 11, color: "rgba(255,255,255,.65)" }}>
+                {adminInfo.name} · {adminInfo.role}
+              </span>
             </span>
-            <span className="text-xs font-bold text-white/70">관리자 화면 →</span>
+            <span className="flex-shrink-0 text-xs font-bold text-white/70">이동 →</span>
           </Link>
         )}
 
-        <button
-          type="button"
-          onClick={() => {
-            setCategoryOpen(true);
-            document.getElementById("alerts")?.scrollIntoView({ behavior: "smooth", block: "start" });
-          }}
-          className="w-full flex items-center gap-3 rounded-2xl text-left"
-          style={{ border: "1px solid #E4E7EB", padding: "15px 16px" }}
-        >
-          <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 38, height: 38, background: "#FDEEE8", fontSize: 17 }}>🔔</span>
-          <span className="flex-1 min-w-0">
-            <span className="block font-bold" style={{ fontSize: 14, color: "#0B2540" }}>내 알림 조건</span>
-            <span className="block truncate mt-0.5" style={{ fontSize: 11.5, color: "#6B7480" }}>
-              {categories.length > 0 ? categories.slice(0, 2).join("·") + (categories.length > 2 ? ` 외 ${categories.length - 2}` : "") : "전체 카테고리"}
-              {" · "}
-              {regions.length === 0 ? "전 지역" : regions.slice(0, 2).join("·") + (regions.length > 2 ? ` 외 ${regions.length - 2}` : "")}
+        <div id="alerts">
+          <button
+            type="button"
+            onClick={() => setAlertsOpen((v) => !v)}
+            className="w-full flex items-center gap-3 rounded-2xl text-left"
+            style={{ border: "1px solid #E4E7EB", padding: "15px 16px" }}
+          >
+            <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 38, height: 38, background: "#FDEEE8", fontSize: 17 }}>🔔</span>
+            <span className="flex-1 min-w-0">
+              <span className="block font-bold" style={{ fontSize: 14, color: "#0B2540" }}>내 알림 조건</span>
+              <span className="block truncate mt-0.5" style={{ fontSize: 11.5, color: "#6B7480" }}>
+                {categories.length > 0 ? categories.slice(0, 2).join("·") + (categories.length > 2 ? ` 외 ${categories.length - 2}` : "") : "전체 카테고리"}
+                {" · "}
+                {regions.length === 0 ? "전 지역" : regions.slice(0, 2).join("·") + (regions.length > 2 ? ` 외 ${regions.length - 2}` : "")}
+              </span>
             </span>
-          </span>
-          <span style={{ color: "#6B7480" }}>›</span>
-        </button>
+            <span style={{ color: "#6B7480" }}>{alertsOpen ? "접기 ▲" : "변경하기 ›"}</span>
+          </button>
+
+          {alertsOpen && (
+            <div className="mt-3.5 flex flex-col gap-5">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-bold text-navy">관심 카테고리</span>
+                  <button
+                    type="button"
+                    onClick={() => setCategories(categories.length === mockCategories.length ? [] : [...mockCategories])}
+                    className="text-xs font-bold text-orange"
+                  >
+                    {categories.length === mockCategories.length ? "전체 해제" : "전체 선택"}
+                  </button>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {mockCategories.map((c) => {
+                    const picked = categories.includes(c);
+                    return (
+                      <button
+                        key={c}
+                        onClick={() => toggle(categories, setCategories, c)}
+                        className="flex flex-col items-center justify-center gap-1 rounded-xl border py-3.5 px-1 text-center"
+                        style={
+                          picked
+                            ? { background: "#FF6F0F", borderColor: "#FF6F0F", color: "#fff" }
+                            : { background: "#F5F6F8", borderColor: "#F5F6F8", color: "#1B3A5C" }
+                        }
+                      >
+                        <span className="text-2xl leading-none">{categoryIcons[c]}</span>
+                        <span className="text-sm font-bold leading-tight">{c}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-bold text-navy">관심 지역</span>
+                  <button
+                    type="button"
+                    onClick={() => setRegions(regions.length === mockRegions.length ? [] : [...mockRegions])}
+                    className="text-xs font-bold text-orange"
+                  >
+                    {regions.length === mockRegions.length ? "전체 해제" : "전체 선택"}
+                  </button>
+                </div>
+                <p className="text-xs text-gray500 mb-2">선택 안 하면 전국 매물 알림을 다 받아요</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {mockRegions.map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => toggle(regions, setRegions, r)}
+                      className={`text-sm py-2.5 rounded-full border-2 font-bold text-center ${
+                        regions.includes(r) ? "bg-[#FF6F0F] text-white border-[#FF6F0F]" : "border-gray200 text-gray500"
+                      }`}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         {alertLog.length > 0 && (
           <div>
@@ -638,140 +703,6 @@ export default function MyPage() {
             </div>
           </div>
         )}
-
-        <div id="alerts">
-          <button
-            type="button"
-            onClick={() => setCategoryOpen((v) => !v)}
-            className="w-full flex items-center justify-between mb-2"
-          >
-            <span className="text-base font-bold text-navy">관심 카테고리</span>
-            <span className="text-xs font-bold text-gray400">
-              {categoryOpen ? "접기 ▲" : "변경하기 ▾"}
-            </span>
-          </button>
-          {!categoryOpen && (
-            <div className="flex flex-wrap gap-1.5 mb-1">
-              {categories.length === 0 ? (
-                <span className="text-xs text-gray500">선택된 카테고리 없음</span>
-              ) : (
-                <>
-                  {categories.slice(0, 6).map((c) => (
-                    <span
-                      key={c}
-                      className="text-xs font-bold px-2.5 py-1 rounded-full"
-                      style={{ background: "#FF6F0F", color: "#fff" }}
-                    >
-                      {categoryIcons[c]} {c}
-                    </span>
-                  ))}
-                  {categories.length > 6 && (
-                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-gray100 text-gray500">
-                      +{categories.length - 6}개 더
-                    </span>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-          {categoryOpen && (
-            <>
-              <div className="flex justify-end mb-1.5">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setCategories(categories.length === mockCategories.length ? [] : [...mockCategories])
-                  }
-                  className="text-xs font-bold text-orange"
-                >
-                  {categories.length === mockCategories.length ? "전체 해제" : "전체 선택"}
-                </button>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {mockCategories.map((c) => {
-                  const picked = categories.includes(c);
-                  return (
-                    <button
-                      key={c}
-                      onClick={() => toggle(categories, setCategories, c)}
-                      className="flex flex-col items-center justify-center gap-1 rounded-xl border py-3.5 px-1 text-center"
-                      style={
-                        picked
-                          ? { background: "#FF6F0F", borderColor: "#FF6F0F", color: "#fff" }
-                          : { background: "#F5F6F8", borderColor: "#F5F6F8", color: "#1B3A5C" }
-                      }
-                    >
-                      <span className="text-2xl leading-none">{categoryIcons[c]}</span>
-                      <span className="text-sm font-bold leading-tight">{c}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
-
-        <div>
-          <button
-            type="button"
-            onClick={() => setRegionOpen((v) => !v)}
-            className="w-full flex items-center justify-between mb-2"
-          >
-            <span className="text-sm font-bold text-navy">관심 지역</span>
-            <span className="text-xs font-bold text-gray400">
-              {regionOpen ? "접기 ▲" : "변경하기 ▾"}
-            </span>
-          </button>
-          {!regionOpen && (
-            <div className="flex flex-wrap gap-1.5 mb-1">
-              {regions.length === 0 ? (
-                <span className="text-xs text-gray500">전국 매물 알림 받는 중</span>
-              ) : (
-                <>
-                  {regions.slice(0, 8).map((r) => (
-                    <span key={r} className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#FF6F0F", color: "#fff" }}>
-                      {r}
-                    </span>
-                  ))}
-                  {regions.length > 8 && (
-                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-gray100 text-gray500">
-                      +{regions.length - 8}개 더
-                    </span>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-          {regionOpen && (
-            <>
-              <p className="text-xs text-gray500 mb-2">선택 안 하면 전국 매물 알림을 다 받아요</p>
-              <div className="flex justify-end mb-1.5">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setRegions(regions.length === mockRegions.length ? [] : [...mockRegions])
-                  }
-                  className="text-xs font-bold text-orange"
-                >
-                  {regions.length === mockRegions.length ? "전체 해제" : "전체 선택"}
-                </button>
-              </div>
-              <div className="grid grid-cols-4 gap-2">
-                {mockRegions.map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => toggle(regions, setRegions, r)}
-                    className={`text-sm py-2.5 rounded-full border-2 font-bold text-center ${
-                      regions.includes(r) ? "bg-[#FF6F0F] text-white border-[#FF6F0F]" : "border-gray200 text-gray500"
-                    }`}
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
 
         <button
           onClick={save}
