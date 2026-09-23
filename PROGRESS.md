@@ -1,6 +1,6 @@
 # PROGRESS
 
-마지막 업데이트: 2026-09-22 (PR #15 병합 + 프로덕션 배포 완료)
+마지막 업데이트: 2026-09-23 (쪽지 기능 + 업체명 비공개 옵션)
 
 새 세션을 시작할 때 이 파일을 먼저 읽고, 아래 "다음에 할 일"부터 확인하세요.
 
@@ -24,9 +24,51 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
   PWA 배너 수정, 회원번호+추천 공유, 프로필/사업자인증, 관리자 다중계정 인증,
   mypage 관리자 인식 배지, 관리자 임명/비밀번호 변경, 디자인 토큰 v1 1라운드,
   디자인 토큰 v2 위계/액센트 재정비), **PR #15 (design-v2 전면 리디자인, 2026-09-22
-  병합 완료 · 머지 커밋 `e9e54b2`)** — 상세는 아래 "최근 작업 (2026-09-22)" 참고
+  병합 완료 · 머지 커밋 `e9e54b2`)** — 상세는 아래 "최근 작업 (2026-09-22)" 참고.
+  이후 main에 직접 커밋으로 계속 진행 중(로그인 페이지, 판매 진입점 배너, 쪽지+업체명
+  비공개 옵션 등) — 상세는 아래 "최근 작업 (2026-09-23)" 참고
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
+
+## 최근 작업 (2026-09-23) — 쪽지(회원간 메시지) + 매물 등록 업체명 비공개 옵션
+
+판매자가 흥정 부담 없이 등록할 수 있게 `/sell`에 "업체명 비공개로 등록" 체크박스를
+추가하고, 구매자가 판매자에게 직접 쪽지를 보낼 수 있는 기능을 신설. `seller_requests`는
+비로그인도 제출 가능한 공개 폼이라, 로그인한 판매자에게만 쪽지가 켜지도록 설계
+(비로그인 제출 매물은 기존 "관심있어요 · 점핑매니저 연결" 플로우 그대로 유지).
+
+- **DB**: `seller_requests`/`deals`에 `seller_member_id`/`is_anonymous` 컬럼(+`deals`에는
+  `seller_display_name`도) 추가, 신규 `messages` 테이블(RLS: 본인이 보내거나 받은 것만
+  select, 본인이 sender인 것만 insert) 신설. `supabase/schema.sql` 맨 끝에 마이그레이션
+  블록 추가, Supabase SQL Editor에서 실행 완료 확인함(2026-09-23).
+- **sell/page.tsx**: `isAnonymous`/`memberId` state + 업체명 입력 아래 비공개 체크박스.
+  체크하면 구매자에게는 실제 업체명 대신 `{카테고리} 판매자 #{4자리 랜덤}` 형태의 익명
+  표시명이 노출됨(점핑매니저=관리자에게는 항상 실제 업체명 그대로 전달).
+- **api/admin/deals/route.ts**: 매물 승인(`requestId` 경유) 시 `seller_requests`에서
+  `is_anonymous`/`seller_member_id`/`company_name`을 먼저 조회해서 `deals`에
+  `seller_display_name`(마스킹 여부 반영)까지 함께 저장. 관리자가 `requestId` 없이 직접
+  등록하는 경우는 세 필드 전부 기본값(null/false) 그대로.
+- **deals/[id]/page.tsx**: `seller_display_name`이 있을 때만 판매자 카드 노출, 로그인
+  회원이고 본인 매물이 아닐 때만(`memberId !== deal.seller_member_id`) "💬 쪽지 보내기"
+  버튼 노출 → `messages` insert.
+- **mypage/page.tsx**: 쪽지함 섹션(관심 매물 ↔ 판매 등록 배너 사이) — `deal_id`+상대방
+  기준으로 스레드 묶어서 표시, 스레드별 인라인 답장 입력.
+
+### 🔴 배포 순서 사고 (2026-09-23) — 코드 먼저 push, 마이그레이션 나중에 실행
+
+이번 작업에서 스키마 마이그레이션(`schema.sql` 새 블록)을 사용자가 Supabase SQL
+Editor에서 실행하기 **전에** 코드를 먼저 main에 push해버려서, 실제로 짧은 시간 동안
+프로덕션 `/api/seller-requests`가 `"Could not find the 'is_anonymous' column"` 에러로
+**실제 판매 등록이 막히는 장애**가 발생했음(`vercel curl`로 직접 재현/확인). 사용자가
+마이그레이션을 실행한 뒤 재확인해서 정상화됐고(`{"ok":true}` 200 재확인, 테스트로
+생성된 가짜 신청 2건은 어드민 승인 없이 DB에서 직접 delete로 정리 — 실사용자에게 푸시
+안 나감), 이번 건 자체는 해소·종료됐음.
+
+**재발 방지 규칙 (앞으로 계속 적용)**: 새 컬럼/테이블을 요구하는 코드 변경은 반드시
+**"SQL 마이그레이션을 사용자가 먼저 실행 확인 → 그다음 코드 push"** 순서로 진행할 것.
+지금까지처럼 "코드 먼저, 마이그레이션은 나중에 안내"하는 순서는 금지 — 스키마가 걸린
+작업일 때는 커밋은 로컬에 만들어두고, push 전에 반드시 마이그레이션 SQL을 사용자에게
+먼저 전달하고 실행 확인을 받은 뒤에 push할 것.
 
 ## 최근 작업 (2026-09-22) — design-v2 전면 리디자인
 
@@ -187,6 +229,13 @@ curl로 확인. 단, 이 세션엔 브라우저 접근이 없어 육안 확인�
 
 ## 다음에 할 일
 
+- [ ] **쪽지/업체명 비공개 기능 — 관리자 승인 경로 자연 확인 대기** (2026-09-23):
+  마이그레이션 실행 후 공개 API(`/api/seller-requests`)는 재검증 완료, 하지만
+  관리자 승인(`/api/admin/deals`)이 `seller_requests`에서 판매자 정보를 조회해
+  `deals.seller_display_name`을 채우는 새 로직은 실제 승인 케이스로 아직
+  검증 안 됨 — 사용자 판단으로 "다음 실제 매물 승인 때 자연 확인"하기로 하고
+  종료. 만약 다음 승인 때 에러 나면 `api/admin/deals/route.ts`의
+  `maskedSellerName()`/`sr.seller_member_id` 부분부터 확인할 것.
 - [x] **PR #15 병합 완료 (2026-09-22, 머지 커밋 `e9e54b2`)** — design-v2 전면
   리디자인. GitHub Actions 자동배포로 프로덕션 반영 확인(curl로 홈/signup/sell/
   mypage/admin 5개 화면 200 응답 + 타이틀 확인). **사용자 직접 육안 확인 아직
