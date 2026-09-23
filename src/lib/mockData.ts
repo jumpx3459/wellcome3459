@@ -44,7 +44,7 @@ export const mockDeals: Deal[] = [
     remaining_qty: 21,
     closes_at: new Date(now + 1000 * 60 * 60 * 4.2).toISOString(),
     images: ["/images/mock/pork-belly-1.jpg", "/images/mock/pork-belly-2.jpg"],
-    video_url: null,
+    video_url: "/videos/mock/pork-belly.mp4",
     description: "냉동 보관 · 박스당 10kg 균일 포장 · 소비기한 여유 3개월 이상",
     package_unit: "10kg 박스",
     origin: "국내산",
@@ -104,7 +104,7 @@ export const mockDeals: Deal[] = [
     remaining_qty: 1080,
     closes_at: new Date(now + 1000 * 60 * 60 * 28.2).toISOString(),
     images: ["/images/mock/umbrella-1.jpg", "/images/mock/umbrella-2.jpg"],
-    video_url: "/videos/mock/umbrella.mp4",
+    video_url: null, // 실제 우산 영상 확보되면 교체
     description: "전 시즌 이월 재고 · 박스 단위(50개입) 판매 · 색상 랜덤 혼합 구성",
   },
   {
