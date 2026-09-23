@@ -62,7 +62,8 @@ export default function MyPage() {
   const [alertLog, setAlertLog] = useState<AlertLogItem[]>([]);
   const [alertLogCount, setAlertLogCount] = useState(0);
   const [referrals, setReferrals] = useState<ReferralItem[]>([]);
-  const [shareDeal, setShareDeal] = useState<{ id: string; title: string; deal_price: number } | null>(null);
+  const [shareDeals, setShareDeals] = useState<{ id: string; title: string; deal_price: number }[]>([]);
+  const [selectedShareDealId, setSelectedShareDealId] = useState<string>("");
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -226,9 +227,11 @@ export default function MyPage() {
       .select("id, title, deal_price")
       .eq("status", "active")
       .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => setShareDeal(data));
+      .limit(8)
+      .then(({ data }) => {
+        setShareDeals(data ?? []);
+        if (data && data.length > 0) setSelectedShareDealId(data[0].id); // 기본값: 최신 매물
+      });
   }, []);
 
   useEffect(() => {
@@ -343,6 +346,8 @@ export default function MyPage() {
   const toggle = (list: string[], set: (v: string[]) => void, value: string) => {
     set(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
   };
+
+  const shareDeal = shareDeals.find((d) => d.id === selectedShareDealId) ?? null;
 
   const refUrl =
     typeof window !== "undefined" && refCode
@@ -1008,6 +1013,21 @@ export default function MyPage() {
           <p className="text-xs font-bold mb-3" style={{ color: "#966B00" }}>
             🎁 지금 추천해두면, 리워드 제도 도입 시 먼저 혜택 받아요
           </p>
+          {shareDeals.length > 0 && (
+            <select
+              value={selectedShareDealId}
+              onChange={(e) => setSelectedShareDealId(e.target.value)}
+              className="w-full text-sm font-bold border-2 border-gray200 rounded-xl mb-2 outline-none"
+              style={{ padding: "10px 12px", color: "#0B2540" }}
+            >
+              {shareDeals.map((d) => (
+                <option key={d.id} value={d.id}>
+                  📦 {d.title} · {formatPrice(d.deal_price)}
+                </option>
+              ))}
+              <option value="">🔗 매물 없이 가입 추천만 보내기</option>
+            </select>
+          )}
           <div className="flex gap-2">
             <div className="flex-1 min-w-0 border-2 border-gray200 rounded-xl px-3.5 flex items-center text-sm text-gray500 truncate" style={{ height: "48px" }}>
               {refUrl}
