@@ -16,6 +16,7 @@ export default function SellPage() {
   const [memberId, setMemberId] = useState<string | null>(null);
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
+  const [bonusPhotoSlots, setBonusPhotoSlots] = useState(0);
 
   // 로그인한 회원이면 인증된 번호를 미리 채워준다 — 대리 등록(다른 담당자
   // 연락처로 접수) 케이스가 있어서 수정은 그대로 허용한다.
@@ -27,10 +28,11 @@ export default function SellPage() {
       setMemberId(userData.user.id);
       const { data: member } = await supabase
         .from("members")
-        .select("phone")
+        .select("phone, bonus_photo_slots")
         .eq("id", userData.user.id)
         .maybeSingle();
       if (member?.phone) setContactPhone(fromE164Phone(member.phone));
+      setBonusPhotoSlots(member?.bonus_photo_slots ?? 0);
     })();
   }, []);
   const [category, setCategory] = useState<string>("");
@@ -125,6 +127,20 @@ export default function SellPage() {
             />
             <p className="text-sm font-bold text-navy">점핑매니저가 바로 연락드립니다.</p>
           </div>
+
+          {memberId && (
+            <Link
+              href="/mypage#referral"
+              className="w-full block text-left rounded-2xl mt-4"
+              style={{ background: "#FFF9EC", border: "1px solid #F0DCA8", padding: "13px 15px" }}
+            >
+              <p className="text-xs font-bold" style={{ color: "#8A6100" }}>
+                🎁 친구 추천하면 나도 친구도 사진 슬롯 +2장 (최대 6장까지)
+              </p>
+              <p className="text-xs mt-1" style={{ color: "#8A6100" }}>추천 링크 보내러 가기 →</p>
+            </Link>
+          )}
+
           <Link
             href="/"
             className="w-full block text-center font-bold rounded-2xl text-white mt-5"
@@ -327,7 +343,7 @@ export default function SellPage() {
 
         {showDetails && (
           <div className="flex flex-col gap-5 border-2 border-gray200 rounded-2xl p-4">
-            <ImageUploader onChange={setImages} />
+            <ImageUploader onChange={setImages} max={4 + bonusPhotoSlots} />
 
             <VideoUploader onChange={setVideoUrl} />
 

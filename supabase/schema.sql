@@ -289,6 +289,46 @@ create trigger members_protect_business_verified
   before update on public.members
   for each row execute function public.protect_business_verified();
 
+-- ---------------- 추천 리워드(사진 슬롯 +2) — 2026-09-23 ----------------
+-- bonus_photo_slots/referral_bonus_granted는 protect_business_verified와 같은 이유로
+-- 클라이언트가 upsert()로 직접 값을 써 넣을 수 없게 막아야 합니다(그렇지 않으면 아무나
+-- 브라우저 콘솔에서 bonus_photo_slots를 마음대로 올릴 수 있음). 지급 로직 자체를 이
+-- 트리거 안(서버 사이드)에서 계산하는 방식으로 막습니다 — signup/page.tsx는 손대지 않고
+-- referred_by만 기존처럼 넘기면, 신규 회원 본인 +2 · 추천인 +2가 트리거에서 처리됩니다.
+alter table public.members add column if not exists bonus_photo_slots integer not null default 0;
+alter table public.members add column if not exists referral_bonus_granted boolean not null default false;
+
+create or replace function public.grant_referral_bonus()
+returns trigger as $$
+begin
+  if auth.role() = 'service_role' then
+    return new;
+  end if;
+
+  if tg_op = 'INSERT' then
+    new.bonus_photo_slots := 0;
+    new.referral_bonus_granted := false;
+    if new.referred_by is not null then
+      new.bonus_photo_slots := 2;
+      new.referral_bonus_granted := true;
+      update public.members
+      set bonus_photo_slots = coalesce(bonus_photo_slots, 0) + 2
+      where id = new.referred_by;
+    end if;
+  elsif tg_op = 'UPDATE' then
+    new.bonus_photo_slots := old.bonus_photo_slots;
+    new.referral_bonus_granted := old.referral_bonus_granted;
+  end if;
+
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+drop trigger if exists members_grant_referral_bonus on public.members;
+create trigger members_grant_referral_bonus
+  before insert or update on public.members
+  for each row execute function public.grant_referral_bonus();
+
 -- ---------------- 카카오 로그인 → 휴대폰 SMS 인증 전환 (OTP 요청 제한) ----------------
 -- 카카오 로그인을 걷어내고 휴대폰 OTP만 쓰기로 하면서(1번 섹션 주석에 적힌 원래
 -- 설계로 복귀), 점프엑스(jumpx-luxury-redesign) schema.sql의 동일 패턴을 이

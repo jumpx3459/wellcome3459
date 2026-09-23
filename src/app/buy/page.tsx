@@ -88,6 +88,18 @@ export default function BuyPage() {
             <div className="text-xs font-bold" style={{ color: "#6B7480" }}>등록한 조건</div>
             <div className="font-bold mt-1.5 leading-relaxed" style={{ fontSize: 14, color: "#0B2540" }}>{summary}</div>
           </div>
+
+          <Link
+            href="/mypage#referral"
+            className="w-full block text-left rounded-2xl mt-4"
+            style={{ background: "#FFF9EC", border: "1px solid #F0DCA8", padding: "13px 15px" }}
+          >
+            <p className="text-xs font-bold" style={{ color: "#8A6100" }}>
+              🎁 판매자 친구를 추천하면 서로 사진 슬롯 +2장을 드려요
+            </p>
+            <p className="text-xs mt-1" style={{ color: "#8A6100" }}>추천 링크 보내러 가기 →</p>
+          </Link>
+
           <Link
             href="/"
             className="w-full block text-center font-bold rounded-2xl text-white mt-5"

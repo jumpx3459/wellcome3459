@@ -53,6 +53,8 @@ export default function MyPage() {
   const [phone, setPhone] = useState("");
   const [memberNo, setMemberNo] = useState<number | null>(null);
   const [refCode, setRefCode] = useState("");
+  const [bonusPhotoSlots, setBonusPhotoSlots] = useState(0);
+  const [bannerDismissed, setBannerDismissed] = useState(true); // 값 로드 전 깜빡임 방지, 아래 effect가 실제 판정
   const [memberId, setMemberId] = useState<string | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
   const [regions, setRegions] = useState<string[]>([]);
@@ -114,7 +116,7 @@ export default function MyPage() {
 
       const { data: member } = await supabase
         .from("members")
-        .select("phone, ref_code, member_no, company_name, name, email, business_verified, business_license_path")
+        .select("phone, ref_code, member_no, company_name, name, email, business_verified, business_license_path, bonus_photo_slots")
         .eq("id", userId)
         .single();
       if (member) {
@@ -125,6 +127,7 @@ export default function MyPage() {
         setEmail(member.email ?? "");
         setBusinessVerified(Boolean(member.business_verified));
         setHasBusinessLicense(Boolean(member.business_license_path));
+        setBonusPhotoSlots(member.bonus_photo_slots ?? 0);
       }
 
       if (member?.ref_code) {
@@ -233,6 +236,17 @@ export default function MyPage() {
         if (data && data.length > 0) setSelectedShareDealId(data[0].id); // 기본값: 최신 매물
       });
   }, []);
+
+  // 사진 슬롯이 "이전에 본 값"과 다르면(=새로 지급됨) 축하 배너를 다시 보여줌
+  useEffect(() => {
+    if (bonusPhotoSlots <= 0) return;
+    try {
+      const seen = localStorage.getItem("jumpx_bonus_banner_seen");
+      setBannerDismissed(seen === String(bonusPhotoSlots));
+    } catch {
+      setBannerDismissed(false);
+    }
+  }, [bonusPhotoSlots]);
 
   useEffect(() => {
     if (!memberId || !supabase) return;
@@ -1011,8 +1025,34 @@ export default function MyPage() {
             아래 링크로 가입하면 내가 추천한 회원으로 따로 관리돼요.
           </p>
           <p className="text-xs font-bold mb-3" style={{ color: "#966B00" }}>
-            🎁 지금 추천해두면, 리워드 제도 도입 시 먼저 혜택 받아요
+            🎁 추천 1명당 나도 친구도 사진 슬롯 +2장 (지금 내 사진 슬롯: {4 + bonusPhotoSlots}장)
           </p>
+
+          {bonusPhotoSlots > 0 && !bannerDismissed && (
+            <div
+              className="flex items-start justify-between gap-3 rounded-xl mb-3"
+              style={{ background: "#E8F8EC", border: "1px solid #B8E6C2", padding: "12px 14px" }}
+            >
+              <p className="text-xs font-bold leading-relaxed" style={{ color: "#1F7A34" }}>
+                🎉 {referrals[0]?.company_name || (referrals[0]?.member_no != null ? `${formatMemberNo(referrals[0].member_no)} 회원` : "추천하신 분")}
+                이 추천으로 가입했어요! 사진 슬롯이 {4 + bonusPhotoSlots}장으로 늘었어요.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setBannerDismissed(true);
+                  try {
+                    localStorage.setItem("jumpx_bonus_banner_seen", String(bonusPhotoSlots));
+                  } catch {}
+                }}
+                className="flex-shrink-0 text-xs font-bold"
+                style={{ color: "#1F7A34" }}
+              >
+                닫기
+              </button>
+            </div>
+          )}
+
           {shareDeals.length > 0 && (
             <select
               value={selectedShareDealId}

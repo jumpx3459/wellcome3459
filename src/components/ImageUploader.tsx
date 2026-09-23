@@ -7,7 +7,7 @@ type Item = { preview: string; url?: string; uploading: boolean };
 export default function ImageUploader({
   onChange,
   label = "사진 첨부",
-  hint = "실물사진 · 박스사진 · 라벨(제품표시사항) 등, 최대 4장",
+  hint,
   max = 4,
   initialUrls = [],
 }: {
@@ -20,6 +20,7 @@ export default function ImageUploader({
   const [items, setItems] = useState<Item[]>(() =>
     initialUrls.map((url) => ({ preview: url, url, uploading: false }))
   );
+  const displayHint = hint ?? `실물사진 · 박스사진 · 라벨(제품표시사항) 등, 최대 ${max}장`;
 
   const emitChange = (list: Item[]) => {
     onChange(list.filter((i) => i.url).map((i) => i.url as string));
@@ -83,7 +84,7 @@ export default function ImageUploader({
           선택 · {items.length}/{max}
         </span>
       </label>
-      <p className="text-xs text-gray500 mb-2">{hint}</p>
+      <p className="text-xs text-gray500 mb-2">{displayHint}</p>
 
       {items.length < max && (
         <label
