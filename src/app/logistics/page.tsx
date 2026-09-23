@@ -74,21 +74,18 @@ export default function LogisticsPage() {
   return (
     <main className="flex flex-col min-h-screen">
       <div
-        className="px-5 pt-6 pb-5 text-white"
+        className="px-5 pt-5 pb-4 text-white"
         style={{ background: "linear-gradient(135deg, #0B2540, #123A4A)" }}
       >
-        <div className="flex items-center gap-2 mb-3">
-          <Link href="/" className="bg-white rounded-lg px-3.5 py-2.5 inline-block">
+        <div className="flex items-center gap-2 mb-2.5">
+          <Link href="/" className="bg-white rounded-lg px-3 py-2 inline-block">
             <img src="/images/logo.png" alt="덤핑점핑" className="h-8 w-auto" />
           </Link>
-          <span className="text-white/70 text-sm tracking-wide">Powered by JumpX</span>
+          <span className="text-white/70 text-xs tracking-wide">Powered by JumpX</span>
         </div>
-        <div className="text-xs font-bold tracking-widest" style={{ color: TEAL_LIGHT }}>
-          전국 물류 네트워크
-        </div>
-        <h1 className="font-display text-2xl mt-1.5">점핑전국물류</h1>
-        <p className="text-white/70 text-sm mt-1.5 leading-relaxed">
-          소싱부터 배송까지, 물류 실무에 필요한 도구를 한 곳에 모았어요.
+        <h1 className="font-display text-[22px] leading-tight">점핑전국물류</h1>
+        <p className="text-white/70 text-xs mt-1.5 leading-relaxed">
+          소싱부터 배송까지, 물류 실무 도구를 한 곳에 모았어요.
         </p>
       </div>
 

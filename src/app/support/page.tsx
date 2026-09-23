@@ -34,30 +34,37 @@ function SupportPageInner() {
   return (
     <main className="flex flex-col min-h-screen">
       <div
-        className="px-5 pt-6 pb-3 text-white"
+        className="px-5 pt-5 pb-3 text-white"
         style={{ background: "linear-gradient(120deg, #0B2540, #0EA5E9)" }}
       >
-        <div className="flex items-center gap-2 mb-3">
-          <Link href="/" className="bg-white rounded-lg px-3.5 py-2.5 inline-block">
-            <img src="/images/logo.png" alt="덤핑점핑" className="h-8 w-auto" />
-          </Link>
-          <span className="text-white/70 text-sm tracking-wide">Powered by JumpX</span>
-        </div>
-        <div className="flex items-center justify-between flex-wrap gap-y-1.5">
-          <div className="text-xs font-bold tracking-widest whitespace-nowrap" style={{ color: "#FFD166" }}>
-            사업자 회원 전용
+        <div className="flex items-center justify-between gap-2 mb-2.5">
+          <div className="flex items-center gap-2">
+            <Link href="/" className="bg-white rounded-lg px-3 py-2 inline-block">
+              <img src="/images/logo.png" alt="덤핑점핑" className="h-8 w-auto" />
+            </Link>
+            <span className="text-white/70 text-xs tracking-wide">Powered by JumpX</span>
           </div>
-          <Link href="/deals" className="text-sm text-white/85 font-bold whitespace-nowrap">
+          <Link href="/deals" className="text-xs text-white/85 font-bold whitespace-nowrap">
             매물 보기 →
           </Link>
         </div>
-        <h1 className="font-display text-2xl mt-1.5">정부지원금 정보</h1>
-        <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
+
+        <div className="flex items-center gap-1.5">
+          <h1 className="font-display text-[22px] leading-tight">정부지원금 정보</h1>
+          <span
+            className="text-[10px] font-bold tracking-wide rounded-full px-2 py-0.5 whitespace-nowrap"
+            style={{ background: "rgba(255,209,102,0.18)", color: "#FFD166" }}
+          >
+            사업자 전용
+          </span>
+        </div>
+
+        <div className="flex gap-1.5 mt-2.5 overflow-x-auto pb-1">
           {["전국", ...mockRegions].map((r) => (
             <button
               key={r}
               onClick={() => setRegion(r)}
-              className={`text-sm px-4 py-2.5 rounded-full font-bold whitespace-nowrap ${
+              className={`text-xs px-3.5 py-1.5 rounded-full font-bold whitespace-nowrap ${
                 region === r ? "bg-white text-navy" : "bg-white/15 text-white"
               }`}
             >
