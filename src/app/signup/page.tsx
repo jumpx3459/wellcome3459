@@ -56,9 +56,10 @@ function SignupPageInner() {
   const [regions, setRegions] = useState<string[]>([]);
   const [regionOpen, setRegionOpen] = useState(false);
   const [push, setPush] = useState(true);
-  // 카카오톡 채널 연동 ON = 카카오톡 알림톡(마케팅성 정보 포함)을 받겠다는 동의와
-  // 실질적으로 같은 의미라, 3단계의 채널 토글과 4단계의 마케팅 수신 동의 항목이
-  // 이 값 하나를 공유합니다 (Claude Design 원안 그대로).
+  // 카카오 알림톡(개인화된 매물 메시지) 발송은 현재 구현돼 있지 않음 — 이 토글은
+  // 카카오톡 "채널 추가"(친구 추가) 링크로 보낼 뿐인 공지·이벤트용 보조 채널이라,
+  // 알림 수신 여부 판정(anyChannel)에서는 제외한다. 3단계 채널 토글과 4단계 마케팅
+  // 수신 동의는 여전히 이 값 하나를 공유한다(Claude Design 원안 유지).
   const [kakao, setKakao] = useState(true);
   const [agreeTos, setAgreeTos] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
@@ -368,7 +369,7 @@ function SignupPageInner() {
 
   // ---- 파생 값 (Claude Design 원안의 estAlerts/condCats/condRegions 로직과 동일) ----
   const reqAgreed = agreeTos && agreePrivacy;
-  const anyChannel = push || kakao;
+  const anyChannel = push; // 카카오 채널 추가는 실제 알림 채널이 아니라 판정에서 제외
   const verified = Boolean(authUserId);
   const step4Ready = verified && reqAgreed && anyChannel;
   const estAlerts = Math.max(2, categories.length * 4 + (regions.length === 0 ? 6 : regions.length * 2));
@@ -413,7 +414,7 @@ function SignupPageInner() {
       return;
     }
     if (obStep === 2 && !anyChannel) {
-      showToast("앱 푸시나 카카오톡 중 하나는 켜주세요");
+      showToast("알림 받으려면 앱 푸시를 켜주세요");
       return;
     }
     if (obStep === 3) {
@@ -427,7 +428,7 @@ function SignupPageInner() {
       }
       if (!anyChannel) {
         setObStep(2);
-        showToast("앱 푸시나 카카오톡 중 하나는 켜주세요");
+        showToast("알림 받으려면 앱 푸시를 켜주세요");
         return;
       }
       submit();
@@ -628,7 +629,10 @@ function SignupPageInner() {
             >
               <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 38, height: 38, background: "#FDEEE8", fontSize: 18 }}>🔔</span>
               <span className="flex-1">
-                <span className="block text-sm font-bold" style={{ color: "#0B2540" }}>앱 푸시 알림</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="text-sm font-bold" style={{ color: "#0B2540" }}>앱 푸시 알림</span>
+                  <span className="text-xs font-bold" style={{ color: "#E25100" }}>[기본]</span>
+                </span>
                 <span className="block text-xs mt-0.5" style={{ color: "#6B7480" }}>조건에 맞는 매물이 뜨는 즉시</span>
               </span>
               <span className="rounded-full flex-shrink-0 relative" style={{ width: 46, height: 27, background: push ? "var(--color-toggleOn)" : "#D5D9DE", transition: "background .2s" }}>
@@ -643,9 +647,12 @@ function SignupPageInner() {
             >
               <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 38, height: 38, background: "#FEE500", fontSize: 18 }}>💬</span>
               <span className="flex-1">
-                <span className="block text-sm font-bold" style={{ color: "#0B2540" }}>카카오톡 채널 연동</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="text-sm font-bold" style={{ color: "#0B2540" }}>카카오톡 채널 추가</span>
+                  <span className="text-xs font-bold" style={{ color: "#6B7480" }}>[선택]</span>
+                </span>
                 <span className="block text-xs mt-0.5" style={{ color: "#6B7480" }}>
-                  {kakao ? "연동됨 · 알림톡으로도 받는 중" : "앱을 안 켜도 카톡으로 받기"}
+                  {kakao ? "추가됨 · 공지·이벤트 소식 받는 중" : "공지·이벤트 소식을 카톡으로 받기"}
                 </span>
               </span>
               <span className="rounded-full flex-shrink-0 relative" style={{ width: 46, height: 27, background: kakao ? "var(--color-toggleOn)" : "#D5D9DE", transition: "background .2s" }}>
@@ -670,7 +677,7 @@ function SignupPageInner() {
             </button>
 
             <p className="mt-3.5" style={{ fontSize: 11.5, color: "#6B7480", lineHeight: 1.6 }}>
-              두 가지 모두 기본으로 켜져 있어요. 카카오톡 채널은 앱을 안 켜도 알림톡으로 특가를 받아볼 수 있습니다.
+              맞춤 특가 알림은 앱 푸시로만 발송돼요. 카카오톡 채널은 공지·이벤트 소식용 보조 채널입니다.
             </p>
 
             {!anyChannel && (
@@ -680,7 +687,7 @@ function SignupPageInner() {
               >
                 <span style={{ fontSize: 15 }}>⚠️</span>
                 <span className="flex-1 text-xs font-bold" style={{ color: "#E5484D", lineHeight: 1.5 }}>
-                  알림 받을 방법이 없어요 · 앱 푸시나 카카오톡 중 하나를 켜주세요
+                  알림 받을 방법이 없어요 · 앱 푸시를 켜주세요
                 </span>
               </div>
             )}
@@ -787,7 +794,7 @@ function SignupPageInner() {
                     <span className="text-xs font-bold rounded-full" style={{ padding: "7px 12px", background: "rgba(255,111,15,.1)", color: "#E25100" }}>🔔 앱 푸시</span>
                   )}
                   {kakao && (
-                    <span className="text-xs font-bold rounded-full" style={{ padding: "7px 12px", background: "#FFF6DE", color: "#8A6100" }}>💬 카카오톡 알림톡</span>
+                    <span className="text-xs font-bold rounded-full" style={{ padding: "7px 12px", background: "#FFF6DE", color: "#8A6100" }}>💬 카카오톡 채널</span>
                   )}
                   <span className="text-xs font-bold rounded-full" style={{ padding: "7px 12px", color: "#6B7480", background: "#F5F6F8" }}>주간 약 {estAlerts}건</span>
                 </div>
@@ -799,7 +806,7 @@ function SignupPageInner() {
                 >
                   <span style={{ fontSize: 15 }}>⚠️</span>
                   <span className="flex-1 text-xs font-bold" style={{ color: "#E5484D", lineHeight: 1.5 }}>
-                    알림 받을 방법이 없어요 · 앱 푸시나 카카오톡 중 하나를 켜주세요
+                    알림 받을 방법이 없어요 · 앱 푸시를 켜주세요
                   </span>
                   <span className="text-xs flex-shrink-0" style={{ color: "#E5484D" }}>수정 ›</span>
                 </button>
@@ -835,7 +842,7 @@ function SignupPageInner() {
               {[
                 { key: "tos", label: "서비스 이용약관 동의", tag: "필수", on: agreeTos, toggle: () => setAgreeTos(!agreeTos) },
                 { key: "privacy", label: "개인정보 수집·이용 동의", tag: "필수", on: agreePrivacy, toggle: () => setAgreePrivacy(!agreePrivacy) },
-                { key: "marketing", label: "마케팅·광고 정보 수신 (카카오톡 알림톡)", tag: "선택", on: kakao, toggle: () => setKakao(!kakao) },
+                { key: "marketing", label: "마케팅·광고 정보 수신 (카카오톡 채널 소식)", tag: "선택", on: kakao, toggle: () => setKakao(!kakao) },
               ].map((a) => (
                 <button
                   key={a.key}
