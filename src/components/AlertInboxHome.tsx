@@ -293,7 +293,7 @@ export default function AlertInboxHome() {
             const color = categoryColors[d.category] ?? categoryColors["기타"];
             const pct = d.original_price ? Math.round(((d.original_price - d.deal_price) / d.original_price) * 100) : 0;
             return (
-              <div key={`example-${d.id}`} style={{ borderBottom: "1px solid #F1F3F5", padding: "14px 20px", opacity: 0.8 }}>
+              <Link key={`example-${d.id}`} href={`/deals/example-${d.id}`} className="block w-full text-left" style={{ borderBottom: "1px solid #F1F3F5", padding: "14px 20px", opacity: 0.8 }}>
                 <div className="flex items-center gap-1.5" style={{ marginBottom: 8 }}>
                   <span className="font-black rounded" style={{ fontSize: 10.5, padding: "3px 8px", background: "#F1F3F5", color: "#6B7480" }}>예시</span>
                   <span style={{ fontSize: 11, color: "#6B7480" }}>{d.location}</span>
@@ -312,7 +312,7 @@ export default function AlertInboxHome() {
                     </span>
                   </span>
                 </div>
-              </div>
+              </Link>
             );
           })}
           <p className="text-center" style={{ padding: "10px 20px 4px", fontSize: 11.5, color: "#9AA3AD" }}>

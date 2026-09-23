@@ -20,8 +20,9 @@ function DealDetailPageInner() {
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const ref = searchParams.get("ref"); // 공유 링크로 들어온 추천인 코드 — 정식가입까지 이어줌
+  const isExampleId = params.id?.startsWith("example-") ?? false;
   const [deal, setDeal] = useState<Deal>(
-    mockDeals.find((d) => d.id === params.id) ?? mockDeals[0]
+    mockDeals.find((d) => d.id === (isExampleId ? params.id.slice(8) : params.id)) ?? mockDeals[0]
   );
   const [interested, setInterested] = useState(false);
   const [showQuickForm, setShowQuickForm] = useState(false);
@@ -98,6 +99,7 @@ function DealDetailPageInner() {
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
+    if (isExampleId) return;
 
     (async () => {
       const { data } = await supabase
@@ -135,7 +137,7 @@ function DealDetailPageInner() {
         });
       }
     })();
-  }, [params.id]);
+  }, [params.id, isExampleId]);
 
   const images = deal.images ?? [];
   const heroImage = activeImage ?? images[0];
@@ -330,6 +332,11 @@ function DealDetailPageInner() {
             <span className="text-sm">{categoryIcons[deal.category] ?? "🗂️"}</span>
             {deal.category}
           </div>
+          {isExampleId && (
+            <div className="inline-flex ml-2 items-center gap-1 text-xs font-bold text-white px-2.5 py-1 rounded-full mb-2.5" style={{ background: "rgba(226,81,0,.85)" }}>
+              예시 미리보기
+            </div>
+          )}
           {heroImage && (
             <div className="inline-flex ml-2 items-center gap-1 text-xs font-bold text-white bg-black/40 px-2.5 py-1 rounded-full mb-2.5">
               🔍 확대
@@ -529,6 +536,24 @@ function DealDetailPageInner() {
               style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)", padding: "12px 24px" }}
             >
               덤핑정보 알림 받기
+            </Link>
+          </div>
+        </div>
+      ) : isExampleId ? (
+        <div className="p-5 pt-1" style={{ paddingBottom: "40px" }}>
+          <div className="rounded-2xl text-center" style={{ background: "#F5F6F8", padding: "24px 20px" }}>
+            <div className="text-sm font-bold text-gray500 mb-1">이건 미리보기예요</div>
+            <div className="text-base font-bold text-navy leading-relaxed">
+              실제 매물이 등록되면 이런 화면으로
+              <br />
+              바로 알림이 가요.
+            </div>
+            <Link
+              href="/signup"
+              className="inline-block mt-4 text-white text-center font-bold rounded-xl text-sm px-6 py-3"
+              style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)" }}
+            >
+              무료 알림받기 →
             </Link>
           </div>
         </div>

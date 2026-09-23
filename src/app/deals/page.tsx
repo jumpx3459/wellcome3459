@@ -393,7 +393,7 @@ function DealsPageInner() {
               {EXAMPLE_DEALS.map((d) => {
                 const color = categoryColors[d.category] ?? categoryColors["기타"];
                 return (
-                  <div key={`example-${d.id}`} className="bg-white border border-dashed border-gray200 rounded-2xl px-4 py-4 flex gap-3" style={{ opacity: 0.8 }}>
+                  <Link key={`example-${d.id}`} href={`/deals/example-${d.id}`} className="bg-white border border-dashed border-gray200 rounded-2xl px-4 py-4 flex gap-3" style={{ opacity: 0.8 }}>
                     <div className="w-16 h-16 rounded-xl flex items-center justify-center text-3xl flex-shrink-0" style={{ background: color.bg }}>
                       {categoryIcons[d.category] ?? "🗂️"}
                     </div>
@@ -407,7 +407,7 @@ function DealsPageInner() {
                         <span className="text-lg font-black" style={{ color: "#6B7480" }}>{formatPrice(d.deal_price)}</span>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>
