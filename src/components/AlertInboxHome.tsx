@@ -218,9 +218,13 @@ export default function AlertInboxHome() {
                 </div>
                 <div className={wideLayout ? "flex flex-col gap-2.5" : "flex items-start gap-2.5"}>
                   {d.images && d.images.length > 0 ? (
-                    <button
-                      type="button"
+                    <div
+                      role="button"
+                      tabIndex={0}
                       onClick={(e) => openViewer(e, d.images!, d.video_url ?? null)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") openViewer(e as unknown as React.MouseEvent, d.images!, d.video_url ?? null);
+                      }}
                       className="relative rounded-xl overflow-hidden flex-shrink-0"
                       style={
                         wideLayout
@@ -239,7 +243,7 @@ export default function AlertInboxHome() {
                           1/{d.images.length}
                         </span>
                       )}
-                    </button>
+                    </div>
                   ) : (
                     <span
                       className="rounded-xl flex items-center justify-center flex-shrink-0"
