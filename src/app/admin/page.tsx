@@ -54,6 +54,14 @@ type ActiveDeal = {
   images: string[] | null;
 };
 
+type CategoryKpi = {
+  name: string;
+  leads: number;
+  completionRate: number | null;
+  activeSuppliers: number;
+  activeDemanders: number;
+};
+
 type Member = {
   id: string;
   phone: string;
@@ -277,6 +285,7 @@ function AdminDashboard({
   const [buyRequests, setBuyRequests] = useState<BuyRequest[]>([]);
   const [activeDeals, setActiveDeals] = useState<ActiveDeal[]>([]);
   const [interests, setInterests] = useState<Interest[]>([]);
+  const [categoryKpis, setCategoryKpis] = useState<CategoryKpi[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [openFormFor, setOpenFormFor] = useState<string | "new" | null>(null);
@@ -357,6 +366,9 @@ function AdminDashboard({
       fetch("/api/admin/admins", { headers: { "x-admin-key": adminKey } })
         .then((r) => r.json())
         .then((d) => setAdmins(d.items ?? [])),
+      fetch("/api/admin/category-kpis", { headers: { "x-admin-key": adminKey } })
+        .then((r) => r.json())
+        .then((d) => setCategoryKpis(d.items ?? [])),
     ])
       .then(([reqData, dealData, interestData, buyData, memberData]) => {
         setRequests(reqData.items ?? []);
@@ -691,6 +703,39 @@ function AdminDashboard({
               <div className="text-[10px] text-gray500 mt-0.5 leading-tight">{stat.label}</div>
             </div>
           ))}
+        </div>
+
+        <div className="text-xs font-bold text-gray500 mb-1.5 mt-3">카테고리별 현황 (액티브 = 최근 7일)</div>
+        <div className="bg-white border border-gray200 rounded-xl overflow-hidden">
+          <div className="grid grid-cols-[1.4fr_0.7fr_0.7fr_0.7fr_0.7fr] gap-1 px-3 py-2 bg-gray100" style={{ fontSize: 10.5 }}>
+            <span className="font-bold text-gray500">카테고리</span>
+            <span className="font-bold text-gray500 text-right">리드</span>
+            <span className="font-bold text-gray500 text-right">성사율</span>
+            <span className="font-bold text-gray500 text-right">공급자</span>
+            <span className="font-bold text-gray500 text-right">수요자</span>
+          </div>
+          {categoryKpis
+            .filter((c) => c.leads > 0 || c.activeSuppliers > 0 || c.activeDemanders > 0)
+            .map((c) => (
+              <div
+                key={c.name}
+                className="grid grid-cols-[1.4fr_0.7fr_0.7fr_0.7fr_0.7fr] gap-1 px-3 py-2"
+                style={{ borderTop: "1px solid #F1F3F5", fontSize: 12 }}
+              >
+                <span className="truncate">{categoryIcons[c.name] ?? "🗂️"} {c.name}</span>
+                <span className="text-right font-mono font-bold text-navy">{c.leads}</span>
+                <span className="text-right font-mono" style={{ color: c.completionRate == null ? "#9AA3AD" : "#0B2540" }}>
+                  {c.completionRate == null ? "—" : `${c.completionRate}%`}
+                </span>
+                <span className="text-right font-mono">{c.activeSuppliers}</span>
+                <span className="text-right font-mono">{c.activeDemanders}</span>
+              </div>
+            ))}
+          {categoryKpis.every((c) => c.leads === 0 && c.activeSuppliers === 0 && c.activeDemanders === 0) && (
+            <div className="text-center text-gray500" style={{ fontSize: 12, padding: "16px 12px" }}>
+              아직 데이터가 없어요.
+            </div>
+          )}
         </div>
       </div>
 
