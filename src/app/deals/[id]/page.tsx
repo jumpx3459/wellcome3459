@@ -35,9 +35,8 @@ function DealDetailPageInner() {
   const [interestError, setInterestError] = useState<string | null>(null);
   const [interestNeedsReauth, setInterestNeedsReauth] = useState(false);
 
-  // JUMP X 인증 브릿지("JUMP X에서 입찰 참여하기") 상태 — 관심있어요(리드 수집)
-  // 흐름과는 완전히 별개라 상태도 분리해뒀습니다.
-  const [memberPhone, setMemberPhone] = useState<string | null>(null);
+  // JUMP X 브릿지("JUMP X에서 입찰 참여하기") — 거래 플랫폼이 준비될 때까지는
+  // "준비중" 안내만 하고, 클릭은 수요 신호로만 가볍게 기록합니다.
   const [memberId, setMemberId] = useState<string | null>(null);
   const [isMember, setIsMember] = useState(false);
   const [showMessageForm, setShowMessageForm] = useState(false);
@@ -46,10 +45,7 @@ function DealDetailPageInner() {
   const [messageSent, setMessageSent] = useState(false);
   const [messageError, setMessageError] = useState<string | null>(null);
   const [ownRefCode, setOwnRefCode] = useState<string | null>(null);
-  const [showBridgeForm, setShowBridgeForm] = useState(false);
-  const [bridgePhone, setBridgePhone] = useState("");
-  const [bridgeSubmitting, setBridgeSubmitting] = useState(false);
-  const [bridgeError, setBridgeError] = useState<string | null>(null);
+  const [bridgeComingSoon, setBridgeComingSoon] = useState(false);
 
   const handleShare = async () => {
     const url =
@@ -75,10 +71,6 @@ function DealDetailPageInner() {
     }
   };
 
-  // 로그인된 회원이면 members.phone을 미리 가져와서 "JUMP X에서 입찰 참여하기"를
-  // 눌렀을 때 번호를 다시 입력받지 않고 바로 브릿지로 넘어가게 합니다. 이 번호는
-  // 가입 시 본인이 직접 타이핑한 값(OTP 등으로 검증된 값이 아님)이지만, JUMP X
-  // 쪽에서 실제 SMS 인증을 한 번 더 거치므로 안전합니다 — CLAUDE.md 참고.
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
 
@@ -89,10 +81,9 @@ function DealDetailPageInner() {
       setMemberId(userData.user.id);
       const { data: member } = await supabase
         .from("members")
-        .select("phone, ref_code")
+        .select("ref_code")
         .eq("id", userData.user.id)
         .maybeSingle();
-      if (member?.phone) setMemberPhone(member.phone);
       if (member?.ref_code) setOwnRefCode(member.ref_code);
     })();
   }, []);
@@ -240,48 +231,17 @@ function DealDetailPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deal.id]);
 
-  // JUMP X 인증 브릿지: /api/jumpx-bridge가 JUMP X의 티켓 발급 Edge Function을
-  // 서버 간(공유 비밀키) 호출해 1회용 코드를 받아오면, 그 코드로 JUMP X의
-  // /auth/bridge로 이동합니다. 실제 로그인(SMS 인증번호 확인)은 JUMP X 쪽에서
-  // 그대로 이루어져요 — 여기서는 전화번호 입력 단계만 건너뛰게 해줄 뿐입니다.
-  const startJumpXBridge = async (phoneValue: string) => {
-    setBridgeError(null);
-    setBridgeSubmitting(true);
-    try {
-      const res = await fetch("/api/jumpx-bridge", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phoneValue }),
-      });
-      const body = await res.json().catch(() => null);
-      if (!res.ok || !body?.url) {
-        setBridgeError(body?.error ?? "연결에 실패했어요. 잠시 후 다시 시도해주세요.");
-        setBridgeSubmitting(false);
-        return;
-      }
-      window.location.href = body.url;
-    } catch {
-      setBridgeError("연결에 실패했어요. 잠시 후 다시 시도해주세요.");
-      setBridgeSubmitting(false);
-    }
-  };
-
+  // JUMP X 브릿지 — 거래 플랫폼(실시간 입찰)이 준비될 때까지는 /api/jumpx-bridge
+  // 호출 없이 "준비중" 안내만 하고, 클릭 자체는 수요 신호로 기록해둡니다.
+  // 준비되면 이 핸들러만 원래 로직(전화번호 수집 → /api/jumpx-bridge)으로
+  // 되돌리면 됩니다.
   const handleBridgeClick = () => {
-    if (memberPhone) {
-      startJumpXBridge(memberPhone);
-      return;
-    }
-    setBridgeError(null);
-    setShowBridgeForm(true);
-  };
-
-  const submitBridgePhone = () => {
-    const digits = bridgePhone.replace(/[^0-9]/g, "");
-    if (!/^01[0-9]{7,9}$/.test(digits)) {
-      setBridgeError("휴대폰 번호를 정확히 입력해주세요.");
-      return;
-    }
-    startJumpXBridge(digits);
+    setBridgeComingSoon(true);
+    fetch("/api/bridge-interest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dealId: deal.id, memberId }),
+    }).catch(() => {});
   };
 
   return (
@@ -486,20 +446,6 @@ function DealDetailPageInner() {
           </div>
         )}
 
-        <Link
-          href="/logistics"
-          className="flex items-center justify-between rounded-2xl"
-          style={{ background: "rgba(11,37,64,.06)", border: "1px solid #1B3A5C", padding: "14px 16px" }}
-        >
-          <span>
-            <span className="block text-sm font-black text-navy">🚚 이 매물 상차 배차 신청</span>
-            <span className="block text-xs mt-0.5" style={{ color: "#1B3A5C" }}>
-              {deal.location} 출발 · 예상 운임 즉시 확인
-            </span>
-          </span>
-          <span style={{ color: "#1B3A5C" }}>→</span>
-        </Link>
-
         {deal.description && (
           <div className="border-t border-gray200 pt-4">
             <div className="text-sm font-bold text-navy mb-2">상세 설명</div>
@@ -578,48 +524,34 @@ function DealDetailPageInner() {
                 가능해요.
               </p>
 
-              {showBridgeForm ? (
-                !isMember ? (
-                  <Link
-                    href={`/signup?returnTo=${encodeURIComponent(`/deals/${deal.id}`)}${ref ? `&ref=${ref}` : ""}`}
-                    className="block w-full text-navy text-center font-bold rounded-xl text-sm border-2 border-navy"
-                    style={{ padding: "12px 0" }}
-                  >
-                    휴대폰 인증하고 입찰 참여하기 →
-                  </Link>
-                ) : (
-                <div className="flex gap-2">
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    value={bridgePhone}
-                    onChange={(e) => setBridgePhone(e.target.value)}
-                    placeholder="010-0000-0000"
-                    className="flex-1 min-w-0 border-2 border-gray200 rounded-xl px-4 text-base outline-none focus:border-navy"
-                    style={{ height: "48px" }}
-                  />
-                  <button
-                    onClick={submitBridgePhone}
-                    disabled={bridgeSubmitting}
-                    className="text-white font-bold rounded-xl px-5 whitespace-nowrap flex-shrink-0 disabled:opacity-60"
-                    style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)" }}
-                  >
-                    {bridgeSubmitting ? "이동 중..." : "이동하기"}
-                  </button>
+              {bridgeComingSoon ? (
+                <div className="text-xs font-bold text-gray500 text-center" style={{ padding: "12px 0" }}>
+                  거래 플랫폼(JUMP X) 준비 중이에요 · 오픈하면 가장 먼저 알려드릴게요
                 </div>
-                )
               ) : (
                 <button
                   onClick={handleBridgeClick}
-                  disabled={bridgeSubmitting}
-                  className="w-full text-navy text-center font-bold rounded-xl text-sm border-2 border-navy disabled:opacity-60"
+                  className="w-full text-navy text-center font-bold rounded-xl text-sm border-2 border-navy"
                   style={{ padding: "12px 0" }}
                 >
-                  {bridgeSubmitting ? "JUMP X로 이동 중..." : "JUMP X에서 입찰 참여하기 →"}
+                  JUMP X에서 입찰 참여하기 →
                 </button>
               )}
-              {bridgeError && <div className="text-xs text-orange font-medium mt-2">{bridgeError}</div>}
             </div>
+
+            <Link
+              href="/logistics"
+              className="flex items-center justify-between rounded-2xl mt-3"
+              style={{ background: "rgba(11,37,64,.06)", border: "1px solid #1B3A5C", padding: "14px 16px" }}
+            >
+              <span>
+                <span className="block text-sm font-black text-navy">🚚 화물이 필요하세요?</span>
+                <span className="block text-xs mt-0.5" style={{ color: "#1B3A5C" }}>
+                  운임·팔레트·통관 계산기 보기
+                </span>
+              </span>
+              <span style={{ color: "#1B3A5C" }}>→</span>
+            </Link>
           </div>
 
           <div

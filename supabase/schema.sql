@@ -123,6 +123,17 @@ create table if not exists public.seller_requests (
   created_at timestamptz default now()
 );
 
+-- 11. "JUMP X에서 입찰 참여하기" 클릭 수요 신호 — 거래 플랫폼 오픈 전까지는 실제
+-- 브릿지로 보내지 않고 클릭 자체만 기록해서 니치별 수요를 가늠하는 용도.
+create table if not exists public.bridge_interests (
+  id uuid primary key default gen_random_uuid(),
+  deal_id uuid references public.deals(id) on delete cascade,
+  member_id uuid references public.members(id) on delete cascade,
+  created_at timestamptz default now()
+);
+alter table public.bridge_interests enable row level security;
+-- 정책 없음 = anon/authenticated 완전 차단, service role만 접근 (src/app/api/bridge-interest/route.ts)
+
 -- ---------------- 마이그레이션 (이미 위 스키마를 실행한 적이 있다면, 이 블록만 다시 실행해도 안전합니다) ----------------
 alter table public.interests add column if not exists contacted boolean default false;
 alter table public.interests add column if not exists outcome text default 'pending';
