@@ -5,7 +5,8 @@ import Link from "next/link";
 import { CheckCircle } from "lucide-react";
 import { mockCategories, mockRegions, categoryIcons, quantityUnits, guessCategory } from "@/lib/mockData";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
-import { isValidKoreanPhone } from "@/lib/auth";
+import { isValidKoreanPhone, fromE164Phone } from "@/lib/auth";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 export default function BuyPage() {
   const [productName, setProductName] = useState("");
@@ -20,6 +21,22 @@ export default function BuyPage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 로그인한 회원이면 인증된 번호를 미리 채워준다 — 다른 담당자 연락처로 접수하는
+  // 대리 등록 케이스가 있어서 수정은 그대로 허용한다. (sell/page.tsx와 동일 패턴)
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return;
+    (async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return;
+      const { data: member } = await supabase
+        .from("members")
+        .select("phone")
+        .eq("id", userData.user.id)
+        .maybeSingle();
+      if (member?.phone) setContactPhone(fromE164Phone(member.phone));
+    })();
+  }, []);
 
   useEffect(() => {
     if (categoryTouched || !productName.trim()) return;

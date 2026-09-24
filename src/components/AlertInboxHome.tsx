@@ -7,7 +7,6 @@ import { mockDeals, categoryIcons, categoryColors, mockRegions, type Deal } from
 import { formatPrice } from "@/lib/format";
 import { formatCountdown } from "@/lib/format";
 import InstallAppButton, { useInstallPrompt } from "@/components/InstallAppButton";
-import Toast, { useToast } from "@/components/Toast";
 
 const INSTALL_DISMISS_KEY = "dj_home_install_dismissed";
 const ALERT_EXAMPLE_THRESHOLD = 5; // 실제 매칭 매물이 이보다 적을 때만 예시 섹션 노출
@@ -43,8 +42,6 @@ export default function AlertInboxHome() {
   const [showInstall, setShowInstall] = useState(true);
   const { canInstall } = useInstallPrompt();
   const [, setTick] = useState(0);
-  const { message: toastMessage, showToast } = useToast();
-
   useEffect(() => {
     try {
       setShowInstall(localStorage.getItem(INSTALL_DISMISS_KEY) !== "1");
@@ -151,20 +148,14 @@ export default function AlertInboxHome() {
   return (
     <main className="flex flex-col min-h-screen bg-white" style={{ paddingBottom: 64 }}>
       <div className="sticky top-0 z-10 bg-white" style={{ borderBottom: "1px solid #EEF0F2" }}>
-        <div className="flex items-center justify-between" style={{ padding: "16px 20px 12px" }}>
-          <div className="flex items-center gap-2">
-            <img src="/images/logo.png" alt="덤핑점핑" style={{ height: 22, width: "auto" }} />
-            <span className="font-black" style={{ fontSize: 17, color: "#0B2540", letterSpacing: "-0.02em" }}>
-              알림함
-            </span>
+        <div className="flex items-center gap-2.5" style={{ padding: "14px 20px 12px" }}>
+          <img src="/images/manager.png" alt="점핑매니저" style={{ width: 34, height: 34, objectFit: "contain", flexShrink: 0 }} />
+          <div className="min-w-0">
+            <div className="font-black truncate" style={{ fontSize: 15.5, color: "#0B2540", letterSpacing: "-0.02em" }}>
+              {deals.length > 0 ? `오늘 긴급매물 ${deals.length}건 떴어요` : "오늘의 긴급매물을 모아봤어요"}
+            </div>
+            <div style={{ fontSize: 11.5, color: "#9AA3AD", fontWeight: 600 }}>덤핑점핑 · 점핑매니저가 놓치지 않게 알려드려요</div>
           </div>
-          <button
-            onClick={() => showToast("전부 읽음으로 처리했어요")}
-            className="rounded-full font-bold"
-            style={{ background: "#F5F6F8", border: "none", fontSize: 11.5, color: "#6B7480", padding: "7px 12px" }}
-          >
-            읽음 처리
-          </button>
         </div>
       </div>
 
@@ -407,7 +398,6 @@ export default function AlertInboxHome() {
           )}
         </div>
       )}
-      <Toast message={toastMessage} />
     </main>
   );
 }
