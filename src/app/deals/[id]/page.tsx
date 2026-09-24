@@ -336,9 +336,11 @@ function DealDetailPageInner() {
 
         <div>
           <div className="flex items-baseline gap-2">
-            <span className="text-xl font-black" style={{ color: "#E25100" }}>
-              -{percentOff(deal.original_price, deal.deal_price)}%
-            </span>
+            {percentOff(deal.original_price, deal.deal_price) > 0 && (
+              <span className="text-xl font-black" style={{ color: "#E25100" }}>
+                -{percentOff(deal.original_price, deal.deal_price)}%
+              </span>
+            )}
             <span className="text-3xl font-black" style={{ color: "#0B2540" }}>
               {formatPrice(deal.deal_price)}
             </span>
