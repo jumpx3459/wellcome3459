@@ -155,13 +155,22 @@ function DealsPageInner() {
     <main className="flex flex-col min-h-screen">
       <div
         className="px-5 pt-5 pb-3 text-white"
-        style={{ background: "linear-gradient(120deg, #04101C, #1A4B78)" }}
+        style={{
+          backgroundImage:
+            "radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(120deg, #04101C, #1A4B78)",
+          backgroundSize: "16px 16px, cover",
+        }}
       >
         <div className="flex items-center gap-2 mb-3">
-          <Link href="/" className="bg-white rounded-lg px-3 py-2 inline-block">
-            <img src="/images/logo.png" alt="덤핑점핑" className="h-8 w-auto" />
+          <Link href="/" className="bg-white rounded-lg px-2.5 py-1.5 inline-block shadow-sm">
+            <img src="/images/logo.png" alt="덤핑점핑" className="h-7 w-auto" />
           </Link>
-          <span className="text-white/70 text-sm tracking-wide">Powered by JumpX</span>
+          <span
+            className="rounded-full font-medium"
+            style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", padding: "3px 9px", background: "rgba(255,255,255,0.08)" }}
+          >
+            Powered by JumpX
+          </span>
         </div>
         <div className="flex items-center justify-between flex-wrap gap-y-1.5">
           <div className="text-xs font-bold tracking-widest whitespace-nowrap" style={{ color: "#FFD166" }}>

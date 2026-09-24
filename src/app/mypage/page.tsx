@@ -514,7 +514,11 @@ export default function MyPage() {
     <main className="flex flex-col min-h-screen">
       <div
         className="px-5 py-5 text-white"
-        style={{ background: "linear-gradient(135deg,#04101C,#0D2B47)" }}
+        style={{
+          backgroundImage:
+            "radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(135deg,#04101C,#0D2B47)",
+          backgroundSize: "16px 16px, cover",
+        }}
       >
         <div className="flex items-center gap-3">
           <div className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 52, height: 52, background: "rgba(255,255,255,.14)", fontSize: 23 }}>
@@ -559,15 +563,18 @@ export default function MyPage() {
         </div>
         <div className="flex gap-2 mt-4.5">
           <div className="flex-1 rounded-xl text-center" style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px" }}>
-            <div className="font-mono font-bold" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{alertLogCount}</div>
+            <div style={{ fontSize: 14 }}>🔔</div>
+            <div className="font-mono font-bold mt-0.5" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{alertLogCount}</div>
             <div className="mt-0.5 font-bold" style={{ fontSize: 12, color: "rgba(255,255,255,.8)" }}>받은 알림</div>
           </div>
           <div className="flex-1 rounded-xl text-center" style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px" }}>
-            <div className="font-mono font-bold" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{interests.length}</div>
+            <div style={{ fontSize: 14 }}>❤️</div>
+            <div className="font-mono font-bold mt-0.5" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{interests.length}</div>
             <div className="mt-0.5 font-bold" style={{ fontSize: 12, color: "rgba(255,255,255,.8)" }}>관심 매물</div>
           </div>
           <div className="flex-1 rounded-xl text-center" style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px" }}>
-            <div className="font-mono font-bold" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{referrals.length}</div>
+            <div style={{ fontSize: 14 }}>🎁</div>
+            <div className="font-mono font-bold mt-0.5" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{referrals.length}</div>
             <div className="mt-0.5 font-bold" style={{ fontSize: 12, color: "rgba(255,255,255,.8)" }}>추천 회원</div>
           </div>
         </div>
