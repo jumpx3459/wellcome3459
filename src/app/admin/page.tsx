@@ -313,6 +313,16 @@ function AdminDashboard({
   const [changePwError, setChangePwError] = useState("");
   const [changePwSuccess, setChangePwSuccess] = useState(false);
 
+  // 리스트 섹션 아코디언 — 조치가 필요한 섹션(리드/신청서)은 기본 펼침,
+  // 참고용 섹션(전체 회원 목록/관리자 목록)은 기본 접힘.
+  const [membersOpen, setMembersOpen] = useState(false);
+  const [leadsOpen, setLeadsOpen] = useState(true);
+  const [sellerReqOpen, setSellerReqOpen] = useState(true);
+  const [partnerReqOpen, setPartnerReqOpen] = useState(true);
+  const [buyReqOpen, setBuyReqOpen] = useState(true);
+  const [adminsOpen, setAdminsOpen] = useState(false);
+  const [memberShowCount, setMemberShowCount] = useState(20);
+
   const viewBusinessLicense = async (memberId: string) => {
     setLicenseLoadingId(memberId);
     try {
@@ -650,12 +660,9 @@ function AdminDashboard({
       </div>
 
       <div className="px-5 pt-4">
-        <div className="text-xs font-bold text-gray500 mb-1.5">오늘</div>
-        <div className="grid grid-cols-5 gap-1.5">
+        <div className="text-sm font-bold text-gray500 mb-1.5">⚡ 조치 필요</div>
+        <div className="grid grid-cols-4 gap-1.5">
           {[
-            { label: "오늘 신규 가입", value: members.filter((m) => isToday(m.created_at)).length },
-            { label: "오늘 등록 매물", value: activeDeals.filter((d) => isToday(d.created_at)).length },
-            { label: "오늘 구매희망", value: buyRequests.filter((b) => isToday(b.created_at)).length },
             { label: "미연락 리드", value: interests.filter((i) => !i.contacted).length },
             {
               label: "마감임박(6h)",
@@ -664,17 +671,37 @@ function AdminDashboard({
                 return remainMs > 0 && remainMs <= 6 * 60 * 60 * 1000;
               }).length,
             },
+            { label: "대기중 판매신청", value: requests.length },
+            { label: "재고찾습니다 미연락", value: buyRequests.filter((b) => !b.contacted).length },
           ].map((stat) => (
-            <div key={stat.label} className="bg-white border border-gray200 rounded-xl px-1 py-2.5 text-center">
-              <div className="text-base font-black text-navy">{stat.value}</div>
-              <div className="text-[10px] text-gray500 mt-0.5 leading-tight">{stat.label}</div>
+            <div
+              key={stat.label}
+              className="rounded-xl px-1 py-3 text-center"
+              style={
+                stat.value > 0
+                  ? { background: "#FDEEE8", border: "1px solid #F5C4A8" }
+                  : { background: "#fff", border: "1px solid #E4E7EB" }
+              }
+            >
+              <div className="font-black" style={{ fontSize: 20, color: stat.value > 0 ? "#C2410C" : "#0B2540" }}>
+                {stat.value}
+              </div>
+              <div
+                className="mt-0.5 font-bold leading-tight"
+                style={{ fontSize: 12.5, color: stat.value > 0 ? "#C2410C" : "#6B7480" }}
+              >
+                {stat.label}
+              </div>
             </div>
           ))}
         </div>
 
-        <div className="text-xs font-bold text-gray500 mb-1.5 mt-3">누적 현황</div>
-        <div className="grid grid-cols-5 gap-1.5">
+        <div className="text-sm font-bold text-gray500 mb-1.5 mt-4">참고 지표</div>
+        <div className="grid grid-cols-4 gap-1.5">
           {[
+            { label: "오늘 신규가입", value: members.filter((m) => isToday(m.created_at)).length },
+            { label: "오늘 등록매물", value: activeDeals.filter((d) => isToday(d.created_at)).length },
+            { label: "오늘 구매희망", value: buyRequests.filter((b) => isToday(b.created_at)).length },
             { label: "전체 회원", value: members.length },
             { label: "사업자 인증", value: members.filter((m) => m.business_verified).length },
             {
@@ -696,18 +723,17 @@ function AdminDashboard({
                   : 0
               }%`,
             },
-            { label: "대기중 판매신청", value: requests.length },
           ].map((stat) => (
             <div key={stat.label} className="bg-white border border-gray200 rounded-xl px-1 py-2.5 text-center">
-              <div className="text-base font-black text-navy">{stat.value}</div>
-              <div className="text-[10px] text-gray500 mt-0.5 leading-tight">{stat.label}</div>
+              <div className="font-black text-navy" style={{ fontSize: 16 }}>{stat.value}</div>
+              <div className="mt-0.5 font-bold text-gray500 leading-tight" style={{ fontSize: 12.5 }}>{stat.label}</div>
             </div>
           ))}
         </div>
 
         <div className="text-xs font-bold text-gray500 mb-1.5 mt-3">카테고리별 현황 (액티브 = 최근 7일)</div>
         <div className="bg-white border border-gray200 rounded-xl overflow-hidden">
-          <div className="grid grid-cols-[1.4fr_0.7fr_0.7fr_0.7fr_0.7fr] gap-1 px-3 py-2 bg-gray100" style={{ fontSize: 10.5 }}>
+          <div className="grid grid-cols-[1.4fr_0.7fr_0.7fr_0.7fr_0.7fr] gap-1 px-3 py-2 bg-gray100" style={{ fontSize: 12.5 }}>
             <span className="font-bold text-gray500">카테고리</span>
             <span className="font-bold text-gray500 text-right">리드</span>
             <span className="font-bold text-gray500 text-right">성사율</span>
@@ -720,7 +746,7 @@ function AdminDashboard({
               <div
                 key={c.name}
                 className="grid grid-cols-[1.4fr_0.7fr_0.7fr_0.7fr_0.7fr] gap-1 px-3 py-2"
-                style={{ borderTop: "1px solid #F1F3F5", fontSize: 12 }}
+                style={{ borderTop: "1px solid #F1F3F5", fontSize: 13.5 }}
               >
                 <span className="truncate">{categoryIcons[c.name] ?? "🗂️"} {c.name}</span>
                 <span className="text-right font-mono font-bold text-navy">{c.leads}</span>
@@ -740,8 +766,17 @@ function AdminDashboard({
       </div>
 
       <div className="px-5 pt-4 flex flex-col gap-3">
-        <div className="text-sm font-bold text-gray500">최근 가입 회원 ({members.length}명)</div>
+        <button
+          type="button"
+          onClick={() => setMembersOpen((v) => !v)}
+          className="w-full flex items-center justify-between"
+        >
+          <span className="text-sm font-bold text-gray500">최근 가입 회원 ({members.length}명)</span>
+          <span className="text-sm font-bold text-gray500">{membersOpen ? "접기 ▲" : "펼치기 ▼"}</span>
+        </button>
 
+        {membersOpen && (
+        <>
         <input
           value={memberSearch}
           onChange={(e) => setMemberSearch(e.target.value)}
@@ -781,7 +816,7 @@ function AdminDashboard({
             {members.length === 0 ? "아직 가입한 회원이 없어요." : "검색/필터 결과가 없어요."}
           </div>
         )}
-        {filteredMembers.map((m) => (
+        {filteredMembers.slice(0, memberShowCount).map((m) => (
           <div key={m.id} className="bg-white border border-gray200 rounded-2xl px-4 py-3.5">
             <div className="flex items-center justify-between gap-2">
               <div className="text-base font-bold text-gray900">
@@ -875,12 +910,32 @@ function AdminDashboard({
             </div>
           </div>
         ))}
+        {filteredMembers.length > memberShowCount && (
+          <button
+            type="button"
+            onClick={() => setMemberShowCount((n) => n + 20)}
+            className="text-sm font-bold text-navy border-2 border-gray200 rounded-xl py-2.5"
+          >
+            더보기 ({filteredMembers.length - memberShowCount}명 더 있음)
+          </button>
+        )}
+        </>
+        )}
       </div>
 
       <div className="px-5 pt-4 flex flex-col gap-3">
-        <div className="text-sm font-bold text-gray500">
-          관심 표시한 회원 ({interests.filter((i) => !i.contacted).length}건 미연락)
-        </div>
+        <button
+          type="button"
+          onClick={() => setLeadsOpen((v) => !v)}
+          className="w-full flex items-center justify-between"
+        >
+          <span className="text-sm font-bold text-gray500">
+            관심 표시한 회원 ({interests.filter((i) => !i.contacted).length}건 미연락)
+          </span>
+          <span className="text-sm font-bold text-gray500">{leadsOpen ? "접기 ▲" : "펼치기 ▼"}</span>
+        </button>
+        {leadsOpen && (
+        <>
 
         {interests.length > 0 && (
           <div className="bg-white border border-gray200 rounded-2xl px-4 py-3 flex justify-around text-center">
@@ -1124,6 +1179,8 @@ function AdminDashboard({
             )}
           </div>
         ))}
+        </>
+        )}
       </div>
 
       <div className="px-5 py-4">
@@ -1152,9 +1209,16 @@ function AdminDashboard({
       </div>
 
       <div className="px-5 pb-8 flex flex-col gap-3">
-        <div className="text-sm font-bold text-gray500">
-          대기 중인 판매자 신청 ({requests.length})
-        </div>
+        <button
+          type="button"
+          onClick={() => setSellerReqOpen((v) => !v)}
+          className="w-full flex items-center justify-between"
+        >
+          <span className="text-sm font-bold text-gray500">대기 중인 판매자 신청 ({requests.length})</span>
+          <span className="text-sm font-bold text-gray500">{sellerReqOpen ? "접기 ▲" : "펼치기 ▼"}</span>
+        </button>
+        {sellerReqOpen && (
+        <>
 
         {loading && <div className="text-center text-gray500 py-8">불러오는 중...</div>}
         {!loading && requests.length === 0 && (
@@ -1262,12 +1326,22 @@ function AdminDashboard({
             )}
           </div>
         ))}
+        </>
+        )}
       </div>
 
       <section className="mt-8 px-5">
-        <h2 className="text-sm font-bold text-navy">
-          🏅 공식 점핑파트너 신청 ({partnerRequests.filter((r) => r.status === "pending").length}건 대기)
-        </h2>
+        <button
+          type="button"
+          onClick={() => setPartnerReqOpen((v) => !v)}
+          className="w-full flex items-center justify-between"
+        >
+          <h2 className="text-sm font-bold text-navy">
+            🏅 공식 점핑파트너 신청 ({partnerRequests.filter((r) => r.status === "pending").length}건 대기)
+          </h2>
+          <span className="text-sm font-bold text-gray500">{partnerReqOpen ? "접기 ▲" : "펼치기 ▼"}</span>
+        </button>
+        {partnerReqOpen && (
         <div className="mt-3 flex flex-col gap-2">
           {partnerRequests.map((r) => (
             <div key={r.id} className="bg-white border border-gray200 rounded-2xl px-4 py-4 text-sm">
@@ -1309,12 +1383,22 @@ function AdminDashboard({
             </div>
           ))}
         </div>
+        )}
       </section>
 
       <div className="px-5 pb-8 flex flex-col gap-3">
-        <div className="text-sm font-bold text-gray500">
-          🔍 이런 재고 찾습니다 ({buyRequests.filter((b) => !b.contacted).length}건 미연락)
-        </div>
+        <button
+          type="button"
+          onClick={() => setBuyReqOpen((v) => !v)}
+          className="w-full flex items-center justify-between"
+        >
+          <span className="text-sm font-bold text-gray500">
+            🔍 이런 재고 찾습니다 ({buyRequests.filter((b) => !b.contacted).length}건 미연락)
+          </span>
+          <span className="text-sm font-bold text-gray500">{buyReqOpen ? "접기 ▲" : "펼치기 ▼"}</span>
+        </button>
+        {buyReqOpen && (
+        <>
 
         {!loading && buyRequests.length === 0 && (
           <div className="text-center text-gray500 py-6 text-sm">등록된 구매 희망이 없어요.</div>
@@ -1403,11 +1487,22 @@ function AdminDashboard({
             </div>
           </div>
         ))}
+        </>
+        )}
       </div>
 
       {adminRole === "최고관리자" && (
         <div className="px-5 pt-4 pb-8 flex flex-col gap-3">
-          <div className="text-sm font-bold text-gray500">관리자 목록 ({admins.length}명)</div>
+          <button
+            type="button"
+            onClick={() => setAdminsOpen((v) => !v)}
+            className="w-full flex items-center justify-between"
+          >
+            <span className="text-sm font-bold text-gray500">관리자 목록 ({admins.length}명)</span>
+            <span className="text-sm font-bold text-gray500">{adminsOpen ? "접기 ▲" : "펼치기 ▼"}</span>
+          </button>
+          {adminsOpen && (
+          <>
           {admins.map((a) => (
             <div
               key={a.id}
@@ -1444,6 +1539,8 @@ function AdminDashboard({
               </button>
             </div>
           ))}
+          </>
+          )}
         </div>
       )}
 
