@@ -175,26 +175,24 @@ function DealsPageInner() {
           {view === "active" ? "지금 놓치면 마감" : "지난 마감 매물"}
         </h1>
 
-        <div className="flex gap-2 mt-3">
+        <div className="flex gap-5 mt-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.16)" }}>
           <button
             onClick={() => setView("active")}
-            className="flex-1 text-sm py-1.5 rounded-lg font-bold"
-            style={
-              view === "active"
-                ? { background: "#fff", color: "#0B2540" }
-                : { background: "rgba(255,255,255,0.2)", color: "#fff" }
-            }
+            className="text-sm font-bold pb-2"
+            style={{
+              color: view === "active" ? "#fff" : "rgba(255,255,255,0.5)",
+              borderBottom: view === "active" ? "2px solid #fff" : "2px solid transparent",
+            }}
           >
             진행중
           </button>
           <button
             onClick={() => setView("closed")}
-            className="flex-1 text-sm py-1.5 rounded-lg font-bold"
-            style={
-              view === "closed"
-                ? { background: "#fff", color: "#0B2540" }
-                : { background: "rgba(255,255,255,0.2)", color: "#fff" }
-            }
+            className="text-sm font-bold pb-2"
+            style={{
+              color: view === "closed" ? "#fff" : "rgba(255,255,255,0.5)",
+              borderBottom: view === "closed" ? "2px solid #fff" : "2px solid transparent",
+            }}
           >
             지난 매물
           </button>
@@ -207,9 +205,9 @@ function DealsPageInner() {
               onChange={(e) => setActiveCat(e.target.value)}
               className="w-full text-sm font-bold rounded-full appearance-none outline-none"
               style={{
-                padding: "8px 28px 8px 12px",
-                background: activeCat === "전체" ? "#fff" : "rgba(255,255,255,0.22)",
-                color: activeCat === "전체" ? "#0B2540" : "#fff",
+                padding: "7px 26px 7px 12px",
+                background: "rgba(255,255,255,0.12)",
+                color: activeCat === "전체" ? "rgba(255,255,255,0.75)" : "#FFD166",
               }}
             >
               <option value="전체">🗃️ 전체 카테고리</option>
@@ -219,7 +217,7 @@ function DealsPageInner() {
             </select>
             <span
               className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs"
-              style={{ color: activeCat === "전체" ? "#6B7480" : "#fff" }}
+              style={{ color: activeCat === "전체" ? "rgba(255,255,255,0.75)" : "#FFD166" }}
             >
               ▾
             </span>
@@ -230,9 +228,9 @@ function DealsPageInner() {
               onChange={(e) => setActiveRegion(e.target.value)}
               className="w-full text-sm font-bold rounded-full appearance-none outline-none"
               style={{
-                padding: "8px 28px 8px 12px",
-                background: activeRegion === "전체" ? "#fff" : "rgba(255,255,255,0.22)",
-                color: activeRegion === "전체" ? "#0B2540" : "#fff",
+                padding: "7px 26px 7px 12px",
+                background: "rgba(255,255,255,0.12)",
+                color: activeRegion === "전체" ? "rgba(255,255,255,0.75)" : "#FFD166",
               }}
             >
               <option value="전체">전 지역</option>
@@ -242,7 +240,7 @@ function DealsPageInner() {
             </select>
             <span
               className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs"
-              style={{ color: activeRegion === "전체" ? "#6B7480" : "#fff" }}
+              style={{ color: activeRegion === "전체" ? "rgba(255,255,255,0.75)" : "#FFD166" }}
             >
               ▾
             </span>
@@ -254,10 +252,15 @@ function DealsPageInner() {
         <Link
           href="/sell"
           className="flex items-center justify-between rounded-xl"
-          style={{ background: "rgba(255,111,15,0.10)", border: "1.5px solid #FF6F0F", padding: "11px 16px" }}
+          style={{ background: "#FF6F0F", padding: "12px 16px", boxShadow: "0 2px 10px rgba(255,111,15,0.35)" }}
         >
-          <span className="text-sm font-bold text-navy">📦 나도 긴급 매물 등록하기</span>
-          <span className="text-sm font-bold" style={{ color: "#FF6F0F" }}>무료 등록 →</span>
+          <span className="text-sm font-bold text-white">📦 나도 긴급 매물 등록하기</span>
+          <span
+            className="text-xs font-bold text-white rounded-full flex-shrink-0"
+            style={{ background: "rgba(255,255,255,0.25)", padding: "4px 10px" }}
+          >
+            무료 등록 →
+          </span>
         </Link>
 
         {filtered.length > 0 && (
@@ -345,17 +348,17 @@ function DealsPageInner() {
                   </div>
                 )}
                 <div className="flex items-baseline gap-1.5 mt-2">
-                  <span className="text-sm text-gray500 font-normal line-through">
-                    {formatPrice(d.original_price)}
-                  </span>
-                  <span className="text-lg font-black" style={{ color: isClosed ? "#6B7480" : "#0B2540" }}>
-                    {formatPrice(d.deal_price)}
-                  </span>
                   {!isClosed && discountPct > 0 && (
-                    <span className="text-sm font-black" style={{ color: "#E25100" }}>
+                    <span className="font-black text-white rounded" style={{ fontSize: 12, padding: "2px 7px", background: "#E25100" }}>
                       -{Math.round(discountPct)}%
                     </span>
                   )}
+                  <span className="text-lg font-black" style={{ color: isClosed ? "#6B7480" : "#0B2540" }}>
+                    {formatPrice(d.deal_price)}
+                  </span>
+                  <span className="text-sm text-gray500 font-normal line-through">
+                    {formatPrice(d.original_price)}
+                  </span>
                 </div>
                 {showHotBadge && (
                   <div
@@ -395,13 +398,16 @@ function DealsPageInner() {
         {showExamples && (
           <div className="mt-2">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-bold text-gray500">이런 매물이 올라와요</span>
+              <span className="font-black" style={{ fontSize: 13, color: "#0B2540" }}>💡 이런 매물이 올라와요</span>
               <span className="flex-1" style={{ height: 1, background: "#E4E7EB" }} />
-              <span className="text-[10px] font-bold text-gray500 bg-white border border-gray200 rounded-full" style={{ padding: "2px 7px" }}>예시</span>
+              <span className="text-xs font-bold rounded-full" style={{ padding: "2px 8px", background: "#E9ECEF", color: "#495057" }}>예시</span>
             </div>
             <div className="flex flex-col gap-3">
               {EXAMPLE_DEALS.map((d) => {
                 const color = categoryColors[d.category] ?? categoryColors["기타"];
+                const pct = d.original_price
+                  ? Math.round(((d.original_price - d.deal_price) / d.original_price) * 100)
+                  : 0;
                 return (
                   <Link key={`example-${d.id}`} href={`/deals/example-${d.id}`} className="bg-white border border-dashed border-gray200 rounded-2xl overflow-hidden flex flex-col" style={{ opacity: 0.85 }}>
                     <div className="relative w-full" style={{ aspectRatio: "16/9" }}>
@@ -414,7 +420,7 @@ function DealsPageInner() {
                       )}
                     </div>
                     <div className="px-4 py-3.5">
-                      <div className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#F1F1EF", color: "#6B7480" }}>
+                      <div className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#E9ECEF", color: "#495057" }}>
                         예시 · {d.category}
                       </div>
                       <div className="text-base font-bold text-gray900 mt-2">{d.title}</div>
@@ -429,8 +435,13 @@ function DealsPageInner() {
                         </div>
                       )}
                       <div className="flex items-baseline gap-1.5 mt-2">
-                        <span className="text-sm text-gray500 font-normal line-through">{formatPrice(d.original_price)}</span>
+                        {pct > 0 && (
+                          <span className="font-black text-white rounded" style={{ fontSize: 12, padding: "2px 7px", background: "#9AA3AD" }}>
+                            -{pct}%
+                          </span>
+                        )}
                         <span className="text-lg font-black" style={{ color: "#6B7480" }}>{formatPrice(d.deal_price)}</span>
+                        <span className="text-sm text-gray500 font-normal line-through">{formatPrice(d.original_price)}</span>
                       </div>
                     </div>
                   </Link>

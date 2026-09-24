@@ -21,13 +21,18 @@ export async function sendDealPush(dealId: string) {
 
   const { data: deal, error: dealError } = await supabaseAdmin
     .from("deals")
-    .select("id, title, category_id, region_id, deal_price, images")
+    .select("id, title, category_id, region_id, deal_price, original_price, images")
     .eq("id", dealId)
     .single();
 
   if (dealError || !deal) {
     return { error: "매물을 찾을 수 없습니다." };
   }
+
+  const discountPct = deal.original_price
+    ? Math.round(((deal.original_price - deal.deal_price) / deal.original_price) * 100)
+    : 0;
+  const discountPrefix = discountPct > 0 ? `${discountPct}%↓ · ` : "";
 
   // member_categories와 member_regions는 서로 직접 연결된 외래키가 없어
   // 한 번의 조인 쿼리로는 가져올 수 없습니다. 각각 조회한 뒤 교집합을 계산합니다.
@@ -79,7 +84,7 @@ export async function sendDealPush(dealId: string) {
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
           JSON.stringify({
             title: "🔥 덤핑점핑 · 마감 임박",
-            body: `${deal.title} · ${Number(deal.deal_price).toLocaleString()}원`,
+            body: `${deal.title} · ${discountPrefix}${Number(deal.deal_price).toLocaleString()}원`,
             url: `/deals/${deal.id}`,
             tag: `deal-${deal.id}`,
             image: deal.images?.[0] || undefined,

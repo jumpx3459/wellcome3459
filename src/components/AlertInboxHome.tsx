@@ -172,10 +172,15 @@ export default function AlertInboxHome() {
         <Link
           href="/sell"
           className="flex items-center justify-between rounded-xl"
-          style={{ background: "rgba(255,111,15,0.10)", border: "1.5px solid #FF6F0F", padding: "13px 16px" }}
+          style={{ background: "#FF6F0F", padding: "13px 16px", boxShadow: "0 2px 10px rgba(255,111,15,0.35)" }}
         >
-          <span className="text-sm font-bold text-navy">📦 잠든 재고, 깨워서 현금으로</span>
-          <span className="text-sm font-bold" style={{ color: "#FF6F0F" }}>무료 등록 →</span>
+          <span className="text-sm font-bold text-white">📦 잠든 재고, 깨워서 현금으로</span>
+          <span
+            className="text-xs font-bold text-white rounded-full flex-shrink-0"
+            style={{ background: "rgba(255,255,255,0.25)", padding: "4px 10px" }}
+          >
+            무료 등록 →
+          </span>
         </Link>
       </div>
 
@@ -281,7 +286,7 @@ export default function AlertInboxHome() {
                     )}
                     <span className="flex items-baseline gap-1.5 mt-1.5">
                       {pct > 0 && (
-                        <span className="font-black text-white rounded" style={{ fontSize: 10.5, padding: "2px 6px", background: "#E25100" }}>
+                        <span className="font-black text-white rounded" style={{ fontSize: 12, padding: "2px 7px", background: "#E25100" }}>
                           -{pct}%
                         </span>
                       )}
@@ -305,9 +310,9 @@ export default function AlertInboxHome() {
       {isSupabaseConfigured && deals.length < ALERT_EXAMPLE_THRESHOLD && (
         <div>
           <div className="flex items-center gap-2" style={{ padding: "18px 20px 9px" }}>
-            <span className="font-black" style={{ fontSize: 12, color: "#0B2540", letterSpacing: "0.02em" }}>이런 매물이 올라와요</span>
+            <span className="font-black" style={{ fontSize: 13, color: "#0B2540", letterSpacing: "0.02em" }}>💡 이런 매물이 올라와요</span>
             <span className="flex-1" style={{ height: 1, background: "#EEF0F2" }} />
-            <span className="text-[10px] font-bold text-gray500 bg-gray100 rounded-full" style={{ padding: "2px 7px" }}>예시</span>
+            <span className="text-xs font-bold rounded-full" style={{ padding: "2px 8px", background: "#E9ECEF", color: "#495057" }}>예시</span>
           </div>
           {EXAMPLE_DEALS.map((d) => {
             const color = categoryColors[d.category] ?? categoryColors["기타"];
@@ -315,7 +320,7 @@ export default function AlertInboxHome() {
             return (
               <Link key={`example-${d.id}`} href={`/deals/example-${d.id}`} className="block w-full text-left" style={{ borderBottom: "1px solid #F1F3F5", padding: "14px 20px", opacity: 0.8 }}>
                 <div className="flex items-center gap-1.5" style={{ marginBottom: 8 }}>
-                  <span className="font-black rounded" style={{ fontSize: 11.5, padding: "3px 8px", background: "#F1F3F5", color: "#6B7480" }}>예시</span>
+                  <span className="font-black rounded" style={{ fontSize: 11.5, padding: "3px 8px", background: "#E9ECEF", color: "#495057" }}>예시</span>
                   <span style={{ fontSize: 12, color: "#6B7480" }}>{d.location}</span>
                 </div>
                 <div className="flex flex-col gap-2.5">
@@ -351,7 +356,7 @@ export default function AlertInboxHome() {
                       </span>
                     )}
                     <span className="flex items-baseline gap-1.5 mt-1.5">
-                      {pct > 0 && <span className="font-black text-white rounded" style={{ fontSize: 10.5, padding: "2px 6px", background: "#9AA3AD" }}>-{pct}%</span>}
+                      {pct > 0 && <span className="font-black text-white rounded" style={{ fontSize: 12, padding: "2px 7px", background: "#9AA3AD" }}>-{pct}%</span>}
                       <span className="font-black" style={{ fontSize: 18, color: "#6B7480" }}>{formatPrice(d.deal_price)}</span>
                       <span style={{ fontSize: 12.5, color: "#9AA3AD", textDecoration: "line-through" }}>{formatPrice(d.original_price)}</span>
                     </span>
