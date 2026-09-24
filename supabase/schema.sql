@@ -87,7 +87,8 @@ create table if not exists public.notification_logs (
   member_id uuid references public.members(id) on delete cascade,
   channel text default 'webpush', -- webpush (기기 푸시 알림, 알라미와 동일한 방식)
   status text default 'sent', -- sent | failed | clicked
-  sent_at timestamptz default now()
+  sent_at timestamptz default now(),
+  clicked_at timestamptz -- 알림 클릭 시각 (전환율 측정용, sw.js → /api/notification-click)
 );
 
 -- 9. 관심 표시 ("관심있어요 · 점핑매니저 연결" 클릭 로그)

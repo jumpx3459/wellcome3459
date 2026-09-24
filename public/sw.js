@@ -22,7 +22,7 @@ self.addEventListener("push", (event) => {
     icon: "/icon-192.png",
     badge: "/icon-192.png",
     image: payload.image, // 매물 사진이 있으면 알림에 크게 표시 (지원 브라우저에서)
-    data: { url: payload.url || "/deals" },
+    data: { url: payload.url || "/deals", logId: payload.logId },
     requireInteraction: true, // 유저가 직접 닫기 전까지 화면에 계속 남아있음
     renotify: true, // 같은 매물이어도 매번 다시 진동·소리 울림
     tag: payload.tag || "jumpingbid-deal",
@@ -42,12 +42,22 @@ self.addEventListener("notificationclick", (event) => {
   if (event.action === "dismiss") return;
 
   const url = event.notification.data?.url || "/deals";
-  event.waitUntil(
-    clients.matchAll({ type: "window" }).then((clientList) => {
-      for (const client of clientList) {
-        if (client.url.includes(url) && "focus" in client) return client.focus();
-      }
-      if (clients.openWindow) return clients.openWindow(url);
-    })
-  );
+  const logId = event.notification.data?.logId;
+
+  const openClient = clients.matchAll({ type: "window" }).then((clientList) => {
+    for (const client of clientList) {
+      if (client.url.includes(url) && "focus" in client) return client.focus();
+    }
+    if (clients.openWindow) return clients.openWindow(url);
+  });
+
+  const logClick = logId
+    ? fetch("/api/notification-click", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ logId }),
+      }).catch(() => {})
+    : Promise.resolve();
+
+  event.waitUntil(Promise.all([openClient, logClick]));
 });
