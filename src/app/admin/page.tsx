@@ -47,6 +47,7 @@ type ActiveDeal = {
   deal_price: number;
   total_qty: number;
   remaining_qty: number;
+  quantity_unit: string | null;
   closes_at: string;
   created_at: string;
   categories: { name: string } | null;
@@ -103,7 +104,10 @@ function downloadCsv(filename: string, rows: (string | number | null | undefined
     .map((row) =>
       row
         .map((cell) => {
-          const s = String(cell ?? "");
+          let s = String(cell ?? "");
+          // 회원 상호명/매물명 등은 사용자가 자유 입력한 값이라, 엑셀이 수식으로
+          // 해석하는 =,+,-,@로 시작하면 앞에 '를 붙여 수식 인젝션을 막는다.
+          if (/^[=+\-@]/.test(s)) s = `'${s}`;
           return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
         })
         .join(",")
@@ -1797,7 +1801,7 @@ function ActiveDealCard({
           value={remainingQty}
           onChange={(e) => setRemainingQty(e.target.value)}
         />
-        <span className="text-xs text-gray500">/ {deal.total_qty}개</span>
+        <span className="text-xs text-gray500">/ {deal.total_qty}{deal.quantity_unit || "개"}</span>
         <button
           onClick={() => patch({ remainingQty: Number(remainingQty) })}
           disabled={saving}
