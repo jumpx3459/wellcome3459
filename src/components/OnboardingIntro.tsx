@@ -45,6 +45,7 @@ export default function OnboardingIntro() {
       style={{
         padding: "56px 26px 30px",
         background: "linear-gradient(155deg,#04101C 0%,#0B2540 58%,#14395C 100%)",
+        overflowY: "auto",
       }}
     >
       <div>
@@ -76,11 +77,20 @@ export default function OnboardingIntro() {
         </p>
       </div>
 
-      <div className="flex flex-1 items-end justify-center" style={{ minHeight: 0, paddingBottom: 6 }}>
+      <div
+        className="flex flex-1 items-end justify-center"
+        style={{ minHeight: 0, paddingBottom: 6, overflow: "hidden" }}
+      >
         <img
           src="/images/manager-cut.png"
           alt="점핑매니저"
-          style={{ height: 170, width: "auto", objectFit: "contain", filter: "drop-shadow(0 14px 26px rgba(0,0,0,.5))" }}
+          style={{
+            height: "clamp(96px, 20vh, 170px)",
+            width: "auto",
+            maxHeight: "100%",
+            objectFit: "contain",
+            filter: "drop-shadow(0 14px 26px rgba(0,0,0,.5))",
+          }}
         />
       </div>
 
