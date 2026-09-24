@@ -502,7 +502,7 @@ export default function MyPage() {
         <Link
           href="/signup"
           className="mt-3 text-center"
-          style={{ color: "#6B7480", fontSize: 13.5, fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 4 }}
+          style={{ color: "#6B7480", fontSize: 14.5, fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 4 }}
         >
           처음이신가요? 알림 신청하기
         </Link>
@@ -520,6 +520,17 @@ export default function MyPage() {
           <div className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 52, height: 52, background: "rgba(255,255,255,.14)", fontSize: 23 }}>
             🏪
           </div>
+          {adminInfo && (
+            <Link
+              href="/admin"
+              className="rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ width: 30, height: 30, background: "rgba(255,255,255,.14)", fontSize: 14 }}
+              aria-label="관리자 화면으로 이동"
+              title={`관리자 화면 · ${adminInfo.name}`}
+            >
+              🛡️
+            </Link>
+          )}
           <div className="flex-1 min-w-0">
             <div className="font-black truncate" style={{ fontSize: 18.5, letterSpacing: "-0.02em" }}>
               {companyName || phone || "회원님"}
@@ -527,7 +538,7 @@ export default function MyPage() {
             </div>
             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
               {memberNo != null && (
-                <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,.8)" }}>
+                <span style={{ fontSize: 13.5, fontWeight: 600, color: "rgba(255,255,255,.8)" }}>
                   회원번호 <span className="font-mono">{formatMemberNo(memberNo)}</span>
                 </span>
               )}
@@ -535,7 +546,7 @@ export default function MyPage() {
                 <span
                   className="font-bold rounded"
                   style={{
-                    fontSize: 10.5,
+                    fontSize: 12,
                     padding: "2px 7px",
                     background: businessVerified ? "rgba(47,158,68,.25)" : "rgba(255,255,255,.15)",
                     color: businessVerified ? "#7EE2A0" : "rgba(255,255,255,.7)",
@@ -550,184 +561,26 @@ export default function MyPage() {
         <div className="flex gap-2 mt-4.5">
           <div className="flex-1 rounded-xl text-center" style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px" }}>
             <div className="font-mono font-bold" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{alertLogCount}</div>
-            <div className="mt-0.5 font-bold" style={{ fontSize: 10.5, color: "rgba(255,255,255,.8)" }}>받은 알림</div>
+            <div className="mt-0.5 font-bold" style={{ fontSize: 12, color: "rgba(255,255,255,.8)" }}>받은 알림</div>
           </div>
           <div className="flex-1 rounded-xl text-center" style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px" }}>
             <div className="font-mono font-bold" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{interests.length}</div>
-            <div className="mt-0.5 font-bold" style={{ fontSize: 10.5, color: "rgba(255,255,255,.8)" }}>관심 매물</div>
+            <div className="mt-0.5 font-bold" style={{ fontSize: 12, color: "rgba(255,255,255,.8)" }}>관심 매물</div>
           </div>
           <div className="flex-1 rounded-xl text-center" style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px" }}>
             <div className="font-mono font-bold" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{referrals.length}</div>
-            <div className="mt-0.5 font-bold" style={{ fontSize: 10.5, color: "rgba(255,255,255,.8)" }}>추천 회원</div>
+            <div className="mt-0.5 font-bold" style={{ fontSize: 12, color: "rgba(255,255,255,.8)" }}>추천 회원</div>
           </div>
         </div>
       </div>
 
       <div className="flex-1 px-5 py-5 flex flex-col gap-6">
-        {adminInfo && (
-          <Link
-            href="/admin"
-            className="flex items-center justify-between gap-3 rounded-2xl px-4 py-3.5 text-white"
-            style={{ background: "#0B2540" }}
-          >
-            <span className="min-w-0">
-              <span className="block text-sm font-bold">🛡️ 관리자 화면</span>
-              <span className="block mt-0.5 truncate" style={{ fontSize: 11, color: "rgba(255,255,255,.65)" }}>
-                {adminInfo.name} · {adminInfo.role}
-              </span>
-            </span>
-            <span className="flex-shrink-0 text-xs font-bold text-white/70">이동 →</span>
-          </Link>
-        )}
-
-        <div id="alerts">
-          <button
-            type="button"
-            onClick={() => setAlertsOpen((v) => !v)}
-            className="w-full flex items-center gap-3 rounded-2xl text-left"
-            style={{ border: "1px solid #E4E7EB", padding: "15px 16px" }}
-          >
-            <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 38, height: 38, background: "#FDEEE8", fontSize: 17 }}>🔔</span>
-            <span className="flex-1 min-w-0">
-              <span className="block font-bold" style={{ fontSize: 14, color: "#0B2540" }}>내 알림 조건</span>
-              <span className="block truncate mt-0.5" style={{ fontSize: 11.5, color: "#6B7480" }}>
-                {categories.length > 0 ? categories.slice(0, 2).join("·") + (categories.length > 2 ? ` 외 ${categories.length - 2}` : "") : "전체 카테고리"}
-                {" · "}
-                {regions.length === 0 ? "전 지역" : regions.slice(0, 2).join("·") + (regions.length > 2 ? ` 외 ${regions.length - 2}` : "")}
-              </span>
-            </span>
-            <span style={{ color: "#6B7480" }}>{alertsOpen ? "접기 ▲" : "변경하기 ›"}</span>
-          </button>
-
-          {alertsOpen && (
-            <div className="mt-3.5 flex flex-col gap-5">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-bold text-navy">관심 카테고리</span>
-                  <button
-                    type="button"
-                    onClick={() => setCategories(categories.length === mockCategories.length ? [] : [...mockCategories])}
-                    className="text-xs font-bold text-orange"
-                  >
-                    {categories.length === mockCategories.length ? "전체 해제" : "전체 선택"}
-                  </button>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {mockCategories.map((c) => {
-                    const picked = categories.includes(c);
-                    return (
-                      <button
-                        key={c}
-                        onClick={() => toggle(categories, setCategories, c)}
-                        className="flex flex-col items-center justify-center gap-1 rounded-xl border py-3.5 px-1 text-center"
-                        style={
-                          picked
-                            ? { background: "#FF6F0F", borderColor: "#FF6F0F", color: "#fff" }
-                            : { background: "#F5F6F8", borderColor: "#F5F6F8", color: "#1B3A5C" }
-                        }
-                      >
-                        <span className="text-2xl leading-none">{categoryIcons[c]}</span>
-                        <span className="text-sm font-bold leading-tight">{c}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-bold text-navy">관심 지역</span>
-                  <button
-                    type="button"
-                    onClick={() => setRegions(regions.length === mockRegions.length ? [] : [...mockRegions])}
-                    className="text-xs font-bold text-orange"
-                  >
-                    {regions.length === mockRegions.length ? "전체 해제" : "전체 선택"}
-                  </button>
-                </div>
-                <p className="text-xs text-gray500 mb-2">선택 안 하면 전국 매물 알림을 다 받아요</p>
-                <div className="grid grid-cols-4 gap-2">
-                  {mockRegions.map((r) => (
-                    <button
-                      key={r}
-                      onClick={() => toggle(regions, setRegions, r)}
-                      className={`text-sm py-2.5 rounded-full border-2 font-bold text-center ${
-                        regions.includes(r) ? "bg-[#FF6F0F] text-white border-[#FF6F0F]" : "border-gray200 text-gray500"
-                      }`}
-                    >
-                      {r}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {alertLog.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-2.5">
-              <span className="font-black" style={{ fontSize: 15, color: "#0B2540" }}>최근 받은 알림</span>
-              <span style={{ fontSize: 11.5, color: "#6B7480" }}>최근 활동</span>
-            </div>
-            <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #E4E7EB", background: "#fff" }}>
-              {alertLog.map((a) => {
-                if (!a.deals) return null;
-                const { closed, urgent } = dealUrgencyState(a.deals.closes_at);
-                const discount = a.deals.original_price
-                  ? Math.round(((a.deals.original_price - a.deals.deal_price) / a.deals.original_price) * 100)
-                  : 0;
-                return (
-                  <Link
-                    key={a.id}
-                    href={`/deals/${a.deals.id}`}
-                    className="flex items-center gap-2.5 w-full text-left"
-                    style={{ borderBottom: "1px solid #F1F3F5", padding: "13px 14px" }}
-                  >
-                    <span className="flex-1 min-w-0">
-                      <span className="block truncate font-bold" style={{ fontSize: 13, color: "#1A1F26" }}>{a.deals.title}</span>
-                      <span className="block mt-0.5" style={{ fontSize: 11, color: "#6B7480" }}>
-                        {formatRelativeTime(a.sent_at)} · {a.deals.categories?.name ?? "기타"}
-                        {discount > 0 && ` · -${discount}%`}
-                      </span>
-                    </span>
-                    <span
-                      className="flex-shrink-0 font-bold"
-                      style={{ fontSize: 10.5, color: closed ? "#6B7480" : urgent ? "var(--color-urgent)" : "var(--color-verified)" }}
-                    >
-                      {closed ? "마감" : urgent ? "마감임박" : "진행중"}
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        <button
-          onClick={save}
-          disabled={saving}
-          className="text-white font-bold rounded-2xl text-base disabled:opacity-60"
-          style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)", padding: "14px 0" }}
-        >
-          {saving ? (
-            "저장 중..."
-          ) : saved ? (
-            <span className="inline-flex items-center justify-center gap-1">
-              <CheckCircle className="w-4 h-4" /> 저장됐어요
-            </span>
-          ) : (
-            "설정 저장"
-          )}
-        </button>
-        {saveError && <div className="text-sm text-orange font-medium">{saveError}</div>}
-
-        <div className="border-t border-gray200 pt-5 flex flex-col gap-4">
+        <div className="flex flex-col gap-4">
           {profileComplete && !editingProfile ? (
             <div>
               <div className="flex items-center justify-between mb-2">
                 <div className="text-base font-bold text-navy">내 정보</div>
-                <button type="button" onClick={() => setEditingProfile(true)} className="text-xs font-bold text-orange">
+                <button type="button" onClick={() => setEditingProfile(true)} className="text-sm font-bold text-orange">
                   정보 수정
                 </button>
               </div>
@@ -736,9 +589,9 @@ export default function MyPage() {
                   {companyName}
                   {fullName && ` · ${fullName}`}
                 </div>
-                {email && <div className="text-gray500" style={{ fontSize: 13 }}>{email}</div>}
+                {email && <div className="text-gray500" style={{ fontSize: 14 }}>{email}</div>}
                 <span
-                  className="text-xs font-bold px-2 py-0.5 rounded-full self-start mt-1"
+                  className="text-sm font-bold px-2 py-0.5 rounded-full self-start mt-1"
                   style={
                     businessVerified
                       ? { background: "rgba(94,194,106,0.15)", color: "#3C9A49" }
@@ -753,7 +606,7 @@ export default function MyPage() {
             <>
               <div>
                 <div className="text-sm font-bold text-navy mb-1">프로필 완성하기</div>
-                <p className="text-xs text-gray500 leading-relaxed">
+                <p className="text-sm text-gray500 leading-relaxed">
                   채워주시면 점핑매니저가 더 정확하게 도와드려요. 전부 선택 입력이라 지금 안 채워도 괜찮아요.
                 </p>
               </div>
@@ -761,7 +614,7 @@ export default function MyPage() {
               <div>
                 <label className="text-sm font-bold text-navy mb-2 flex items-center gap-1.5">
                   상호명
-                  <span className="text-xs font-medium text-gray500 bg-gray100 px-2 py-0.5 rounded-full">선택</span>
+                  <span className="text-sm font-medium text-gray500 bg-gray100 px-2 py-0.5 rounded-full">선택</span>
                 </label>
                 <input
                   className="w-full border-2 border-gray200 rounded-xl px-4 text-base outline-none focus:border-orange"
@@ -775,7 +628,7 @@ export default function MyPage() {
               <div>
                 <label className="text-sm font-bold text-navy mb-2 flex items-center gap-1.5">
                   성명
-                  <span className="text-xs font-medium text-gray500 bg-gray100 px-2 py-0.5 rounded-full">선택</span>
+                  <span className="text-sm font-medium text-gray500 bg-gray100 px-2 py-0.5 rounded-full">선택</span>
                 </label>
                 <input
                   className="w-full border-2 border-gray200 rounded-xl px-4 text-base outline-none focus:border-orange"
@@ -789,7 +642,7 @@ export default function MyPage() {
               <div>
                 <label className="text-sm font-bold text-navy mb-2 flex items-center gap-1.5">
                   이메일
-                  <span className="text-xs font-medium text-gray500 bg-gray100 px-2 py-0.5 rounded-full">선택</span>
+                  <span className="text-sm font-medium text-gray500 bg-gray100 px-2 py-0.5 rounded-full">선택</span>
                 </label>
                 <input
                   type="email"
@@ -846,14 +699,14 @@ export default function MyPage() {
         <div id="referral" className="border-t border-gray200 pt-5">
           <div className="text-base font-bold text-navy mb-1 flex items-center gap-1.5">
             🤝 점핑파트너
-            <span className="text-xs font-medium text-gray500 bg-gray100 px-2 py-0.5 rounded-full">
+            <span className="text-sm font-medium text-gray500 bg-gray100 px-2 py-0.5 rounded-full">
               {referrals.length}명 추천함
             </span>
           </div>
-          <p className="text-xs text-gray500 mb-1 leading-relaxed">
+          <p className="text-sm text-gray500 mb-1 leading-relaxed">
             아래 링크로 가입하면 내가 추천한 회원으로 따로 관리돼요.
           </p>
-          <p className="text-xs font-bold mb-3" style={{ color: "#966B00" }}>
+          <p className="text-sm font-bold mb-3" style={{ color: "#966B00" }}>
             🎁 추천 1명당 나도 친구도 사진 슬롯 +2장 (지금 내 사진 슬롯: {4 + bonusPhotoSlots}장)
           </p>
 
@@ -862,7 +715,7 @@ export default function MyPage() {
               className="flex items-start justify-between gap-3 rounded-xl mb-3"
               style={{ background: "#E8F8EC", border: "1px solid #B8E6C2", padding: "12px 14px" }}
             >
-              <p className="text-xs font-bold leading-relaxed" style={{ color: "#1F7A34" }}>
+              <p className="text-sm font-bold leading-relaxed" style={{ color: "#1F7A34" }}>
                 🎉 {referrals[0]?.company_name || (referrals[0]?.member_no != null ? `${formatMemberNo(referrals[0].member_no)} 회원` : "추천하신 분")}
                 이 추천으로 가입했어요! 사진 슬롯이 {4 + bonusPhotoSlots}장으로 늘었어요.
               </p>
@@ -874,7 +727,7 @@ export default function MyPage() {
                     localStorage.setItem("jumpx_bonus_banner_seen", String(bonusPhotoSlots));
                   } catch {}
                 }}
-                className="flex-shrink-0 text-xs font-bold"
+                className="flex-shrink-0 text-sm font-bold"
                 style={{ color: "#1F7A34" }}
               >
                 닫기
@@ -883,7 +736,7 @@ export default function MyPage() {
           )}
 
           {shareDeals.length > 0 && (
-            <label className="text-xs font-bold text-gray500 mb-1.5 block">공유할 매물 선택</label>
+            <label className="text-sm font-bold text-gray500 mb-1.5 block">공유할 매물 선택</label>
           )}
           {shareDeals.length > 0 && (
             <select
@@ -943,15 +796,15 @@ export default function MyPage() {
                 alt="추천 링크 QR 코드"
                 className="w-32 h-32 rounded-xl border border-gray200"
               />
-              <p className="text-xs text-gray500 mt-2">명함 대신 QR로 보여주세요 · 스캔하면 제 추천으로 가입돼요</p>
+              <p className="text-sm text-gray500 mt-2">명함 대신 QR로 보여주세요 · 스캔하면 제 추천으로 가입돼요</p>
             </div>
           )}
 
           <div className="mt-6 rounded-2xl" style={{ background: "#FFF9EC", border: "1px solid #F0DCA8", padding: "14px 15px" }}>
-            <h3 className="font-black" style={{ fontSize: 13.5, color: "#8A6100" }}>🏅 공식 점핑파트너</h3>
+            <h3 className="font-black" style={{ fontSize: 14.5, color: "#8A6100" }}>🏅 공식 점핑파트너</h3>
             {!isOfficialPartner && (
               <>
-                <p className="mt-1.5 leading-relaxed" style={{ fontSize: 12, color: "#7A5230" }}>
+                <p className="mt-1.5 leading-relaxed" style={{ fontSize: 13.5, color: "#7A5230" }}>
                   이미 덤핑·재고 유통업, 도매업, 밴드/카톡채널/블로그 등 SNS 운영자, 대기업 대리점,
                   제조·수입·커뮤니티 운영자로 활동 중이신가요? 공급자이자 수요자 역할을 함께 할 수 있는
                   리더에게 드리는 공식 등급입니다.
@@ -963,7 +816,7 @@ export default function MyPage() {
                     "점핑매니저와 우선 연결",
                     "내 판매·구매 신청 현황을 마이페이지에서 한 번에 확인",
                   ].map((b) => (
-                    <li key={b} className="flex items-center gap-1.5" style={{ fontSize: 12, color: "#7A5230" }}>
+                    <li key={b} className="flex items-center gap-1.5" style={{ fontSize: 13.5, color: "#7A5230" }}>
                       <span style={{ color: "#2F9E44", fontWeight: 900 }}>✔</span>{b}
                     </li>
                   ))}
@@ -971,7 +824,7 @@ export default function MyPage() {
               </>
             )}
             {isOfficialPartner && (
-              <p className="mt-1.5 leading-relaxed" style={{ fontSize: 12, color: "#7A5230" }}>
+              <p className="mt-1.5 leading-relaxed" style={{ fontSize: 13.5, color: "#7A5230" }}>
                 공식 파트너 배지 · 우선 리워드 · 점핑매니저 우선 연결 혜택을 받고 계세요.
               </p>
             )}
@@ -979,48 +832,48 @@ export default function MyPage() {
             {isOfficialPartner ? (
               <div className="mt-2.5 inline-flex items-center gap-1.5 rounded-full" style={{ background: "#E8F8EC", padding: "6px 12px" }}>
                 <span style={{ color: "#2F9E44", fontWeight: 900 }}>✔</span>
-                <span className="font-bold" style={{ fontSize: 12.5, color: "#2F9E44" }}>공식 점핑파트너입니다</span>
+                <span className="font-bold" style={{ fontSize: 13.5, color: "#2F9E44" }}>공식 점핑파트너입니다</span>
               </div>
             ) : partnerStatus === "pending" ? (
               <div className="flex items-center gap-2.5 mt-2.5 rounded-xl" style={{ background: "#FFF4E0", padding: "12px 13px" }}>
-                <span className="font-black flex-shrink-0 rounded" style={{ fontSize: 10.5, padding: "3px 9px", background: "#F5E3BC", color: "#966B00" }}>심사중</span>
-                <span className="flex-1 leading-relaxed" style={{ fontSize: 12, color: "#7A5230" }}>
+                <span className="font-black flex-shrink-0 rounded" style={{ fontSize: 12, padding: "3px 9px", background: "#F5E3BC", color: "#966B00" }}>심사중</span>
+                <span className="flex-1 leading-relaxed" style={{ fontSize: 13.5, color: "#7A5230" }}>
                   신청서를 검토하고 있어요. 보통 2영업일 안에 결과를 알려드립니다.
                 </span>
               </div>
             ) : partnerStatus === "rejected" ? (
-              <p className="mt-2.5 rounded-xl text-center" style={{ background: "#F5F6F8", padding: "10px", fontSize: 13, color: "#6B7480" }}>
+              <p className="mt-2.5 rounded-xl text-center" style={{ background: "#F5F6F8", padding: "10px", fontSize: 14, color: "#6B7480" }}>
                 신청이 반려되었어요. 문의는 점핑매니저에게 연락주세요.
               </p>
             ) : (
               <div className="mt-2.5 space-y-2.5">
                 <input
                   className="w-full rounded-xl outline-none"
-                  style={{ border: "1.5px solid #E4D5AE", padding: 12, fontSize: 13.5 }}
+                  style={{ border: "1.5px solid #E4D5AE", padding: 12, fontSize: 14.5 }}
                   placeholder="업종/사업형태 (예: 냉동수산물 도매)"
                   value={partnerForm.businessType}
                   onChange={(e) => setPartnerForm((f) => ({ ...f, businessType: e.target.value }))}
                 />
                 <input
                   className="w-full rounded-xl outline-none"
-                  style={{ border: "1.5px solid #E4D5AE", padding: 12, fontSize: 13.5 }}
+                  style={{ border: "1.5px solid #E4D5AE", padding: 12, fontSize: 14.5 }}
                   placeholder="채널 정보 (카카오톡 채널/블로그 URL 등)"
                   value={partnerForm.channelInfo}
                   onChange={(e) => setPartnerForm((f) => ({ ...f, channelInfo: e.target.value }))}
                 />
                 <textarea
                   className="w-full rounded-xl outline-none resize-none"
-                  style={{ border: "1.5px solid #E4D5AE", padding: 12, fontSize: 13, lineHeight: 1.5, height: 70 }}
+                  style={{ border: "1.5px solid #E4D5AE", padding: 12, fontSize: 14, lineHeight: 1.5, height: 70 }}
                   placeholder="추가로 전달하고 싶은 내용 (선택)"
                   value={partnerForm.message}
                   onChange={(e) => setPartnerForm((f) => ({ ...f, message: e.target.value }))}
                 />
-                {partnerError && <p className="text-xs" style={{ color: "var(--color-orange)" }}>{partnerError}</p>}
+                {partnerError && <p className="text-sm" style={{ color: "var(--color-orange)" }}>{partnerError}</p>}
                 <button
                   onClick={submitPartnerRequest}
                   disabled={partnerSubmitting}
                   className="w-full font-bold rounded-xl text-white disabled:opacity-50"
-                  style={{ background: "#8A6100", padding: "13px 0", fontSize: 13.5 }}
+                  style={{ background: "#8A6100", padding: "13px 0", fontSize: 14.5 }}
                 >
                   {partnerSubmitting ? "신청 중..." : "공식 점핑파트너 신청하기"}
                 </button>
@@ -1028,12 +881,12 @@ export default function MyPage() {
             )}
           </div>
 
-          <p className="text-xs text-gray500 mt-4 mb-2 leading-relaxed">
+          <p className="text-sm text-gray500 mt-4 mb-2 leading-relaxed">
             내가 추천한 회원은 여기서 확인할 수 있어요. 상세 관리 대시보드는 준비 중이에요.
           </p>
           <div className="flex flex-col gap-2">
             {referrals.length === 0 ? (
-              <p className="text-xs text-gray500 text-center py-4">
+              <p className="text-sm text-gray500 text-center py-4">
                 아직 추천으로 가입한 회원이 없어요. 위 링크를 공유해보세요!
               </p>
             ) : (
@@ -1044,13 +897,13 @@ export default function MyPage() {
                     className="flex items-center justify-between bg-white border border-gray200 rounded-xl px-4 py-3"
                   >
                     <div>
-                      <div className="text-sm font-bold text-gray900">
+                      <div className="text-base font-bold text-gray900">
                         {r.member_no != null ? formatMemberNo(r.member_no) : "회원번호 없음"}
                         {r.company_name && (
-                          <span className="text-xs font-medium text-gray500 ml-1.5">{r.company_name}</span>
+                          <span className="text-sm font-medium text-gray500 ml-1.5">{r.company_name}</span>
                         )}
                       </div>
-                      <div className="text-xs text-gray500 mt-0.5">
+                      <div className="text-sm text-gray500 mt-0.5">
                         {r.phone}
                         {" · "}
                         {new Date(r.created_at).toLocaleDateString("ko-KR")} 가입
@@ -1059,14 +912,14 @@ export default function MyPage() {
                     </div>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
                       <span
-                        className="text-xs font-bold px-2.5 py-1 rounded-full"
+                        className="text-sm font-bold px-2.5 py-1 rounded-full"
                         style={{ background: "#E8F8EC", color: "#1D8A44" }}
                       >
                         가입완료
                       </span>
                       {r.business_verified && (
                         <span
-                          className="text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1"
+                          className="text-sm font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1"
                           style={{ background: "#E8F8EC", color: "#1D8A44" }}
                         >
                           <CheckCircle className="w-3 h-3" /> 인증된 사업자
@@ -1079,6 +932,148 @@ export default function MyPage() {
             )}
           </div>
         </div>
+
+        <div id="alerts" className="border-t border-gray200 pt-5">
+          <button
+            type="button"
+            onClick={() => setAlertsOpen((v) => !v)}
+            className="w-full flex items-center gap-3 rounded-2xl text-left"
+            style={{ border: "1px solid #E4E7EB", padding: "15px 16px" }}
+          >
+            <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 38, height: 38, background: "#FDEEE8", fontSize: 17 }}>🔔</span>
+            <span className="flex-1 min-w-0">
+              <span className="block font-bold" style={{ fontSize: 14, color: "#0B2540" }}>내 알림 조건</span>
+              <span className="block truncate mt-0.5" style={{ fontSize: 12.5, color: "#6B7480" }}>
+                {categories.length > 0 ? categories.slice(0, 2).join("·") + (categories.length > 2 ? ` 외 ${categories.length - 2}` : "") : "전체 카테고리"}
+                {" · "}
+                {regions.length === 0 ? "전 지역" : regions.slice(0, 2).join("·") + (regions.length > 2 ? ` 외 ${regions.length - 2}` : "")}
+              </span>
+            </span>
+            <span style={{ color: "#6B7480" }}>{alertsOpen ? "접기 ▲" : "변경하기 ›"}</span>
+          </button>
+
+          {alertsOpen && (
+            <div className="mt-3.5 flex flex-col gap-5">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-bold text-navy">관심 카테고리</span>
+                  <button
+                    type="button"
+                    onClick={() => setCategories(categories.length === mockCategories.length ? [] : [...mockCategories])}
+                    className="text-sm font-bold text-orange"
+                  >
+                    {categories.length === mockCategories.length ? "전체 해제" : "전체 선택"}
+                  </button>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {mockCategories.map((c) => {
+                    const picked = categories.includes(c);
+                    return (
+                      <button
+                        key={c}
+                        onClick={() => toggle(categories, setCategories, c)}
+                        className="flex flex-col items-center justify-center gap-1 rounded-xl border py-3.5 px-1 text-center"
+                        style={
+                          picked
+                            ? { background: "#FF6F0F", borderColor: "#FF6F0F", color: "#fff" }
+                            : { background: "#F5F6F8", borderColor: "#F5F6F8", color: "#1B3A5C" }
+                        }
+                      >
+                        <span className="text-2xl leading-none">{categoryIcons[c]}</span>
+                        <span className="text-sm font-bold leading-tight">{c}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-bold text-navy">관심 지역</span>
+                  <button
+                    type="button"
+                    onClick={() => setRegions(regions.length === mockRegions.length ? [] : [...mockRegions])}
+                    className="text-sm font-bold text-orange"
+                  >
+                    {regions.length === mockRegions.length ? "전체 해제" : "전체 선택"}
+                  </button>
+                </div>
+                <p className="text-sm text-gray500 mb-2">선택 안 하면 전국 매물 알림을 다 받아요</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {mockRegions.map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => toggle(regions, setRegions, r)}
+                      className={`text-sm py-2.5 rounded-full border-2 font-bold text-center ${
+                        regions.includes(r) ? "bg-[#FF6F0F] text-white border-[#FF6F0F]" : "border-gray200 text-gray500"
+                      }`}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {alertLog.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="font-black" style={{ fontSize: 15, color: "#0B2540" }}>최근 받은 알림</span>
+              <span style={{ fontSize: 12.5, color: "#6B7480" }}>최근 활동</span>
+            </div>
+            <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #E4E7EB", background: "#fff" }}>
+              {alertLog.map((a) => {
+                if (!a.deals) return null;
+                const { closed, urgent } = dealUrgencyState(a.deals.closes_at);
+                const discount = a.deals.original_price
+                  ? Math.round(((a.deals.original_price - a.deals.deal_price) / a.deals.original_price) * 100)
+                  : 0;
+                return (
+                  <Link
+                    key={a.id}
+                    href={`/deals/${a.deals.id}`}
+                    className="flex items-center gap-2.5 w-full text-left"
+                    style={{ borderBottom: "1px solid #F1F3F5", padding: "13px 14px" }}
+                  >
+                    <span className="flex-1 min-w-0">
+                      <span className="block truncate font-bold" style={{ fontSize: 14, color: "#1A1F26" }}>{a.deals.title}</span>
+                      <span className="block mt-0.5" style={{ fontSize: 12.5, color: "#6B7480" }}>
+                        {formatRelativeTime(a.sent_at)} · {a.deals.categories?.name ?? "기타"}
+                        {discount > 0 && ` · -${discount}%`}
+                      </span>
+                    </span>
+                    <span
+                      className="flex-shrink-0 font-bold"
+                      style={{ fontSize: 12, color: closed ? "#6B7480" : urgent ? "var(--color-urgent)" : "var(--color-verified)" }}
+                    >
+                      {closed ? "마감" : urgent ? "마감임박" : "진행중"}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <button
+          onClick={save}
+          disabled={saving}
+          className="text-white font-bold rounded-2xl text-base disabled:opacity-60"
+          style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)", padding: "14px 0" }}
+        >
+          {saving ? (
+            "저장 중..."
+          ) : saved ? (
+            <span className="inline-flex items-center justify-center gap-1">
+              <CheckCircle className="w-4 h-4" /> 저장됐어요
+            </span>
+          ) : (
+            "설정 저장"
+          )}
+        </button>
+        {saveError && <div className="text-sm text-orange font-medium">{saveError}</div>}
 
         <div className="border-t border-gray200 pt-5">
           <div className="text-base font-bold text-navy mb-3">
@@ -1098,13 +1093,13 @@ export default function MyPage() {
                   className="bg-white border border-gray200 rounded-xl px-4 py-3 flex items-center justify-between"
                 >
                   <div>
-                    <div className="text-sm font-bold text-gray900">{i.deals.title}</div>
-                    <div className="text-sm text-navy font-bold mt-0.5">
+                    <div className="text-base font-bold text-gray900">{i.deals.title}</div>
+                    <div className="text-base text-navy font-bold mt-0.5">
                       {formatPrice(i.deals.deal_price)}
                     </div>
                   </div>
                   <span
-                    className="text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0"
+                    className="text-sm font-bold px-2.5 py-1 rounded-full flex-shrink-0"
                     style={
                       i.deals.status === "active"
                         ? { background: "#E8F8EC", color: "#1D8A44" }
@@ -1128,16 +1123,16 @@ export default function MyPage() {
             {threads.map((t) => (
               <div key={t.key} className="bg-white border border-gray200 rounded-xl p-3.5">
                 <div className="flex items-center justify-between mb-2">
-                  <Link href={`/deals/${t.dealId}`} className="text-xs font-bold text-gray500 truncate">
+                  <Link href={`/deals/${t.dealId}`} className="text-sm font-bold text-gray500 truncate">
                     {t.dealTitle}
                   </Link>
-                  <span className="text-xs font-bold text-navy flex-shrink-0 ml-2">{t.counterpartLabel}</span>
+                  <span className="text-sm font-bold text-navy flex-shrink-0 ml-2">{t.counterpartLabel}</span>
                 </div>
                 <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto">
                   {t.items.map((m) => (
                     <div
                       key={m.id}
-                      className={`text-sm rounded-xl px-3 py-2 max-w-[85%] ${m.mine ? "self-end text-white" : "self-start bg-gray100 text-gray900"}`}
+                      className={`text-base rounded-xl px-3 py-2 max-w-[85%] ${m.mine ? "self-end text-white" : "self-start bg-gray100 text-gray900"}`}
                       style={m.mine ? { background: "#0B2540" } : undefined}
                     >
                       {m.body}
@@ -1174,7 +1169,7 @@ export default function MyPage() {
           >
             <div>
               <div className="text-base font-black text-navy">📦 긴급 매물 등록하기</div>
-              <div className="text-xs font-bold mt-0.5" style={{ color: "#E25100" }}>
+              <div className="text-sm font-bold mt-0.5" style={{ color: "#E25100" }}>
                 남는 재고 있으세요? 무료로 바로 등록
               </div>
             </div>
@@ -1193,7 +1188,7 @@ export default function MyPage() {
               <span className="text-sm font-bold text-gray900">견적함</span>
             </span>
             <span
-              className="text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0"
+              className="text-sm font-bold px-2.5 py-1 rounded-full flex-shrink-0"
               style={{ background: "#F5F6F8", color: "#6B7480" }}
             >
               준비중
@@ -1201,7 +1196,7 @@ export default function MyPage() {
           </button>
         </div>
 
-        <Link href="/unsubscribe" className="text-center text-xs text-gray500 underline py-2">
+        <Link href="/unsubscribe" className="text-center text-sm text-gray500 underline py-2">
           알림이 필요 없으신가요? 알림 해지 · 탈퇴
         </Link>
       </div>
