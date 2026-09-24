@@ -608,6 +608,14 @@ function AdminDashboard({
     );
   }
 
+  // "조치 필요" 타일 클릭 시 해당 섹션을 펼치고 그 위치로 스크롤 — 섹션 컨테이너에
+  // id를 달아뒀고 아코디언이 접혀있어도 컨테이너 자체는 항상 렌더되므로, 상태
+  // 갱신과 스크롤 타이밍을 맞출 필요 없이 바로 scrollIntoView 호출.
+  const jumpToSection = (id: string, openSection?: () => void) => {
+    openSection?.();
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
     <main className="flex flex-col min-h-screen">
       <div
@@ -663,19 +671,34 @@ function AdminDashboard({
         <div className="text-sm font-bold text-gray500 mb-1.5">⚡ 조치 필요</div>
         <div className="grid grid-cols-4 gap-1.5">
           {[
-            { label: "미연락 리드", value: interests.filter((i) => !i.contacted).length },
+            {
+              label: "미연락 리드",
+              value: interests.filter((i) => !i.contacted).length,
+              onClick: () => jumpToSection("leads", () => setLeadsOpen(true)),
+            },
             {
               label: "마감임박(6h)",
               value: activeDeals.filter((d) => {
                 const remainMs = new Date(d.closes_at).getTime() - new Date().getTime();
                 return remainMs > 0 && remainMs <= 6 * 60 * 60 * 1000;
               }).length,
+              onClick: () => jumpToSection("active-deals"),
             },
-            { label: "대기중 판매신청", value: requests.length },
-            { label: "재고찾습니다 미연락", value: buyRequests.filter((b) => !b.contacted).length },
+            {
+              label: "대기중 판매신청",
+              value: requests.length,
+              onClick: () => jumpToSection("pending-sellers", () => setSellerReqOpen(true)),
+            },
+            {
+              label: "재고찾습니다 미연락",
+              value: buyRequests.filter((b) => !b.contacted).length,
+              onClick: () => jumpToSection("buy-requests", () => setBuyReqOpen(true)),
+            },
           ].map((stat) => (
-            <div
+            <button
               key={stat.label}
+              type="button"
+              onClick={stat.onClick}
               className="rounded-xl px-1 py-3 text-center"
               style={
                 stat.value > 0
@@ -692,7 +715,7 @@ function AdminDashboard({
               >
                 {stat.label}
               </div>
-            </div>
+            </button>
           ))}
         </div>
 
@@ -923,7 +946,7 @@ function AdminDashboard({
         )}
       </div>
 
-      <div className="px-5 pt-4 flex flex-col gap-3">
+      <div id="leads" className="px-5 pt-4 flex flex-col gap-3">
         <button
           type="button"
           onClick={() => setLeadsOpen((v) => !v)}
@@ -1196,7 +1219,7 @@ function AdminDashboard({
         )}
       </div>
 
-      <div className="px-5 pb-6 flex flex-col gap-3">
+      <div id="active-deals" className="px-5 pb-6 flex flex-col gap-3">
         <div className="text-sm font-bold text-gray500">
           진행 중인 매물 ({activeDeals.length})
         </div>
@@ -1208,7 +1231,7 @@ function AdminDashboard({
         ))}
       </div>
 
-      <div className="px-5 pb-8 flex flex-col gap-3">
+      <div id="pending-sellers" className="px-5 pb-8 flex flex-col gap-3">
         <button
           type="button"
           onClick={() => setSellerReqOpen((v) => !v)}
@@ -1386,7 +1409,7 @@ function AdminDashboard({
         )}
       </section>
 
-      <div className="px-5 pb-8 flex flex-col gap-3">
+      <div id="buy-requests" className="px-5 pb-8 flex flex-col gap-3">
         <button
           type="button"
           onClick={() => setBuyReqOpen((v) => !v)}
