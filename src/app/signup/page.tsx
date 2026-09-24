@@ -539,7 +539,7 @@ function SignupPageInner() {
                     >
                       {categoryIcons[c]}
                     </span>
-                    <span className="text-sm font-bold leading-tight" style={{ color: picked ? "#E25100" : "#1A1F26" }}>
+                    <span className="text-sm font-bold leading-tight" style={{ color: "#1A1F26" }}>
                       {c}
                     </span>
                   </button>
@@ -560,15 +560,15 @@ function SignupPageInner() {
                 onClick={() => setRegionOpen((v) => !v)}
                 className="w-full flex items-center justify-between"
               >
-                <span className="text-sm font-bold" style={{ color: "#0B2540" }}>
-                  🗺️ 지역 좁히기{" "}
+                <span style={{ color: "#0B2540", fontSize: 15, fontWeight: 700 }}>
+                  🗺️ 관심지역 선택{" "}
                   <span style={{ color: "#6B7480", fontWeight: 500 }}>(선택 안 하면 전국)</span>
                 </span>
-                <span className="text-xs font-bold" style={{ color: "#6B7480" }}>
+                <span className="font-bold" style={{ color: "#6B7480", fontSize: 13 }}>
                   {regionOpen
                     ? "접기 ▲"
                     : allRegionsOn || regions.length === 0
-                    ? "전국 · 펼치기 ▾"
+                    ? "전국 (선택 안 함) · 펼치기 ▾"
                     : `${regions.length}곳 선택됨 · 펼치기 ▾`}
                 </span>
               </button>
@@ -584,10 +584,10 @@ function SignupPageInner() {
                           className="rounded-full font-bold"
                           style={{
                             padding: "10px 14px",
-                            fontSize: 13,
+                            fontSize: 14,
                             background: picked ? "rgba(255,111,15,.1)" : "#fff",
                             border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
-                            color: picked ? "#E25100" : "#1A1F26",
+                            color: "#1A1F26",
                           }}
                         >
                           {r}
@@ -889,7 +889,10 @@ function SignupPageInner() {
       </div>
 
       {!alreadyMember && (
-        <div style={{ padding: "14px 22px 24px", borderTop: "1px solid #EEF0F2", background: "#fff" }}>
+        <div
+          className="sticky bottom-0 z-10"
+          style={{ padding: "14px 22px 24px", borderTop: "1px solid #EEF0F2", background: "#fff" }}
+        >
           <button
             onClick={goNext}
             disabled={submitting}
