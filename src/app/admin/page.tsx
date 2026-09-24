@@ -694,7 +694,7 @@ function AdminDashboard({
               onClick: () => jumpToSection("pending-sellers", () => setSellerReqOpen(true)),
             },
             {
-              label: "재고찾습니다 미연락",
+              label: "재고문의 미연락",
               value: buyRequests.filter((b) => !b.contacted).length,
               onClick: () => jumpToSection("buy-requests", () => setBuyReqOpen(true)),
             },
@@ -1457,6 +1457,9 @@ function AdminDashboard({
             </div>
             {b.description && (
               <div className="text-sm text-gray500 mt-1 bg-gray100 rounded-lg px-3 py-2">
+                <span className="font-bold" style={{ color: "#9AA3AD" }}>
+                  💬 메모{" "}
+                </span>
                 {b.description}
               </div>
             )}
