@@ -298,7 +298,11 @@ function DealsPageInner() {
               key={d.id}
               href={`/deals/${d.id}`}
               className="bg-white border border-gray200 rounded-2xl overflow-hidden flex flex-col relative"
-              style={{ borderLeft: `5px solid ${isClosed ? "#C7CBD1" : color.solid}`, opacity: isClosed ? 0.85 : 1 }}
+              style={{
+                borderLeft: `5px solid ${isClosed ? "#C7CBD1" : color.solid}`,
+                opacity: isClosed ? 0.85 : 1,
+                boxShadow: isClosed ? "none" : "0 2px 8px rgba(11,37,64,0.08), 0 1px 2px rgba(11,37,64,0.04)",
+              }}
             >
               <div className="relative w-full" style={{ aspectRatio: "16/9" }}>
                 {d.images && d.images.length > 0 ? (
@@ -335,13 +339,13 @@ function DealsPageInner() {
                   </div>
                 </div>
                 <div className="text-base font-bold text-gray900 mt-2">{d.title}</div>
-                <div className="text-sm text-gray500 mt-1">
+                <div className="text-sm font-medium mt-1" style={{ color: "#495057" }}>
                   {isClosed
                     ? d.location
                     : `잔여 ${d.remaining_qty}${d.quantity_unit || "개"} · ${d.location}`}
                 </div>
                 {(d.origin || d.min_order_qty) && (
-                  <div className="text-xs text-gray500 mt-1 flex items-center gap-1.5 flex-wrap">
+                  <div className="text-xs font-medium mt-1 flex items-center gap-1.5 flex-wrap" style={{ color: "#495057" }}>
                     {d.origin && <span>🌍 {d.origin}</span>}
                     {d.origin && d.min_order_qty ? <span style={{ color: "#C7CBD1" }}>·</span> : null}
                     {d.min_order_qty && <span>MOQ {d.min_order_qty}{d.quantity_unit || "개"}</span>}
