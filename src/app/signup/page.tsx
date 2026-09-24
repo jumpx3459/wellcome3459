@@ -647,9 +647,9 @@ function SignupPageInner() {
             >
               <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 38, height: 38, background: "#FEE500", fontSize: 18 }}>💬</span>
               <span className="flex-1">
-                <span className="flex items-center gap-1.5">
-                  <span className="text-sm font-bold" style={{ color: "#0B2540" }}>카카오톡 채널 추가</span>
-                  <span className="text-xs font-bold" style={{ color: "#6B7480" }}>[선택]</span>
+                <span className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-sm font-bold" style={{ color: "#0B2540", whiteSpace: "nowrap" }}>카카오톡 채널 추가</span>
+                  <span className="text-xs font-bold" style={{ color: "#6B7480", whiteSpace: "nowrap" }}>[선택]</span>
                 </span>
                 <span className="block text-xs mt-0.5" style={{ color: "#6B7480" }}>
                   {kakao ? "추가됨 · 공지·이벤트 소식 받는 중" : "공지·이벤트 소식을 카톡으로 받기"}

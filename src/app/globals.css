@@ -23,7 +23,7 @@
   --radius-token: 12px; /* rounded-xl(최다 사용) 표준화용 */
 
   /* design-v2 — Claude Design 리디자인 라운드에서 확정 */
-  --color-toggleOn: #1B7F5A; /* 알림 수신 스위치 ON 전용 — 오렌지(CTA)와 색 역할 분리 */
+  --color-toggleOn: #03C75A; /* 알림 수신 스위치 ON 전용 — 오렌지(CTA)와 색 역할 분리 */
 
   --font-sans: var(--font-pretendard), -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
   --font-display: var(--font-pretendard), -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
