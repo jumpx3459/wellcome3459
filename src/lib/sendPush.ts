@@ -67,6 +67,12 @@ export async function sendDealPush(dealId: string) {
   let sentCount = 0;
 
   for (const sub of subs ?? []) {
+    const { data: logRow } = await supabaseAdmin
+      .from("notification_logs")
+      .insert({ deal_id: deal.id, member_id: sub.member_id, channel: "webpush", status: "sent" })
+      .select("id")
+      .single();
+
     try {
       if (vapidPublic && vapidPrivate) {
         await webpush.sendNotification(
@@ -77,23 +83,15 @@ export async function sendDealPush(dealId: string) {
             url: `/deals/${deal.id}`,
             tag: `deal-${deal.id}`,
             image: deal.images?.[0] || undefined,
+            logId: logRow?.id,
           })
         );
       }
-      await supabaseAdmin.from("notification_logs").insert({
-        deal_id: deal.id,
-        member_id: sub.member_id,
-        channel: "webpush",
-        status: "sent",
-      });
       sentCount++;
     } catch {
-      await supabaseAdmin.from("notification_logs").insert({
-        deal_id: deal.id,
-        member_id: sub.member_id,
-        channel: "webpush",
-        status: "failed",
-      });
+      if (logRow?.id) {
+        await supabaseAdmin.from("notification_logs").update({ status: "failed" }).eq("id", logRow.id);
+      }
     }
   }
 
