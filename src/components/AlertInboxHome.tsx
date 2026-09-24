@@ -73,7 +73,7 @@ export default function AlertInboxHome() {
         supabase
           .from("deals")
           .select(
-            "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, created_at, location, images, video_url, categories(name), regions(name)"
+            "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, closes_at, created_at, location, images, video_url, origin, min_order_qty, categories(name), regions(name)"
           )
           .eq("status", "active")
           .gt("closes_at", new Date().toISOString())
@@ -102,10 +102,13 @@ export default function AlertInboxHome() {
           deal_price: d.deal_price,
           total_qty: d.total_qty,
           remaining_qty: d.remaining_qty,
+          quantity_unit: d.quantity_unit ?? "개",
           closes_at: d.closes_at,
           created_at: d.created_at,
           images: d.images ?? [],
           video_url: d.video_url ?? null,
+          origin: d.origin ?? null,
+          min_order_qty: d.min_order_qty ?? null,
         }))
       );
     })();
@@ -267,8 +270,15 @@ export default function AlertInboxHome() {
                   <span className="flex-1 min-w-0">
                     <span className="block font-bold leading-snug" style={{ fontSize: 16, color: "#1A1F26" }}>{d.title}</span>
                     <span className="block mt-0.5" style={{ fontSize: 12.5, color: "#6B7480" }}>
-                      {d.category} · {d.location} · 잔여 {d.remaining_qty}
+                      {d.category} · {d.location} · 잔여 {d.remaining_qty}{d.quantity_unit || "개"}
                     </span>
+                    {(d.origin || d.min_order_qty) && (
+                      <span className="block mt-0.5" style={{ fontSize: 11.5, color: "#9AA3AD" }}>
+                        {d.origin && `🌍 ${d.origin}`}
+                        {d.origin && d.min_order_qty ? " · " : ""}
+                        {d.min_order_qty && `MOQ ${d.min_order_qty}${d.quantity_unit || "개"}`}
+                      </span>
+                    )}
                     <span className="flex items-baseline gap-1.5 mt-1.5">
                       {pct > 0 && (
                         <span className="font-black text-white rounded" style={{ fontSize: 10.5, padding: "2px 6px", background: "#E25100" }}>
@@ -330,7 +340,16 @@ export default function AlertInboxHome() {
                   )}
                   <span className="flex-1 min-w-0">
                     <span className="block font-bold leading-snug" style={{ fontSize: 16, color: "#1A1F26" }}>{d.title}</span>
-                    <span className="block mt-0.5" style={{ fontSize: 12.5, color: "#6B7480" }}>{d.category} · {d.location}</span>
+                    <span className="block mt-0.5" style={{ fontSize: 12.5, color: "#6B7480" }}>
+                      {d.category} · {d.location} · 잔여 {d.remaining_qty}{d.quantity_unit || "개"}
+                    </span>
+                    {(d.origin || d.min_order_qty) && (
+                      <span className="block mt-0.5" style={{ fontSize: 11.5, color: "#9AA3AD" }}>
+                        {d.origin && `🌍 ${d.origin}`}
+                        {d.origin && d.min_order_qty ? " · " : ""}
+                        {d.min_order_qty && `MOQ ${d.min_order_qty}${d.quantity_unit || "개"}`}
+                      </span>
+                    )}
                     <span className="flex items-baseline gap-1.5 mt-1.5">
                       {pct > 0 && <span className="font-black text-white rounded" style={{ fontSize: 10.5, padding: "2px 6px", background: "#9AA3AD" }}>-{pct}%</span>}
                       <span className="font-black" style={{ fontSize: 18, color: "#6B7480" }}>{formatPrice(d.deal_price)}</span>

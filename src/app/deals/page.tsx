@@ -42,7 +42,7 @@ function DealsPageInner() {
       const { data, error } = await supabase
         .from("deals")
         .select(
-          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, closes_at, location, images, video_url, categories(name), regions(name)"
+          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, closes_at, location, images, video_url, origin, min_order_qty, categories(name), regions(name)"
         )
         .eq("status", "active")
         .gt("closes_at", new Date().toISOString()) // 마감 지난 매물은 애초에 가져오지 않음
@@ -64,6 +64,8 @@ function DealsPageInner() {
             closes_at: d.closes_at,
             images: d.images ?? [],
             video_url: d.video_url ?? null,
+            origin: d.origin ?? null,
+            min_order_qty: d.min_order_qty ?? null,
           }))
         );
       }
@@ -78,7 +80,7 @@ function DealsPageInner() {
       const { data, error } = await supabase
         .from("deals")
         .select(
-          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, closes_at, location, images, video_url, categories(name), regions(name)"
+          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, closes_at, location, images, video_url, origin, min_order_qty, categories(name), regions(name)"
         )
         .or(`status.eq.closed,closes_at.lte.${new Date().toISOString()}`)
         .order("closes_at", { ascending: false })
@@ -100,6 +102,8 @@ function DealsPageInner() {
             closes_at: d.closes_at,
             images: d.images ?? [],
             video_url: d.video_url ?? null,
+            origin: d.origin ?? null,
+            min_order_qty: d.min_order_qty ?? null,
             status: "closed",
           }))
         );
@@ -333,6 +337,13 @@ function DealsPageInner() {
                     ? d.location
                     : `잔여 ${d.remaining_qty}${d.quantity_unit || "개"} · ${d.location}`}
                 </div>
+                {(d.origin || d.min_order_qty) && (
+                  <div className="text-xs text-gray500 mt-1 flex items-center gap-1.5 flex-wrap">
+                    {d.origin && <span>🌍 {d.origin}</span>}
+                    {d.origin && d.min_order_qty ? <span style={{ color: "#C7CBD1" }}>·</span> : null}
+                    {d.min_order_qty && <span>MOQ {d.min_order_qty}{d.quantity_unit || "개"}</span>}
+                  </div>
+                )}
                 <div className="flex items-baseline gap-1.5 mt-2">
                   <span className="text-sm text-gray500 font-normal line-through">
                     {formatPrice(d.original_price)}
@@ -407,6 +418,16 @@ function DealsPageInner() {
                         예시 · {d.category}
                       </div>
                       <div className="text-base font-bold text-gray900 mt-2">{d.title}</div>
+                      <div className="text-sm text-gray500 mt-1">
+                        잔여 {d.remaining_qty}{d.quantity_unit || "개"} · {d.location}
+                      </div>
+                      {(d.origin || d.min_order_qty) && (
+                        <div className="text-xs text-gray500 mt-1 flex items-center gap-1.5 flex-wrap">
+                          {d.origin && <span>🌍 {d.origin}</span>}
+                          {d.origin && d.min_order_qty ? <span style={{ color: "#C7CBD1" }}>·</span> : null}
+                          {d.min_order_qty && <span>MOQ {d.min_order_qty}{d.quantity_unit || "개"}</span>}
+                        </div>
+                      )}
                       <div className="flex items-baseline gap-1.5 mt-2">
                         <span className="text-sm text-gray500 font-normal line-through">{formatPrice(d.original_price)}</span>
                         <span className="text-lg font-black" style={{ color: "#6B7480" }}>{formatPrice(d.deal_price)}</span>
