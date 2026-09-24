@@ -520,17 +520,6 @@ export default function MyPage() {
           <div className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 52, height: 52, background: "rgba(255,255,255,.14)", fontSize: 23 }}>
             🏪
           </div>
-          {adminInfo && (
-            <Link
-              href="/admin"
-              className="rounded-full flex items-center justify-center flex-shrink-0"
-              style={{ width: 30, height: 30, background: "rgba(255,255,255,.14)", fontSize: 14 }}
-              aria-label="관리자 화면으로 이동"
-              title={`관리자 화면 · ${adminInfo.name}`}
-            >
-              🛡️
-            </Link>
-          )}
           <div className="flex-1 min-w-0">
             <div className="font-black truncate" style={{ fontSize: 18.5, letterSpacing: "-0.02em" }}>
               {companyName || phone || "회원님"}
@@ -555,6 +544,16 @@ export default function MyPage() {
                   {businessVerified ? "✔ 사업자 인증" : "사업자 인증 대기중"}
                 </span>
               )}
+              {adminInfo && (
+                <Link
+                  href="/admin"
+                  className="font-bold rounded inline-flex items-center gap-1"
+                  style={{ fontSize: 12, padding: "2px 7px", background: "rgba(255,209,102,.2)", color: "#FFD166" }}
+                  title={`관리자 화면 · ${adminInfo.name}`}
+                >
+                  🛡️ 관리자
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -572,38 +571,30 @@ export default function MyPage() {
             <div className="mt-0.5 font-bold" style={{ fontSize: 12, color: "rgba(255,255,255,.8)" }}>추천 회원</div>
           </div>
         </div>
+
+        {profileComplete && !editingProfile && (
+          <div
+            className="flex items-center justify-between mt-3 pt-3"
+            style={{ borderTop: "1px solid rgba(255,255,255,.12)" }}
+          >
+            <span style={{ fontSize: 13.5, color: "rgba(255,255,255,.7)" }}>
+              {email || "이메일 미등록"}
+            </span>
+            <button
+              type="button"
+              onClick={() => setEditingProfile(true)}
+              className="font-bold flex-shrink-0"
+              style={{ fontSize: 13.5, color: "#FFD166" }}
+            >
+              정보 수정 ›
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="flex-1 px-5 py-5 flex flex-col gap-6">
-        <div className="flex flex-col gap-4">
-          {profileComplete && !editingProfile ? (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-base font-bold text-navy">내 정보</div>
-                <button type="button" onClick={() => setEditingProfile(true)} className="text-sm font-bold text-orange">
-                  정보 수정
-                </button>
-              </div>
-              <div className="bg-gray100 rounded-xl px-4 py-3 flex flex-col gap-1">
-                <div className="font-bold text-navy" style={{ fontSize: 15 }}>
-                  {companyName}
-                  {fullName && ` · ${fullName}`}
-                </div>
-                {email && <div className="text-gray500" style={{ fontSize: 14 }}>{email}</div>}
-                <span
-                  className="text-sm font-bold px-2 py-0.5 rounded-full self-start mt-1"
-                  style={
-                    businessVerified
-                      ? { background: "rgba(94,194,106,0.15)", color: "#3C9A49" }
-                      : { background: "#EEF0F3", color: "#6B7480" }
-                  }
-                >
-                  {businessVerified ? "사업자 인증 완료" : hasBusinessLicense ? "사업자 인증 대기중" : "사업자 미인증"}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <>
+        {(!profileComplete || editingProfile) && (
+          <div className="flex flex-col gap-4">
               <div>
                 <div className="text-sm font-bold text-navy mb-1">프로필 완성하기</div>
                 <p className="text-sm text-gray500 leading-relaxed">
@@ -692,9 +683,8 @@ export default function MyPage() {
                   </button>
                 )}
               </div>
-            </>
-          )}
-        </div>
+          </div>
+        )}
 
         <div id="referral" className="border-t border-gray200 pt-5">
           <div className="text-base font-bold text-navy mb-1 flex items-center gap-1.5">
