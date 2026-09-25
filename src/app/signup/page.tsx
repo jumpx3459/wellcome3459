@@ -10,6 +10,7 @@ import { generateRefCode } from "@/lib/refCode";
 import Toast, { useToast } from "@/components/Toast";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 import { fmtLeft } from "@/lib/format";
+import { NAV_HEIGHT } from "@/components/BottomNav";
 
 // "01012345678" -> "010****5678" 형태로 화면에만 일부 가려서 보여줍니다
 function maskPhone(phone: string): string {
@@ -835,9 +836,12 @@ function SignupPageInner() {
       </div>
 
       {!alreadyMember && (
+        // design-v2: bottom: 0으로 두면 AppShell의 fixed 하단 탭바(BottomNav, z-40)에
+        // 이 sticky 영역(z-10)이 가려서 스크롤 중엔 안 보이던 버그 — buy/sell과 같은
+        // 원인, 같은 수정(탭바 높이만큼 띄움).
         <div
-          className="sticky bottom-0 z-10"
-          style={{ padding: "14px 22px 24px", borderTop: "1px solid #EEF0F2", background: "#fff" }}
+          className="sticky z-10"
+          style={{ bottom: NAV_HEIGHT, padding: "14px 22px 24px", borderTop: "1px solid #EEF0F2", background: "#fff" }}
         >
           <button
             onClick={goNext}
