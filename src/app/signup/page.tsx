@@ -19,7 +19,7 @@ function maskPhone(phone: string): string {
 }
 
 const KAKAO_CHANNEL_URL = "https://pf.kakao.com/_xcFZrX/friend";
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 2;
 
 export default function SignupPage() {
   return (
@@ -58,14 +58,13 @@ function SignupPageInner() {
   const [push, setPush] = useState(true);
   // 카카오 알림톡(개인화된 매물 메시지) 발송은 현재 구현돼 있지 않음 — 이 토글은
   // 카카오톡 "채널 추가"(친구 추가) 링크로 보낼 뿐인 공지·이벤트용 보조 채널이라,
-  // 알림 수신 여부 판정(anyChannel)에서는 제외한다. 3단계 채널 토글과 4단계 마케팅
-  // 수신 동의는 여전히 이 값 하나를 공유한다(Claude Design 원안 유지).
+  // 알림 수신 여부 판정(anyChannel)에서는 제외한다. 2단계(휴대폰 인증) 하단 채널
+  // 토글과 그 아래 마케팅 수신 동의는 여전히 이 값 하나를 공유한다(Claude Design 원안 유지).
   const [kakao, setKakao] = useState(true);
   const [agreeTos, setAgreeTos] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
 
-  // 사업자 회원 여부 + 업체명 — 새 4단계 화면에는 없지만 members.is_business를
-  // 채울 수 있는 곳이 가입 화면뿐이라, 4단계(휴대폰 인증) 하단에 그대로 유지합니다.
+  // 사업자 회원 여부 + 업체명 — 별도 화면 없이 2단계(휴대폰 인증) 하단에 그대로 유지합니다.
   const [isBusiness, setIsBusiness] = useState(true);
   const [companyName, setCompanyName] = useState("");
 
@@ -389,7 +388,7 @@ function SignupPageInner() {
       ? categories.length
         ? `${categories.length}개 선택 · 다음`
         : "카테고리를 골라주세요"
-      : obStep === 3
+      : obStep === 2
       ? !verified
         ? "휴대폰 인증이 필요해요"
         : !reqAgreed
@@ -398,7 +397,7 @@ function SignupPageInner() {
         ? "알림 받을 방법을 골라주세요"
         : "동의하고 알림 받기 시작"
       : "다음";
-  const obCtaDisabled = (obStep === 1 && categories.length === 0) || (obStep === 3 && !step4Ready);
+  const obCtaDisabled = (obStep === 1 && categories.length === 0) || (obStep === 2 && !step4Ready);
 
   const goBack = () => {
     if (obStep <= 1) {
@@ -413,11 +412,7 @@ function SignupPageInner() {
       showToast("관심 카테고리를 1개 이상 골라주세요");
       return;
     }
-    if (obStep === 2 && !anyChannel) {
-      showToast("알림 받으려면 앱 푸시를 켜주세요");
-      return;
-    }
-    if (obStep === 3) {
+    if (obStep === 2) {
       if (!verified) {
         showToast("휴대폰 인증을 먼저 완료해주세요");
         return;
@@ -427,7 +422,6 @@ function SignupPageInner() {
         return;
       }
       if (!anyChannel) {
-        setObStep(2);
         showToast("알림 받으려면 앱 푸시를 켜주세요");
         return;
       }
@@ -611,92 +605,6 @@ function SignupPageInner() {
         {!alreadyMember && obStep === 2 && (
           <div>
             <h2 className="font-display" style={{ fontSize: 23, color: "#0B2540", letterSpacing: "-0.02em" }}>
-              어디로 알려드릴까요?
-            </h2>
-            <div className="rounded-2xl mt-4.5 text-white" style={{ padding: 18, background: "linear-gradient(135deg,#04101C,#0D2B47)" }}>
-              <div className="text-xs font-bold" style={{ color: "rgba(255,255,255,.7)" }}>내 조건 요약</div>
-              <div className="font-bold mt-1.5" style={{ fontSize: 17, lineHeight: 1.5 }}>{myCondText}</div>
-              <div className="flex items-baseline gap-1.5 mt-3.5" style={{ paddingTop: 14, borderTop: "1px solid rgba(255,255,255,.15)" }}>
-                <span className="text-xs" style={{ color: "rgba(255,255,255,.7)" }}>주간 예상 알림</span>
-                <span className="font-mono font-bold" style={{ fontSize: 22, color: "var(--color-brandOrangeAccent)" }}>{estAlerts}건</span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setPush(!push)}
-              className="w-full flex items-center gap-3 text-left rounded-2xl mt-3.5"
-              style={{ padding: "15px 16px", background: "#fff", border: push ? "2px solid var(--color-toggleOn)" : "1.5px solid #E4E7EB" }}
-            >
-              <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 38, height: 38, background: "#FDEEE8", fontSize: 18 }}>🔔</span>
-              <span className="flex-1">
-                <span className="flex items-center gap-1.5">
-                  <span className="text-sm font-bold" style={{ color: "#0B2540" }}>앱 푸시 알림</span>
-                  <span className="text-xs font-bold" style={{ color: "#E25100" }}>[기본]</span>
-                </span>
-                <span className="block text-xs mt-0.5" style={{ color: "#6B7480" }}>조건에 맞는 매물이 뜨는 즉시</span>
-              </span>
-              <span className="rounded-full flex-shrink-0 relative" style={{ width: 46, height: 27, background: push ? "var(--color-toggleOn)" : "#D5D9DE", transition: "background .2s" }}>
-                <span className="absolute rounded-full bg-white" style={{ top: 3, width: 21, height: 21, left: push ? 22 : 3, transition: "left .2s", boxShadow: "0 1px 3px rgba(0,0,0,.25)" }} />
-              </span>
-            </button>
-
-            <button
-              onClick={() => setKakao(!kakao)}
-              className="w-full flex items-center gap-3 text-left rounded-2xl mt-2.5"
-              style={{ padding: "15px 16px", background: "#fff", border: kakao ? "2px solid var(--color-toggleOn)" : "1.5px solid #E4E7EB" }}
-            >
-              <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 38, height: 38, background: "#FEE500", fontSize: 18 }}>💬</span>
-              <span className="flex-1">
-                <span className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-sm font-bold" style={{ color: "#0B2540", whiteSpace: "nowrap" }}>카카오톡 채널 추가</span>
-                  <span className="text-xs font-bold" style={{ color: "#6B7480", whiteSpace: "nowrap" }}>[선택]</span>
-                </span>
-                <span className="block text-xs mt-0.5" style={{ color: "#6B7480" }}>
-                  {kakao ? "추가됨 · 공지·이벤트 소식 받는 중" : "공지·이벤트 소식을 카톡으로 받기"}
-                </span>
-              </span>
-              <span className="rounded-full flex-shrink-0 relative" style={{ width: 46, height: 27, background: kakao ? "var(--color-toggleOn)" : "#D5D9DE", transition: "background .2s" }}>
-                <span className="absolute rounded-full bg-white" style={{ top: 3, width: 21, height: 21, left: kakao ? 22 : 3, transition: "left .2s", boxShadow: "0 1px 3px rgba(0,0,0,.25)" }} />
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => showToast("곧 지원 예정이에요")}
-              className="w-full flex items-center gap-3 text-left rounded-2xl mt-2.5"
-              style={{ padding: "15px 16px", background: "#F5F6F8", border: "1.5px solid #E4E7EB", cursor: "default" }}
-            >
-              <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 38, height: 38, background: "#E4E7EB", fontSize: 18 }}>📧</span>
-              <span className="flex-1">
-                <span className="block text-sm font-bold" style={{ color: "#9AA3AD" }}>이메일 리포트 (준비중)</span>
-                <span className="block text-xs mt-0.5" style={{ color: "#9AA3AD" }}>일간 요약을 이메일로 받기</span>
-              </span>
-              <span className="rounded-full flex-shrink-0" style={{ width: 46, height: 27, background: "#E4E7EB", position: "relative" }}>
-                <span className="absolute rounded-full" style={{ top: 3, left: 3, width: 21, height: 21, background: "#C9CFD6" }} />
-              </span>
-            </button>
-
-            <p className="mt-3.5" style={{ fontSize: 11.5, color: "#6B7480", lineHeight: 1.6 }}>
-              맞춤 특가 알림은 앱 푸시로만 발송돼요. 카카오톡 채널은 공지·이벤트 소식용 보조 채널입니다.
-            </p>
-
-            {!anyChannel && (
-              <div
-                className="flex items-center gap-2.5 w-full text-left rounded-2xl mt-3.5"
-                style={{ border: "1.5px solid #E5484D", background: "#FDEEE8", padding: "13px 15px" }}
-              >
-                <span style={{ fontSize: 15 }}>⚠️</span>
-                <span className="flex-1 text-xs font-bold" style={{ color: "#E5484D", lineHeight: 1.5 }}>
-                  알림 받을 방법이 없어요 · 앱 푸시를 켜주세요
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {!alreadyMember && obStep === 3 && (
-          <div>
-            <h2 className="font-display" style={{ fontSize: 23, color: "#0B2540", letterSpacing: "-0.02em" }}>
               휴대폰 인증만 하면 끝이에요
             </h2>
             <p className="mt-2" style={{ fontSize: 14, color: "#6B7480", lineHeight: 1.6 }}>
@@ -786,30 +694,68 @@ function SignupPageInner() {
               </div>
             )}
 
+            {/* design-v2: 예전엔 여기 있던 "어디로 알려드릴까요?" 전체 화면 스텝을 없애고,
+                토글 자체를 이 화면(2단계) 하단으로 옮겼습니다 — 알림 권한은 별도 스텝으로
+                끊기보다 맥락 안에서 물어보는 쪽이 이탈이 적다는 벤치마킹 결과 반영.
+                기본값은 그대로 push=on/kakao=on이라 대부분은 손댈 필요 없이 지나갑니다. */}
             <div className="mt-5" style={{ borderTop: "1px solid #EEF0F2", paddingTop: 16 }}>
-              <div className="text-xs font-bold mb-2" style={{ color: "#0B2540" }}>받기로 한 알림</div>
-              {anyChannel ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {push && (
-                    <span className="text-xs font-bold rounded-full" style={{ padding: "7px 12px", background: "rgba(255,111,15,.1)", color: "#E25100" }}>🔔 앱 푸시</span>
-                  )}
-                  {kakao && (
-                    <span className="text-xs font-bold rounded-full" style={{ padding: "7px 12px", background: "#FFF6DE", color: "#8A6100" }}>💬 카카오톡 채널</span>
-                  )}
-                  <span className="text-xs font-bold rounded-full" style={{ padding: "7px 12px", color: "#6B7480", background: "#F5F6F8" }}>주간 약 {estAlerts}건</span>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setObStep(2)}
-                  className="flex items-center gap-2.5 w-full text-left rounded-2xl"
+              <div className="text-xs font-bold" style={{ color: "#0B2540" }}>알림 받을 방법</div>
+              <div className="text-xs mt-0.5 mb-3" style={{ color: "#6B7480" }}>
+                {myCondText} · 주간 약 {estAlerts}건
+              </div>
+
+              <button
+                onClick={() => setPush(!push)}
+                className="w-full flex items-center gap-3 text-left rounded-2xl"
+                style={{ padding: "13px 15px", background: "#fff", border: push ? "2px solid var(--color-toggleOn)" : "1.5px solid #E4E7EB" }}
+              >
+                <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 34, height: 34, background: "#FDEEE8", fontSize: 16 }}>🔔</span>
+                <span className="flex-1">
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold" style={{ color: "#0B2540" }}>앱 푸시 알림</span>
+                    <span className="text-xs font-bold" style={{ color: "#E25100" }}>[기본]</span>
+                  </span>
+                  <span className="block text-xs mt-0.5" style={{ color: "#6B7480" }}>조건에 맞는 매물이 뜨는 즉시</span>
+                </span>
+                <span className="rounded-full flex-shrink-0 relative" style={{ width: 42, height: 25, background: push ? "var(--color-toggleOn)" : "#D5D9DE", transition: "background .2s" }}>
+                  <span className="absolute rounded-full bg-white" style={{ top: 2, width: 19, height: 19, left: push ? 20 : 2, transition: "left .2s", boxShadow: "0 1px 3px rgba(0,0,0,.25)" }} />
+                </span>
+              </button>
+
+              <button
+                onClick={() => setKakao(!kakao)}
+                className="w-full flex items-center gap-3 text-left rounded-2xl mt-2"
+                style={{ padding: "13px 15px", background: "#fff", border: kakao ? "2px solid var(--color-toggleOn)" : "1.5px solid #E4E7EB" }}
+              >
+                <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 34, height: 34, background: "#FEE500", fontSize: 16 }}>💬</span>
+                <span className="flex-1">
+                  <span className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-sm font-bold" style={{ color: "#0B2540", whiteSpace: "nowrap" }}>카카오톡 채널 추가</span>
+                    <span className="text-xs font-bold" style={{ color: "#6B7480", whiteSpace: "nowrap" }}>[선택]</span>
+                  </span>
+                  <span className="block text-xs mt-0.5" style={{ color: "#6B7480" }}>
+                    {kakao ? "추가됨 · 공지·이벤트 소식 받는 중" : "공지·이벤트 소식을 카톡으로 받기"}
+                  </span>
+                </span>
+                <span className="rounded-full flex-shrink-0 relative" style={{ width: 42, height: 25, background: kakao ? "var(--color-toggleOn)" : "#D5D9DE", transition: "background .2s" }}>
+                  <span className="absolute rounded-full bg-white" style={{ top: 2, width: 19, height: 19, left: kakao ? 20 : 2, transition: "left .2s", boxShadow: "0 1px 3px rgba(0,0,0,.25)" }} />
+                </span>
+              </button>
+
+              <p className="mt-2.5" style={{ fontSize: 11, color: "#6B7480", lineHeight: 1.6 }}>
+                맞춤 특가 알림은 앱 푸시로만 발송돼요. 카카오톡 채널은 공지·이벤트 소식용 보조 채널입니다.
+              </p>
+
+              {!anyChannel && (
+                <div
+                  className="flex items-center gap-2.5 w-full text-left rounded-2xl mt-2.5"
                   style={{ border: "1.5px solid #E5484D", background: "#FDEEE8", padding: "13px 15px" }}
                 >
                   <span style={{ fontSize: 15 }}>⚠️</span>
                   <span className="flex-1 text-xs font-bold" style={{ color: "#E5484D", lineHeight: 1.5 }}>
                     알림 받을 방법이 없어요 · 앱 푸시를 켜주세요
                   </span>
-                  <span className="text-xs flex-shrink-0" style={{ color: "#E5484D" }}>수정 ›</span>
-                </button>
+                </div>
               )}
             </div>
 
