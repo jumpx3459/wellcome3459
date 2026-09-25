@@ -20,7 +20,7 @@ create table if not exists public.categories (
 );
 
 insert into public.categories (name, sort_order) values
-  ('냉동냉장식품', 1), ('농수축산물', 2), ('생활용품', 3), ('패션잡화', 4),
+  ('수산·축산물', 1), ('농산물', 2), ('생활용품', 3), ('패션잡화', 4),
   ('화장품', 5), ('전자제품', 6), ('산업원자재', 7), ('기계설비', 8), ('기타', 9)
 on conflict (name) do nothing;
 
@@ -578,3 +578,9 @@ create policy "messages_select_own" on public.messages
 create policy "messages_insert_own" on public.messages
   for insert with check (auth.uid() = sender_id);
 -- 3. 조회는 관리자 화면에서 요청할 때마다 만료 시간이 짧은 서명된 URL(signed URL)을 그때그때 생성해서 사용합니다.
+
+-- 카테고리 이름-실제 쓰임 불일치 정리: '농수축산물'(이름은 농/수/축산 다 포함하는데 실제로는
+-- 농산물만 담당)과 '냉동냉장식품'(이름은 보관상태인데 실제로는 수산물+축산물 전체를 담당)을
+-- 품목 유형 기준으로 재정리. 보관 상태(냉동/건조/활 등)는 deals.storage_condition에서 다룸.
+update public.categories set name = '농산물' where name = '농수축산물';
+update public.categories set name = '수산·축산물' where name = '냉동냉장식품';

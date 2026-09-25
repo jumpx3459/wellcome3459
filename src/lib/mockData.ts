@@ -35,7 +35,7 @@ export const mockDeals: Deal[] = [
   {
     id: "1",
     title: "냉동 삼겹살 대패 10kg x 30박스",
-    category: "냉동냉장식품",
+    category: "수산·축산물",
     region: "서울",
     location: "서울 가락동",
     original_price: 620000,
@@ -55,7 +55,9 @@ export const mockDeals: Deal[] = [
   {
     id: "2",
     title: "국내산 갈치 20kg 박스",
-    category: "농수축산물",
+    // 갈치는 수산물이라 원래도 "농산물"이 아니라 "수산·축산물"에 들어갔어야 함 —
+    // 이름 정리하면서 같이 바로잡음.
+    category: "수산·축산물",
     region: "서울",
     location: "서울 가락동",
     original_price: 380000,
@@ -323,8 +325,8 @@ export const mockDeals: Deal[] = [
 ];
 
 export const mockCategories = [
-  "냉동냉장식품",
-  "농수축산물",
+  "수산·축산물",
+  "농산물",
   "생활용품",
   "패션잡화",
   "화장품",
@@ -344,8 +346,12 @@ export const mockCategories = [
 ];
 
 export const categoryKeywords: Record<string, string[]> = {
-  냉동냉장식품: ["갈치", "고등어", "삼겹살", "생선", "수산", "냉동", "냉장", "새우", "오징어", "조기", "닭고기", "돈육", "소고기", "축산물", "정육", "아이스크림", "만두"],
-  농수축산물: ["농산물", "과일", "채소", "쌀", "감자", "고구마", "배추", "사과", "양파", "수박", "한우", "계란", "과채"],
+  // design-v2: "농수축산물"(이름은 농/수/축산 다 포함하는데 실제로는 농산물만 있던 문제)과
+  // "냉동냉장식품"(이름은 보관상태인데 실제로는 수산물+축산물 전체를 담당하던 문제)의
+  // 이름-실제 쓰임 불일치를 해소 — 품목 유형 기준으로 "농산물"/"수산·축산물"로 재정리.
+  // 보관 상태(냉동/건조/활 등)는 카테고리가 아니라 sell 폼의 "보관조건" 필드에서 다룸.
+  "수산·축산물": ["갈치", "고등어", "삼겹살", "생선", "수산", "냉동", "냉장", "새우", "오징어", "조기", "닭고기", "돈육", "소고기", "축산물", "정육", "아이스크림", "만두", "한우", "계란"],
+  농산물: ["농산물", "과일", "채소", "쌀", "감자", "고구마", "배추", "사과", "양파", "수박", "과채"],
   생활용품: ["세제", "휴지", "수건", "욕실용품", "주방용품", "청소용품", "생활잡화"],
   패션잡화: ["의류", "신발", "가방", "액세서리", "모자", "양말", "잡화"],
   화장품: ["스킨케어", "메이크업", "화장품", "크림", "로션", "립스틱", "마스크팩"],
@@ -375,8 +381,8 @@ export function guessCategory(text: string): string | null {
 }
 
 export const categoryIcons: Record<string, string> = {
-  냉동냉장식품: "🧊",
-  농수축산물: "🌾",
+  "수산·축산물": "🧊",
+  농산물: "🌾",
   생활용품: "📦",
   패션잡화: "👜",
   화장품: "💄",
@@ -397,8 +403,8 @@ export const categoryIcons: Record<string, string> = {
 
 // 카테고리마다 고유 컬러를 줘서 리스트에서 한눈에 구분되게 합니다.
 export const categoryColors: Record<string, { bg: string; text: string; solid: string }> = {
-  냉동냉장식품: { bg: "#E0F7FA", text: "#0E7C82", solid: "#17B8C4" },
-  농수축산물: { bg: "#E8F8EC", text: "#1D8A44", solid: "#34C471" },
+  "수산·축산물": { bg: "#E0F7FA", text: "#0E7C82", solid: "#17B8C4" },
+  농산물: { bg: "#E8F8EC", text: "#1D8A44", solid: "#34C471" },
   생활용품: { bg: "#F3EBFF", text: "#7A3FC2", solid: "#9B5DE5" },
   패션잡화: { bg: "#FFE9F3", text: "#C22B72", solid: "#F5439B" },
   화장품: { bg: "#FFEAF0", text: "#C22050", solid: "#FF5C8A" },
