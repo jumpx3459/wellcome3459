@@ -529,7 +529,7 @@ function SignupPageInner() {
                     className="flex items-center gap-2.5 text-left rounded-2xl"
                     style={{
                       padding: "12px 11px",
-                      background: picked ? "rgba(255,111,15,.08)" : "#fff",
+                      background: "#fff",
                       border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
                     }}
                   >
@@ -585,7 +585,7 @@ function SignupPageInner() {
                           style={{
                             padding: "10px 14px",
                             fontSize: 14,
-                            background: picked ? "rgba(255,111,15,.1)" : "#fff",
+                            background: "#fff",
                             border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
                             color: "#1A1F26",
                           }}

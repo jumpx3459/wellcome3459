@@ -193,9 +193,9 @@ export default function BuyPage() {
                     padding: "9px 13px",
                     fontSize: 13,
                     fontWeight: 700,
-                    background: picked ? "rgba(255,111,15,.1)" : "#fff",
+                    background: "#fff",
                     border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
-                    color: picked ? "#E25100" : "#1A1F26",
+                    color: "#1A1F26",
                   }}
                 >
                   <span>{categoryIcons[c]}</span>
@@ -270,9 +270,9 @@ export default function BuyPage() {
                   style={{
                     padding: "8px 13px",
                     fontSize: 12.5,
-                    background: picked ? "rgba(255,111,15,.1)" : "#fff",
+                    background: "#fff",
                     border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
-                    color: picked ? "#E25100" : "#1A1F26",
+                    color: "#1A1F26",
                   }}
                 >
                   {r}
