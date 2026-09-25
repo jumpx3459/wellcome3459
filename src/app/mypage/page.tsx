@@ -1179,7 +1179,25 @@ export default function MyPage() {
           </Link>
         </div>
 
-        <div className="border-t border-gray200 pt-5">
+        {/* design-v2: /deals 헤더에 있던 "정부지원금" 링크를 이동 — 매물 탐색 화면과
+            성격이 다른(사업자 지원사업 정보) 기능이라 마이페이지 메뉴로 옮겨서 정리.
+            /support는 이미 /api/support로 기업마당 연동 로직이 있어 "준비중"이 아님. */}
+        <div className="border-t border-gray200 pt-5 flex flex-col gap-2.5">
+          <Link
+            href="/support"
+            className="w-full bg-white border border-gray200 rounded-xl px-4 py-3 flex items-center justify-between"
+          >
+            <span className="flex items-center gap-2">
+              <span className="text-xl leading-none">🏛️</span>
+              <span className="text-sm font-bold text-gray900">정부지원금 정보</span>
+            </span>
+            <span
+              className="text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0"
+              style={{ background: "#FFF1E8", color: "#B94A1D" }}
+            >
+              사업자 전용
+            </span>
+          </Link>
           <button
             type="button"
             onClick={() => showToast("개발 중인 기능이에요. 곧 만나보실 수 있어요!")}
