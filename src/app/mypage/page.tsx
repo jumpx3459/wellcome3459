@@ -1158,15 +1158,20 @@ export default function MyPage() {
           </div>
         </div>
 
+        {/* design-v2: 홈 화면 "잠든 재고" 카드와 동일 스타일로 일괄 정리 —
+            배경 화이트 + 서브텍스트를 이모지 폭(24px)만큼 들여씀. */}
         <div className="border-t border-gray200 pt-5">
           <Link
             href="/sell"
             className="flex items-center justify-between rounded-2xl"
-            style={{ background: "rgba(255,111,15,0.10)", border: "2px solid #FF6F0F", padding: "16px 20px" }}
+            style={{ background: "#fff", border: "2px solid #FF6F0F", padding: "16px 20px" }}
           >
             <div>
-              <div className="text-base font-black text-navy">📦 긴급 매물 등록하기</div>
-              <div className="text-sm font-bold mt-0.5" style={{ color: "#E25100" }}>
+              <div className="text-base font-black text-navy">
+                <span className="inline-block" style={{ width: 24 }}>📦</span>
+                긴급 매물 등록하기
+              </div>
+              <div className="text-sm font-bold mt-0.5" style={{ color: "#E25100", marginLeft: 24 }}>
                 남는 재고 있으세요? 무료로 바로 등록
               </div>
             </div>

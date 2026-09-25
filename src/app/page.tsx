@@ -291,14 +291,20 @@ export default function Home() {
           </Link>
         </div>
 
+        {/* design-v2: 배경 틴트를 빼고 화이트로 — 주황 테두리/서브텍스트가 틴트 위에서
+            흐릿해지던 문제 수정. 서브텍스트는 이모지 폭(24px)만큼 들여써서 타이틀 본문과
+            세로로 맞춤. 아래 구매 카드와 텍스트 크기(16px/900)를 통일해 짝 패턴으로 정리. */}
         <Link
           href="/sell"
           className="flex items-center justify-between rounded-2xl mt-1"
-          style={{ background: "rgba(255,111,15,0.10)", border: "2px solid #FF6F0F", padding: "16px 20px" }}
+          style={{ background: "#fff", border: "2px solid #FF6F0F", padding: "16px 20px" }}
         >
           <div>
-            <div className="text-base font-black text-navy">📦 잠든 재고, 깨워서 현금으로</div>
-            <div className="text-xs font-bold mt-0.5" style={{ color: "#E25100" }}>
+            <div className="text-base font-black text-navy">
+              <span className="inline-block" style={{ width: 24 }}>📦</span>
+              잠든 재고, 깨워서 현금으로
+            </div>
+            <div className="text-xs font-bold mt-0.5" style={{ color: "#E25100", marginLeft: 24 }}>
               판매 등록은 무료 · 지금 등록하기
             </div>
           </div>
@@ -316,8 +322,11 @@ export default function Home() {
             className="w-14 h-14 rounded-xl object-contain bg-gray100 flex-shrink-0"
           />
           <div>
-            <div className="text-sm font-bold text-navy">🔍 이런 재고 찾습니다</div>
-            <div className="text-xs text-gray500 mt-0.5">구매 희망 등록 →</div>
+            <div className="text-base font-black text-navy">
+              <span className="inline-block" style={{ width: 24 }}>🔍</span>
+              이런 재고 찾습니다
+            </div>
+            <div className="text-xs text-gray500 mt-0.5" style={{ marginLeft: 24 }}>구매 희망 등록 →</div>
           </div>
         </Link>
 
