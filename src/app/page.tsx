@@ -186,7 +186,10 @@ export default function Home() {
           매물을 먼저 보여준 뒤(아래) 저관여 위치로 옮김. */}
       {canInstall && (
         <div className="px-5 pt-5">
-          <div className="rounded-2xl border-2 border-gray200 px-4 py-3.5">
+          <div
+            className="rounded-2xl px-4 py-3.5"
+            style={{ border: "2px solid rgba(255,111,15,0.35)" }}
+          >
             <InstallAppButton canInstall={canInstall} promptInstall={promptInstall} />
           </div>
         </div>
