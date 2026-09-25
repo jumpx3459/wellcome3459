@@ -386,7 +386,7 @@ export default function Home() {
             boxShadow: "0 10px 24px rgba(226,81,0,0.35)",
           }}
         >
-          🔔 무료 알림받기
+          🔔 덤핑매물 무료 알림받기
         </Link>
       </div>
     </main>
