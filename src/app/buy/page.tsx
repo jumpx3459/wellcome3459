@@ -176,7 +176,10 @@ export default function BuyPage() {
         </div>
 
         <div>
-          <div className="text-sm font-bold mb-2" style={{ color: "#0B2540" }}>카테고리</div>
+          <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
+            카테고리
+            <span className="text-xs font-bold" style={{ color: "#6B7480" }}>(선택)</span>
+          </div>
           <div className="flex gap-1.5 overflow-x-auto pb-1">
             {mockCategories.map((c) => {
               const picked = category === c;
@@ -208,7 +211,10 @@ export default function BuyPage() {
 
         <div className="flex gap-2.5">
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-bold mb-2" style={{ color: "#0B2540" }}>희망 수량</div>
+            <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
+              희망 수량
+              <span className="text-xs font-bold" style={{ color: "#6B7480" }}>(선택)</span>
+            </div>
             <div className="flex rounded-xl overflow-hidden" style={{ border: "1.5px solid #E4E7EB" }}>
               <input
                 className="flex-1 min-w-0 outline-none"
@@ -230,7 +236,10 @@ export default function BuyPage() {
             </div>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-bold mb-2" style={{ color: "#0B2540" }}>희망 단가(이하)</div>
+            <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
+              희망 단가(이하)
+              <span className="text-xs font-bold" style={{ color: "#6B7480" }}>(선택)</span>
+            </div>
             <div className="flex items-center rounded-xl" style={{ border: "1.5px solid #E4E7EB" }}>
               <input
                 type="text"
@@ -248,7 +257,10 @@ export default function BuyPage() {
 
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-bold" style={{ color: "#0B2540" }}>인수 가능 지역</span>
+            <span className="text-sm font-bold flex items-center gap-1.5" style={{ color: "#0B2540" }}>
+              인수 가능 지역
+              <span className="text-xs font-bold" style={{ color: "#6B7480" }}>(선택)</span>
+            </span>
             <button
               type="button"
               onClick={() => setRegions(allRegionsOn ? [] : [...mockRegions])}
@@ -284,7 +296,10 @@ export default function BuyPage() {
         </div>
 
         <div>
-          <div className="text-sm font-bold mb-2" style={{ color: "#0B2540" }}>추가 요청</div>
+          <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
+            추가 요청
+            <span className="text-xs font-bold" style={{ color: "#6B7480" }}>(선택)</span>
+          </div>
           <textarea
             className="w-full rounded-xl outline-none resize-none"
             style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: 14, lineHeight: 1.55, height: 88 }}
@@ -294,7 +309,9 @@ export default function BuyPage() {
           />
         </div>
 
-        <div className="flex items-center gap-3 rounded-2xl" style={{ background: "rgba(255,111,15,.1)", border: "2px solid var(--color-brandOrange)", padding: "15px 16px" }}>
+        {/* design-v2: 배경 틴트를 빼고 화이트로 — 주황 테두리/텍스트가 틴트 위에서
+            흐릿해지던 문제 수정 (잠든재고 카드와 동일 패턴). */}
+        <div className="flex items-center gap-3 rounded-2xl" style={{ background: "#fff", border: "2px solid var(--color-brandOrange)", padding: "15px 16px" }}>
           <img src="/images/manager.png" alt="점핑매니저" className="flex-shrink-0 rounded-xl bg-white" style={{ width: 46, height: 46, objectFit: "contain" }} />
           <span className="flex-1 min-w-0">
             <span className="block font-black" style={{ fontSize: 15, color: "#0B2540" }}>등록은 완전 무료</span>
@@ -305,7 +322,15 @@ export default function BuyPage() {
         </div>
 
         {error && <div className="text-sm text-orange font-medium">{error}</div>}
+      </div>
 
+      {/* design-v2: 필수 항목(무엇을 찾으세요/연락처)만 채워도 바로 제출할 수 있는데,
+          버튼이 폼 맨 아래 인라인으로만 있으면 선택 항목까지 스크롤해야 찾을 수
+          있었음 — sell/page.tsx와 같은 이유로 sticky bottom 처리. */}
+      <div
+        className="sticky bottom-0 z-10"
+        style={{ padding: "14px 20px 20px", borderTop: "1px solid #EEF0F2", background: "#fff" }}
+      >
         <button
           onClick={submit}
           disabled={submitting}
