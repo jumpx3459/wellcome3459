@@ -1,9 +1,9 @@
-// 카카오톡 채널(점프엑스덤핑점핑, http://pf.kakao.com/_xbwDJX) "추가" 버튼.
+// 카카오톡 채널(덤핑점핑-점프엑스, http://pf.kakao.com/_xcFZrX) "추가" 버튼.
 // 카카오 JS SDK 없이 pf.kakao.com의 표준 "친구 추가" URL로 바로 연결하는
 // 방식이라 별도 앱키 발급/SDK 로딩 없이도 모바일 카카오톡 앱 딥링크와
 // PC 웹 모두에서 그대로 동작합니다. InstallAppButton과 같은 카드 스타일을
 // 써서 "홈 화면에 추가"와 나란히 놓아도 톤이 맞게 했습니다.
-const KAKAO_CHANNEL_URL = "https://pf.kakao.com/_xbwDJX/friend";
+const KAKAO_CHANNEL_URL = "https://pf.kakao.com/_xcFZrX/friend";
 
 export default function KakaoChannelButton() {
   return (

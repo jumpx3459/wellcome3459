@@ -18,7 +18,7 @@ function maskPhone(phone: string): string {
   return `${digits.slice(0, 3)}****${digits.slice(-4)}`;
 }
 
-const KAKAO_CHANNEL_URL = "https://pf.kakao.com/_xbwDJX/friend";
+const KAKAO_CHANNEL_URL = "https://pf.kakao.com/_xcFZrX/friend";
 const TOTAL_STEPS = 3;
 
 export default function SignupPage() {
