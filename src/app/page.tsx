@@ -330,7 +330,7 @@ export default function Home() {
           <img
             src="/images/manager.png"
             alt="점핑매니저"
-            className="w-14 h-14 rounded-xl object-contain bg-gray100 flex-shrink-0"
+            className="w-16 h-16 rounded-xl object-contain bg-gray100 flex-shrink-0"
           />
           <div>
             <div className="text-base font-black text-navy">
@@ -343,23 +343,30 @@ export default function Home() {
 
         {/* 점프엑스 생태계 서비스 — 재고 알림(이 앱의 유일한 역할)과 무관한 별도
             서비스라, 메인 재고 흐름과 섞이지 않게 하단에 별도 구역으로 분리.
-            전국 화물 배차: 매물(스팟성)과 달리 상시 반복 수요라 재방문을 만드는
-            리텐션 훅이지만, 판매/구매("매물 등록" 계열)와는 성격이 달라서 톤도
-            네이비/블루로 분리. */}
+            design-v2: "이런 재고 찾습니다"와 같은 카드 틀(흰 배경 + 얇은 회색 테두리 +
+            아이콘 박스)로 통일 — 다만 아이콘 박스 배경과 서브텍스트 색은 네이비 톤을
+            남겨서 "매물 등록과는 다른 서비스"라는 구분은 유지. 이모지는 작은 인라인
+            텍스트 크기라 뭔지 알아보기 어려웠던 문제를 64px 박스 + text-4xl로 해결
+            (옆 "이런 재고 찾습니다"의 이미지 박스도 같은 크기로 맞춤). */}
         <div className="mt-3 pt-4" style={{ borderTop: "1px solid #EEF0F2" }}>
           <div className="text-xs font-bold text-gray500 mb-2">점프엑스 생태계 서비스</div>
           <Link
             href="/logistics"
-            className="flex items-center justify-between rounded-2xl"
-            style={{ background: "rgba(11,37,64,0.06)", border: "2px solid #1B3A5C", padding: "16px 20px" }}
+            className="flex items-center gap-3 rounded-2xl bg-white border border-gray200"
+            style={{ padding: "14px 20px" }}
           >
+            <div
+              className="w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: "rgba(27,58,92,0.08)" }}
+            >
+              <span className="text-4xl leading-none">🚚</span>
+            </div>
             <div>
-              <div className="text-base font-black text-navy">🚚 전국 화물 배차 신청</div>
+              <div className="text-base font-black text-navy">전국 화물 배차 신청</div>
               <div className="text-xs font-bold mt-0.5" style={{ color: "#1B3A5C" }}>
-                배차는 언제든 3분 컷 · 지금 신청하기
+                배차는 언제든 3분 컷 · 지금 신청하기 →
               </div>
             </div>
-            <span className="text-xl" style={{ color: "#1B3A5C" }}>→</span>
           </Link>
         </div>
       </div>
