@@ -40,7 +40,7 @@ export default function AlertInboxHome() {
   const [regions, setRegions] = useState<string[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [showInstall, setShowInstall] = useState(true);
-  const { canInstall } = useInstallPrompt();
+  const { canInstall, promptInstall } = useInstallPrompt();
   const [, setTick] = useState(0);
   useEffect(() => {
     try {
@@ -188,7 +188,7 @@ export default function AlertInboxHome() {
       {showInstall && canInstall && (
         <div className="flex items-center gap-2.5" style={{ borderBottom: "1px solid #F1F3F5", padding: "12px 20px", background: "#FAFBFC" }}>
           <div className="flex-1 min-w-0">
-            <InstallAppButton />
+            <InstallAppButton canInstall={canInstall} promptInstall={promptInstall} />
           </div>
           <button onClick={dismissInstall} className="flex-shrink-0" style={{ border: "none", background: "none", color: "#9AA3AD", fontSize: 16, width: 28, height: 28 }}>
             ×

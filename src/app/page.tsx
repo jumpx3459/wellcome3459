@@ -22,7 +22,7 @@ export default function Home() {
   const [isExample, setIsExample] = useState(true);
   const [isMember, setIsMember] = useState(false);
   const [signupPending, setSignupPending] = useState(false);
-  const { canInstall } = useInstallPrompt();
+  const { canInstall, promptInstall } = useInstallPrompt();
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
@@ -187,7 +187,7 @@ export default function Home() {
       {canInstall && (
         <div className="px-5 pt-5">
           <div className="rounded-2xl border-2 border-gray200 px-4 py-3.5">
-            <InstallAppButton />
+            <InstallAppButton canInstall={canInstall} promptInstall={promptInstall} />
           </div>
         </div>
       )}
