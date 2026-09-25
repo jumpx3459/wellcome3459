@@ -320,17 +320,21 @@ export default function BuyPage() {
             </span>
           </span>
         </div>
-
-        {error && <div className="text-sm text-orange font-medium">{error}</div>}
       </div>
 
       {/* design-v2: 필수 항목(무엇을 찾으세요/연락처)만 채워도 바로 제출할 수 있는데,
           버튼이 폼 맨 아래 인라인으로만 있으면 선택 항목까지 스크롤해야 찾을 수
-          있었음 — sell/page.tsx와 같은 이유로 sticky bottom 처리. */}
+          있었음 — sell/page.tsx와 같은 이유로 sticky bottom 처리.
+          에러 메시지도 버튼 바로 위(sticky 영역)로 옮김 — 필수 항목(무엇을 찾으세요/
+          연락처)은 폼 맨 위에 있는데 버튼은 어디서든 누를 수 있어서, 에러가 폼 맨
+          아래에 있으면 스크롤을 안 내린 사용자에게는 화면 밖이라 안 보이던 문제. */}
       <div
         className="sticky bottom-0 z-10"
         style={{ padding: "14px 20px 20px", borderTop: "1px solid #EEF0F2", background: "#fff" }}
       >
+        {error && (
+          <div className="text-sm text-orange font-medium mb-2.5 text-center">{error}</div>
+        )}
         <button
           onClick={submit}
           disabled={submitting}
