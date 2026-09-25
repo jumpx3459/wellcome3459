@@ -226,10 +226,18 @@ export default function Home() {
                     </div>
                   )}
                   <div
-                    className="w-14 h-14 rounded-token flex items-center justify-center text-2xl flex-shrink-0"
+                    className="w-14 h-14 rounded-token flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden"
                     style={{ background: color.bg }}
                   >
-                    {categoryIcons[d.category] ?? "🗂️"}
+                    {d.images && d.images.length > 0 ? (
+                      <img
+                        src={d.images[0]}
+                        alt={d.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      categoryIcons[d.category] ?? "🗂️"
+                    )}
                   </div>
                   <div className="flex-1 min-w-0 pr-10">
                     <div className="text-sm font-bold text-navy truncate">{d.title}</div>
