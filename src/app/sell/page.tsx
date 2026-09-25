@@ -7,6 +7,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockCategories, mockRegions, categoryIcons, quantityUnits, guessCategory } from "@/lib/mockData";
 import ImageUploader from "@/components/ImageUploader";
 import VideoUploader from "@/components/VideoUploader";
+import { NAV_HEIGHT } from "@/components/BottomNav";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
 import { fromE164Phone, isValidKoreanPhone } from "@/lib/auth";
 
@@ -478,10 +479,13 @@ export default function SellPage() {
           있었음 — signup 1단계와 같은 이유로 sticky bottom 처리.
           에러 메시지도 버튼 바로 위(sticky 영역)로 옮김 — 필수 항목(제목/수량/연락처)은
           폼 맨 위에 있는데 버튼은 어디서든 누를 수 있어서, 에러가 상세정보 섹션
-          근처에 있으면 스크롤을 안 내린 사용자에게는 화면 밖이라 안 보이던 문제. */}
+          근처에 있으면 스크롤을 안 내린 사용자에게는 화면 밖이라 안 보이던 문제.
+          bottom: 0으로 두면 AppShell의 fixed 하단 탭바(BottomNav, z-40)에
+          이 sticky 영역(z-10)이 가려서 스크롤 중엔 안 보이던 버그 — 탭바 높이만큼
+          띄워서 탭바 바로 위에 오도록 수정. */}
       <div
-        className="sticky bottom-0 z-10"
-        style={{ padding: "14px 20px 20px", borderTop: "1px solid #EEF0F2", background: "#fff" }}
+        className="sticky z-10"
+        style={{ bottom: NAV_HEIGHT, padding: "14px 20px 20px", borderTop: "1px solid #EEF0F2", background: "#fff" }}
       >
         {error && (
           <div className="text-sm text-orange font-medium mb-2.5 text-center">{error}</div>
