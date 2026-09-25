@@ -278,7 +278,10 @@ export default function SellPage() {
         </div>
 
         <div>
-          <div className="text-sm font-bold mb-2" style={{ color: "#0B2540" }}>최소주문수량(MOQ)</div>
+          <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
+            최소주문수량(MOQ)
+            <span className="text-xs font-bold" style={{ color: "#6B7480" }}>(선택)</span>
+          </div>
           <div className="flex items-center rounded-xl" style={{ border: "1.5px solid #E4E7EB" }}>
             <input
               type="number"
@@ -312,9 +315,9 @@ export default function SellPage() {
                   style={{
                     padding: "12px 14px",
                     fontSize: 13,
-                    background: picked ? "rgba(255,111,15,.1)" : "#fff",
+                    background: "#fff",
                     border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
-                    color: picked ? "#E25100" : "#1A1F26",
+                    color: "#1A1F26",
                   }}
                 >
                   {opt.l}
@@ -470,7 +473,15 @@ export default function SellPage() {
             </div>
           </div>
         )}
+      </div>
 
+      {/* design-v2: 필수 항목(제목/수량/연락처)만 채워도 바로 제출할 수 있는데,
+          버튼이 폼 맨 아래 인라인으로만 있으면 상세정보까지 스크롤해야 찾을 수
+          있었음 — signup 1단계와 같은 이유로 sticky bottom 처리. */}
+      <div
+        className="sticky bottom-0 z-10"
+        style={{ padding: "14px 20px 20px", borderTop: "1px solid #EEF0F2", background: "#fff" }}
+      >
         <button
           onClick={submit}
           disabled={submitting}
