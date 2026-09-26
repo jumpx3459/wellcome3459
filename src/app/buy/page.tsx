@@ -324,7 +324,9 @@ export default function BuyPage() {
               );
             })}
           </div>
-          <p className="text-xs mt-1.5" style={{ color: "#6B7480" }}>선택 안 하면 전국 어디든 괜찮다는 뜻이에요</p>
+          {/* 2026-09-26 (9): "전 지역 선택" 버튼과 이 캡션이 사실상 같은 말(둘 다
+              region:null=전지역)이라 중복으로 읽힌다는 피드백 — 버튼이 이미 같은
+              의미를 명시적 액션으로 제공하므로 캡션 제거. */}
         </div>
 
         <div>

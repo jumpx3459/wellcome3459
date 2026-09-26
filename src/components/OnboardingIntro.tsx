@@ -44,30 +44,36 @@ export default function OnboardingIntro() {
     <div
       className="fixed inset-0 z-50 flex flex-col justify-between text-white"
       style={{
-        padding: "56px 26px 30px",
+        padding: "44px 26px 30px",
         background: "linear-gradient(155deg,#04101C 0%,#0B2540 58%,#14395C 100%)",
         overflowY: "auto",
       }}
     >
       <div>
-        <div className="bg-white rounded-2xl inline-block" style={{ padding: "10px 14px" }}>
-          <img src="/images/logo.png" alt="덤핑점핑" className="animate-logo-jump" style={{ height: 34, width: "auto", display: "block" }} />
-        </div>
-        <div className="text-xs mt-2 tracking-wide" style={{ color: "rgba(255,255,255,.65)" }}>
-          Powered by JumpX
-        </div>
-        <div
-          className="inline-flex items-center gap-1.5 rounded-full mt-8"
-          style={{ background: "rgba(255,255,255,.12)", padding: "7px 13px" }}
-        >
-          <span className="text-xs" style={{ color: "#5EEAD4" }}>✔</span>
-          <span className="text-xs font-bold" style={{ color: "rgba(255,255,255,.92)" }}>
-            890명+ 덤핑재고 알림 받는 중
-          </span>
+        {/* 2026-09-26 (9): 로고와 890명 필이 세로로 쌓여 상단이 불필요하게 길어지고
+            그만큼 캐릭터/통계가 아래로 밀려 위계가 흐트러진다는 피드백 — 한 줄로 배치. */}
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="bg-white rounded-2xl inline-block" style={{ padding: "10px 14px" }}>
+              <img src="/images/logo.png" alt="덤핑점핑" className="animate-logo-jump" style={{ height: 34, width: "auto", display: "block" }} />
+            </div>
+            <div className="text-xs mt-2 tracking-wide" style={{ color: "rgba(255,255,255,.75)" }}>
+              Powered by JumpX
+            </div>
+          </div>
+          <div
+            className="inline-flex items-center gap-1.5 rounded-full flex-shrink-0"
+            style={{ background: "rgba(255,255,255,.12)", padding: "7px 13px", marginTop: 2 }}
+          >
+            <span className="text-xs" style={{ color: "#5EEAD4" }}>✔</span>
+            <span className="text-xs font-bold" style={{ color: "rgba(255,255,255,.92)" }}>
+              890명+ 덤핑재고 알림 받는 중
+            </span>
+          </div>
         </div>
         {/* design-v2: deals 헤더의 긴급성 로테이션 문구를 첫 진입 화면에도 노출해
             가입 전부터 각인 효과를 줌 (2026-09-26). */}
-        <RotatingUrgencyTag className="mt-2.5" style={{ color: "var(--color-brandOrangeAccent)" }} />
+        <RotatingUrgencyTag className="mt-4" style={{ color: "var(--color-brandOrangeAccent)" }} />
         <h1
           className="font-display mt-4 leading-[1.45]"
           style={{ fontSize: 23, letterSpacing: "-0.02em", wordBreak: "keep-all" }}
@@ -76,11 +82,13 @@ export default function OnboardingIntro() {
           <br />
           급한 재고는 남보다 먼저 잡으세요.
         </h1>
-        <p className="mt-3.5" style={{ fontSize: 14.5, lineHeight: 1.7, color: "rgba(255,255,255,.82)" }}>
+        <p className="mt-3.5" style={{ fontSize: 14.5, lineHeight: 1.7, color: "rgba(255,255,255,.88)" }}>
           전국의 임박·과잉·폐업 재고와 &quot;이런 재고 찾습니다&quot; 요청을 가장 먼저 알려드립니다.
         </p>
       </div>
 
+      {/* 2026-09-26 (9): 캐릭터가 96~170px로 작고 위쪽 여백만 넓어 화면 하단이
+          휑해 보인다는 피드백 — 존재감을 키움. */}
       <div
         className="flex flex-1 items-end justify-center"
         style={{ minHeight: 0, paddingBottom: 6, overflow: "hidden" }}
@@ -89,7 +97,7 @@ export default function OnboardingIntro() {
           src="/images/manager-cut.png"
           alt="점핑매니저"
           style={{
-            height: "clamp(96px, 20vh, 170px)",
+            height: "clamp(120px, 26vh, 220px)",
             width: "auto",
             maxHeight: "100%",
             objectFit: "contain",
@@ -99,17 +107,19 @@ export default function OnboardingIntro() {
       </div>
 
       <div className="flex flex-col gap-3">
-        <div className="flex gap-2">
+        {/* 2026-09-26 (9): 통계 카드가 CTA 버튼과 시각적 무게가 비슷해 캐릭터/CTA보다
+            우선순위가 높아 보이던 문제 — 패딩·폰트를 줄여 보조 정보로 격하. */}
+        <div className="flex gap-1.5">
           {STATS.map((s) => (
             <div
               key={s.label}
               className="flex-1 rounded-xl text-center"
-              style={{ background: "rgba(255,255,255,.08)", padding: "12px 10px" }}
+              style={{ background: "rgba(255,255,255,.08)", padding: "8px 8px" }}
             >
-              <div className="font-mono text-lg font-bold" style={{ color: "var(--color-brandOrangeAccent)" }}>
+              <div className="font-mono text-sm font-bold" style={{ color: "var(--color-brandOrangeAccent)" }}>
                 {s.value}
               </div>
-              <div className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,.65)" }}>
+              <div className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,.75)" }}>
                 {s.label}
               </div>
             </div>
@@ -133,7 +143,7 @@ export default function OnboardingIntro() {
           style={{
             background: "none",
             border: "none",
-            color: "rgba(255,255,255,.6)",
+            color: "rgba(255,255,255,.7)",
             fontSize: 13,
             fontWeight: 500,
             textDecoration: "underline",
