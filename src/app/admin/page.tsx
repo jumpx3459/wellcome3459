@@ -1751,6 +1751,7 @@ function ActiveDealCard({
   adminKey: string;
   onChanged: () => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const [remainingQty, setRemainingQty] = useState(String(deal.remaining_qty));
   const [saving, setSaving] = useState(false);
   const [editingPhotos, setEditingPhotos] = useState(false);
@@ -1764,6 +1765,10 @@ function ActiveDealCard({
   // 하냐"는 피드백 — 재고·사진·영상을 한 번에 PATCH하는 단일 저장 버튼으로
   // 통합. 저장 성공 시 토스트로 알리고, 열려 있던 사진/영상 관리 패널은
   // 접어서 리스트 카드 형태로 되돌아가게 함.
+  // 2026-09-26 (2): "진행 중인 매물"이 항상 펼쳐진 카드라 목록이 길고 눈에
+  // 잘 안 들어온다는 피드백 — 기본은 요약 한 줄 + [수정]/[삭제] 리스트 행,
+  // [수정] 클릭 시에만 아래 편집 UI가 펼쳐지는 아코디언으로 전환. 저장
+  // 성공 시 리스트 행으로 자동 접힘.
   // 성공 여부를 반환 — 토스트가 실패(세션 만료 401, 서버 500, 네트워크 오류)를
   // "저장했어요"로 잘못 안내하지 않도록 응답 상태를 확인함.
   const patch = async (body: Record<string, unknown>): Promise<boolean> => {
@@ -1791,6 +1796,7 @@ function ActiveDealCard({
     }
     setEditingPhotos(false);
     setEditingVideo(false);
+    setExpanded(false);
     showToast("저장했어요");
   };
 
@@ -1831,93 +1837,129 @@ function ActiveDealCard({
         })}
       </div>
 
-      <div className="flex items-center gap-2 mt-3">
-        <label className="text-xs font-bold text-gray500">재고</label>
-        <input
-          type="number"
-          className="w-20 border-2 border-gray200 rounded-lg px-2 py-1.5 text-sm"
-          value={remainingQty}
-          onChange={(e) => setRemainingQty(e.target.value)}
-        />
-        <span className="text-xs text-gray500">/ {deal.total_qty}{deal.quantity_unit || "개"}</span>
+      <div className="text-xs text-gray500 mt-1">
+        재고 {deal.remaining_qty}/{deal.total_qty}{deal.quantity_unit || "개"}
       </div>
 
-      <div className="flex gap-2 mt-2.5">
-        <button
-          onClick={() => extendHours(24)}
-          disabled={saving}
-          className="flex-1 text-xs font-bold text-navy border-2 border-gray200 rounded-lg py-2"
-        >
-          +24시간 연장
-        </button>
-        <button
-          onClick={() => confirm("이 매물을 지금 조기 마감할까요?") && patch({ status: "closed" })}
-          disabled={saving}
-          className="flex-1 text-xs font-bold text-orange border-2 border-orange rounded-lg py-2"
-        >
-          조기 마감
-        </button>
-      </div>
-
-      <button
-        type="button"
-        onClick={() => setEditingPhotos((v) => !v)}
-        className="w-full text-xs font-bold text-navy border-2 border-gray200 rounded-lg py-2 mt-2"
-      >
-        {editingPhotos ? "사진 관리 닫기" : `📷 사진 관리 (${images.length}장)`}
-      </button>
-
-      {editingPhotos && (
-        <div className="mt-2.5">
-          <ImageUploader
-            initialUrls={images}
-            onChange={setImages}
-            label="매물 사진"
-            hint="탭해서 사진 추가 · × 로 삭제 후 아래 '변경사항 저장'으로 반영"
-          />
+      {!expanded ? (
+        <div className="flex gap-2 mt-3">
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="flex-1 text-xs font-bold text-navy border-2 border-gray200 rounded-lg py-2"
+          >
+            ✏️ 수정
+          </button>
+          <button
+            type="button"
+            onClick={deleteDeal}
+            disabled={deleting}
+            className="flex-1 text-xs font-bold rounded-lg py-2 disabled:opacity-50"
+            style={{ color: "#C2410C", border: "2px solid #FDEEE8", background: "#FFF9F7" }}
+          >
+            {deleting ? "삭제 중..." : "🗑️ 삭제"}
+          </button>
         </div>
+      ) : (
+        <>
+          <div className="flex items-center gap-2 mt-3">
+            <label className="text-xs font-bold text-gray500">재고</label>
+            <input
+              type="number"
+              className="w-20 border-2 border-gray200 rounded-lg px-2 py-1.5 text-sm"
+              value={remainingQty}
+              onChange={(e) => setRemainingQty(e.target.value)}
+            />
+            <span className="text-xs text-gray500">/ {deal.total_qty}{deal.quantity_unit || "개"}</span>
+          </div>
+
+          <div className="flex gap-2 mt-2.5">
+            <button
+              onClick={() => extendHours(24)}
+              disabled={saving}
+              className="flex-1 text-xs font-bold text-navy border-2 border-gray200 rounded-lg py-2"
+            >
+              +24시간 연장
+            </button>
+            <button
+              onClick={() => confirm("이 매물을 지금 조기 마감할까요?") && patch({ status: "closed" })}
+              disabled={saving}
+              className="flex-1 text-xs font-bold text-orange border-2 border-orange rounded-lg py-2"
+            >
+              조기 마감
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setEditingPhotos((v) => !v)}
+            className="w-full text-xs font-bold text-navy border-2 border-gray200 rounded-lg py-2 mt-2"
+          >
+            {editingPhotos ? "사진 관리 닫기" : `📷 사진 관리 (${images.length}장)`}
+          </button>
+
+          {editingPhotos && (
+            <div className="mt-2.5">
+              <ImageUploader
+                initialUrls={images}
+                onChange={setImages}
+                label="매물 사진"
+                hint="탭해서 사진 추가 · × 로 삭제 후 아래 '변경사항 저장'으로 반영"
+              />
+            </div>
+          )}
+
+          {/* 2026-09-26: 영상은 등록 시(DealForm)에만 넣을 수 있고 이후엔 있는지
+              없는지조차 알 방법이 없었음 — 사진 관리와 동일한 토글 패턴으로 추가,
+              버튼 라벨 자체가 "있음/없음"을 보여줘서 펼치지 않아도 첨부 여부를
+              알 수 있게 함. */}
+          <button
+            type="button"
+            onClick={() => setEditingVideo((v) => !v)}
+            className="w-full text-xs font-bold text-navy border-2 border-gray200 rounded-lg py-2 mt-2"
+          >
+            {editingVideo ? "영상 관리 닫기" : `🎥 영상 관리 (${videoUrl ? "있음" : "없음"})`}
+          </button>
+
+          {editingVideo && (
+            <div className="mt-2.5">
+              <VideoUploader
+                initialUrl={videoUrl}
+                onChange={setVideoUrl}
+                label="매물 영상"
+                hint="최대 15초 · 탭해서 교체, 아래 '변경사항 저장'으로 반영"
+              />
+            </div>
+          )}
+
+          <button
+            onClick={saveAll}
+            disabled={saving}
+            className="w-full text-sm font-bold text-white bg-navy rounded-lg py-2.5 mt-3 disabled:opacity-50"
+          >
+            {saving ? "저장 중..." : "변경사항 저장"}
+          </button>
+
+          <div className="flex gap-2 mt-2">
+            <button
+              type="button"
+              onClick={() => setExpanded(false)}
+              className="flex-1 text-xs font-bold text-navy border-2 border-gray200 rounded-lg py-2"
+            >
+              접기
+            </button>
+            <button
+              type="button"
+              onClick={deleteDeal}
+              disabled={deleting}
+              className="flex-1 text-xs font-bold rounded-lg py-2 disabled:opacity-50"
+              style={{ color: "#C2410C", border: "2px solid #FDEEE8", background: "#FFF9F7" }}
+            >
+              {deleting ? "삭제 중..." : "🗑️ 매물 삭제"}
+            </button>
+          </div>
+        </>
       )}
-
-      {/* 2026-09-26: 영상은 등록 시(DealForm)에만 넣을 수 있고 이후엔 있는지
-          없는지조차 알 방법이 없었음 — 사진 관리와 동일한 토글 패턴으로 추가,
-          버튼 라벨 자체가 "있음/없음"을 보여줘서 펼치지 않아도 첨부 여부를
-          알 수 있게 함. */}
-      <button
-        type="button"
-        onClick={() => setEditingVideo((v) => !v)}
-        className="w-full text-xs font-bold text-navy border-2 border-gray200 rounded-lg py-2 mt-2"
-      >
-        {editingVideo ? "영상 관리 닫기" : `🎥 영상 관리 (${videoUrl ? "있음" : "없음"})`}
-      </button>
-
-      {editingVideo && (
-        <div className="mt-2.5">
-          <VideoUploader
-            initialUrl={videoUrl}
-            onChange={setVideoUrl}
-            label="매물 영상"
-            hint="최대 15초 · 탭해서 교체, 아래 '변경사항 저장'으로 반영"
-          />
-        </div>
-      )}
-
-      <button
-        onClick={saveAll}
-        disabled={saving}
-        className="w-full text-sm font-bold text-white bg-navy rounded-lg py-2.5 mt-3 disabled:opacity-50"
-      >
-        {saving ? "저장 중..." : "변경사항 저장"}
-      </button>
-
-      <button
-        type="button"
-        onClick={deleteDeal}
-        disabled={deleting}
-        className="w-full text-xs font-bold rounded-lg py-2 mt-2 disabled:opacity-50"
-        style={{ color: "#C2410C", border: "2px solid #FDEEE8", background: "#FFF9F7" }}
-      >
-        {deleting ? "삭제 중..." : "🗑️ 매물 삭제"}
-      </button>
 
       <Toast message={toastMessage} />
     </div>
