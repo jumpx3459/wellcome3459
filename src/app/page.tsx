@@ -247,7 +247,7 @@ export default function Home() {
                     <div className="text-xs text-gray500 mt-0.5">
                       {d.category} · {d.location}
                     </div>
-                    <div className="text-[11px] text-gray400 mt-0.5 flex items-center gap-1.5">
+                    <div className="text-[11px] text-gray500 mt-0.5 flex items-center gap-1.5">
                       <span>{d.remaining_qty}/{d.total_qty} 남음</span>
                       {formatRelativeTime(d.created_at) && (
                         <>

@@ -1389,7 +1389,7 @@ function AdminDashboard({
               </div>
               <p className="mt-1.5 text-gray500">업종: {r.business_type}</p>
               <p className="text-gray500">채널: {r.channel_info}</p>
-              {r.message && <p className="text-gray400">메모: {r.message}</p>}
+              {r.message && <p className="text-gray500">메모: {r.message}</p>}
               {r.status === "pending" && (
                 <div className="mt-2.5 flex gap-2">
                   <button
