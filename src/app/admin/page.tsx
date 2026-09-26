@@ -712,8 +712,13 @@ function AdminDashboard({
       </div>
 
       <div className={isDesktop ? "px-8 pt-4 max-w-[1200px] mx-auto w-full" : "px-5 pt-4"}>
+      {/* 2026-09-26 (6): 조치필요/참고지표/카테고리별을 데스크톱에서 3열 카드로 분할 —
+          아래 패널 그리드와 동일한 카드 스타일 적용, 세로 스크롤 대폭 축소.
+          모바일은 display:contents로 기존 스택 순서/스타일 100% 유지. */}
+      <div className={isDesktop ? "grid grid-cols-3 gap-4 items-start" : "contents"}>
+        <div className={isDesktop ? "bg-white border border-gray200 rounded-2xl p-4" : ""}>
         <div className="text-sm font-bold text-gray500 mb-1.5">⚡ 조치 필요</div>
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className={isDesktop ? "grid grid-cols-2 gap-1.5" : "grid grid-cols-4 gap-1.5"}>
           {[
             {
               label: "미연락 리드",
@@ -762,9 +767,11 @@ function AdminDashboard({
             </button>
           ))}
         </div>
+        </div>
 
-        <div className="text-sm font-bold text-gray500 mb-1.5 mt-4">참고 지표</div>
-        <div className={isDesktop ? "grid grid-cols-7 gap-1.5" : "grid grid-cols-4 gap-1.5"}>
+        <div className={isDesktop ? "bg-white border border-gray200 rounded-2xl p-4" : ""}>
+        <div className={isDesktop ? "text-sm font-bold text-gray500 mb-1.5" : "text-sm font-bold text-gray500 mb-1.5 mt-4"}>참고 지표</div>
+        <div className={isDesktop ? "grid grid-cols-2 gap-1.5" : "grid grid-cols-4 gap-1.5"}>
           {[
             { label: "오늘 신규가입", value: members.filter((m) => isToday(m.created_at)).length },
             { label: "오늘 등록매물", value: activeDeals.filter((d) => isToday(d.created_at)).length },
@@ -797,9 +804,11 @@ function AdminDashboard({
             </div>
           ))}
         </div>
+        </div>
 
-        <div className="text-xs font-bold text-gray500 mb-1.5 mt-3">카테고리별 현황 (액티브 = 최근 7일)</div>
-        <div className="bg-white border border-gray200 rounded-xl overflow-hidden">
+        <div className={isDesktop ? "bg-white border border-gray200 rounded-2xl p-4" : ""}>
+        <div className={isDesktop ? "text-xs font-bold text-gray500 mb-1.5" : "text-xs font-bold text-gray500 mb-1.5 mt-3"}>카테고리별 현황 (액티브 = 최근 7일)</div>
+        <div className={isDesktop ? "overflow-hidden" : "bg-white border border-gray200 rounded-xl overflow-hidden"}>
           <div className="grid grid-cols-[1.4fr_0.7fr_0.7fr_0.7fr_0.7fr] gap-1 px-3 py-2 bg-gray100" style={{ fontSize: 12.5 }}>
             <span className="font-bold text-gray500">카테고리</span>
             <span className="font-bold text-gray500 text-right">리드</span>
@@ -830,6 +839,8 @@ function AdminDashboard({
             </div>
           )}
         </div>
+        </div>
+      </div>
       </div>
 
       {/* 2026-09-26 (4): PC에서도 그냥 한 열로 쭉 늘어놓기만 해서 여전히 스크롤이
