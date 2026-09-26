@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isValidKoreanPhone } from "@/lib/auth";
+import { sanitizeManifest, sanitizePid } from "@/lib/parseCsv";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -72,8 +73,8 @@ export async function POST(req: NextRequest) {
     origin: origin || null,
     spec: spec || null,
     storage_condition: storageCondition || null,
-    pid: pid || null,
-    manifest_items: manifestItems ?? null,
+    pid: sanitizePid(pid),
+    manifest_items: sanitizeManifest(manifestItems),
     images: images ?? [],
     video_url: videoUrl ?? null,
   });

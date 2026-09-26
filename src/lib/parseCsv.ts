@@ -79,3 +79,29 @@ export function parseCsv(text: string): { headers: string[]; rows: ManifestRow[]
 
   return { headers, rows, truncated };
 }
+
+// 서버(API)용 — 브라우저의 2MB/500행 제한은 클라이언트에서만 걸려서, 공개 API
+// (/api/seller-requests)에 직접 요청하면 거대한 JSON이나 문자열이 아닌 값(객체 등)을
+// 그대로 저장할 수 있었음. 객체 값은 상세 페이지 표 렌더링에서 React 에러로 페이지를
+// 깨뜨리므로, 저장 전에 모양/크기를 강제함.
+const MAX_KEY_LEN = 100;
+const MAX_VALUE_LEN = 500;
+
+export function sanitizeManifest(input: unknown): ManifestRow[] | null {
+  if (!Array.isArray(input) || input.length === 0) return null;
+  const rows: ManifestRow[] = [];
+  for (const raw of input.slice(0, MAX_ROWS)) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
+    const row: ManifestRow = {};
+    for (const [k, v] of Object.entries(raw).slice(0, MAX_COLS)) {
+      if (typeof v !== "string" && typeof v !== "number") continue;
+      row[String(k).slice(0, MAX_KEY_LEN)] = String(v).slice(0, MAX_VALUE_LEN);
+    }
+    if (Object.keys(row).length > 0) rows.push(row);
+  }
+  return rows.length ? rows : null;
+}
+
+export function sanitizePid(input: unknown): string | null {
+  return typeof input === "string" && input.trim() ? input.trim().slice(0, 100) : null;
+}

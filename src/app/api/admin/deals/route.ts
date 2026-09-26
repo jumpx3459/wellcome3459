@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendDealPush } from "@/lib/sendPush";
+import { sanitizeManifest, sanitizePid } from "@/lib/parseCsv";
 import { checkAdminAuth } from "@/lib/adminAuth";
 
 function maskedSellerName(category: string) {
@@ -99,8 +100,8 @@ export async function POST(req: NextRequest) {
       origin: origin || null,
       spec: spec || null,
       storage_condition: storageCondition || null,
-      pid: pid || null,
-      manifest_items: manifestItems ?? null,
+      pid: sanitizePid(pid),
+      manifest_items: sanitizeManifest(manifestItems),
       seller_member_id: sellerMemberId,
       is_anonymous: isAnonymous,
       seller_display_name: sellerDisplayName,
