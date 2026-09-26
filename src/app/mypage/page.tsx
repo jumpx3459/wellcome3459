@@ -1181,7 +1181,10 @@ export default function MyPage() {
 
         {/* design-v2: /deals 헤더에 있던 "정부지원금" 링크를 이동 — 매물 탐색 화면과
             성격이 다른(사업자 지원사업 정보) 기능이라 마이페이지 메뉴로 옮겨서 정리.
-            /support는 이미 /api/support로 기업마당 연동 로직이 있어 "준비중"이 아님. */}
+            /support는 이미 /api/support로 기업마당 연동 로직이 있어 "준비중"이 아님.
+            "사업자 전용" 배지는 제거함 — /support에 is_business/business_verified
+            체크가 전혀 없어 실제로는 전체공개 기능인데 배지가 반대로 안내하고 있었음
+            (홈 하단 그리드에 새로 추가한 동일 링크에도 배지 없음, 정합성 문제). */}
         <div className="border-t border-gray200 pt-5 flex flex-col gap-2.5">
           <Link
             href="/support"
@@ -1191,12 +1194,7 @@ export default function MyPage() {
               <span className="text-xl leading-none">🏛️</span>
               <span className="text-sm font-bold text-gray900">정부지원금 정보</span>
             </span>
-            <span
-              className="text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0"
-              style={{ background: "#FFF1E8", color: "#B94A1D" }}
-            >
-              사업자 전용
-            </span>
+            <span className="text-gray500">→</span>
           </Link>
           <button
             type="button"
