@@ -490,7 +490,14 @@ export default function MyPage() {
   if (notLoggedIn) {
     return (
       <main className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
-        <div className="text-4xl mb-4">🔒</div>
+        {/* 2026-09-26: 공유 링크로 처음 들어온 사람이 MY 탭에서 마주칠 수 있는 화면인데
+            브랜딩이 전혀 없어 썰렁하다는 피드백 — 로고 + 점핑매니저 캐릭터로 보완. */}
+        <img src="/images/logo.png" alt="덤핑점핑" className="w-10 h-10 rounded-lg mb-4" />
+        <img
+          src="/images/manager.png"
+          alt="점핑매니저"
+          className="w-24 h-24 rounded-xl object-contain bg-gray100 mb-4"
+        />
         <h1 className="font-display text-xl text-navy mb-2">로그인이 필요해요</h1>
         <p className="text-gray500 text-base leading-relaxed mb-6">
           이미 가입하셨다면 번호 인증만으로 바로 들어올 수 있어요.
@@ -523,6 +530,12 @@ export default function MyPage() {
           backgroundSize: "16px 16px, cover",
         }}
       >
+        {/* 2026-09-26: 탭 화면마다 로고 유무가 달라 브랜드 인지가 끊긴다는 피드백 —
+            모든 하단탭 화면 헤더에 작은 로고를 공통으로 배치. */}
+        <div className="bg-white rounded-lg px-1.5 py-1 inline-flex flex-shrink-0 mb-2.5">
+          <img src="/images/logo.png" alt="덤핑점핑" className="h-5 w-auto block" />
+        </div>
+
         {/* design-v2: deals 헤더의 긴급성 로테이션 문구를 마이페이지 상단에도 노출
             (2026-09-26) — 하단 탭 전체 화면에 동일 메시지 각인. */}
         <RotatingUrgencyTag className="mb-2.5 text-center" style={{ color: "var(--color-brandOrangeAccent)" }} />

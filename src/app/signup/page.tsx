@@ -459,6 +459,11 @@ function SignupPageInner() {
             <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "rgba(255,255,255,0.8)", padding: 0, lineHeight: 1 }}>
               ←
             </button>
+            {/* 2026-09-26: 탭 화면마다 로고 유무가 달라 브랜드 인지가 끊긴다는 피드백 —
+                모든 하단탭 화면 헤더에 작은 로고를 공통으로 배치. */}
+            <div className="bg-white rounded-lg px-1.5 py-1 flex-shrink-0">
+              <img src="/images/logo.png" alt="덤핑점핑" className="h-5 w-auto block" />
+            </div>
             <div className="flex-1 rounded-full overflow-hidden" style={{ height: 5, background: "rgba(255,255,255,0.18)" }}>
               <div
                 style={{

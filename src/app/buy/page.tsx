@@ -98,6 +98,9 @@ export default function BuyPage() {
       <main className="flex flex-col min-h-screen">
         <div className="flex-shrink-0 flex items-center gap-3 px-5 py-4.5" style={{ borderBottom: "1px solid #EEF0F2" }}>
           <Link href="/" className="text-gray500" style={{ fontSize: 19 }}>←</Link>
+          {/* 2026-09-26: 탭 화면마다 로고 유무가 달라 브랜드 인지가 끊긴다는 피드백 —
+              모든 하단탭 화면 헤더에 작은 로고를 공통으로 배치. */}
+          <img src="/images/logo.png" alt="덤핑점핑" className="w-6 h-6 rounded-md flex-shrink-0" />
           <span className="font-black" style={{ fontSize: 20, color: "#0B2540", letterSpacing: "-0.02em" }}>
             이런 재고 찾습니다
           </span>
@@ -147,6 +150,9 @@ export default function BuyPage() {
       <div className="flex-shrink-0" style={{ background: "var(--color-navy)" }}>
         <div className="flex items-center gap-3 px-5 py-4.5">
           <Link href="/" style={{ fontSize: 19, color: "rgba(255,255,255,0.8)" }}>←</Link>
+          <div className="bg-white rounded-lg px-1.5 py-1 flex-shrink-0">
+            <img src="/images/logo.png" alt="덤핑점핑" className="h-5 w-auto block" />
+          </div>
           <span className="font-black" style={{ fontSize: 20, color: "#fff", letterSpacing: "-0.02em" }}>
             이런 재고 찾습니다
           </span>
