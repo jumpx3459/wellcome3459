@@ -6,6 +6,7 @@ import { CheckCircle } from "lucide-react";
 import { mockCategories, mockRegions, categoryIcons, quantityUnits } from "@/lib/mockData";
 import ImageUploader from "@/components/ImageUploader";
 import VideoUploader from "@/components/VideoUploader";
+import Toast, { useToast } from "@/components/Toast";
 import { formatPriceInput, parsePriceInput, formatMemberNo } from "@/lib/format";
 
 type SellerRequest = {
@@ -53,6 +54,7 @@ type ActiveDeal = {
   categories: { name: string } | null;
   regions: { name: string } | null;
   images: string[] | null;
+  video_url: string | null;
 };
 
 type CategoryKpi = {
@@ -1753,8 +1755,15 @@ function ActiveDealCard({
   const [saving, setSaving] = useState(false);
   const [editingPhotos, setEditingPhotos] = useState(false);
   const [images, setImages] = useState<string[]>(deal.images ?? []);
+  const [editingVideo, setEditingVideo] = useState(false);
+  const [videoUrl, setVideoUrl] = useState<string | null>(deal.video_url ?? null);
   const [deleting, setDeleting] = useState(false);
+  const { message: toastMessage, showToast } = useToast();
 
+  // 2026-09-26: 재고 저장 / 사진 저장 버튼이 따로 있어서 "이걸 왜 두 번 눌러야
+  // 하냐"는 피드백 — 재고·사진·영상을 한 번에 PATCH하는 단일 저장 버튼으로
+  // 통합. 저장 성공 시 토스트로 알리고, 열려 있던 사진/영상 관리 패널은
+  // 접어서 리스트 카드 형태로 되돌아가게 함.
   const patch = async (body: Record<string, unknown>) => {
     setSaving(true);
     try {
@@ -1767,6 +1776,13 @@ function ActiveDealCard({
     } finally {
       setSaving(false);
     }
+  };
+
+  const saveAll = async () => {
+    await patch({ remainingQty: Number(remainingQty), images, videoUrl });
+    setEditingPhotos(false);
+    setEditingVideo(false);
+    showToast("저장했어요");
   };
 
   const deleteDeal = async () => {
@@ -1784,9 +1800,10 @@ function ActiveDealCard({
     }
   };
 
-  const extendHours = (hours: number) => {
+  const extendHours = async (hours: number) => {
     const newClosesAt = new Date(new Date(deal.closes_at).getTime() + hours * 3600 * 1000).toISOString();
-    patch({ closesAt: newClosesAt });
+    await patch({ closesAt: newClosesAt });
+    showToast(`${hours}시간 연장했어요`);
   };
 
   return (
@@ -1815,13 +1832,6 @@ function ActiveDealCard({
           onChange={(e) => setRemainingQty(e.target.value)}
         />
         <span className="text-xs text-gray500">/ {deal.total_qty}{deal.quantity_unit || "개"}</span>
-        <button
-          onClick={() => patch({ remainingQty: Number(remainingQty) })}
-          disabled={saving}
-          className="ml-auto text-xs font-bold text-white bg-navy rounded-lg px-3 py-1.5 disabled:opacity-50"
-        >
-          저장
-        </button>
       </div>
 
       <div className="flex gap-2 mt-2.5">
@@ -1855,17 +1865,41 @@ function ActiveDealCard({
             initialUrls={images}
             onChange={setImages}
             label="매물 사진"
-            hint="탭해서 사진 추가 · × 로 삭제 후 아래 저장"
+            hint="탭해서 사진 추가 · × 로 삭제 후 아래 '변경사항 저장'으로 반영"
           />
-          <button
-            onClick={() => patch({ images })}
-            disabled={saving}
-            className="w-full text-xs font-bold text-white bg-navy rounded-lg py-2 mt-2 disabled:opacity-50"
-          >
-            사진 저장
-          </button>
         </div>
       )}
+
+      {/* 2026-09-26: 영상은 등록 시(DealForm)에만 넣을 수 있고 이후엔 있는지
+          없는지조차 알 방법이 없었음 — 사진 관리와 동일한 토글 패턴으로 추가,
+          버튼 라벨 자체가 "있음/없음"을 보여줘서 펼치지 않아도 첨부 여부를
+          알 수 있게 함. */}
+      <button
+        type="button"
+        onClick={() => setEditingVideo((v) => !v)}
+        className="w-full text-xs font-bold text-navy border-2 border-gray200 rounded-lg py-2 mt-2"
+      >
+        {editingVideo ? "영상 관리 닫기" : `🎥 영상 관리 (${videoUrl ? "있음" : "없음"})`}
+      </button>
+
+      {editingVideo && (
+        <div className="mt-2.5">
+          <VideoUploader
+            initialUrl={videoUrl}
+            onChange={setVideoUrl}
+            label="매물 영상"
+            hint="최대 15초 · 탭해서 교체, 아래 '변경사항 저장'으로 반영"
+          />
+        </div>
+      )}
+
+      <button
+        onClick={saveAll}
+        disabled={saving}
+        className="w-full text-sm font-bold text-white bg-navy rounded-lg py-2.5 mt-3 disabled:opacity-50"
+      >
+        {saving ? "저장 중..." : "변경사항 저장"}
+      </button>
 
       <button
         type="button"
@@ -1876,6 +1910,8 @@ function ActiveDealCard({
       >
         {deleting ? "삭제 중..." : "🗑️ 매물 삭제"}
       </button>
+
+      <Toast message={toastMessage} />
     </div>
   );
 }

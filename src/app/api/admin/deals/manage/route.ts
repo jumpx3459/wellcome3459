@@ -35,7 +35,7 @@ export async function PATCH(req: NextRequest) {
   const auth = checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  const { id, remainingQty, closesAt, status, images } = await req.json();
+  const { id, remainingQty, closesAt, status, images, videoUrl } = await req.json();
   if (!id) return NextResponse.json({ error: "id가 필요합니다." }, { status: 400 });
 
   const supabaseAdmin = getAdminClient();
@@ -44,6 +44,7 @@ export async function PATCH(req: NextRequest) {
   if (closesAt !== undefined) update.closes_at = closesAt;
   if (status !== undefined) update.status = status;
   if (images !== undefined) update.images = images;
+  if (videoUrl !== undefined) update.video_url = videoUrl;
 
   const { error } = await supabaseAdmin.from("deals").update(update).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
