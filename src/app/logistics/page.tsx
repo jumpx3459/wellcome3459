@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
 
 // 환율 계산기에서 지원하는 통화 목록 (B2B 소싱에서 실사용 빈도가 높은 순)
@@ -68,8 +69,22 @@ type TabKey = (typeof TABS)[number]["key"];
 const TEAL = "#0E7490";
 const TEAL_LIGHT = "#5EEAD4";
 
+const TAB_KEYS = TABS.map((t) => t.key) as readonly string[];
+
 export default function LogisticsPage() {
-  const [tab, setTab] = useState<TabKey>("shipping");
+  return (
+    <Suspense fallback={null}>
+      <LogisticsPageInner />
+    </Suspense>
+  );
+}
+
+function LogisticsPageInner() {
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const initialTab: TabKey =
+    requestedTab && TAB_KEYS.includes(requestedTab) ? (requestedTab as TabKey) : "shipping";
+  const [tab, setTab] = useState<TabKey>(initialTab);
 
   return (
     <main className="flex flex-col min-h-screen">

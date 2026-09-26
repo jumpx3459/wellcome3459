@@ -296,12 +296,6 @@ export default function Home() {
           오늘 등록된 매물 전체 보기 →
         </Link>
 
-        <div className="flex items-center justify-center py-3" style={{ borderTop: "1px solid #EEF0F2", borderBottom: "1px solid #EEF0F2" }}>
-          <Link href="/support" className="flex items-center gap-1 text-xs font-bold text-gray500">
-            🏛️ 정부지원금
-          </Link>
-        </div>
-
         {/* design-v2: 배경 틴트를 빼고 화이트로 — 주황 테두리/서브텍스트가 틴트 위에서
             흐릿해지던 문제 수정. 서브텍스트는 이모지 폭(24px)만큼 들여써서 타이틀 본문과
             세로로 맞춤. 아래 구매 카드와 텍스트 크기(16px/900)를 통일해 짝 패턴으로 정리. */}
@@ -343,31 +337,64 @@ export default function Home() {
 
         {/* 점프엑스 생태계 서비스 — 재고 알림(이 앱의 유일한 역할)과 무관한 별도
             서비스라, 메인 재고 흐름과 섞이지 않게 하단에 별도 구역으로 분리.
-            design-v2: "이런 재고 찾습니다"와 같은 카드 틀(흰 배경 + 얇은 회색 테두리 +
-            아이콘 박스)로 통일 — 다만 아이콘 박스 배경과 서브텍스트 색은 네이비 톤을
-            남겨서 "매물 등록과는 다른 서비스"라는 구분은 유지. 이모지는 작은 인라인
-            텍스트 크기라 뭔지 알아보기 어려웠던 문제를 64px 박스 + text-4xl로 해결
-            (옆 "이런 재고 찾습니다"의 이미지 박스도 같은 크기로 맞춤). */}
+            기존엔 화물배차 1개만 가로형 카드였는데, 정부지원금(원래 상단 미니
+            링크였음)까지 여기로 합치고 계산기(/logistics의 환율 탭)를 추가하면서
+            3개를 grid-cols-3 세로형 타일로 재구성. 아이콘 박스 배경/서브텍스트는
+            네이비 톤 유지해서 "매물 등록과는 다른 서비스"라는 구분 유지. */}
         <div className="mt-3 pt-4" style={{ borderTop: "1px solid #EEF0F2" }}>
           <div className="text-xs font-bold text-gray500 mb-2">점프엑스 생태계 서비스</div>
-          <Link
-            href="/logistics"
-            className="flex items-center gap-3 rounded-2xl bg-white border border-gray200"
-            style={{ padding: "14px 20px" }}
-          >
-            <div
-              className="w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: "rgba(27,58,92,0.08)" }}
+          <div className="grid grid-cols-3 gap-2">
+            <Link
+              href="/logistics"
+              className="flex flex-col items-center text-center rounded-2xl bg-white border border-gray200"
+              style={{ padding: "16px 8px" }}
             >
-              <span className="text-4xl leading-none">🚚</span>
-            </div>
-            <div>
-              <div className="text-base font-black text-navy">전국 화물 배차 신청</div>
-              <div className="text-xs font-bold mt-0.5" style={{ color: "#1B3A5C" }}>
-                배차는 언제든 3분 컷 · 지금 신청하기 →
+              <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(27,58,92,0.08)" }}
+              >
+                <span className="text-2xl leading-none">🚚</span>
               </div>
-            </div>
-          </Link>
+              <div className="text-xs font-black text-navy mt-2">화물배차</div>
+              <div className="text-[10px] font-bold mt-0.5" style={{ color: "#1B3A5C" }}>
+                3분 신청
+              </div>
+            </Link>
+
+            <Link
+              href="/logistics?tab=fx"
+              className="flex flex-col items-center text-center rounded-2xl bg-white border border-gray200"
+              style={{ padding: "16px 8px" }}
+            >
+              <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(27,58,92,0.08)" }}
+              >
+                <span className="text-2xl leading-none">🧮</span>
+              </div>
+              <div className="text-xs font-black text-navy mt-2">계산기</div>
+              <div className="text-[10px] font-bold mt-0.5" style={{ color: "#1B3A5C" }}>
+                환율·관부가세
+              </div>
+            </Link>
+
+            <Link
+              href="/support"
+              className="flex flex-col items-center text-center rounded-2xl bg-white border border-gray200"
+              style={{ padding: "16px 8px" }}
+            >
+              <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(27,58,92,0.08)" }}
+              >
+                <span className="text-2xl leading-none">🏛️</span>
+              </div>
+              <div className="text-xs font-black text-navy mt-2">정부지원금</div>
+              <div className="text-[10px] font-bold mt-0.5" style={{ color: "#1B3A5C" }}>
+                지원사업 찾기
+              </div>
+            </Link>
+          </div>
         </div>
       </div>
 
