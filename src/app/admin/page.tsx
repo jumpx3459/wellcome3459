@@ -1764,22 +1764,31 @@ function ActiveDealCard({
   // 하냐"는 피드백 — 재고·사진·영상을 한 번에 PATCH하는 단일 저장 버튼으로
   // 통합. 저장 성공 시 토스트로 알리고, 열려 있던 사진/영상 관리 패널은
   // 접어서 리스트 카드 형태로 되돌아가게 함.
-  const patch = async (body: Record<string, unknown>) => {
+  // 성공 여부를 반환 — 토스트가 실패(세션 만료 401, 서버 500, 네트워크 오류)를
+  // "저장했어요"로 잘못 안내하지 않도록 응답 상태를 확인함.
+  const patch = async (body: Record<string, unknown>): Promise<boolean> => {
     setSaving(true);
     try {
-      await fetch("/api/admin/deals/manage", {
+      const res = await fetch("/api/admin/deals/manage", {
         method: "PATCH",
         headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
         body: JSON.stringify({ id: deal.id, ...body }),
       });
+      if (!res.ok) return false;
       onChanged();
+      return true;
+    } catch {
+      return false;
     } finally {
       setSaving(false);
     }
   };
 
   const saveAll = async () => {
-    await patch({ remainingQty: Number(remainingQty), images, videoUrl });
+    if (!(await patch({ remainingQty: Number(remainingQty), images, videoUrl }))) {
+      showToast("저장하지 못했어요. 다시 시도해주세요");
+      return;
+    }
     setEditingPhotos(false);
     setEditingVideo(false);
     showToast("저장했어요");
@@ -1802,8 +1811,7 @@ function ActiveDealCard({
 
   const extendHours = async (hours: number) => {
     const newClosesAt = new Date(new Date(deal.closes_at).getTime() + hours * 3600 * 1000).toISOString();
-    await patch({ closesAt: newClosesAt });
-    showToast(`${hours}시간 연장했어요`);
+    showToast((await patch({ closesAt: newClosesAt })) ? `${hours}시간 연장했어요` : "연장하지 못했어요. 다시 시도해주세요");
   };
 
   return (
