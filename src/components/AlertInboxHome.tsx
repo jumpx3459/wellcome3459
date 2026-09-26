@@ -10,9 +10,10 @@ import InstallAppButton, { useInstallPrompt } from "@/components/InstallAppButto
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 
 // 헤더(점핑매니저 안내줄)의 실측 높이 — 아래 콘텐츠의 paddingTop 보정에 사용.
-// sandbox엔 인증 세션이 없어 Playwright로 직접 측정 못 함 — 로컬에서 실제
-// 렌더 높이 확인 후 오차 있으면 이 값만 조정하면 됨.
-const INBOX_HEADER_HEIGHT = 68;
+// 2026-09-26 로컬 Playwright 실측 77.3px(360/390/430px 폭 동일) → 78로 올림.
+// 헤더 문구/폰트를 바꾸면 다시 재야 함. 원래 있던 헤더-콘텐츠 간격 14px은 별도로 더함.
+const INBOX_HEADER_HEIGHT = 78;
+const INBOX_HEADER_GAP = 14;
 
 const INSTALL_DISMISS_KEY = "dj_home_install_dismissed";
 const ALERT_EXAMPLE_THRESHOLD = 5; // 실제 매칭 매물이 이보다 적을 때만 예시 섹션 노출
@@ -175,7 +176,7 @@ export default function AlertInboxHome() {
         </div>
       </div>
 
-      <div style={{ padding: `${INBOX_HEADER_HEIGHT}px 20px 2px` }}>
+      <div style={{ padding: `${INBOX_HEADER_HEIGHT + INBOX_HEADER_GAP}px 20px 2px` }}>
         <Link
           href="/sell"
           className="flex items-center justify-between rounded-xl"
