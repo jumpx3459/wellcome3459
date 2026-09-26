@@ -1451,7 +1451,13 @@ function AdminDashboard({
             </div>
             <div className="text-base font-bold text-gray900 mt-1.5">{b.product_name}</div>
             <div className="text-sm text-gray500 mt-1">
-              {b.contact_phone}
+              {/* 2026-09-26: 카드 전체는 눌러도 반응이 없어 혼란을 줬음(정보가
+                  이미 다 펼쳐져 있어 상세 모달 자체가 없는 구조) — 실제로
+                  누를 만한 유일한 액션인 전화번호를 tel: 링크로 만들어 탭하면
+                  바로 전화가 걸리게 함. */}
+              <a href={`tel:${b.contact_phone}`} className="underline font-bold" style={{ color: "#0B2540" }}>
+                📞 {b.contact_phone}
+              </a>
               {b.quantity ? ` · 희망수량 ${b.quantity}` : ""}
               {b.hope_price ? ` · 희망가 ${b.hope_price.toLocaleString()}원 이하` : ""}
             </div>
@@ -1480,7 +1486,11 @@ function AdminDashboard({
                     : { background: "#FDEEE8", color: "#C2410C" }
                 }
               >
-                {b.contacted ? "연락 완료" : "아직 연락 전"}
+                {/* 2026-09-26: "매칭 완료/불발"(outcome, 재고 매칭 여부) 배지와
+                    나란히 있으면 이 버튼이 뭘 가리키는지 헷갈렸음 — 매칭과
+                    무관하게 "구매 희망자한테 전화했는지"만 추적하는 버튼이라는
+                    걸 라벨에 명시. */}
+                {b.contacted ? "구매자 연락 완료" : "구매자 연락 전"}
               </button>
               {b.outcome === "pending" && (
                 <>
