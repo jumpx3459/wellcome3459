@@ -1,6 +1,6 @@
 # PROGRESS
 
-마지막 업데이트: 2026-09-25 (회원가입 2단계 통합 PR #16 병합, 판매폼/칩/홈 썸네일 다듬기)
+마지막 업데이트: 2026-09-26 (카테고리 이름 정리, 하단 고정 CTA 수정, 긴급성 로테이션 문구 공통화, 관리자 PC 레이아웃)
 
 새 세션을 시작할 때 이 파일을 먼저 읽고, 아래 "다음에 할 일"부터 확인하세요.
 
@@ -29,6 +29,28 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
   비공개 옵션 등) — 상세는 아래 "최근 작업 (2026-09-23)" 참고
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
+
+## 최근 작업 (2026-09-25~26) — 패치 연속 적용 (전부 main 직접 커밋)
+
+- **카테고리 이름 정리 (DB 변경 포함)**: `냉동냉장식품`→`수산·축산물`, `농수축산물`→`농산물`.
+  categories는 id로 참조되므로 rename SQL 두 줄로 기존 매물/회원 관심 카테고리 자동 반영.
+  Supabase에서 SQL 실행 확인 후 코드 push(배포 순서 규칙 준수). `schema.sql` 시드도 새 이름으로.
+- **하단 고정 CTA (buy/sell/signup)**: `position: sticky`가 실제론 전혀 안 떠 있었음 —
+  루트 래퍼의 `overflow-x-hidden` 단독 설정이 overflow-y를 auto로 만들어 스크롤 없는 래퍼가
+  sticky 기준이 됨. `fixed` + `bottom: NAV_HEIGHT`(탭바 위) + 폼 하단 여백 132px로 교체.
+  **앞으로 이 앱에서 sticky는 동작하지 않는다고 보고 fixed를 쓸 것.**
+- **`RotatingUrgencyTag`** 공통 컴포넌트(⏰ 기한임박 매물 → 📦 과잉재고 정리 …): deals/buy/sell/
+  signup/홈(게스트 온보딩·회원 AlertInboxHome)/마이페이지에 노출. 회원 홈 헤더도 fixed로 바꾸면서
+  높이를 Playwright로 실측(77.3px) → `INBOX_HEADER_HEIGHT = 78`. 헤더 문구/폰트 바꾸면 다시 잴 것.
+- **`EcosystemGrid`** 공통 컴포넌트(화물배차/계산기/정부지원금 3열 타일): 홈·마이페이지. `/logistics?tab=fx`로 탭 지정 가능.
+- **관리자**: 진행 중 매물 카드 → 요약 행 + [수정] 펼침, 저장 버튼 통합(재고·사진·영상), 영상 관리 추가,
+  저장 실패 시 실패 토스트(응답 상태 확인). 구매요청 카드 전화번호 tel: 링크.
+- **🏗 구조 변경 — 앱 폭 래퍼 이동**: 루트 `layout.tsx`의 `max-w-md` 래퍼를 `AppShell`로 옮김.
+  회원 화면은 동일 클래스(픽셀 비교로 무변화 확인), `/admin`만 전체 폭을 받고 `admin/page.tsx`가
+  화면별로 폭 제한(로그인·📱모드 = max-w-md, 💻/자동(≥1024px) = 최대 1200px). 관리자 PC 모드는
+  지표·진행 중 매물까지만 PC 배치이고 나머지 섹션(판매자 신청/재고 찾습니다 등)은 아직 세로 나열.
+- 로컬 개발 참고: `node_modules`에 `pretendard`가 빠져 있어 dev 서버가 전 페이지 컴파일 실패하던 것
+  `npm install`로 해결(lockfile 변화 없음). Playwright + Chromium 로컬 설치돼 있어 렌더 실측 가능.
 
 ## 최근 작업 (2026-09-23) — 쪽지(회원간 메시지) + 매물 등록 업체명 비공개 옵션
 
