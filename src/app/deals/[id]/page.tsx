@@ -34,6 +34,7 @@ function DealDetailPageInner() {
   const [shareCopied, setShareCopied] = useState(false);
   const [interestError, setInterestError] = useState<string | null>(null);
   const [interestNeedsReauth, setInterestNeedsReauth] = useState(false);
+  const [manifestOpen, setManifestOpen] = useState(false);
 
   // JUMP X 브릿지("JUMP X에서 입찰 참여하기") — 거래 플랫폼이 준비될 때까지는
   // "준비중" 안내만 하고, 클릭은 수요 신호로만 가볍게 기록합니다.
@@ -96,7 +97,7 @@ function DealDetailPageInner() {
       const { data } = await supabase
         .from("deals")
         .select(
-          "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, location, images, video_url, description, status, package_unit, origin, spec, storage_condition, quantity_unit, min_order_qty, interest_count, seller_member_id, seller_display_name, categories(name), regions(name)"
+          "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, location, images, video_url, description, status, package_unit, origin, spec, storage_condition, quantity_unit, min_order_qty, interest_count, pid, manifest_items, seller_member_id, seller_display_name, categories(name), regions(name)"
         )
         .eq("id", params.id)
         .single();
@@ -124,6 +125,8 @@ function DealDetailPageInner() {
           quantity_unit: data.quantity_unit ?? "개",
           min_order_qty: data.min_order_qty ?? null,
           interest_count: data.interest_count ?? 0,
+          pid: data.pid ?? null,
+          manifest_items: data.manifest_items ?? null,
           seller_member_id: data.seller_member_id ?? null,
           seller_display_name: data.seller_display_name ?? null,
         });
@@ -464,6 +467,58 @@ function DealDetailPageInner() {
             <p className="text-sm text-gray500 leading-relaxed whitespace-pre-line">
               {deal.description}
             </p>
+          </div>
+        )}
+
+        {/* 2026-09-26: 혼합매물(리퀴데이션 팔레트) — 개별 사진 대신 PID#/구성품 목록으로
+            신뢰도를 보완. 목록은 품목이 많을 수 있어 기본은 접어두고 펼쳐보게 함. */}
+        {(deal.pid || (deal.manifest_items && deal.manifest_items.length > 0)) && (
+          <div className="border-t border-gray200 pt-4">
+            {deal.pid && (
+              <div className="text-xs text-gray500 mb-2">
+                🧾 매니페스트 번호(PID#): <span className="font-mono font-bold text-navy">{deal.pid}</span>
+              </div>
+            )}
+            {deal.manifest_items && deal.manifest_items.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setManifestOpen((v) => !v)}
+                  className="flex items-center justify-between w-full"
+                >
+                  <span className="text-sm font-bold text-navy">
+                    구성품 목록 ({deal.manifest_items.length}개)
+                  </span>
+                  <span className="text-xs text-gray500">{manifestOpen ? "접기 ▲" : "펼치기 ▼"}</span>
+                </button>
+                {manifestOpen && (
+                  <div className="mt-2 border border-gray200 rounded-lg overflow-x-auto">
+                    <table className="text-xs w-full" style={{ minWidth: Object.keys(deal.manifest_items[0]).length * 90 }}>
+                      <thead>
+                        <tr>
+                          {Object.keys(deal.manifest_items[0]).map((h) => (
+                            <th key={h} className="text-left px-2 py-1.5 bg-gray100 whitespace-nowrap text-gray500">
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {deal.manifest_items.map((row, i) => (
+                          <tr key={i}>
+                            {Object.keys(deal.manifest_items![0]).map((h) => (
+                              <td key={h} className="px-2 py-1.5 border-t border-gray200 whitespace-nowrap">
+                                {row[h]}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>

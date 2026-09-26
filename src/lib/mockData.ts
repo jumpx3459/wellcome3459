@@ -23,6 +23,8 @@ export type Deal = {
   min_order_qty?: number | null; // 최소주문수량(MOQ)
   created_at?: string; // ISO — mock 데이터엔 없음
   interest_count?: number; // 2026-09-26: 관심표시(interests+quick_leads) 합산 카운트, deals.interest_count 비정규화 컬럼
+  pid?: string | null; // 2026-09-26: 리퀴데이션 팔레트 등의 매니페스트/PID 번호 (선택)
+  manifest_items?: Record<string, string>[] | null; // 혼합매물 구성품 CSV 목록 (헤더 그대로)
 };
 
 export const quantityUnits = ["개", "박스", "kg", "톤", "팔레트", "세트"];

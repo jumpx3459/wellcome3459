@@ -33,6 +33,8 @@ export async function POST(req: NextRequest) {
     origin,
     spec,
     storageCondition,
+    pid,
+    manifestItems,
   } = body;
 
   if (!title || !category || !region || !dealPrice || !totalQty || !closesAt) {
@@ -97,6 +99,8 @@ export async function POST(req: NextRequest) {
       origin: origin || null,
       spec: spec || null,
       storage_condition: storageCondition || null,
+      pid: pid || null,
+      manifest_items: manifestItems ?? null,
       seller_member_id: sellerMemberId,
       is_anonymous: isAnonymous,
       seller_display_name: sellerDisplayName,

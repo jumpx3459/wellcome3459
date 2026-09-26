@@ -23,6 +23,8 @@ export async function POST(req: NextRequest) {
     origin,
     spec,
     storageCondition,
+    pid,
+    manifestItems,
     images,
     videoUrl,
   } = body;
@@ -70,6 +72,8 @@ export async function POST(req: NextRequest) {
     origin: origin || null,
     spec: spec || null,
     storage_condition: storageCondition || null,
+    pid: pid || null,
+    manifest_items: manifestItems ?? null,
     images: images ?? [],
     video_url: videoUrl ?? null,
   });

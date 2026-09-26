@@ -6,8 +6,10 @@ import { CheckCircle } from "lucide-react";
 import { mockCategories, mockRegions, categoryIcons, quantityUnits } from "@/lib/mockData";
 import ImageUploader from "@/components/ImageUploader";
 import VideoUploader from "@/components/VideoUploader";
+import ManifestUploader from "@/components/ManifestUploader";
 import Toast, { useToast } from "@/components/Toast";
 import { formatPriceInput, parsePriceInput, formatMemberNo } from "@/lib/format";
+import type { ManifestRow } from "@/lib/parseCsv";
 
 type SellerRequest = {
   id: string;
@@ -25,6 +27,8 @@ type SellerRequest = {
   origin: string | null;
   spec: string | null;
   storage_condition: string | null;
+  pid: string | null;
+  manifest_items: ManifestRow[] | null;
   images: string[] | null;
   video_url: string | null;
   categories: { name: string } | null;
@@ -1380,6 +1384,12 @@ function AdminDashboard({
                 {r.description}
               </div>
             )}
+            {(r.pid || (r.manifest_items && r.manifest_items.length > 0)) && (
+              <div className="text-sm text-gray500 mt-1 bg-gray100 rounded-lg px-3 py-2">
+                🧾 혼합매물{r.pid ? ` · PID# ${r.pid}` : ""}
+                {r.manifest_items && r.manifest_items.length > 0 ? ` · 구성품 ${r.manifest_items.length}개 CSV 첨부됨` : ""}
+              </div>
+            )}
             {r.images && r.images.length > 0 && (
               <div className="flex gap-2 mt-2 overflow-x-auto">
                 {r.images.map((url, i) => (
@@ -1441,6 +1451,8 @@ function AdminDashboard({
                   origin: r.origin ?? "",
                   spec: r.spec ?? "",
                   storageCondition: r.storage_condition ?? "",
+                  pid: r.pid ?? "",
+                  manifestItems: r.manifest_items ?? [],
                   closesInHours: r.hope_duration_hours ?? undefined,
                 }}
                 requestId={r.id}
@@ -2099,6 +2111,8 @@ function DealForm({
     origin?: string;
     spec?: string;
     storageCondition?: string;
+    pid?: string;
+    manifestItems?: ManifestRow[];
     closesInHours?: number;
   };
   requestId?: string;
@@ -2125,6 +2139,8 @@ function DealForm({
   const [origin, setOrigin] = useState(prefill?.origin ?? "");
   const [spec, setSpec] = useState(prefill?.spec ?? "");
   const [storageCondition, setStorageCondition] = useState(prefill?.storageCondition ?? "");
+  const [pid, setPid] = useState(prefill?.pid ?? "");
+  const [manifestItems, setManifestItems] = useState<ManifestRow[]>(prefill?.manifestItems ?? []);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -2159,6 +2175,8 @@ function DealForm({
           origin: origin || null,
           spec: spec || null,
           storageCondition: storageCondition || null,
+          pid: pid || null,
+          manifestItems: manifestItems.length ? manifestItems : null,
         }),
       });
       if (!res.ok) throw new Error();
@@ -2317,6 +2335,16 @@ function DealForm({
         value={description}
         onChange={(e) => setDescription(e.target.value)}
       />
+
+      {/* 2026-09-26: 혼합매물(리퀴데이션 팔레트 등) — 신청서에서 이미 첨부됐으면 prefill로
+          채워지고, 여기서도 직접 추가/수정 가능 (전화 접수 등 신청서 없이 등록하는 경우 대비). */}
+      <input
+        className="border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-orange"
+        placeholder="PID / 매니페스트 번호 (선택)"
+        value={pid}
+        onChange={(e) => setPid(e.target.value)}
+      />
+      <ManifestUploader onChange={setManifestItems} initialRows={prefill?.manifestItems} />
 
       {error && <div className="text-xs text-orange font-medium">{error}</div>}
 

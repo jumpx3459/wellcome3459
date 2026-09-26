@@ -628,3 +628,13 @@ drop trigger if exists trg_quick_leads_sync_interest_count on public.quick_leads
 create trigger trg_quick_leads_sync_interest_count
   after insert or delete on public.quick_leads
   for each row execute function public.sync_deal_interest_count();
+
+-- 2026-09-26: 혼합매물(리퀴데이션/반품 팔레트) 대응 — 개별 상품 사진 없이 PID#(매니페스트
+-- 번호)와 구성품 CSV 목록만으로도 매물을 등록할 수 있게. manifest_items는 CSV 헤더를 그대로
+-- 컬럼명으로 쓴 Record<string,string>[] — 헤더 자동매핑 없이 원본 그대로 저장/노출함
+-- (src/lib/parseCsv.ts 참고). seller_requests(신청서)와 deals(실제 매물) 둘 다 필요 —
+-- 승인 시 seller_requests → deals로 admin이 그대로 복사해 넘김.
+alter table public.seller_requests add column if not exists pid text;
+alter table public.seller_requests add column if not exists manifest_items jsonb;
+alter table public.deals add column if not exists pid text;
+alter table public.deals add column if not exists manifest_items jsonb;

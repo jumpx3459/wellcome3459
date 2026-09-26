@@ -7,10 +7,12 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockCategories, mockRegions, categoryIcons, quantityUnits, guessCategory } from "@/lib/mockData";
 import ImageUploader from "@/components/ImageUploader";
 import VideoUploader from "@/components/VideoUploader";
+import ManifestUploader from "@/components/ManifestUploader";
 import { NAV_HEIGHT } from "@/components/BottomNav";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
 import { fromE164Phone, isValidKoreanPhone } from "@/lib/auth";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
+import type { ManifestRow } from "@/lib/parseCsv";
 
 export default function SellPage() {
   const [companyName, setCompanyName] = useState("");
@@ -57,6 +59,8 @@ export default function SellPage() {
   const [origin, setOrigin] = useState("");
   const [spec, setSpec] = useState("");
   const [storageCondition, setStorageCondition] = useState("");
+  const [pid, setPid] = useState(""); // 2026-09-26: 리퀴데이션 팔레트 등의 매니페스트/PID 번호 (선택)
+  const [manifestItems, setManifestItems] = useState<ManifestRow[]>([]);
   const [images, setImages] = useState<string[]>([]);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -98,6 +102,8 @@ export default function SellPage() {
           origin: origin || null,
           spec: spec || null,
           storageCondition: storageCondition || null,
+          pid: pid || null,
+          manifestItems: manifestItems.length ? manifestItems : null,
           images,
           videoUrl,
         }),
@@ -483,6 +489,19 @@ export default function SellPage() {
                 placeholder="그 밖에 알려주실 내용"
               />
             </div>
+
+            {/* 2026-09-26: 폐업 정리 등으로 여러 품목이 한 팔레트에 섞인 "혼합매물" 대응 —
+                개별 사진 없이 PID/매니페스트 번호 + CSV 목록만으로도 등록할 수 있게. */}
+            <div>
+              <label className="text-sm font-bold text-navy mb-2 block">PID / 매니페스트 번호 (선택)</label>
+              <input
+                className="w-full border-2 border-gray200 rounded-xl px-4 py-3 text-base outline-none focus:border-orange"
+                value={pid}
+                onChange={(e) => setPid(e.target.value)}
+                placeholder="예: P809200159651 (리퀴데이션 팔레트라면 적어주세요)"
+              />
+            </div>
+            <ManifestUploader onChange={setManifestItems} />
           </div>
         )}
       </div>
