@@ -2,18 +2,23 @@
 
 import { useEffect, useState } from "react";
 
+// 이번 페이지 로드(=앱 실행/새로고침)에서 이미 보여줬는지. 모듈 변수라 전체 로드
+// 때만 초기화되고 SPA 내부 이동(하단 탭 "홈" 재진입 등)에서는 유지됨 — 이 컴포넌트가
+// 홈 페이지를 감싸고 있어서, 이게 없으면 홈 탭을 누를 때마다 1.8초 스플래시가 다시 뜸.
+let shownThisLoad = false;
+
 export default function SplashScreen({ children }: { children: React.ReactNode }) {
-  const [show, setShow] = useState(true);
+  const [show, setShow] = useState(!shownThisLoad);
 
   useEffect(() => {
     // 2026-09-26: 기존엔 localStorage 플래그로 기기당 최초 1회만 노출했으나,
     // 네이티브 앱처럼 실행(재접속)할 때마다 브랜드 로고를 각인시키는 게
-    // 낫다는 판단으로 변경. 이 컴포넌트는 "/" 진입(콜드 스타트) 시에만
-    // 마운트되므로 SPA 내부 라우팅 중엔 재노출되지 않는다 — 짧은 1.8초 +
-    // 건너뛰기 버튼으로 피로감을 낮춘다.
+    // 낫다는 판단으로 변경 — 짧은 1.8초 + 건너뛰기 버튼으로 피로감을 낮춘다.
+    shownThisLoad = true;
+    if (!show) return;
     const timer = setTimeout(() => setShow(false), 1800);
     return () => clearTimeout(timer);
-  }, []);
+  }, [show]);
 
   return (
     <>
