@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { sendOtp, verifyOtp, isValidKoreanPhone } from "@/lib/auth";
@@ -39,6 +39,10 @@ function SignupPageInner() {
   const { message: toastMessage, showToast } = useToast();
 
   const [obStep, setObStep] = useState(1);
+  // 2026-09-26 (10): 2단계(휴대폰인증+알림방법+약관)가 길어서 인증칸을 스크롤로
+  // 지나친 뒤 맨 아래 "휴대폰 인증이 필요해요" CTA를 눌러도 그냥 토스트만 뜨고
+  // 인증칸이 어딘지 못 찾겠다는 피드백 — 눌렀을 때 그 칸으로 스크롤+포커스.
+  const phoneInputRef = useRef<HTMLInputElement>(null);
 
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
@@ -417,6 +421,8 @@ function SignupPageInner() {
     if (obStep === 2) {
       if (!verified) {
         showToast("휴대폰 인증을 먼저 완료해주세요");
+        phoneInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        phoneInputRef.current?.focus();
         return;
       }
       if (!reqAgreed) {
@@ -641,6 +647,7 @@ function SignupPageInner() {
             <div className="text-sm font-bold mt-5.5 mb-2" style={{ color: "#0B2540" }}>휴대폰 번호</div>
             <div className="flex gap-2">
               <input
+                ref={phoneInputRef}
                 className="flex-1 min-w-0 rounded-xl outline-none"
                 style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: 15, fontVariantNumeric: "tabular-nums" }}
                 placeholder="010-0000-0000"
