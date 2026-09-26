@@ -54,15 +54,27 @@ export default function ManifestUploader({
       <label className="text-xs font-bold text-gray500 mb-1 block">
         구성품 목록 CSV (선택 — 여러 품목이 섞인 혼합매물/리퀴데이션 팔레트용)
       </label>
-      <input
-        type="file"
-        accept=".csv,text/csv"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) handleFile(f);
-        }}
-        className="text-sm w-full"
-      />
+      {/* 2026-09-26 (11): 네이티브 <input type="file">이 브라우저 기본 스타일(작은
+          회색 버튼+"선택된 파일 없음")로 떠서 폼에서 눈에 잘 안 띈다는 피드백 —
+          ImageUploader와 동일한 점선 박스+굵은 텍스트 드롭존 패턴으로 통일.
+          "선택된 파일 없음"은 우리가 넣은 문구가 아니라 브라우저 기본 라벨이라,
+          숨긴 input 대신 fileName 상태로 직접 표시(선택 전/후 텍스트 전환). */}
+      <label
+        className="flex items-center justify-center gap-2 border-2 border-dashed border-gray200 rounded-xl text-sm font-bold cursor-pointer"
+        style={{ minHeight: 52, color: fileName ? "#0B2540" : "#6B7480" }}
+      >
+        📎 {fileName ? `${fileName} · 다른 파일로 변경` : "CSV 파일 선택"}
+        <input
+          type="file"
+          accept=".csv,text/csv"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) handleFile(f);
+            e.target.value = ""; // 같은 파일을 다시 선택할 수 있도록 초기화 (ImageUploader와 동일 패턴)
+          }}
+        />
+      </label>
       <p className="text-xs text-gray500 mt-1">
         개별 사진 없이 여러 품목이 한 팔레트에 섞인 경우, 엑셀/구글시트에서 &quot;CSV로 다운로드&quot;한
         목록을 올리면 상세 페이지에 표로 보여줘요.
