@@ -96,7 +96,7 @@ function DealDetailPageInner() {
       const { data } = await supabase
         .from("deals")
         .select(
-          "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, location, images, video_url, description, status, package_unit, origin, spec, storage_condition, quantity_unit, min_order_qty, seller_member_id, seller_display_name, categories(name), regions(name)"
+          "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, location, images, video_url, description, status, package_unit, origin, spec, storage_condition, quantity_unit, min_order_qty, interest_count, seller_member_id, seller_display_name, categories(name), regions(name)"
         )
         .eq("id", params.id)
         .single();
@@ -123,6 +123,7 @@ function DealDetailPageInner() {
           storage_condition: data.storage_condition ?? null,
           quantity_unit: data.quantity_unit ?? "개",
           min_order_qty: data.min_order_qty ?? null,
+          interest_count: data.interest_count ?? 0,
           seller_member_id: data.seller_member_id ?? null,
           seller_display_name: data.seller_display_name ?? null,
         });
@@ -344,6 +345,15 @@ function DealDetailPageInner() {
             <span className="text-3xl font-black" style={{ color: "#0B2540" }}>
               {formatPrice(deal.deal_price)}
             </span>
+            {/* 2026-09-26: 카드 리스트와 동일한 threshold-gating(3건 미만 숨김) */}
+            {(deal.interest_count ?? 0) >= 3 && (
+              <span
+                className="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full flex-shrink-0"
+                style={{ background: "#FDEEE8", color: "#C2410C" }}
+              >
+                ❤️ {deal.interest_count}명 관심
+              </span>
+            )}
           </div>
           <div className="flex items-center justify-between gap-2 mt-1">
             <span className="text-sm text-gray500">

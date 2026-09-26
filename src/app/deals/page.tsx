@@ -47,7 +47,7 @@ function DealsPageInner() {
       const { data, error } = await supabase
         .from("deals")
         .select(
-          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, closes_at, location, images, video_url, origin, min_order_qty, categories(name), regions(name)"
+          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, closes_at, location, images, video_url, origin, min_order_qty, interest_count, categories(name), regions(name)"
         )
         .eq("status", "active")
         .gt("closes_at", new Date().toISOString()) // 마감 지난 매물은 애초에 가져오지 않음
@@ -71,6 +71,7 @@ function DealsPageInner() {
             video_url: d.video_url ?? null,
             origin: d.origin ?? null,
             min_order_qty: d.min_order_qty ?? null,
+            interest_count: d.interest_count ?? 0,
           }))
         );
       }
@@ -85,7 +86,7 @@ function DealsPageInner() {
       const { data, error } = await supabase
         .from("deals")
         .select(
-          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, closes_at, location, images, video_url, origin, min_order_qty, categories(name), regions(name)"
+          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, closes_at, location, images, video_url, origin, min_order_qty, interest_count, categories(name), regions(name)"
         )
         .or(`status.eq.closed,closes_at.lte.${new Date().toISOString()}`)
         .order("closes_at", { ascending: false })
@@ -349,6 +350,13 @@ function DealsPageInner() {
                     <span className="text-sm flex-shrink-0">{categoryIcons[d.category] ?? "🗂️"}</span>
                     <span className="truncate">{d.category}</span>
                   </div>
+                  {/* 2026-09-26: 관심표시 3건 미만은 숨김(threshold-gating) — 초기 트래픽
+                      단계에서 "관심 0~2명"이 그대로 보이면 오히려 인기 없어 보이는 역효과 방지. */}
+                  {(d.interest_count ?? 0) >= 3 && (
+                    <div className="inline-flex items-center gap-1 text-xs font-bold flex-shrink-0" style={{ color: "#C2410C" }}>
+                      ❤️ {d.interest_count}명 관심
+                    </div>
+                  )}
                 </div>
                 <div className="text-base font-bold text-gray900 mt-2">{d.title}</div>
                 <div className="text-sm font-medium mt-1" style={{ color: "#495057" }}>

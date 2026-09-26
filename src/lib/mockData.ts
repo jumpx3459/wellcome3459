@@ -22,6 +22,7 @@ export type Deal = {
   quantity_unit?: string | null; // 수량 단위 (박스/개/kg/톤/팔레트 등) — 없으면 "개"로 표시
   min_order_qty?: number | null; // 최소주문수량(MOQ)
   created_at?: string; // ISO — mock 데이터엔 없음
+  interest_count?: number; // 2026-09-26: 관심표시(interests+quick_leads) 합산 카운트, deals.interest_count 비정규화 컬럼
 };
 
 export const quantityUnits = ["개", "박스", "kg", "톤", "팔레트", "세트"];

@@ -584,3 +584,47 @@ create policy "messages_insert_own" on public.messages
 -- 품목 유형 기준으로 재정리. 보관 상태(냉동/건조/활 등)는 deals.storage_condition에서 다룸.
 update public.categories set name = '농산물' where name = '농수축산물';
 update public.categories set name = '수산·축산물' where name = '냉동냉장식품';
+
+-- 2026-09-26: 매물 카드/상세에 "관심 표시" 개수를 공개로 노출하기 위한 비정규화 카운터.
+-- interests(회원 관심표시)+quick_leads(비회원 원클릭 리드) 둘 다 사용자 입장에선 동일한
+-- "관심있어요" 액션이라 합산해서 센다. interests는 RLS(interests_self)로 본인 것만 조회
+-- 가능해 클라이언트에서 직접 count(*) 못 하므로, deals 테이블에 카운터 컬럼을 두고
+-- insert/delete 시점에 트리거로 증감시키는 방식을 씀 — deals_public_select(select using
+-- true)로 이미 누구나 조회 가능해서 추가 RLS 정책 없이 그대로 노출됨.
+alter table public.deals add column if not exists interest_count int not null default 0;
+
+update public.deals d
+set interest_count = (
+  coalesce((select count(*) from public.interests i where i.deal_id = d.id), 0)
+  + coalesce((select count(*) from public.quick_leads q where q.deal_id = d.id), 0)
+);
+
+-- SECURITY DEFINER 필수: 일반 회원 세션으로 실행돼도(RLS엔 deals UPDATE 정책이 없음)
+-- 카운터 갱신은 통과시키기 위함. search_path 고정은 함수 하이재킹 방지용 관례.
+create or replace function public.sync_deal_interest_count()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if (tg_op = 'INSERT') then
+    update public.deals set interest_count = interest_count + 1 where id = new.deal_id;
+    return new;
+  elsif (tg_op = 'DELETE') then
+    update public.deals set interest_count = greatest(interest_count - 1, 0) where id = old.deal_id;
+    return old;
+  end if;
+  return null;
+end;
+$$;
+
+drop trigger if exists trg_interests_sync_interest_count on public.interests;
+create trigger trg_interests_sync_interest_count
+  after insert or delete on public.interests
+  for each row execute function public.sync_deal_interest_count();
+
+drop trigger if exists trg_quick_leads_sync_interest_count on public.quick_leads;
+create trigger trg_quick_leads_sync_interest_count
+  after insert or delete on public.quick_leads
+  for each row execute function public.sync_deal_interest_count();
