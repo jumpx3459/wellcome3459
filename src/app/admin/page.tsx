@@ -190,7 +190,7 @@ export default function AdminPage() {
 
   if (!key) {
     return (
-      <main className="flex flex-col items-center justify-center min-h-screen px-6">
+      <main className="flex flex-col items-center justify-center min-h-screen px-6 mx-auto w-full max-w-md bg-white shadow-sm">
         <div className="text-2xl mb-4">🔒</div>
         <h1 className="font-display text-xl text-navy mb-4">관리자 로그인</h1>
         <input
@@ -620,7 +620,7 @@ function AdminDashboard({
 
   if (authError) {
     return (
-      <main className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
+      <main className="flex flex-col items-center justify-center min-h-screen px-6 text-center mx-auto w-full max-w-md bg-white shadow-sm">
         <p className="text-orange font-bold mb-3">{authError}</p>
         <button onClick={onLogout} className="text-navy underline text-sm">
           다시 입력하기
@@ -638,7 +638,7 @@ function AdminDashboard({
   };
 
   return (
-    <main className="flex flex-col min-h-screen">
+    <main className={isDesktop ? "flex flex-col min-h-screen mx-auto w-full max-w-[1200px] bg-white shadow-sm" : "flex flex-col min-h-screen mx-auto w-full max-w-md bg-white shadow-sm"}>
       <div
         className="px-5 pt-6 pb-5 text-white flex items-center justify-between"
         style={{ background: "linear-gradient(120deg,#04101C,#1A4B78)" }}

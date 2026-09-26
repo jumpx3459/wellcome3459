@@ -55,9 +55,8 @@ export default function RootLayout({
   return (
     <html lang="ko" className={pretendard.variable}>
       <body className="font-sans overflow-x-hidden">
-        <div className="mx-auto max-w-md min-h-screen bg-white shadow-sm overflow-x-hidden">
-          <AppShell>{children}</AppShell>
-        </div>
+        {/* 앱 폭 제한 래퍼(max-w-md)는 경로별로 달라야 해서 AppShell이 그림 */}
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

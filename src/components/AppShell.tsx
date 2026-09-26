@@ -18,11 +18,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // 회원용 화면은 모바일 폭(max-w-md)으로 고정. 관리자 화면은 PC 레이아웃(💻/자동)을
+  // 쓰려면 이 폭 제한을 벗어나야 해서 전체 폭을 주고, 폭 제한은 admin/page.tsx가
+  // 화면별로 직접 건다(로그인·모바일 모드는 max-w-md 유지).
   return (
-    <>
+    <div
+      className={
+        isAdmin
+          ? "min-h-screen overflow-x-hidden"
+          : "mx-auto max-w-md min-h-screen bg-white shadow-sm overflow-x-hidden"
+      }
+    >
       <div style={{ paddingBottom: isAdmin ? 0 : `${NAV_HEIGHT}px` }}>{children}</div>
       {!isAdmin && <BottomNav />}
       <DebugPanel />
-    </>
+    </div>
   );
 }
