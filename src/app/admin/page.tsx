@@ -832,7 +832,23 @@ function AdminDashboard({
         </div>
       </div>
 
-      <div className="px-5 pt-4 flex flex-col gap-3">
+      {/* 2026-09-26 (4): PC에서도 그냥 한 열로 쭉 늘어놓기만 해서 여전히 스크롤이
+          길다는 피드백 — 리드/진행중매물/판매자신청/점핑파트너신청/재고찾습니다/
+          최근가입회원 6개 섹션을 3열 패널 그리드로 묶고, 패널마다 내부 스크롤을
+          줘서 전체 대시보드가 한 화면에 가깝게 들어오도록 함. 모바일에서는
+          display:contents로 그리드를 무효화해 기존 구조 그대로 유지 — "+ 새 매물
+          직접 등록" 버튼은 DOM 위치(모바일 순서)는 그대로 두고 desktop에서만
+          order:-1로 그리드 맨 앞 전체 폭 줄로 끌어올림. */}
+      <div className={isDesktop ? "grid grid-cols-3 gap-4 items-start px-8 pb-6 max-w-[1200px] mx-auto w-full" : "contents"}>
+
+      <div
+        className={
+          isDesktop
+            ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3 overflow-y-auto"
+            : "px-5 pt-4 flex flex-col gap-3"
+        }
+        style={isDesktop ? { maxHeight: 480 } : undefined}
+      >
         <button
           type="button"
           onClick={() => setMembersOpen((v) => !v)}
@@ -990,7 +1006,15 @@ function AdminDashboard({
         )}
       </div>
 
-      <div id="leads" className="px-5 pt-4 flex flex-col gap-3">
+      <div
+        id="leads"
+        className={
+          isDesktop
+            ? "col-span-2 bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3 overflow-y-auto"
+            : "px-5 pt-4 flex flex-col gap-3"
+        }
+        style={isDesktop ? { maxHeight: 480 } : undefined}
+      >
         <button
           type="button"
           onClick={() => setLeadsOpen((v) => !v)}
@@ -1250,7 +1274,10 @@ function AdminDashboard({
         )}
       </div>
 
-      <div className="px-5 py-4">
+      <div
+        className={isDesktop ? "col-span-3" : "px-5 py-4"}
+        style={isDesktop ? { order: -1 } : undefined}
+      >
         <button
           onClick={() => setOpenFormFor(openFormFor === "new" ? null : "new")}
           className="w-full text-white font-bold rounded-xl text-base"
@@ -1265,7 +1292,12 @@ function AdminDashboard({
 
       <div
         id="active-deals"
-        className={isDesktop ? "px-8 pb-6 max-w-[1200px] mx-auto w-full flex flex-col gap-3" : "px-5 pb-6 flex flex-col gap-3"}
+        className={
+          isDesktop
+            ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3 overflow-y-auto"
+            : "px-5 pb-6 flex flex-col gap-3"
+        }
+        style={isDesktop ? { maxHeight: 480 } : undefined}
       >
         <div className="text-sm font-bold text-gray500">
           진행 중인 매물 ({activeDeals.length})
@@ -1273,14 +1305,22 @@ function AdminDashboard({
         {!loading && activeDeals.length === 0 && (
           <div className="text-center text-gray500 py-6 text-sm">진행 중인 매물이 없어요.</div>
         )}
-        <div className={isDesktop ? "grid grid-cols-3 gap-3" : "flex flex-col gap-3"}>
+        <div className="flex flex-col gap-3">
           {activeDeals.map((d) => (
             <ActiveDealCard key={d.id} deal={d} adminKey={adminKey} onChanged={load} />
           ))}
         </div>
       </div>
 
-      <div id="pending-sellers" className="px-5 pb-8 flex flex-col gap-3">
+      <div
+        id="pending-sellers"
+        className={
+          isDesktop
+            ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3 overflow-y-auto"
+            : "px-5 pb-8 flex flex-col gap-3"
+        }
+        style={isDesktop ? { maxHeight: 480 } : undefined}
+      >
         <button
           type="button"
           onClick={() => setSellerReqOpen((v) => !v)}
@@ -1402,7 +1442,14 @@ function AdminDashboard({
         )}
       </div>
 
-      <section className="mt-8 px-5">
+      <section
+        className={
+          isDesktop
+            ? "bg-white border border-gray200 rounded-2xl p-4 overflow-y-auto"
+            : "mt-8 px-5"
+        }
+        style={isDesktop ? { maxHeight: 480 } : undefined}
+      >
         <button
           type="button"
           onClick={() => setPartnerReqOpen((v) => !v)}
@@ -1458,7 +1505,15 @@ function AdminDashboard({
         )}
       </section>
 
-      <div id="buy-requests" className="px-5 pb-8 flex flex-col gap-3">
+      <div
+        id="buy-requests"
+        className={
+          isDesktop
+            ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3 overflow-y-auto"
+            : "px-5 pb-8 flex flex-col gap-3"
+        }
+        style={isDesktop ? { maxHeight: 480 } : undefined}
+      >
         <button
           type="button"
           onClick={() => setBuyReqOpen((v) => !v)}
@@ -1574,6 +1629,8 @@ function AdminDashboard({
         ))}
         </>
         )}
+      </div>
+
       </div>
 
       {adminRole === "최고관리자" && (

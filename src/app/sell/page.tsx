@@ -175,7 +175,9 @@ export default function SellPage() {
           <span className="font-black" style={{ fontSize: 17, color: "#fff", letterSpacing: "-0.02em" }}>
             재고 판매 등록
           </span>
-          <span className="ml-auto font-bold rounded-full" style={{ fontSize: 11, color: "#fff", background: "#03C75A", padding: "5px 10px" }}>
+          {/* 2026-09-26 (3): 흰 글자+#03C75A 배경은 2.25:1로 11px 텍스트 기준(4.5:1)
+              미달 — 네이비 글자로 바꿔 6.89:1 확보. */}
+          <span className="ml-auto font-bold rounded-full" style={{ fontSize: 11, color: "#0B2540", background: "#03C75A", padding: "5px 10px" }}>
             수수료 0원
           </span>
         </div>
