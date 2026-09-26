@@ -556,15 +556,14 @@ function SignupPageInner() {
                 className="w-full flex items-center justify-between flex-wrap gap-x-2 gap-y-1"
               >
                 <span style={{ color: "#0B2540", fontSize: 15, fontWeight: 700, wordBreak: "keep-all" }}>
-                  🗺️ 관심지역 선택{" "}
-                  <span style={{ color: "#6B7480", fontWeight: 500 }}>(선택 안 하면 전국)</span>
+                  🗺️ 관심지역
                 </span>
                 <span className="font-bold ml-auto" style={{ color: "#6B7480", fontSize: 13, whiteSpace: "nowrap" }}>
                   {regionOpen
                     ? "접기 ▲"
                     : allRegionsOn || regions.length === 0
-                    ? "전국 (선택 안 함) · 펼치기 ▾"
-                    : `${regions.length}곳 선택됨 · 펼치기 ▾`}
+                    ? "전국 · 펼치기 ▾"
+                    : `${regions.length}곳 · 펼치기 ▾`}
                 </span>
               </button>
               {regionOpen && (
