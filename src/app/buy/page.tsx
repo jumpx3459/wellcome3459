@@ -8,6 +8,7 @@ import { formatPriceInput, parsePriceInput } from "@/lib/format";
 import { isValidKoreanPhone, fromE164Phone } from "@/lib/auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { NAV_HEIGHT } from "@/components/BottomNav";
+import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 
 export default function BuyPage() {
   const [productName, setProductName] = useState("");
@@ -144,6 +145,13 @@ export default function BuyPage() {
         <span className="font-black" style={{ fontSize: 20, color: "#0B2540", letterSpacing: "-0.02em" }}>
           이런 재고 찾습니다
         </span>
+      </div>
+
+      {/* design-v2: deals 페이지 헤더에만 있던 긴급성 로테이션 문구를 하단 탭
+          5개 화면 전체(deals/buy/홈/마이페이지/signup)에 동일하게 노출 — 이 화면은
+          다크 히어로가 없는 라이트 레이아웃이라 얇은 네이비 스트립으로 삽입. */}
+      <div className="flex-shrink-0 flex items-center" style={{ padding: "9px 20px", background: "var(--color-navy)" }}>
+        <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
       </div>
 
       <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: 132 }}>

@@ -7,6 +7,12 @@ import { mockDeals, categoryIcons, categoryColors, mockRegions, type Deal } from
 import { formatPrice } from "@/lib/format";
 import { formatCountdown } from "@/lib/format";
 import InstallAppButton, { useInstallPrompt } from "@/components/InstallAppButton";
+import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
+
+// 헤더(점핑매니저 안내줄)의 실측 높이 — 아래 콘텐츠의 paddingTop 보정에 사용.
+// sandbox엔 인증 세션이 없어 Playwright로 직접 측정 못 함 — 로컬에서 실제
+// 렌더 높이 확인 후 오차 있으면 이 값만 조정하면 됨.
+const INBOX_HEADER_HEIGHT = 68;
 
 const INSTALL_DISMISS_KEY = "dj_home_install_dismissed";
 const ALERT_EXAMPLE_THRESHOLD = 5; // 실제 매칭 매물이 이보다 적을 때만 예시 섹션 노출
@@ -147,19 +153,29 @@ export default function AlertInboxHome() {
 
   return (
     <main className="flex flex-col min-h-screen bg-white" style={{ paddingBottom: 64 }}>
-      <div className="sticky top-0 z-10 bg-white" style={{ borderBottom: "1px solid #EEF0F2" }}>
+      {/* 2026-09-26: position:sticky였는데 실제로는 전혀 안 떠 있던 버그 발견 —
+          layout.tsx의 overflow-x-hidden 단독 설정이 overflow-y를 auto로 계산시켜
+          이 div가 의도치 않은 sticky 기준 컨테이너가 됐는데, 그 컨테이너 자체는
+          내부 스크롤이 발생한 적이 없어 sticky가 무력화됨 (buy/sell/signup 하단
+          CTA와 동일 원인, 동일 수정). fixed로 교체하고 아래 콘텐츠에 paddingTop
+          보정. 서브텍스트 자리는 RotatingUrgencyTag로 교체해 다른 화면과 통일된
+          긴급성 문구를 노출. */}
+      <div
+        className="fixed top-0 z-10 left-1/2 -translate-x-1/2 w-full max-w-md bg-white"
+        style={{ borderBottom: "1px solid #EEF0F2" }}
+      >
         <div className="flex items-center gap-2.5" style={{ padding: "14px 20px 12px" }}>
           <img src="/images/manager.png" alt="점핑매니저" style={{ width: 34, height: 34, objectFit: "contain", flexShrink: 0 }} />
           <div className="min-w-0">
             <div className="font-black truncate" style={{ fontSize: 15.5, color: "#0B2540", letterSpacing: "-0.02em" }}>
               {deals.length > 0 ? `오늘 긴급매물 ${deals.length}건 떴어요` : "오늘의 긴급매물을 모아봤어요"}
             </div>
-            <div style={{ fontSize: 11.5, color: "#9AA3AD", fontWeight: 600 }}>덤핑점핑 · 점핑매니저가 놓치지 않게 알려드려요</div>
+            <RotatingUrgencyTag style={{ color: "var(--color-brandOrange)" }} />
           </div>
         </div>
       </div>
 
-      <div style={{ padding: "14px 20px 2px" }}>
+      <div style={{ padding: `${INBOX_HEADER_HEIGHT}px 20px 2px` }}>
         <Link
           href="/sell"
           className="flex items-center justify-between rounded-xl"

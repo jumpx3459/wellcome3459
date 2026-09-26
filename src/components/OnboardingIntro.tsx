@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 
 const STORAGE_KEY = "dj_onboarded";
 
@@ -64,6 +65,9 @@ export default function OnboardingIntro() {
             890명+ 덤핑재고 알림 받는 중
           </span>
         </div>
+        {/* design-v2: deals 헤더의 긴급성 로테이션 문구를 첫 진입 화면에도 노출해
+            가입 전부터 각인 효과를 줌 (2026-09-26). */}
+        <RotatingUrgencyTag className="mt-2.5" style={{ color: "var(--color-brandOrangeAccent)" }} />
         <h1
           className="font-display mt-4 leading-[1.45]"
           style={{ fontSize: 23, letterSpacing: "-0.02em", wordBreak: "keep-all" }}

@@ -10,6 +10,7 @@ import { generateRefCode } from "@/lib/refCode";
 import Toast, { useToast } from "@/components/Toast";
 import BusinessLicenseUploader from "@/components/BusinessLicenseUploader";
 import EcosystemGrid from "@/components/EcosystemGrid";
+import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 
 type InterestItem = {
@@ -521,6 +522,9 @@ export default function MyPage() {
           backgroundSize: "16px 16px, cover",
         }}
       >
+        {/* design-v2: deals 헤더의 긴급성 로테이션 문구를 마이페이지 상단에도 노출
+            (2026-09-26) — 하단 탭 전체 화면에 동일 메시지 각인. */}
+        <RotatingUrgencyTag className="mb-2.5" style={{ color: "var(--color-brandOrangeAccent)" }} />
         <div className="flex items-center gap-3">
           <div className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 52, height: 52, background: "rgba(255,255,255,.14)", fontSize: 23 }}>
             🏪

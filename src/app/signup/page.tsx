@@ -11,6 +11,7 @@ import Toast, { useToast } from "@/components/Toast";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 import { fmtLeft } from "@/lib/format";
 import { NAV_HEIGHT } from "@/components/BottomNav";
+import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 
 // "01012345678" -> "010****5678" 형태로 화면에만 일부 가려서 보여줍니다
 function maskPhone(phone: string): string {
@@ -464,6 +465,13 @@ function SignupPageInner() {
           </div>
           <span className="font-mono text-xs font-bold" style={{ color: "#6B7480" }}>{obStep}/{TOTAL_STEPS}</span>
         </div>
+      </div>
+
+      {/* design-v2: deals 헤더의 긴급성 로테이션 문구를 가입 플로우 상단에도 노출
+          (2026-09-26) — 진행바(스텝 UI) 자체엔 자리가 없어 그 아래 얇은 네이비
+          스트립으로 분리 삽입. */}
+      <div className="flex-shrink-0 flex items-center" style={{ padding: "9px 22px", background: "var(--color-navy)" }}>
+        <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
       </div>
 
       <div className="flex-1" style={{ padding: alreadyMember ? "24px 22px 20px" : "24px 22px 132px" }}>

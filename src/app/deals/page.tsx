@@ -7,6 +7,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockDeals, mockCategories, mockRegions, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import CountdownBadge from "@/components/CountdownBadge";
 import AdSlot from "@/components/AdSlot";
+import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import { formatPrice } from "@/lib/format";
 
 const DEALS_EXAMPLE_THRESHOLD = 5;
@@ -14,7 +15,7 @@ const EXAMPLE_DEALS = mockDeals.filter((d) => d.status !== "closed").slice(0, 4)
 
 // design-v2: 헤더 우측의 "정부지원금" 링크를 마이페이지로 옮기고, 그 자리를
 // 이 화면이 다루는 매물 성격을 보여주는 순수 카피 로테이션으로 채움 (클릭 동작 없음).
-const HEADER_ROTATING_TAGS = ["⏰ 기한임박 매물", "📦 과잉재고 정리", "🏭 폐업 정리 매물", "🔍 긴급 소싱 매칭"];
+// 2026-09-26: RotatingUrgencyTag로 추출 — buy/홈/마이페이지/signup에도 동일하게 노출.
 
 export default function DealsPage() {
   return (
@@ -126,16 +127,6 @@ function DealsPageInner() {
     return () => clearInterval(id);
   }, []);
 
-  const [tagIndex, setTagIndex] = useState(0);
-
-  useEffect(() => {
-    const id = setInterval(
-      () => setTagIndex((i) => (i + 1) % HEADER_ROTATING_TAGS.length),
-      2500
-    );
-    return () => clearInterval(id);
-  }, []);
-
   const notExpired = deals.filter((d) => new Date(d.closes_at).getTime() > now);
   const sourceList = view === "active" ? notExpired : closedDeals;
   const byCategory = activeCat === "전체" ? sourceList : sourceList.filter((d) => d.category === activeCat);
@@ -190,13 +181,7 @@ function DealsPageInner() {
           <div className="text-xs font-bold tracking-widest whitespace-nowrap" style={{ color: "#FFD166" }}>
             오늘의 덤핑 매물
           </div>
-          <div
-            key={tagIndex}
-            className="text-sm font-bold py-2 -my-2 whitespace-nowrap animate-onboarding-step"
-            style={{ color: "var(--color-brandOrangeAccent)" }}
-          >
-            {HEADER_ROTATING_TAGS[tagIndex]}
-          </div>
+          <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
         </div>
         <h1 className="font-display text-2xl mt-1.5">
           {view === "active" ? "지금 놓치면 마감" : "지난 마감 매물"}
