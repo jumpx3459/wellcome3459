@@ -69,6 +69,7 @@ export default function MyPage() {
   const [selectedShareDealId, setSelectedShareDealId] = useState<string>("");
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -738,7 +739,7 @@ export default function MyPage() {
           )}
 
           {shareDeals.length > 0 && (
-            <label className="text-sm font-bold text-gray500 mb-1.5 block">공유할 매물 선택</label>
+            <label className="text-sm font-bold text-gray500 mb-1.5 block text-right">공유할 매물 선택</label>
           )}
           {shareDeals.length > 0 && (
             <select
@@ -755,50 +756,85 @@ export default function MyPage() {
               <option value="">🔗 매물 없이 가입 추천만 보내기</option>
             </select>
           )}
-          <div className="flex gap-2">
-            <div className="flex-1 min-w-0 border-2 border-gray200 rounded-xl px-3.5 flex items-center text-sm text-gray500 truncate" style={{ height: "48px" }}>
-              {refUrl}
-            </div>
+
+          {/* design-v2: URL 박스 + 복사 + 공유 버튼 3개가 한 줄에 나열되고 QR이
+              항상 펼쳐져 있어 복잡해 보인다는 피드백 → 카카오톡 오픈채팅방 서랍
+              스타일(아이콘+라벨 3열, QR은 탭해서 펼침) 벤치마킹해 아이콘 그리드로
+              압축 (2026-09-26). URL 전체 텍스트는 작은 캡션으로만 남김. */}
+          <div className="grid grid-cols-3 gap-2">
             <button
+              type="button"
               onClick={() => {
                 navigator.clipboard.writeText(refUrl);
                 setCopied(true);
                 setTimeout(() => setCopied(false), 2000);
               }}
-              className="text-white font-bold rounded-xl px-4 text-sm whitespace-nowrap flex-shrink-0"
-              style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)" }}
+              className="flex flex-col items-center gap-1 rounded-2xl bg-white border border-gray200"
+              style={{ padding: "14px 8px" }}
             >
               {copied ? (
-                <span className="inline-flex items-center justify-center gap-1">
-                  복사됨 <CheckCircle className="w-3.5 h-3.5" />
-                </span>
+                <CheckCircle className="w-5 h-5" style={{ color: "#2F9E44" }} />
               ) : (
-                "복사"
+                <span className="text-xl leading-none">🔗</span>
               )}
+              <span className="text-xs font-black text-navy">{copied ? "복사됨" : "링크 복사"}</span>
             </button>
+
             <button
+              type="button"
               onClick={handleShareRefLink}
               aria-label="추천 링크 공유"
-              className="font-bold rounded-xl px-4 text-sm whitespace-nowrap flex-shrink-0 border-2 border-gray200 text-navy"
+              className="flex flex-col items-center gap-1 rounded-2xl bg-white border border-gray200"
+              style={{ padding: "14px 8px" }}
             >
               {shared ? (
-                <span className="inline-flex items-center justify-center gap-1">
-                  공유됨 <CheckCircle className="w-3.5 h-3.5" />
-                </span>
+                <CheckCircle className="w-5 h-5" style={{ color: "#2F9E44" }} />
               ) : (
-                "공유 ↗"
+                <span className="text-xl leading-none">📤</span>
               )}
+              <span className="text-xs font-black text-navy">{shared ? "공유됨" : "링크 공유"}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setQrOpen(true)}
+              className="flex flex-col items-center gap-1 rounded-2xl bg-white border border-gray200"
+              style={{ padding: "14px 8px" }}
+            >
+              <span className="text-xl leading-none">⬛</span>
+              <span className="text-xs font-black text-navy">QR 코드</span>
             </button>
           </div>
+          {refUrl && <p className="text-xs text-gray500 mt-2 truncate">{refUrl}</p>}
 
-          {typeof window !== "undefined" && refCode && (
-            <div className="flex flex-col items-center mt-4">
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(refUrl)}`}
-                alt="추천 링크 QR 코드"
-                className="w-32 h-32 rounded-xl border border-gray200"
-              />
-              <p className="text-sm text-gray500 mt-2">명함 대신 QR로 보여주세요 · 스캔하면 제 추천으로 가입돼요</p>
+          {qrOpen && typeof window !== "undefined" && refCode && (
+            <div
+              className="fixed inset-0 z-50 flex items-end justify-center"
+              style={{ background: "rgba(0,0,0,0.5)" }}
+              onClick={() => setQrOpen(false)}
+            >
+              <div
+                className="bg-white w-full max-w-md rounded-t-3xl flex flex-col items-center"
+                style={{ padding: "28px 24px 32px" }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(refUrl)}`}
+                  alt="추천 링크 QR 코드"
+                  className="w-44 h-44 rounded-xl border border-gray200"
+                />
+                <p className="text-sm text-gray500 mt-3 text-center leading-relaxed">
+                  명함 대신 QR로 보여주세요 · 스캔하면 제 추천으로 가입돼요
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setQrOpen(false)}
+                  className="mt-4 w-full font-bold rounded-xl border-2 border-gray200 text-navy"
+                  style={{ padding: "12px 0" }}
+                >
+                  닫기
+                </button>
+              </div>
             </div>
           )}
 
