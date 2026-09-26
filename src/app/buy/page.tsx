@@ -100,7 +100,7 @@ export default function BuyPage() {
           <Link href="/" className="text-gray500" style={{ fontSize: 19 }}>←</Link>
           {/* 2026-09-26: 탭 화면마다 로고 유무가 달라 브랜드 인지가 끊긴다는 피드백 —
               모든 하단탭 화면 헤더에 작은 로고를 공통으로 배치. */}
-          <img src="/images/logo.png" alt="덤핑점핑" className="w-6 h-6 rounded-md flex-shrink-0" />
+          <img src="/images/logo.png" alt="덤핑점핑" className="w-6 h-6 rounded-md flex-shrink-0 object-contain" />
           <span className="font-black" style={{ fontSize: 20, color: "#0B2540", letterSpacing: "-0.02em" }}>
             이런 재고 찾습니다
           </span>

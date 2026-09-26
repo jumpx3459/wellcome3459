@@ -492,7 +492,7 @@ export default function MyPage() {
       <main className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
         {/* 2026-09-26: 공유 링크로 처음 들어온 사람이 MY 탭에서 마주칠 수 있는 화면인데
             브랜딩이 전혀 없어 썰렁하다는 피드백 — 로고 + 점핑매니저 캐릭터로 보완. */}
-        <img src="/images/logo.png" alt="덤핑점핑" className="w-10 h-10 rounded-lg mb-4" />
+        <img src="/images/logo.png" alt="덤핑점핑" className="w-10 h-10 rounded-lg mb-4 object-contain" />
         <img
           src="/images/manager.png"
           alt="점핑매니저"
