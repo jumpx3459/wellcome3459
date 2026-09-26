@@ -473,7 +473,7 @@ function SignupPageInner() {
             <span className="font-mono text-xs font-bold" style={{ color: "rgba(255,255,255,0.7)" }}>{obStep}/{TOTAL_STEPS}</span>
           </div>
         </div>
-        <div className="flex items-center" style={{ padding: "9px 22px" }}>
+        <div className="flex items-center justify-center" style={{ padding: "9px 22px" }}>
           <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
         </div>
       </div>

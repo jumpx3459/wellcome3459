@@ -151,8 +151,10 @@ export default function BuyPage() {
             이런 재고 찾습니다
           </span>
         </div>
-        <div className="flex items-center" style={{ padding: "9px 20px" }}>
-          <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
+        {/* 2026-09-26 (5): 중앙 정렬 + buy는 하단 탭 중 핵심 화면이라 로테이션
+            문구를 16px → 19px로 키워 더 강조. */}
+        <div className="flex items-center justify-center" style={{ padding: "9px 20px" }}>
+          <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)", fontSize: 19 }} />
         </div>
       </div>
 

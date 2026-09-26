@@ -181,7 +181,7 @@ export default function SellPage() {
             수수료 0원
           </span>
         </div>
-        <div className="flex items-center" style={{ padding: "9px 20px" }}>
+        <div className="flex items-center justify-center" style={{ padding: "9px 20px" }}>
           <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
         </div>
       </div>
