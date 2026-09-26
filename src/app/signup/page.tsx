@@ -476,9 +476,12 @@ function SignupPageInner() {
               ←
             </button>
             {/* 2026-09-26: 탭 화면마다 로고 유무가 달라 브랜드 인지가 끊긴다는 피드백 —
-                모든 하단탭 화면 헤더에 작은 로고를 공통으로 배치. */}
-            <div className="bg-white rounded-lg px-1.5 py-1 flex-shrink-0">
-              <img src="/images/logo.png" alt="덤핑점핑" className="h-5 w-auto block" />
+                모든 하단탭 화면 헤더에 작은 로고를 공통으로 배치.
+                2026-09-27: buy/sell은 기존 회원의 반복 방문 화면이라 작게 둬도
+                되지만, 신청(signup)은 신규 방문자의 첫 브랜드 접점이라 20px는
+                너무 작다는 피드백 — 28px로 확대. */}
+            <div className="bg-white rounded-lg px-2 py-1.5 flex-shrink-0">
+              <img src="/images/logo.png" alt="덤핑점핑" className="h-7 w-auto block" />
             </div>
             <div className="flex-1 rounded-full overflow-hidden" style={{ height: 5, background: "rgba(255,255,255,0.18)" }}>
               <div
@@ -544,8 +547,13 @@ function SignupPageInner() {
             <h2 className="font-display" style={{ fontSize: 23, color: "#0B2540", letterSpacing: "-0.02em" }}>
               어떤 재고를 찾고 계세요?
             </h2>
-            <p className="mt-2" style={{ fontSize: 14, color: "#6B7480", lineHeight: 1.6 }}>
-              고른 카테고리에 매물이 뜨면 즉시 알려드려요. 여러 개 고를 수 있어요.
+            {/* 2026-09-27: 이 문장이 사실상 핵심 가치 제안(고른 카테고리 매물 즉시
+                알림)인데 옅은 회색 캡션 톤이라 눈에 안 들어온다는 피드백 —
+                볼드+진한 색+벨 이모지로 강조. "여러 개 고를 수 있어요"는 부가
+                안내라 톤을 낮춰 분리. */}
+            <p className="mt-2" style={{ fontSize: 14.5, lineHeight: 1.6 }}>
+              <span className="font-bold" style={{ color: "#0B2540" }}>🔔 고른 카테고리에 매물이 뜨면 즉시 알려드려요.</span>{" "}
+              <span style={{ color: "#6B7480" }}>여러 개 고를 수 있어요.</span>
             </p>
             <div className="grid grid-cols-2 gap-2.5 mt-5">
               {mockCategories.map((c) => {
