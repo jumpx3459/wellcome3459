@@ -319,6 +319,21 @@ function AdminDashboard({
   const [changePwError, setChangePwError] = useState("");
   const [changePwSuccess, setChangePwSuccess] = useState(false);
 
+  // 2026-09-26: 관리자 페이지가 브레이크포인트 없이 세로로만 쌓이는 구조라
+  // PC 모니터에서도 모바일과 동일하게 한 줄씩 이어지며 스크롤만 길어짐 —
+  // "자동"은 실제 창 폭(1024px 기준)으로 PC 레이아웃을 자동 적용하고,
+  // "모바일"/"PC"는 창 폭과 무관하게 강제 고정(미리보기·개인 취향용).
+  // 우선 핵심 구간(조치 필요·참고 지표·진행 중인 매물)에만 적용.
+  const [viewMode, setViewMode] = useState<"auto" | "mobile" | "desktop">("auto");
+  const [windowWidth, setWindowWidth] = useState(0);
+  useEffect(() => {
+    const update = () => setWindowWidth(window.innerWidth);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+  const isDesktop = viewMode === "desktop" || (viewMode === "auto" && windowWidth >= 1024);
+
   // 리스트 섹션 아코디언 — 조치가 필요한 섹션(리드/신청서)은 기본 펼침,
   // 참고용 섹션(전체 회원 목록/관리자 목록)은 기본 접힘.
   const [membersOpen, setMembersOpen] = useState(false);
@@ -657,6 +672,29 @@ function AdminDashboard({
           )}
         </div>
         <div className="flex flex-col items-end gap-2 flex-shrink-0">
+          <div className="flex rounded-lg overflow-hidden border border-white/25">
+            {(
+              [
+                { mode: "auto", label: "자동" },
+                { mode: "mobile", label: "📱" },
+                { mode: "desktop", label: "💻" },
+              ] as const
+            ).map(({ mode, label }) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setViewMode(mode)}
+                className="text-xs font-bold px-2 py-1"
+                style={
+                  viewMode === mode
+                    ? { background: "#fff", color: "#0B2540" }
+                    : { background: "transparent", color: "rgba(255,255,255,0.7)" }
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <button
             onClick={() => {
               setShowChangePassword(true);
@@ -673,7 +711,7 @@ function AdminDashboard({
         </div>
       </div>
 
-      <div className="px-5 pt-4">
+      <div className={isDesktop ? "px-8 pt-4 max-w-[1200px] mx-auto w-full" : "px-5 pt-4"}>
         <div className="text-sm font-bold text-gray500 mb-1.5">⚡ 조치 필요</div>
         <div className="grid grid-cols-4 gap-1.5">
           {[
@@ -726,7 +764,7 @@ function AdminDashboard({
         </div>
 
         <div className="text-sm font-bold text-gray500 mb-1.5 mt-4">참고 지표</div>
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className={isDesktop ? "grid grid-cols-7 gap-1.5" : "grid grid-cols-4 gap-1.5"}>
           {[
             { label: "오늘 신규가입", value: members.filter((m) => isToday(m.created_at)).length },
             { label: "오늘 등록매물", value: activeDeals.filter((d) => isToday(d.created_at)).length },
@@ -1225,16 +1263,21 @@ function AdminDashboard({
         )}
       </div>
 
-      <div id="active-deals" className="px-5 pb-6 flex flex-col gap-3">
+      <div
+        id="active-deals"
+        className={isDesktop ? "px-8 pb-6 max-w-[1200px] mx-auto w-full flex flex-col gap-3" : "px-5 pb-6 flex flex-col gap-3"}
+      >
         <div className="text-sm font-bold text-gray500">
           진행 중인 매물 ({activeDeals.length})
         </div>
         {!loading && activeDeals.length === 0 && (
           <div className="text-center text-gray500 py-6 text-sm">진행 중인 매물이 없어요.</div>
         )}
-        {activeDeals.map((d) => (
-          <ActiveDealCard key={d.id} deal={d} adminKey={adminKey} onChanged={load} />
-        ))}
+        <div className={isDesktop ? "grid grid-cols-3 gap-3" : "flex flex-col gap-3"}>
+          {activeDeals.map((d) => (
+            <ActiveDealCard key={d.id} deal={d} adminKey={adminKey} onChanged={load} />
+          ))}
+        </div>
       </div>
 
       <div id="pending-sellers" className="px-5 pb-8 flex flex-col gap-3">
