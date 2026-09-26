@@ -101,7 +101,7 @@ export default function BuyPage() {
           {/* 2026-09-26: 탭 화면마다 로고 유무가 달라 브랜드 인지가 끊긴다는 피드백 —
               모든 하단탭 화면 헤더에 작은 로고를 공통으로 배치. */}
           <img src="/images/logo.png" alt="덤핑점핑" className="w-6 h-6 rounded-md flex-shrink-0 object-contain" />
-          <span className="font-black" style={{ fontSize: 20, color: "#0B2540", letterSpacing: "-0.02em" }}>
+          <span className="font-display text-2xl whitespace-nowrap" style={{ color: "#0B2540" }}>
             이런 재고 찾습니다
           </span>
         </div>
@@ -163,12 +163,15 @@ export default function BuyPage() {
           <div className="bg-white rounded-lg px-1.5 py-1 flex-shrink-0">
             <img src="/images/logo.png" alt="덤핑점핑" className="h-5 w-auto block" />
           </div>
-          <span className="font-black" style={{ fontSize: 20, color: "#fff", letterSpacing: "-0.02em" }}>
+          <span className="font-display text-2xl whitespace-nowrap" style={{ color: "#fff" }}>
             이런 재고 찾습니다
           </span>
         </div>
         {/* 2026-09-26 (5): 중앙 정렬 + buy는 하단 탭 중 핵심 화면이라 로테이션
-            문구를 16px → 19px로 키워 더 강조. */}
+            문구를 16px → 19px로 키워 더 강조.
+            2026-09-26 (8): 타이틀을 deals 헤드라인과 동일한 font-display
+            text-2xl(27px, 루트 112.5% 스케일 적용)로 키워서 로테이션 태그보다
+            타이틀이 시각적으로 우선하도록 정리. */}
         <div className="flex items-center justify-center" style={{ padding: "9px 20px" }}>
           <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)", fontSize: 19 }} />
         </div>

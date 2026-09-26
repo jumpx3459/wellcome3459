@@ -11,8 +11,10 @@ import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 
 // 헤더(점핑매니저 안내줄)의 실측 높이 — 아래 콘텐츠의 paddingTop 보정에 사용.
 // 2026-09-26 로컬 Playwright 실측 77.3px(360/390/430px 폭 동일) → 78로 올림.
+// 2026-09-26 (8) 타이틀 15.5px→20px로 키우며 재실측 83px(360/390/430px 폭 동일,
+// Playwright headless Chromium) → 그대로 반영.
 // 헤더 문구/폰트를 바꾸면 다시 재야 함. 원래 있던 헤더-콘텐츠 간격 14px은 별도로 더함.
-const INBOX_HEADER_HEIGHT = 78;
+const INBOX_HEADER_HEIGHT = 83;
 const INBOX_HEADER_GAP = 14;
 
 const INSTALL_DISMISS_KEY = "dj_home_install_dismissed";
@@ -161,17 +163,33 @@ export default function AlertInboxHome() {
           CTA와 동일 원인, 동일 수정). fixed로 교체하고 아래 콘텐츠에 paddingTop
           보정. 서브텍스트 자리는 RotatingUrgencyTag로 교체해 다른 화면과 통일된
           긴급성 문구를 노출. */}
+      {/* 2026-09-26 (8): 다른 4개 탭 헤더(deals/buy/sell/signup)는 전부 네이비
+          도트 텍스처인데 이 고정 바만 흰 배경이라 겉돈다는 피드백 — 동일 텍스처로
+          통일. 타이틀도 15.5px→20px로 키워 로테이션 태그(text-base, 루트
+          112.5% 적용 시 실제 18px)보다 확실히 크게. 단, 이 바는 스크롤해도 항상
+          고정으로 떠 있어서 deals 히어로(27px)만큼 키우진 않음 — 매물 피드
+          공간을 계속 깎아먹지 않도록 "태그보다만 크게" 수준으로 절충.
+          manager.png는 불투명 흰 배경이라 rounded-lg로 뱃지처럼 마감. */}
       <div
-        className="fixed top-0 z-10 left-1/2 -translate-x-1/2 w-full max-w-md bg-white"
-        style={{ borderBottom: "1px solid #EEF0F2" }}
+        className="fixed top-0 z-10 left-1/2 -translate-x-1/2 w-full max-w-md"
+        style={{
+          backgroundImage:
+            "radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(120deg, #04101C, #1A4B78)",
+          backgroundSize: "16px 16px, cover",
+        }}
       >
         <div className="flex items-center gap-2.5" style={{ padding: "14px 20px 12px" }}>
-          <img src="/images/manager.png" alt="점핑매니저" style={{ width: 34, height: 34, objectFit: "contain", flexShrink: 0 }} />
+          <img
+            src="/images/manager.png"
+            alt="점핑매니저"
+            className="rounded-lg"
+            style={{ width: 34, height: 34, objectFit: "contain", flexShrink: 0 }}
+          />
           <div className="min-w-0">
-            <div className="font-black truncate" style={{ fontSize: 15.5, color: "#0B2540", letterSpacing: "-0.02em" }}>
+            <div className="font-display truncate" style={{ fontSize: 20, color: "#fff" }}>
               {deals.length > 0 ? `오늘 긴급매물 ${deals.length}건 떴어요` : "오늘의 긴급매물을 모아봤어요"}
             </div>
-            <RotatingUrgencyTag style={{ color: "var(--color-brandOrange)" }} />
+            <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
           </div>
         </div>
       </div>

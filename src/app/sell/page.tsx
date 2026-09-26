@@ -125,7 +125,7 @@ export default function SellPage() {
           {/* 2026-09-26: 탭 화면마다 로고 유무가 달라 브랜드 인지가 끊긴다는 피드백 —
               모든 하단탭 화면 헤더에 작은 로고를 공통으로 배치. */}
           <img src="/images/logo.png" alt="덤핑점핑" className="w-6 h-6 rounded-md flex-shrink-0 object-contain" />
-          <span className="font-black" style={{ fontSize: 17, color: "#0B2540", letterSpacing: "-0.02em" }}>
+          <span className="font-display text-2xl whitespace-nowrap" style={{ color: "#0B2540" }}>
             재고 판매 등록
           </span>
         </div>
@@ -194,12 +194,14 @@ export default function SellPage() {
           <div className="bg-white rounded-lg px-1.5 py-1 flex-shrink-0">
             <img src="/images/logo.png" alt="덤핑점핑" className="h-5 w-auto block" />
           </div>
-          <span className="font-black" style={{ fontSize: 17, color: "#fff", letterSpacing: "-0.02em" }}>
+          <span className="font-display text-2xl whitespace-nowrap" style={{ color: "#fff" }}>
             재고 판매 등록
           </span>
           {/* 2026-09-26 (3): 흰 글자+#03C75A 배경은 2.25:1로 11px 텍스트 기준(4.5:1)
-              미달 — 네이비 글자로 바꿔 6.89:1 확보. */}
-          <span className="ml-auto font-bold rounded-full" style={{ fontSize: 11, color: "#0B2540", background: "#03C75A", padding: "5px 10px" }}>
+              미달 — 네이비 글자로 바꿔 6.89:1 확보.
+              2026-09-26 (8): 타이틀이 17px→27px로 커지면서 360px 폭에서 텍스트가
+              줄바꿈돼 배지와 겹치던 문제 — whitespace-nowrap으로 고정. */}
+          <span className="ml-auto flex-shrink-0 font-bold rounded-full" style={{ fontSize: 11, color: "#0B2540", background: "#03C75A", padding: "5px 10px" }}>
             수수료 0원
           </span>
         </div>
