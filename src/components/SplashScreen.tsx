@@ -2,24 +2,15 @@
 
 import { useEffect, useState } from "react";
 
-const STORAGE_KEY = "dj_splash_shown_v1";
-
 export default function SplashScreen({ children }: { children: React.ReactNode }) {
   const [show, setShow] = useState(true);
 
   useEffect(() => {
-    // localStorage는 세션이 아니라 기기에 영구 저장되므로, 모바일 웹뷰에서
-    // 뒤로가기·새로고침을 해도 "한 번 봤다"는 기록이 사라지지 않습니다.
-    // 일부 미리보기(iframe) 환경은 저장소 접근 자체를 막기도 해서 try/catch로 감쌉니다.
-    try {
-      if (localStorage.getItem(STORAGE_KEY)) {
-        setShow(false);
-        return;
-      }
-      localStorage.setItem(STORAGE_KEY, "1");
-    } catch {
-      // 저장소 접근이 막힌 환경 — 이번 진입에서는 그냥 한 번 보여주고 넘어갑니다.
-    }
+    // 2026-09-26: 기존엔 localStorage 플래그로 기기당 최초 1회만 노출했으나,
+    // 네이티브 앱처럼 실행(재접속)할 때마다 브랜드 로고를 각인시키는 게
+    // 낫다는 판단으로 변경. 이 컴포넌트는 "/" 진입(콜드 스타트) 시에만
+    // 마운트되므로 SPA 내부 라우팅 중엔 재노출되지 않는다 — 짧은 1.8초 +
+    // 건너뛰기 버튼으로 피로감을 낮춘다.
     const timer = setTimeout(() => setShow(false), 1800);
     return () => clearTimeout(timer);
   }, []);
