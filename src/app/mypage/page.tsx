@@ -9,6 +9,7 @@ import { formatPrice, formatMemberNo, formatRelativeTime, dealUrgencyState } fro
 import { generateRefCode } from "@/lib/refCode";
 import Toast, { useToast } from "@/components/Toast";
 import BusinessLicenseUploader from "@/components/BusinessLicenseUploader";
+import EcosystemGrid from "@/components/EcosystemGrid";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 
 type InterestItem = {
@@ -1182,62 +1183,11 @@ export default function MyPage() {
         {/* design-v2: /deals 헤더에 있던 "정부지원금" 링크를 이동 — 매물 탐색 화면과
             성격이 다른(사업자 지원사업 정보) 기능이라 마이페이지 메뉴로 옮겨서 정리.
             /support는 이미 /api/support로 기업마당 연동 로직이 있어 "준비중"이 아님.
-            이후 홈 화면 하단에 화물배차/계산기/정부지원금 3열 그리드가 추가되면서,
-            마이페이지에도 진입점을 맞춰서 동일한 grid-cols-3 타일로 확장함
-            ("사업자 전용" 배지는 실제 접근 제한이 없어 제거 — 위 커밋 참고). */}
+            타일 3개(화물배차/계산기/정부지원금)는 홈 화면과 마크업이 완전히 겹쳐서
+            <EcosystemGrid />로 추출함 (2026-09-26). ("사업자 전용" 배지는 실제
+            접근 제한이 없어 제거 — 위 커밋 참고). */}
         <div className="border-t border-gray200 pt-5">
-          <div className="grid grid-cols-3 gap-2">
-            <Link
-              href="/logistics"
-              className="flex flex-col items-center text-center rounded-2xl bg-white border border-gray200"
-              style={{ padding: "16px 8px" }}
-            >
-              <div
-                className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: "rgba(27,58,92,0.08)" }}
-              >
-                <span className="text-2xl leading-none">🚚</span>
-              </div>
-              <div className="text-xs font-black text-navy mt-2">화물배차</div>
-              <div className="text-[10px] font-bold mt-0.5" style={{ color: "#1B3A5C" }}>
-                3분 신청
-              </div>
-            </Link>
-
-            <Link
-              href="/logistics?tab=fx"
-              className="flex flex-col items-center text-center rounded-2xl bg-white border border-gray200"
-              style={{ padding: "16px 8px" }}
-            >
-              <div
-                className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: "rgba(27,58,92,0.08)" }}
-              >
-                <span className="text-2xl leading-none">🧮</span>
-              </div>
-              <div className="text-xs font-black text-navy mt-2">계산기</div>
-              <div className="text-[10px] font-bold mt-0.5" style={{ color: "#1B3A5C" }}>
-                환율·관부가세
-              </div>
-            </Link>
-
-            <Link
-              href="/support"
-              className="flex flex-col items-center text-center rounded-2xl bg-white border border-gray200"
-              style={{ padding: "16px 8px" }}
-            >
-              <div
-                className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: "rgba(27,58,92,0.08)" }}
-              >
-                <span className="text-2xl leading-none">🏛️</span>
-              </div>
-              <div className="text-xs font-black text-navy mt-2">정부지원금</div>
-              <div className="text-[10px] font-bold mt-0.5" style={{ color: "#1B3A5C" }}>
-                지원사업 찾기
-              </div>
-            </Link>
-          </div>
+          <EcosystemGrid />
 
           <button
             type="button"
