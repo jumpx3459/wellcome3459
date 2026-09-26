@@ -164,21 +164,24 @@ export default function SellPage() {
 
   return (
     <main className="flex flex-col min-h-screen bg-white">
-      <div className="flex-shrink-0 flex items-center gap-3 px-5 py-4.5" style={{ borderBottom: "1px solid #EEF0F2" }}>
-        <Link href="/" className="text-gray500" style={{ fontSize: 19 }}>←</Link>
-        <span className="font-black" style={{ fontSize: 17, color: "#0B2540", letterSpacing: "-0.02em" }}>
-          재고 판매 등록
-        </span>
-        <span className="ml-auto font-bold rounded-full" style={{ fontSize: 11, color: "#2F9E44", background: "#E8F8EC", padding: "5px 10px" }}>
-          수수료 0원
-        </span>
-      </div>
-
-      {/* design-v2: deals/buy/signup/홈/마이페이지에 이미 있는 긴급성 로테이션
-          문구를 매물 등록(판매) 화면에도 노출 (2026-09-26) — buy와 동일하게
-          다크 히어로가 없는 라이트 레이아웃이라 얇은 네이비 스트립으로 삽입. */}
-      <div className="flex-shrink-0 flex items-center" style={{ padding: "9px 20px", background: "var(--color-navy)" }}>
-        <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
+      {/* 2026-09-26 (2): 화이트 헤더 바로 아래에 네이비 스트립이 붙어 있어 톤이
+          뚝 끊겨 보인다는 피드백 — buy/sell/signup 3개 화면 모두 헤더와 긴급성
+          로테이션 스트립을 하나의 네이비 블록으로 병합 (deals/마이페이지는
+          원래부터 헤더 자체가 다크 히어로라 이 문제가 없었음). 수수료 배지는
+          네이비 배경 위에서도 눈에 띄도록 네이버 연두색(#03C75A) 솔리드로 교체. */}
+      <div className="flex-shrink-0" style={{ background: "var(--color-navy)" }}>
+        <div className="flex items-center gap-3 px-5 py-4.5">
+          <Link href="/" style={{ fontSize: 19, color: "rgba(255,255,255,0.8)" }}>←</Link>
+          <span className="font-black" style={{ fontSize: 17, color: "#fff", letterSpacing: "-0.02em" }}>
+            재고 판매 등록
+          </span>
+          <span className="ml-auto font-bold rounded-full" style={{ fontSize: 11, color: "#fff", background: "#03C75A", padding: "5px 10px" }}>
+            수수료 0원
+          </span>
+        </div>
+        <div className="flex items-center" style={{ padding: "9px 20px" }}>
+          <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
+        </div>
       </div>
 
       <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: 132 }}>

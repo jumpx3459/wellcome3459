@@ -447,31 +447,35 @@ function SignupPageInner() {
 
   return (
     <main className="flex flex-col min-h-screen bg-white">
-      <div style={{ padding: "20px 22px 14px", borderBottom: "1px solid #EEF0F2" }}>
-        <div className="flex items-center gap-3">
-          <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#6B7480", padding: 0, lineHeight: 1 }}>
-            ←
-          </button>
-          <div className="flex-1 rounded-full overflow-hidden" style={{ height: 5, background: "#E4E7EB" }}>
-            <div
-              style={{
-                height: "100%",
-                background: "var(--color-brandOrange)",
-                borderRadius: 99,
-                transition: "width .3s ease",
-                width: `${Math.round((obStep / TOTAL_STEPS) * 100)}%`,
-              }}
-            />
+      {/* 2026-09-26 (2): 화이트 헤더 바로 아래에 네이비 스트립이 붙어 있어 톤이
+          뚝 끊겨 보인다는 피드백 — buy/sell/signup 3개 화면 모두 헤더와 긴급성
+          로테이션 스트립을 하나의 네이비 블록으로 병합 (deals/마이페이지는
+          원래부터 헤더 자체가 다크 히어로라 이 문제가 없었음). 진행바 채움색도
+          다크 배경용 --color-brandOrangeAccent로 교체(기본 brandOrange는 라이트
+          배경 전용). */}
+      <div className="flex-shrink-0" style={{ background: "var(--color-navy)" }}>
+        <div style={{ padding: "20px 22px 14px" }}>
+          <div className="flex items-center gap-3">
+            <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "rgba(255,255,255,0.8)", padding: 0, lineHeight: 1 }}>
+              ←
+            </button>
+            <div className="flex-1 rounded-full overflow-hidden" style={{ height: 5, background: "rgba(255,255,255,0.18)" }}>
+              <div
+                style={{
+                  height: "100%",
+                  background: "var(--color-brandOrangeAccent)",
+                  borderRadius: 99,
+                  transition: "width .3s ease",
+                  width: `${Math.round((obStep / TOTAL_STEPS) * 100)}%`,
+                }}
+              />
+            </div>
+            <span className="font-mono text-xs font-bold" style={{ color: "rgba(255,255,255,0.7)" }}>{obStep}/{TOTAL_STEPS}</span>
           </div>
-          <span className="font-mono text-xs font-bold" style={{ color: "#6B7480" }}>{obStep}/{TOTAL_STEPS}</span>
         </div>
-      </div>
-
-      {/* design-v2: deals 헤더의 긴급성 로테이션 문구를 가입 플로우 상단에도 노출
-          (2026-09-26) — 진행바(스텝 UI) 자체엔 자리가 없어 그 아래 얇은 네이비
-          스트립으로 분리 삽입. */}
-      <div className="flex-shrink-0 flex items-center" style={{ padding: "9px 22px", background: "var(--color-navy)" }}>
-        <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
+        <div className="flex items-center" style={{ padding: "9px 22px" }}>
+          <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
+        </div>
       </div>
 
       <div className="flex-1" style={{ padding: alreadyMember ? "24px 22px 20px" : "24px 22px 132px" }}>
