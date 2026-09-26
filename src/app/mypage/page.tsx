@@ -1182,24 +1182,67 @@ export default function MyPage() {
         {/* design-v2: /deals 헤더에 있던 "정부지원금" 링크를 이동 — 매물 탐색 화면과
             성격이 다른(사업자 지원사업 정보) 기능이라 마이페이지 메뉴로 옮겨서 정리.
             /support는 이미 /api/support로 기업마당 연동 로직이 있어 "준비중"이 아님.
-            "사업자 전용" 배지는 제거함 — /support에 is_business/business_verified
-            체크가 전혀 없어 실제로는 전체공개 기능인데 배지가 반대로 안내하고 있었음
-            (홈 하단 그리드에 새로 추가한 동일 링크에도 배지 없음, 정합성 문제). */}
-        <div className="border-t border-gray200 pt-5 flex flex-col gap-2.5">
-          <Link
-            href="/support"
-            className="w-full bg-white border border-gray200 rounded-xl px-4 py-3 flex items-center justify-between"
-          >
-            <span className="flex items-center gap-2">
-              <span className="text-xl leading-none">🏛️</span>
-              <span className="text-sm font-bold text-gray900">정부지원금 정보</span>
-            </span>
-            <span className="text-gray500">→</span>
-          </Link>
+            이후 홈 화면 하단에 화물배차/계산기/정부지원금 3열 그리드가 추가되면서,
+            마이페이지에도 진입점을 맞춰서 동일한 grid-cols-3 타일로 확장함
+            ("사업자 전용" 배지는 실제 접근 제한이 없어 제거 — 위 커밋 참고). */}
+        <div className="border-t border-gray200 pt-5">
+          <div className="grid grid-cols-3 gap-2">
+            <Link
+              href="/logistics"
+              className="flex flex-col items-center text-center rounded-2xl bg-white border border-gray200"
+              style={{ padding: "16px 8px" }}
+            >
+              <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(27,58,92,0.08)" }}
+              >
+                <span className="text-2xl leading-none">🚚</span>
+              </div>
+              <div className="text-xs font-black text-navy mt-2">화물배차</div>
+              <div className="text-[10px] font-bold mt-0.5" style={{ color: "#1B3A5C" }}>
+                3분 신청
+              </div>
+            </Link>
+
+            <Link
+              href="/logistics?tab=fx"
+              className="flex flex-col items-center text-center rounded-2xl bg-white border border-gray200"
+              style={{ padding: "16px 8px" }}
+            >
+              <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(27,58,92,0.08)" }}
+              >
+                <span className="text-2xl leading-none">🧮</span>
+              </div>
+              <div className="text-xs font-black text-navy mt-2">계산기</div>
+              <div className="text-[10px] font-bold mt-0.5" style={{ color: "#1B3A5C" }}>
+                환율·관부가세
+              </div>
+            </Link>
+
+            <Link
+              href="/support"
+              className="flex flex-col items-center text-center rounded-2xl bg-white border border-gray200"
+              style={{ padding: "16px 8px" }}
+            >
+              <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(27,58,92,0.08)" }}
+              >
+                <span className="text-2xl leading-none">🏛️</span>
+              </div>
+              <div className="text-xs font-black text-navy mt-2">정부지원금</div>
+              <div className="text-[10px] font-bold mt-0.5" style={{ color: "#1B3A5C" }}>
+                지원사업 찾기
+              </div>
+            </Link>
+          </div>
+
           <button
             type="button"
             onClick={() => showToast("개발 중인 기능이에요. 곧 만나보실 수 있어요!")}
-            className="w-full bg-white border border-gray200 rounded-xl px-4 py-3 flex items-center justify-between"
+            className="w-full mt-2.5 bg-white border border-gray200 rounded-xl px-4 py-3 flex items-center justify-between"
           >
             <span className="flex items-center gap-2">
               <span className="text-xl leading-none">📋</span>
