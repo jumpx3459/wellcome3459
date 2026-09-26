@@ -10,6 +10,7 @@ import VideoUploader from "@/components/VideoUploader";
 import { NAV_HEIGHT } from "@/components/BottomNav";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
 import { fromE164Phone, isValidKoreanPhone } from "@/lib/auth";
+import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 
 export default function SellPage() {
   const [companyName, setCompanyName] = useState("");
@@ -171,6 +172,13 @@ export default function SellPage() {
         <span className="ml-auto font-bold rounded-full" style={{ fontSize: 11, color: "#2F9E44", background: "#E8F8EC", padding: "5px 10px" }}>
           수수료 0원
         </span>
+      </div>
+
+      {/* design-v2: deals/buy/signup/홈/마이페이지에 이미 있는 긴급성 로테이션
+          문구를 매물 등록(판매) 화면에도 노출 (2026-09-26) — buy와 동일하게
+          다크 히어로가 없는 라이트 레이아웃이라 얇은 네이비 스트립으로 삽입. */}
+      <div className="flex-shrink-0 flex items-center" style={{ padding: "9px 20px", background: "var(--color-navy)" }}>
+        <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
       </div>
 
       <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: 132 }}>
