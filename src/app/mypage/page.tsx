@@ -489,17 +489,35 @@ export default function MyPage() {
 
   if (notLoggedIn) {
     return (
-      <main className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
-        {/* 2026-09-26: 공유 링크로 처음 들어온 사람이 MY 탭에서 마주칠 수 있는 화면인데
-            브랜딩이 전혀 없어 썰렁하다는 피드백 — 로고 + 점핑매니저 캐릭터로 보완. */}
-        <img src="/images/logo.png" alt="덤핑점핑" className="w-10 h-10 rounded-lg mb-4 object-contain" />
+      <main
+        className="flex flex-col items-center justify-center min-h-screen px-6 text-center"
+        style={{
+          backgroundImage:
+            "radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(120deg, #04101C, #1A4B78)",
+          backgroundSize: "16px 16px, cover",
+        }}
+      >
+        {/* 2026-09-26 (7): 로고만 키우는 대신 deals/홈과 같은 다크 히어로 톤으로
+            전환 — 공유 링크로 처음 들어온 방문자가 MY 탭에서 마주칠 수 있는
+            화면인데 유일하게 브랜드 컬러가 없어 밋밋했음. deals 헤더와 동일한
+            화이트필 로고 + Powered by JumpX 배지 패턴을 재사용. */}
+        <div className="bg-white rounded-xl px-3 py-2 inline-block mb-2.5 shadow-sm">
+          <img src="/images/logo.png" alt="덤핑점핑" className="h-8 w-auto" />
+        </div>
+        <span
+          className="rounded-full font-medium mb-6"
+          style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", padding: "3px 9px", background: "rgba(255,255,255,0.08)" }}
+        >
+          Powered by JumpX
+        </span>
         <img
           src="/images/manager.png"
           alt="점핑매니저"
-          className="w-24 h-24 rounded-xl object-contain bg-gray100 mb-4"
+          className="w-24 h-24 rounded-xl object-contain mb-4"
+          style={{ background: "rgba(255,255,255,0.08)" }}
         />
-        <h1 className="font-display text-xl text-navy mb-2">로그인이 필요해요</h1>
-        <p className="text-gray500 text-base leading-relaxed mb-6">
+        <h1 className="font-display text-xl mb-2" style={{ color: "#fff" }}>로그인이 필요해요</h1>
+        <p className="text-base leading-relaxed mb-6" style={{ color: "rgba(255,255,255,0.75)" }}>
           이미 가입하셨다면 번호 인증만으로 바로 들어올 수 있어요.
         </p>
         <Link
@@ -512,7 +530,7 @@ export default function MyPage() {
         <Link
           href="/signup"
           className="mt-3 text-center"
-          style={{ color: "#6B7480", fontSize: 14.5, fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 4 }}
+          style={{ color: "rgba(255,255,255,0.65)", fontSize: 14.5, fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 4 }}
         >
           처음이신가요? 알림 신청하기
         </Link>

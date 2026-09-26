@@ -453,7 +453,17 @@ function SignupPageInner() {
           원래부터 헤더 자체가 다크 히어로라 이 문제가 없었음). 진행바 채움색도
           다크 배경용 --color-brandOrangeAccent로 교체(기본 brandOrange는 라이트
           배경 전용). */}
-      <div className="flex-shrink-0" style={{ background: "var(--color-navy)" }}>
+      {/* 2026-09-26 (6): deals/홈과 나란히 볼 때 이 화면만 단색 네이비라 밋밋해
+          보인다는 피드백 — 높이는 그대로 두고 배경만 deals/홈과 동일한 도트
+          텍스처 그라디언트로 통일 (온보딩 스텝 흐름은 불변). */}
+      <div
+        className="flex-shrink-0"
+        style={{
+          backgroundImage:
+            "radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(120deg, #04101C, #1A4B78)",
+          backgroundSize: "16px 16px, cover",
+        }}
+      >
         <div style={{ padding: "20px 22px 14px" }}>
           <div className="flex items-center gap-3">
             <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "rgba(255,255,255,0.8)", padding: 0, lineHeight: 1 }}>

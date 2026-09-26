@@ -147,7 +147,17 @@ export default function BuyPage() {
           뚝 끊겨 보인다는 피드백 — buy/sell/signup 3개 화면 모두 헤더와 긴급성
           로테이션 스트립을 하나의 네이비 블록으로 병합 (deals/마이페이지는
           원래부터 헤더 자체가 다크 히어로라 이 문제가 없었음). */}
-      <div className="flex-shrink-0" style={{ background: "var(--color-navy)" }}>
+      {/* 2026-09-26 (6): deals/홈과 나란히 볼 때 이 화면만 단색 네이비라 밋밋해
+          보인다는 피드백 — 높이는 그대로 두고 배경만 deals/홈과 동일한 도트
+          텍스처 그라디언트로 통일 (폼 필드 위치·스크롤은 불변). */}
+      <div
+        className="flex-shrink-0"
+        style={{
+          backgroundImage:
+            "radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(120deg, #04101C, #1A4B78)",
+          backgroundSize: "16px 16px, cover",
+        }}
+      >
         <div className="flex items-center gap-3 px-5 py-4.5">
           <Link href="/" style={{ fontSize: 19, color: "rgba(255,255,255,0.8)" }}>←</Link>
           <div className="bg-white rounded-lg px-1.5 py-1 flex-shrink-0">
