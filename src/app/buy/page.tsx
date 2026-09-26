@@ -344,8 +344,11 @@ export default function BuyPage() {
         </div>
 
         {/* design-v2: 배경 틴트를 빼고 화이트로 — 주황 테두리/텍스트가 틴트 위에서
-            흐릿해지던 문제 수정 (잠든재고 카드와 동일 패턴). */}
-        <div className="flex items-center gap-3 rounded-2xl" style={{ background: "#fff", border: "2px solid var(--color-brandOrange)", padding: "15px 16px" }}>
+            흐릿해지던 문제 수정 (잠든재고 카드와 동일 패턴).
+            2026-09-26 (12): 지역 선택 칩(선택됨)/CTA 버튼도 같은 굵은 주황
+            테두리를 쓰다 보니 이 정적 안내 카드가 버튼처럼 보여 헷갈린다는
+            피드백 — 테두리를 다른 정적 카드들과 같은 중립 회색으로 교체. */}
+        <div className="flex items-center gap-3 rounded-2xl" style={{ background: "#fff", border: "1.5px solid #E4E7EB", padding: "15px 16px" }}>
           <img src="/images/manager.png" alt="점핑매니저" className="flex-shrink-0 rounded-xl bg-white" style={{ width: 46, height: 46, objectFit: "contain" }} />
           <span className="flex-1 min-w-0">
             <span className="block font-black" style={{ fontSize: 15, color: "#0B2540" }}>등록은 완전 무료</span>
