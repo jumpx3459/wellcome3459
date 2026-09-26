@@ -466,7 +466,7 @@ function SignupPageInner() {
         </div>
       </div>
 
-      <div className="flex-1" style={{ padding: "24px 22px 20px" }}>
+      <div className="flex-1" style={{ padding: alreadyMember ? "24px 22px 20px" : "24px 22px 132px" }}>
         {alreadyMember ? (
           <div className="flex flex-col items-center text-center" style={{ padding: "32px 6px 0" }}>
             <div
@@ -836,10 +836,14 @@ function SignupPageInner() {
 
       {!alreadyMember && (
         // design-v2: bottom: 0으로 두면 AppShell의 fixed 하단 탭바(BottomNav, z-40)에
-        // 이 sticky 영역(z-10)이 가려서 스크롤 중엔 안 보이던 버그 — buy/sell과 같은
-        // 원인, 같은 수정(탭바 높이만큼 띄움).
+        // 이 영역이 가려서 탭바 높이만큼 띄움 — buy/sell과 같은 원인, 같은 수정.
+        // 2026-09-26: position:sticky였는데 실제로는 전혀 안 떠 있던 버그 발견
+        // (buy/sell과 동일 원인 — layout.tsx의 overflow-x-hidden 단독 설정이
+        // overflow-y:auto로 계산되면서 의도치 않은 sticky 기준 컨테이너가 됐는데
+        // 그 컨테이너 자체는 내부 스크롤이 발생한 적이 없어 sticky가 무력화됨).
+        // fixed로 교체하고 위 콘텐츠에 paddingBottom 132px 추가.
         <div
-          className="sticky z-10"
+          className="fixed z-10 left-1/2 -translate-x-1/2 w-full max-w-md"
           style={{ bottom: NAV_HEIGHT, padding: "14px 22px 24px", borderTop: "1px solid #EEF0F2", background: "#fff" }}
         >
           <button

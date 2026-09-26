@@ -146,7 +146,7 @@ export default function BuyPage() {
         </span>
       </div>
 
-      <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5">
+      <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: 132 }}>
         <div className="flex items-center gap-3 rounded-2xl" style={{ background: "#EEF1F5", padding: "13px 15px" }}>
           <img src="/images/manager.png" alt="점핑매니저" className="flex-shrink-0" style={{ width: 44, height: 44, objectFit: "contain" }} />
           <p className="leading-snug" style={{ fontSize: 12.5, color: "#0B2540", fontWeight: 500 }}>
@@ -325,15 +325,23 @@ export default function BuyPage() {
 
       {/* design-v2: 필수 항목(무엇을 찾으세요/연락처)만 채워도 바로 제출할 수 있는데,
           버튼이 폼 맨 아래 인라인으로만 있으면 선택 항목까지 스크롤해야 찾을 수
-          있었음 — sell/page.tsx와 같은 이유로 sticky bottom 처리.
-          에러 메시지도 버튼 바로 위(sticky 영역)로 옮김 — 필수 항목(무엇을 찾으세요/
+          있었음 — sell/page.tsx와 같은 이유로 하단 고정 처리.
+          에러 메시지도 버튼 바로 위(고정 영역)로 옮김 — 필수 항목(무엇을 찾으세요/
           연락처)은 폼 맨 위에 있는데 버튼은 어디서든 누를 수 있어서, 에러가 폼 맨
           아래에 있으면 스크롤을 안 내린 사용자에게는 화면 밖이라 안 보이던 문제.
           bottom: 0으로 두면 AppShell의 fixed 하단 탭바(BottomNav, z-40)에
-          이 sticky 영역(z-10)이 가려서 스크롤 중엔 안 보이던 버그 — 탭바 높이만큼
-          띄워서 탭바 바로 위에 오도록 수정. */}
+          이 영역이 가려서 탭바 높이만큼 띄워서 탭바 바로 위에 오도록 함.
+          2026-09-26: position:sticky였는데 실제로는 전혀 안 떠 있던 버그 발견 —
+          layout.tsx의 body/wrapper div가 overflow-x-hidden만 설정하고
+          overflow-y를 안 정해서 overflow-y가 auto로 계산되는 CSS 스펙 동작 때문에
+          그 div가 의도치 않은 sticky 기준 컨테이너가 됐는데, 그 div 자체는 항상
+          컨텐츠에 딱 맞게 커져서(overflow-y:auto인데 실제로 넘치는 일이 없음)
+          내부적으로 스크롤이 발생한 적이 없어 sticky가 아무 효과도 못 냄 — 버튼이
+          그냥 폼 맨 끝에 있는 일반 엘리먼트처럼 렌더링됨(홈/마이페이지 CTA는 동일
+          문제를 안 겪는 position:fixed라 정상 동작했음). fixed로 교체하고 위
+          콘텐츠에 paddingBottom 132px(홈 CTA와 동일 수치)를 더해 가려지지 않게 함. */}
       <div
-        className="sticky z-10"
+        className="fixed z-10 left-1/2 -translate-x-1/2 w-full max-w-md"
         style={{ bottom: NAV_HEIGHT, padding: "14px 20px 20px", borderTop: "1px solid #EEF0F2", background: "#fff" }}
       >
         {error && (
