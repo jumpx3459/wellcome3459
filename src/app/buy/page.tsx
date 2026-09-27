@@ -158,19 +158,19 @@ export default function BuyPage() {
           backgroundSize: "16px 16px, cover",
         }}
       >
-        {/* 2026-09-27 (재검토): 타이틀 행과 로테이션 태그 행 순서를 맞바꿈 — 타이틀
-            자체 크기(font-display text-2xl)는 그대로라 시각적 우선순위는 유지됨. */}
+        {/* 2026-09-27 (재재검토): 구 버전처럼 중앙 자리엔 타이틀, 로테이션 태그는
+            로고 옆 행으로 이동 — 로고 위치·크기는 그대로 유지. */}
         <div className="flex items-center justify-center" style={{ padding: "14px 20px 9px" }}>
-          <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)", fontSize: 19 }} />
+          <span className="font-display text-2xl whitespace-nowrap" style={{ color: "#fff" }}>
+            이런 재고 찾습니다
+          </span>
         </div>
         <div className="flex items-center gap-3 px-5 pb-4.5">
           <Link href="/" style={{ fontSize: 19, color: "rgba(255,255,255,0.8)" }}>←</Link>
           <div className="bg-white rounded-lg px-1.5 py-1 flex-shrink-0">
             <img src="/images/logo.png" alt="덤핑점핑" className="h-5 w-auto block" />
           </div>
-          <span className="font-display text-2xl whitespace-nowrap" style={{ color: "#fff" }}>
-            이런 재고 찾습니다
-          </span>
+          <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)", fontSize: 19 }} />
         </div>
 
         {/* 2026-09-27: signup step1/2와 동일하게 네이비를 핵심 카피까지 확장 —
