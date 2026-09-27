@@ -615,8 +615,19 @@ function DealDetailPageInner() {
               </p>
 
               {bridgeComingSoon ? (
-                <div className="text-xs font-bold text-gray500 text-center" style={{ padding: "12px 0" }}>
-                  거래 플랫폼(JUMP X) 준비 중이에요 · 오픈하면 가장 먼저 알려드릴게요
+                // 2026-09-27: 회색 텍스트 한 줄이라 "비활성화된 기능"처럼 죽어 보였음 —
+                // 아래 "화물이 필요하세요?" 카드와 같은 무게(아이콘+굵은 타이틀+서브텍스트)로
+                // 올리되, 화살표는 빼서 클릭 가능한 링크가 아님을 구분(순수 시각 개선,
+                // 클릭 액션 없음).
+                <div
+                  className="flex items-center gap-3 rounded-xl"
+                  style={{ background: "#fff", border: "1px solid #E2E5E9", padding: "14px 16px" }}
+                >
+                  <span className="text-xl flex-shrink-0">🚀</span>
+                  <div>
+                    <div className="text-sm font-black text-navy">거래 플랫폼(JUMP X) 준비 중이에요</div>
+                    <div className="text-xs mt-0.5 text-gray500">오픈하면 가장 먼저 알려드릴게요</div>
+                  </div>
                 </div>
               ) : (
                 <button
