@@ -158,20 +158,29 @@ export default function BuyPage() {
           backgroundSize: "16px 16px, cover",
         }}
       >
-        {/* 2026-09-27 (재재재검토): 행 순서는 그대로(로고 행이 위, 타이틀 행이 아래)
-            두고 내용만 맞바꿔야 했는데 행 자체를 뒤집어서 타이틀이 맨 위로 튀는
-            버그 — 로고 행을 다시 위로, 타이틀(구버전 로테이션 위치)을 아래로. */}
-        <div className="flex items-center gap-3 px-5 pt-3.5 pb-1">
-          <Link href="/" style={{ fontSize: 19, color: "rgba(255,255,255,0.8)" }}>←</Link>
-          <div className="bg-white rounded-lg px-1.5 py-1 flex-shrink-0">
-            <img src="/images/logo.png" alt="덤핑점핑" className="h-5 w-auto block" />
+        {/* 2026-09-27 (deals 스타일 통일): 하단 탭 레벨 화면인 buy만 유일하게
+            뒤로가기(←)를 쓰고 있던 불일치 — deals/page.tsx와 동일하게
+            "로고=홈 링크 + Powered by JumpX 배지 / 소제목 라벨+로테이션 태그 행 /
+            좌측 정렬 대형 타이틀" 구조로 교체. */}
+        <div className="px-5 pt-5 pb-3">
+          <div className="flex items-center gap-2 mb-3">
+            <Link href="/" className="bg-white rounded-lg px-2.5 py-1.5 inline-block shadow-sm">
+              <img src="/images/logo.png" alt="덤핑점핑" className="h-7 w-auto" />
+            </Link>
+            <span
+              className="rounded-full font-medium"
+              style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", padding: "3px 9px", background: "rgba(255,255,255,0.08)" }}
+            >
+              Powered by JumpX
+            </span>
           </div>
-          <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)", fontSize: 19 }} />
-        </div>
-        <div className="flex items-center justify-center" style={{ padding: "9px 20px 14px" }}>
-          <span className="font-display text-2xl whitespace-nowrap" style={{ color: "#fff" }}>
-            이런 재고 찾습니다
-          </span>
+          <div className="flex items-center justify-between flex-wrap gap-y-1.5">
+            <div className="text-xs font-bold tracking-widest whitespace-nowrap" style={{ color: "#FFD166" }}>
+              재고 구매 요청
+            </div>
+            <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
+          </div>
+          <h1 className="font-display text-2xl mt-1.5 text-white">이런 재고 찾습니다</h1>
         </div>
 
         {/* 2026-09-27: signup step1/2와 동일하게 네이비를 핵심 카피까지 확장 —
