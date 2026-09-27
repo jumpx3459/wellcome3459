@@ -153,30 +153,48 @@ function LoginPageInner() {
 
   return (
     <main className="flex flex-col min-h-screen bg-white">
-      <div style={{ padding: "20px 22px 14px", borderBottom: "1px solid #EEF0F2" }}>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.push("/")}
-            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#6B7480", padding: 0, lineHeight: 1 }}
-          >
-            ←
-          </button>
-          <span className="font-display" style={{ fontSize: 17, color: "#0B2540", letterSpacing: "-0.02em" }}>
-            휴대폰 번호로 로그인
-          </span>
+      {/* 2026-09-28: buy/sell/signup은 전부 네이비 도트 텍스처 그라디언트 헤더 +
+          로고뱃지로 통일했는데 /login만 흰 배경+회색 화살표의 예전 스타일이 남아
+          있었음(피드백) — 동일한 헤더 구조로 교체. */}
+      <div
+        className="flex-shrink-0"
+        style={{
+          backgroundImage:
+            "radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(120deg, #04101C, #1A4B78)",
+          backgroundSize: "16px 16px, cover",
+        }}
+      >
+        <div style={{ padding: "20px 22px 22px" }}>
+          <div className="flex items-center gap-3 mb-3">
+            <button
+              onClick={() => router.push("/")}
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "rgba(255,255,255,0.8)", padding: 0, lineHeight: 1 }}
+            >
+              ←
+            </button>
+            <Link href="/" className="bg-white rounded-lg px-2.5 py-1.5 inline-block shadow-sm">
+              <img src="/images/logo.png" alt="덤핑점핑" className="h-7 w-auto" />
+            </Link>
+          </div>
+          <div className="text-xs font-bold tracking-widest" style={{ color: "#FFD166" }}>로그인</div>
+          <h1 className="font-display text-2xl mt-1.5 text-white">
+            {membership === "not_member" ? "아직 가입 안 된 번호예요" : "번호만 인증하면 바로 들어가요"}
+          </h1>
+          {membership !== "not_member" && (
+            <p className="mt-2" style={{ fontSize: 13.5, color: "rgba(255,255,255,0.65)", lineHeight: 1.6 }}>
+              가입할 때 인증했던 휴대폰 번호를 입력해주세요.
+            </p>
+          )}
         </div>
       </div>
 
       <div className="flex-1" style={{ padding: "24px 22px 20px" }}>
         {membership === "not_member" ? (
-          <div className="flex flex-col items-center text-center" style={{ padding: "32px 6px 0" }}>
+          <div className="flex flex-col items-center text-center" style={{ padding: "12px 6px 0" }}>
             <div className="rounded-full flex items-center justify-center" style={{ width: 76, height: 76, background: "#FDEEE8", fontSize: 34 }}>
               🔍
             </div>
-            <h2 className="font-display mt-4.5" style={{ fontSize: 23, color: "#0B2540", letterSpacing: "-0.02em" }}>
-              아직 가입 안 된 번호예요
-            </h2>
-            <p className="mt-2.5" style={{ fontSize: 14, color: "#6B7480", lineHeight: 1.7 }}>
+            <p className="mt-4.5" style={{ fontSize: 14, color: "#6B7480", lineHeight: 1.7 }}>
               이 번호로 등록된 계정이 없어요.
               <br />
               알림 신청부터 시작해주세요.
@@ -191,18 +209,11 @@ function LoginPageInner() {
           </div>
         ) : (
           <div>
-            <h2 className="font-display" style={{ fontSize: 23, color: "#0B2540", letterSpacing: "-0.02em" }}>
-              번호만 인증하면 바로 들어가요
-            </h2>
-            <p className="mt-2" style={{ fontSize: 14, color: "#6B7480", lineHeight: 1.6 }}>
-              가입할 때 인증했던 휴대폰 번호를 입력해주세요.
-            </p>
-
             {/* 2026-09-27: 비밀번호를 설정해둔 회원은 SMS 없이 바로 로그인할 수
                 있도록 탭 추가. 비밀번호를 잊으면 그냥 "인증번호로 로그인" 탭으로
                 돌아가면 되므로 별도 비밀번호 찾기 플로우는 만들지 않음. */}
             {!authUserId && (
-              <div className="flex mt-5.5 gap-1.5">
+              <div className="flex gap-1.5">
                 <button
                   type="button"
                   onClick={() => setAuthMode("otp")}
