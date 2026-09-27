@@ -46,6 +46,19 @@ type PartnerRequest = {
   members: { phone: string; company_name: string | null } | null;
 };
 
+type PartnerOverviewItem = {
+  id: string;
+  phone: string;
+  company_name: string | null;
+  name: string | null;
+  member_no: number | null;
+  ref_code: string | null;
+  partner_since: string;
+  total_referrals: number;
+  this_month_referrals: number;
+  business_verified_referrals: number;
+};
+
 type ActiveDeal = {
   id: string;
   title: string;
@@ -292,6 +305,8 @@ function AdminDashboard({
 }) {
   const [requests, setRequests] = useState<SellerRequest[]>([]);
   const [partnerRequests, setPartnerRequests] = useState<PartnerRequest[]>([]);
+  const [partnersOverview, setPartnersOverview] = useState<PartnerOverviewItem[]>([]);
+  const [partnersOverviewOpen, setPartnersOverviewOpen] = useState(true);
   const [buyRequests, setBuyRequests] = useState<BuyRequest[]>([]);
   const [activeDeals, setActiveDeals] = useState<ActiveDeal[]>([]);
   const [interests, setInterests] = useState<Interest[]>([]);
@@ -398,6 +413,9 @@ function AdminDashboard({
       fetch("/api/admin/partner-requests", { headers: { "x-admin-key": adminKey } })
         .then((r) => r.json())
         .then((d) => setPartnerRequests(d.items ?? [])),
+      fetch("/api/admin/partners-overview", { headers: { "x-admin-key": adminKey } })
+        .then((r) => r.json())
+        .then((d) => setPartnersOverview(d.items ?? [])),
       fetch("/api/admin/admins", { headers: { "x-admin-key": adminKey } })
         .then((r) => r.json())
         .then((d) => setAdmins(d.items ?? [])),
@@ -1536,6 +1554,70 @@ function AdminDashboard({
             </div>
           ))}
         </div>
+        )}
+      </section>
+
+      {/* 2026-09-27: 운영자가 승인된 파트너 전원의 추천 실적을 한눈에 보는
+          집계 대시보드 — 위 섹션(신청 승인/거절)과는 별개로, 이미 승인된
+          파트너들의 성과 비교용. 승인 즉시 여기 0건으로 나타남. */}
+      <section
+        className={
+          isDesktop
+            ? "bg-white border border-gray200 rounded-2xl p-4 overflow-y-auto"
+            : "mt-8 px-5"
+        }
+        style={isDesktop ? { maxHeight: 480 } : undefined}
+      >
+        <button
+          type="button"
+          onClick={() => setPartnersOverviewOpen((v) => !v)}
+          className="w-full flex items-center justify-between"
+        >
+          <h2 className="text-sm font-bold text-navy">
+            📊 점핑파트너 실적 ({partnersOverview.length}명)
+          </h2>
+          <span className="text-sm font-bold text-gray500">{partnersOverviewOpen ? "접기 ▲" : "펼치기 ▼"}</span>
+        </button>
+        {partnersOverviewOpen && (
+          partnersOverview.length === 0 ? (
+            <p className="mt-3 text-sm text-gray500">아직 승인된 파트너가 없어요.</p>
+          ) : (
+            <div className="mt-3 flex flex-col gap-2">
+              {partnersOverview.map((p, i) => (
+                <div key={p.id} className="bg-white border border-gray200 rounded-2xl px-4 py-3.5 text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-gray900">
+                      {i === 0 && p.total_referrals > 0 && "🥇 "}
+                      {p.company_name ?? p.name ?? p.phone}
+                    </span>
+                    <span className="text-xs text-gray500 flex-shrink-0">
+                      {p.member_no != null ? `#${p.member_no}` : p.phone}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex gap-4">
+                    <div>
+                      <div className="font-mono font-bold text-navy" style={{ fontSize: 17 }}>
+                        {p.total_referrals}
+                      </div>
+                      <div className="text-xs text-gray500">총 추천</div>
+                    </div>
+                    <div>
+                      <div className="font-mono font-bold text-navy" style={{ fontSize: 17 }}>
+                        {p.this_month_referrals}
+                      </div>
+                      <div className="text-xs text-gray500">이번달</div>
+                    </div>
+                    <div>
+                      <div className="font-mono font-bold text-navy" style={{ fontSize: 17 }}>
+                        {p.business_verified_referrals}
+                      </div>
+                      <div className="text-xs text-gray500">사업자 인증</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
         )}
       </section>
 
