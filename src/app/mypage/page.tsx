@@ -1569,8 +1569,12 @@ export default function MyPage() {
             /support는 이미 /api/support로 기업마당 연동 로직이 있어 "준비중"이 아님.
             타일 3개(화물배차/계산기/정부지원금)는 홈 화면과 마크업이 완전히 겹쳐서
             <EcosystemGrid />로 추출함 (2026-09-26). ("사업자 전용" 배지는 실제
-            접근 제한이 없어 제거 — 위 커밋 참고). */}
+            접근 제한이 없어 제거 — 위 커밋 참고).
+            2026-09-28: 홈 화면엔 "점핑 서비스" 라벨이 있는데 마이페이지엔 없어서
+            같은 타일 그룹인데도 소속감이 없어 보인다는 피드백 — 홈과 동일하게
+            라벨 추가. */}
         <div className="border-t border-gray200 pt-5">
+          <div className="text-xs font-bold text-gray500 mb-2">점핑 서비스</div>
           <EcosystemGrid />
 
           <button
