@@ -190,7 +190,16 @@ export default function AlertInboxHome() {
             <div className="font-display truncate" style={{ fontSize: 20, color: "#fff" }}>
               {deals.length > 0 ? `오늘 긴급매물 ${deals.length}건 떴어요` : "오늘의 긴급매물을 모아봤어요"}
             </div>
-            <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
+            <div className="flex items-center gap-1.5">
+              <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
+              {/* 2026-09-27: 다른 4개 하단 탭(buy/sell/deals/mypage)엔 전부
+                  "Powered by JumpX"가 있는데 이 화면(회원 홈)만 없던 것 —
+                  이미 83px로 실측 튜닝된 고정 바라 구조는 그대로 두고, 로테이션
+                  태그 옆에 작은 텍스트만 추가(배지 없음, 높이 변화 없음). */}
+              <span className="whitespace-nowrap" style={{ fontSize: 10.5, color: "rgba(255,255,255,0.45)" }}>
+                · Powered by JumpX
+              </span>
+            </div>
           </div>
         </div>
       </div>
