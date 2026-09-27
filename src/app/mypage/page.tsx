@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckCircle } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { mockCategories, mockRegions, categoryIcons } from "@/lib/mockData";
+import { mockCategories, mockRegions, categoryIcons, categoryColors } from "@/lib/mockData";
 import { formatPrice, formatMemberNo, formatRelativeTime, dealUrgencyState } from "@/lib/format";
 import { generateRefCode } from "@/lib/refCode";
 import Toast, { useToast } from "@/components/Toast";
@@ -1034,6 +1034,9 @@ export default function MyPage() {
                     {categories.length === mockCategories.length ? "전체 해제" : "전체 선택"}
                   </button>
                 </div>
+                {/* 2026-09-27: 가입(signup) 카테고리 선택 화면과 톤을 맞춤 — 배경을
+                    꽉 채우는 대신 흰 배경 고정 + 선택 시 테두리(라인)만 주황으로
+                    두껍게 바꾸는 방식. 아이콘도 카테고리별 색 뱃지로 통일. */}
                 <div className="grid grid-cols-3 gap-2">
                   {mockCategories.map((c) => {
                     const picked = categories.includes(c);
@@ -1041,15 +1044,21 @@ export default function MyPage() {
                       <button
                         key={c}
                         onClick={() => toggle(categories, setCategories, c)}
-                        className="flex flex-col items-center justify-center gap-1 rounded-xl border py-3.5 px-1 text-center"
-                        style={
-                          picked
-                            ? { background: "#FF6F0F", borderColor: "#FF6F0F", color: "#fff" }
-                            : { background: "#F5F6F8", borderColor: "#F5F6F8", color: "#1B3A5C" }
-                        }
+                        className="flex flex-col items-center justify-center gap-1.5 rounded-xl py-3.5 px-1 text-center"
+                        style={{
+                          background: "#fff",
+                          border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
+                        }}
                       >
-                        <span className="text-2xl leading-none">{categoryIcons[c]}</span>
-                        <span className="text-sm font-bold leading-tight">{c}</span>
+                        <span
+                          className="rounded-full flex items-center justify-center flex-shrink-0"
+                          style={{ width: 30, height: 30, fontSize: 15, background: categoryColors[c].bg }}
+                        >
+                          {categoryIcons[c]}
+                        </span>
+                        <span className="text-sm font-bold leading-tight" style={{ color: "#1A1F26" }}>
+                          {c}
+                        </span>
                       </button>
                     );
                   })}
