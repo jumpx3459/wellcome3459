@@ -272,11 +272,11 @@ curl로 확인. 단, 이 세션엔 브라우저 접근이 없어 육안 확인�
 
 ## 다음에 할 일
 
-- [ ] **`members.referral_note` 노출 문제** (2026-09-27): 메모가 추천받은 회원의 행에 저장돼,
-  `members_self_select`/`members_self_update` 정책상 그 회원이 Supabase 직접 호출로 자기에 대한
-  메모를 읽고 수정할 수 있음(앱 화면엔 노출 안 됨). 권장: 별도 `referral_notes` 테이블 + 서버 API
-  전용. 최소 조치: `protect_business_verified`와 같은 트리거로 service_role 외 수정 차단.
-  대시보드 메모 저장 실패 시 안내가 없는 것도 함께 보완할 것
+- [ ] **컨택 메모 `referral_notes` 테이블 분리 — Supabase SQL 실행 필요** (2026-09-27, `81a60c4`):
+  `members.referral_note` 노출 문제(추천받은 회원 본인이 자기 메모를 읽고 수정 가능)를 정책 없는
+  RLS 테이블 + service_role API 전용으로 해결. 코드는 테이블이 없어도 목록은 정상 표시(메모만
+  "저장 실패")라 먼저 배포됨. `schema.sql` 맨 끝 `referral_notes` 블록(테이블 생성 + 기존 메모 이관)
+  실행 후 체크. 이관 확인되면 `members.referral_note` 컬럼은 별도로 drop
 - [ ] buy/sell 뒤로가기(←)가 `router.back()`이 아니라 홈(`/`) 링크 — 진입 경로 복귀가 목적이면 교체 검토
 - [ ] 약관 "보기"가 이용약관·개인정보 모두 `/privacy`로 연결됨 — 이용약관 전문이 생기면 `/terms` 분리
 
