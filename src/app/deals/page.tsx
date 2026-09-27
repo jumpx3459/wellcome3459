@@ -339,6 +339,17 @@ function DealsPageInner() {
                     </div>
                   )}
                 </div>
+                {/* 2026-09-27: 홈 미리보기 카드와 가격/할인율 표시를 통일 — 할인율을
+                    가격 옆 각진 배지 대신 썸네일 위 반투명 필 배지로 이동(홈과 동일
+                    스타일). 우상단은 마감 카운트다운이 이미 차지하고 있어 좌상단에 배치. */}
+                {!isClosed && discountPct > 0 && (
+                  <div
+                    className="absolute top-2.5 left-2.5 text-xs font-black text-white px-2.5 py-1 rounded-full"
+                    style={{ background: "rgba(226,81,0,0.72)" }}
+                  >
+                    -{Math.round(discountPct)}%
+                  </div>
+                )}
               </div>
 
               <div className="px-4 py-3.5">
@@ -442,6 +453,17 @@ function DealsPageInner() {
                           {categoryIcons[d.category] ?? "🗂️"}
                         </div>
                       )}
+                      {/* 2026-09-27: 실제 매물 카드/홈 미리보기와 동일하게 할인율을
+                          썸네일 위 필 배지로 — 예시 카드는 경합하는 오버레이가 없어
+                          홈과 같은 우상단에 배치, 톤만 회색으로 낮춰 "예시" 느낌 유지. */}
+                      {pct > 0 && (
+                        <div
+                          className="absolute top-2.5 right-2.5 text-xs font-black text-white px-2.5 py-1 rounded-full"
+                          style={{ background: "rgba(107,116,128,0.72)" }}
+                        >
+                          -{pct}%
+                        </div>
+                      )}
                     </div>
                     <div className="px-4 py-3.5">
                       <div className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#E9ECEF", color: "#495057" }}>
@@ -459,11 +481,6 @@ function DealsPageInner() {
                         </div>
                       )}
                       <div className="flex items-baseline gap-1.5 mt-2">
-                        {pct > 0 && (
-                          <span className="font-black text-white rounded" style={{ fontSize: 12, padding: "2px 7px", background: "#9AA3AD" }}>
-                            -{pct}%
-                          </span>
-                        )}
                         <span className="text-lg font-black" style={{ color: "#6B7480" }}>{formatPrice(d.deal_price)}</span>
                         <span className="text-sm text-gray500 font-normal line-through">{formatPrice(d.original_price)}</span>
                       </div>
