@@ -72,6 +72,7 @@ type ActiveDeal = {
   regions: { name: string } | null;
   images: string[] | null;
   video_url: string | null;
+  interest_count: number | null;
 };
 
 type CategoryKpi = {
@@ -2038,9 +2039,22 @@ function ActiveDealCard({
 
   return (
     <div className="bg-white border border-gray200 rounded-2xl px-4 py-4">
-      <div className="flex items-center gap-1.5 text-xs font-bold text-gray500">
-        <span>{categoryIcons[deal.categories?.name ?? ""] ?? "🗂️"}</span>
-        {deal.categories?.name} · {deal.regions?.name}
+      <div className="flex items-center justify-between gap-1.5">
+        <div className="flex items-center gap-1.5 text-xs font-bold text-gray500">
+          <span>{categoryIcons[deal.categories?.name ?? ""] ?? "🗂️"}</span>
+          {deal.categories?.name} · {deal.regions?.name}
+        </div>
+        {/* 2026-09-27: "관심 표시한 회원" 섹션이 전역 리스트라 어떤 매물이 뜨거운지
+            한눈에 안 보였음 — deals.interest_count(이미 트리거로 실시간 유지되는
+            비정규화 카운터, 별도 조회 불필요)를 매물 관리 행에도 바로 노출. */}
+        {(deal.interest_count ?? 0) > 0 && (
+          <span
+            className="flex-shrink-0 text-xs font-bold px-2 py-0.5 rounded-full"
+            style={{ background: "#FFF0E8", color: "#E25100" }}
+          >
+            ❤️ {deal.interest_count}
+          </span>
+        )}
       </div>
       <div className="text-base font-bold text-gray900 mt-1.5">{deal.title}</div>
       <div className="text-sm text-gray500 mt-1">
