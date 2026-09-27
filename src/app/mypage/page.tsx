@@ -469,6 +469,43 @@ export default function MyPage() {
 
   const profileComplete = companyName.trim().length > 0;
 
+  // 2026-09-27: 프로필 사진은 52px로만 보이므로 업로드 전 브라우저에서 축소.
+  // Vercel 서버리스 함수 요청 본문 한도(4.5MB)를 원본 휴대폰 사진(3~6MB 흔함)이
+  // 넘는 경우가 많아 축소 없이는 "업로드에 실패했어요"가 자주 뜰 수 있음.
+  const resizeImageForAvatar = (file: File, maxDim = 640, quality = 0.85): Promise<Blob> =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          URL.revokeObjectURL(objectUrl);
+          reject(new Error("canvas unsupported"));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(
+          (blob) => {
+            URL.revokeObjectURL(objectUrl);
+            blob ? resolve(blob) : reject(new Error("resize failed"));
+          },
+          "image/jpeg",
+          quality
+        );
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error("image load failed"));
+      };
+      img.src = objectUrl;
+    });
+
   // 2026-09-27: 프로필 사진 업로드 — 기존 deal-images 업로드 API 재사용, 선택 즉시
   // 업로드+저장(자동 반영). 본인 행 수정이라 members_self_update RLS로 충분.
   const handleAvatarSelect = async (file: File | null) => {
@@ -477,17 +514,19 @@ export default function MyPage() {
       setAvatarError("이미지 파일만 업로드할 수 있어요.");
       return;
     }
-    if (file.size > 8 * 1024 * 1024) {
-      setAvatarError("8MB 이하 사진만 업로드할 수 있어요.");
+    if (file.size > 20 * 1024 * 1024) {
+      setAvatarError("20MB 이하 사진만 업로드할 수 있어요.");
       return;
     }
     setAvatarError("");
     setAvatarUploading(true);
+    const prevUrl = avatarUrl;
     try {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
+      const resized = await resizeImageForAvatar(file);
       const formData = new FormData();
-      formData.append("files", file);
+      formData.append("files", resized, "avatar.jpg");
       const res = await fetch("/api/upload", { method: "POST", body: formData });
       const data = await res.json();
       const url: string | undefined = data.urls?.[0];
@@ -495,10 +534,18 @@ export default function MyPage() {
         setAvatarError("업로드에 실패했어요. 다시 시도해주세요.");
         return;
       }
-      await supabase.from("members").update({ avatar_url: url }).eq("id", userData.user.id);
+      const { error: updateError } = await supabase
+        .from("members")
+        .update({ avatar_url: url })
+        .eq("id", userData.user.id);
+      if (updateError) {
+        setAvatarError("저장에 실패했어요. 다시 시도해주세요.");
+        return;
+      }
       setAvatarUrl(url);
     } catch {
       setAvatarError("업로드에 실패했어요. 다시 시도해주세요.");
+      setAvatarUrl(prevUrl);
     } finally {
       setAvatarUploading(false);
     }
@@ -509,8 +556,13 @@ export default function MyPage() {
     setAvatarError("");
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) return;
+    const prevUrl = avatarUrl;
     setAvatarUrl(null);
-    await supabase.from("members").update({ avatar_url: null }).eq("id", userData.user.id);
+    const { error } = await supabase.from("members").update({ avatar_url: null }).eq("id", userData.user.id);
+    if (error) {
+      setAvatarError("삭제에 실패했어요. 다시 시도해주세요.");
+      setAvatarUrl(prevUrl);
+    }
   };
 
   if (!isSupabaseConfigured) {
