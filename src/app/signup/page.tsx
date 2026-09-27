@@ -687,11 +687,24 @@ function SignupPageInner() {
                 disabled={verified}
                 onChange={(e) => setPhone(e.target.value.replace(/[^\d-]/g, "").slice(0, 13))}
               />
+              {/* 2026-09-27: 형식이 안 맞을 때 버튼을 disabled로 막아버리면 클릭이
+                  안 먹혀서 handleSendOtp의 "정확히 입력해주세요" 에러 메시지가 뜰
+                  기회조차 없었음(눌러도 무반응으로 보임) — 전송 중/이미 인증완료일
+                  때만 막고, 형식이 안 맞을 땐 흐리게만 보이되 클릭은 되게 해서
+                  에러 메시지가 뜨도록 수정. */}
               <button
                 onClick={handleSendOtp}
-                disabled={otpSending || verified || !isValidKoreanPhone(phone)}
-                className="flex-shrink-0 rounded-xl font-bold disabled:opacity-60"
-                style={{ border: "1.5px solid #0B2540", background: "#fff", padding: "0 15px", fontSize: 13.5, color: "#0B2540", whiteSpace: "nowrap" }}
+                disabled={otpSending || verified}
+                className="flex-shrink-0 rounded-xl font-bold"
+                style={{
+                  border: "1.5px solid #0B2540",
+                  background: "#fff",
+                  padding: "0 15px",
+                  fontSize: 13.5,
+                  color: "#0B2540",
+                  whiteSpace: "nowrap",
+                  opacity: otpSending || verified || !isValidKoreanPhone(phone) ? 0.6 : 1,
+                }}
               >
                 {otpSending ? "발송 중..." : codeSent ? "다시 받기" : "인증번호 받기"}
               </button>
