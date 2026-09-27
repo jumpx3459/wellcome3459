@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockDeals, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import CountdownBadge from "@/components/CountdownBadge";
@@ -18,6 +18,7 @@ export default function DealDetailPage() {
 
 function DealDetailPageInner() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const ref = searchParams.get("ref"); // 공유 링크로 들어온 추천인 코드 — 정식가입까지 이어줌
   const isExampleId = params.id?.startsWith("example-") ?? false;
@@ -47,6 +48,16 @@ function DealDetailPageInner() {
   const [messageError, setMessageError] = useState<string | null>(null);
   const [ownRefCode, setOwnRefCode] = useState<string | null>(null);
   const [bridgeComingSoon, setBridgeComingSoon] = useState(false);
+
+  // 목록(홈/딜스/마이페이지 등 어디서 들어왔든)으로 돌아가는 버튼 — 공유 링크로
+  // 바로 들어와 히스토리가 없는 경우에만 홈으로 폴백합니다.
+  const goBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/");
+    }
+  };
 
   const handleShare = async () => {
     const url =
@@ -251,10 +262,22 @@ function DealDetailPageInner() {
   return (
     <main className="flex flex-col min-h-screen">
       <div className="flex-shrink-0 flex items-center justify-between gap-2 px-5 py-3" style={{ borderBottom: "1px solid #EEF0F2" }}>
-        <Link href="/" className="flex items-center gap-2 min-w-0">
-          <img src="/images/logo.png" alt="덤핑점핑" className="h-7 w-auto flex-shrink-0" />
-          <span className="text-gray500 text-xs tracking-wide truncate">Powered by JumpX</span>
-        </Link>
+        <div className="flex items-center gap-1 min-w-0">
+          <button
+            type="button"
+            onClick={goBack}
+            aria-label="뒤로 가기"
+            className="flex-shrink-0 flex items-center justify-center w-8 h-8 -ml-1.5 rounded-full text-gray500 active:bg-gray100"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+          <Link href="/" className="flex items-center gap-2 min-w-0">
+            <img src="/images/logo.png" alt="덤핑점핑" className="h-7 w-auto flex-shrink-0" />
+            <span className="text-gray500 text-xs tracking-wide truncate">Powered by JumpX</span>
+          </Link>
+        </div>
         {remainPct <= 30 && (
           <div className="text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap flex-shrink-0" style={{ background: "#FF6F0F", color: "#fff" }}>
             🔥 소진임박 · {deal.remaining_qty}{deal.quantity_unit || "개"} 남음
