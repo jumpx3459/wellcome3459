@@ -193,7 +193,10 @@ export default function BuyPage() {
 
       <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: 132 }}>
         <div>
-          <div className="text-sm font-bold mb-2" style={{ color: "#0B2540" }}>무엇을 찾으세요?</div>
+          <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
+            무엇을 찾으세요?
+            <span className="text-xs font-bold" style={{ color: "#E25100" }}>(필수)</span>
+          </div>
           <input
             className="w-full rounded-xl outline-none"
             style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: 14.5 }}
@@ -204,7 +207,10 @@ export default function BuyPage() {
         </div>
 
         <div>
-          <div className="text-sm font-bold mb-2" style={{ color: "#0B2540" }}>연락처</div>
+          <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
+            연락처
+            <span className="text-xs font-bold" style={{ color: "#E25100" }}>(필수)</span>
+          </div>
           <input
             className="w-full rounded-xl outline-none"
             style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: 14.5 }}
