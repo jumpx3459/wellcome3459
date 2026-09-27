@@ -497,9 +497,32 @@ function SignupPageInner() {
             <span className="font-mono text-xs font-bold" style={{ color: "rgba(255,255,255,0.7)" }}>{obStep}/{TOTAL_STEPS}</span>
           </div>
         </div>
-        <div className="flex items-center justify-center" style={{ padding: "9px 22px" }}>
+        <div className="flex items-center justify-center gap-2" style={{ padding: "9px 22px" }}>
+          {/* 2026-09-27: 홈 화면과 동일한 사회적 증거 배지를 가입 직전 화면에도 노출.
+              로테이션 태그와 한 줄에 나란히 서야 해서 문구는 "890명+"로 축약. */}
+          <div
+            className="inline-flex items-center gap-1 rounded-full flex-shrink-0"
+            style={{ background: "rgba(255,255,255,.12)", padding: "5px 10px" }}
+          >
+            <span style={{ color: "#5EEAD4", fontSize: 11 }}>✔</span>
+            <span className="font-bold" style={{ fontSize: 11, color: "rgba(255,255,255,.92)" }}>890명+</span>
+          </div>
           <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
         </div>
+
+        {/* 2026-09-27: 헤드라인까지 네이비를 확장해 홈 히어로와 톤을 맞춤 —
+            카테고리 그리드(흰 카드)부터는 다시 흰 배경으로 전환. */}
+        {!alreadyMember && obStep === 1 && (
+          <div style={{ padding: "2px 22px 22px" }}>
+            <h2 className="font-display" style={{ fontSize: 23, color: "#fff", letterSpacing: "-0.02em" }}>
+              어떤 재고를 찾고 계세요?
+            </h2>
+            <p className="mt-2" style={{ fontSize: 14.5, lineHeight: 1.6 }}>
+              <span className="font-bold" style={{ color: "#fff" }}>🔔 고른 카테고리에 매물이 뜨면 즉시 알려드려요.</span>{" "}
+              <span style={{ color: "rgba(255,255,255,.7)" }}>여러 개 고를 수 있어요.</span>
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="flex-1" style={{ padding: alreadyMember ? "24px 22px 20px" : "24px 22px 132px" }}>
@@ -544,18 +567,8 @@ function SignupPageInner() {
 
         {!alreadyMember && obStep === 1 && (
           <div>
-            <h2 className="font-display" style={{ fontSize: 23, color: "#0B2540", letterSpacing: "-0.02em" }}>
-              어떤 재고를 찾고 계세요?
-            </h2>
-            {/* 2026-09-27: 이 문장이 사실상 핵심 가치 제안(고른 카테고리 매물 즉시
-                알림)인데 옅은 회색 캡션 톤이라 눈에 안 들어온다는 피드백 —
-                볼드+진한 색+벨 이모지로 강조. "여러 개 고를 수 있어요"는 부가
-                안내라 톤을 낮춰 분리. */}
-            <p className="mt-2" style={{ fontSize: 14.5, lineHeight: 1.6 }}>
-              <span className="font-bold" style={{ color: "#0B2540" }}>🔔 고른 카테고리에 매물이 뜨면 즉시 알려드려요.</span>{" "}
-              <span style={{ color: "#6B7480" }}>여러 개 고를 수 있어요.</span>
-            </p>
-            <div className="grid grid-cols-2 gap-2.5 mt-5">
+            {/* 헤드라인/서브카피는 위 네이비 히어로 블록으로 이동함 (2026-09-27) */}
+            <div className="grid grid-cols-2 gap-2.5">
               {mockCategories.map((c) => {
                 const picked = categories.includes(c);
                 return (
