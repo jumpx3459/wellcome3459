@@ -524,6 +524,17 @@ function SignupPageInner() {
             </p>
           </div>
         )}
+        {/* 2026-09-27: step1과 동일하게 네이비를 헤드라인까지 확장 — 일관성 유지. */}
+        {!alreadyMember && obStep === 2 && (
+          <div style={{ padding: "2px 22px 22px" }}>
+            <h2 className="font-display" style={{ fontSize: 23, color: "#fff", letterSpacing: "-0.02em" }}>
+              휴대폰 인증만 하면 끝이에요
+            </h2>
+            <p className="mt-2" style={{ fontSize: 14, lineHeight: 1.6, color: "rgba(255,255,255,.75)" }}>
+              인증된 번호로 알림을 보내고, 판매자 연락처 열람도 이 번호로 확인합니다.
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="flex-1" style={{ padding: alreadyMember ? "24px 22px 20px" : "24px 22px 132px" }}>
@@ -659,14 +670,8 @@ function SignupPageInner() {
 
         {!alreadyMember && obStep === 2 && (
           <div>
-            <h2 className="font-display" style={{ fontSize: 23, color: "#0B2540", letterSpacing: "-0.02em" }}>
-              휴대폰 인증만 하면 끝이에요
-            </h2>
-            <p className="mt-2" style={{ fontSize: 14, color: "#6B7480", lineHeight: 1.6 }}>
-              인증된 번호로 알림을 보내고, 판매자 연락처 열람도 이 번호로 확인합니다.
-            </p>
-
-            <div className="text-sm font-bold mt-5.5 mb-2" style={{ color: "#0B2540" }}>휴대폰 번호</div>
+            {/* 헤드라인/서브카피는 위 네이비 히어로 블록으로 이동함 (2026-09-27) */}
+            <div className="text-sm font-bold mb-2" style={{ color: "#0B2540" }}>휴대폰 번호</div>
             <div className="flex gap-2">
               <input
                 ref={phoneInputRef}

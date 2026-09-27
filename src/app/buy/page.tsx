@@ -175,16 +175,18 @@ export default function BuyPage() {
         <div className="flex items-center justify-center" style={{ padding: "9px 20px" }}>
           <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)", fontSize: 19 }} />
         </div>
-      </div>
 
-      <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: 132 }}>
-        <div className="flex items-center gap-3 rounded-2xl" style={{ background: "#EEF1F5", padding: "13px 15px" }}>
-          <img src="/images/manager.png" alt="점핑매니저" className="flex-shrink-0" style={{ width: 44, height: 44, objectFit: "contain" }} />
-          <p className="leading-snug" style={{ fontSize: 12.5, color: "#0B2540", fontWeight: 500 }}>
+        {/* 2026-09-27: signup step1/2와 동일하게 네이비를 핵심 카피까지 확장 —
+            기존 회색 카드(#EEF1F5) 배경을 걷어내고 네이비 위에 흰 텍스트로 직접 배치. */}
+        <div className="flex items-center gap-3" style={{ padding: "2px 22px 22px" }}>
+          <img src="/images/manager.png" alt="점핑매니저" className="flex-shrink-0" style={{ width: 40, height: 40, objectFit: "contain" }} />
+          <p className="leading-snug" style={{ fontSize: 13, color: "rgba(255,255,255,.92)", fontWeight: 500 }}>
             찾는 재고를 올려두면 점핑매니저가 매입처를 직접 찾아 연결해드려요.
           </p>
         </div>
+      </div>
 
+      <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: 132 }}>
         <div>
           <div className="text-sm font-bold mb-2" style={{ color: "#0B2540" }}>무엇을 찾으세요?</div>
           <input
