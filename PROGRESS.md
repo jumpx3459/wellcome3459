@@ -52,6 +52,11 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - **보정 커밋에서 배운 것**: Tailwind v4에서 `fixed`와 `relative`를 같이 쓰면 `relative`가 이김
   (CSS 출력 순서) — 고정 요소에 `relative` 넣지 말 것. 한국어 큰 헤드라인은 `break-keep` 필수
   (없으면 "잡으/세요."처럼 어절 중간 줄바꿈). 홈 히어로 헤드라인은 24px — 360px 이상에서 2줄.
+- **⚠️ Supabase 관리자용 RPC 권한**: `revoke all on function ... from public`만으로는 anon/authenticated의
+  EXECUTE가 안 빠져서, 공개 anon 키로 `/rest/v1/rpc/admin_category_kpis`가 실데이터를 반환했음(실측).
+  `admin_partner_referral_stats`/`admin_category_kpis`에 `revoke execute ... from anon, authenticated`
+  추가 후 SQL 실행 → anon 42501, service_role 정상 확인. **새 security definer 함수는 반드시 두 역할에서도
+  revoke하고, anon 키로 호출해 42501이 나는지 확인할 것.** (기존 `update_admin_password`는 anon 거부 확인됨)
 
 - **카테고리 이름 정리 (DB 변경 포함)**: `냉동냉장식품`→`수산·축산물`, `농수축산물`→`농산물`.
   categories는 id로 참조되므로 rename SQL 두 줄로 기존 매물/회원 관심 카테고리 자동 반영.
