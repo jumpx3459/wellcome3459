@@ -608,10 +608,13 @@ function SignupPageInner() {
                 );
               })}
             </div>
+            {/* 2026-09-27: 13px+회색+밑줄이 겹쳐 너무 안 띄던 문제 — 카테고리명
+                (text-sm≈14px) 수준으로 폰트만 키우고, 회색·밑줄은 유지해
+                "보조 액션"이라는 시각적 위계는 그대로 둠. */}
             <button
               onClick={pickAllCategories}
               className="mt-4"
-              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#6B7480", textDecoration: "underline", textUnderlineOffset: 4, padding: "8px 0" }}
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, fontWeight: 700, color: "#6B7480", textDecoration: "underline", textUnderlineOffset: 4, padding: "8px 0" }}
             >
               아직 잘 모르겠어요 · 전체 받기 →
             </button>
