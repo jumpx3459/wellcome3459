@@ -474,7 +474,7 @@ export default function SellPage() {
 
         {showDetails && (
           <div className="flex flex-col gap-5 border-2 border-gray200 rounded-2xl p-4">
-            <ImageUploader onChange={setImages} max={4 + bonusPhotoSlots} />
+            <ImageUploader onChange={setImages} max={6 + bonusPhotoSlots} />
 
             <VideoUploader onChange={setVideoUrl} />
 

@@ -62,7 +62,7 @@ cp .env.local.example .env.local
 
 ### 5. 매물 사진 (Supabase Storage)
 
-판매자 신청·관리자 등록 화면에서 최대 4장까지 사진(실물·박스·라벨 등)을 첨부할 수 있어요.
+판매자 신청·관리자 등록 화면에서 기본 최대 6장까지 사진(실물·박스·라벨 등)을 첨부할 수 있어요 (추천 리워드로 회원별 슬롯이 더 늘어날 수 있어요).
 
 1. Supabase 대시보드 → **Storage** → "New bucket" → 이름 `deal-images`, **Public bucket** 체크
 2. 업로드는 `/api/upload`가 서버(service_role 키)를 통해 대신 처리하므로 별도 Storage 정책 설정은 필요 없어요
@@ -140,7 +140,7 @@ src/
       unsubscribe/route.ts         알림 해지 처리
   components/
     CountdownBadge.tsx              실시간 카운트다운 배지
-    ImageUploader.tsx                사진 첨부 공용 컴포넌트 (최대 4장)
+    ImageUploader.tsx                사진 첨부 공용 컴포넌트 (기본 최대 6장)
     VideoUploader.tsx                영상 첨부 컴포넌트
     SplashScreen.tsx                 스플래시 화면
   lib/

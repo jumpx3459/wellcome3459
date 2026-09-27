@@ -2469,7 +2469,7 @@ function DealForm({
       <ImageUploader
         onChange={setImages}
         label="매물 사진"
-        hint="최대 4장 (신청서에 첨부된 사진 포함)"
+        hint="최대 6장 (신청서에 첨부된 사진 포함)"
         initialUrls={prefill?.images ?? []}
       />
 

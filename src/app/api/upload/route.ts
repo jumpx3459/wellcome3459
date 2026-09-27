@@ -24,8 +24,12 @@ export async function POST(req: NextRequest) {
   const supabaseAdmin = createClient(supabaseUrl, serviceKey);
   const urls: string[] = [];
 
-  for (const file of files.slice(0, 4)) {
-    // 매물당 최대 4장으로 제한
+  // 2026-09-28: 기본 6장(+추천 리워드로 회원별 bonus_photo_slots만큼 추가, 무제한 아님)
+  // — 실제 업로드 개수 제한은 클라이언트(ImageUploader max prop)가 맥락별로 정확히
+  // 계산해서 넘겨주므로, 여기 서버 쪽은 정확한 숫자를 다시 계산하지 않고 클라이언트가
+  // 우회(개발자도구로 폼에 파일을 더 붙여 보내는 등)해도 과도하게 커지지 않도록 막는
+  // 넉넉한 안전판(sanity ceiling) 역할만 함.
+  for (const file of files.slice(0, 20)) {
     const ext = file.name.split(".").pop() || "jpg";
     const path = `${crypto.randomUUID()}.${ext}`;
     const arrayBuffer = await file.arrayBuffer();

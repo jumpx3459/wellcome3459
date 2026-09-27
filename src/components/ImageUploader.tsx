@@ -8,7 +8,7 @@ export default function ImageUploader({
   onChange,
   label = "사진 첨부",
   hint,
-  max = 4,
+  max = 6,
   initialUrls = [],
 }: {
   onChange: (urls: string[]) => void;

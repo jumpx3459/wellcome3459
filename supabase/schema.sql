@@ -65,7 +65,7 @@ create table if not exists public.deals (
   location text,
   closes_at timestamptz not null,
   status text default 'active', -- active | closed | sold_out
-  images text[] default '{}', -- 매물 사진 URL 목록 (최대 4장 권장: 대표/실물/박스/라벨)
+  images text[] default '{}', -- 매물 사진 URL 목록 (기본 최대 6장 권장: 대표/실물/박스/라벨 + 여유 2장, 추천 리워드로 더 늘어날 수 있음)
   description text, -- 소비기한, 보관상태 등 판매자가 남긴 상세 설명
   created_at timestamptz default now()
 );
