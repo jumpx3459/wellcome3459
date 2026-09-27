@@ -102,7 +102,7 @@ export default function BuyPage() {
               모든 하단탭 화면 헤더에 작은 로고를 공통으로 배치. */}
           <img src="/images/logo.png" alt="덤핑점핑" className="w-6 h-6 rounded-md flex-shrink-0 object-contain" />
           <span className="font-display text-2xl whitespace-nowrap" style={{ color: "#0B2540" }}>
-            이런 재고 찾습니다
+            이런 제품 찾습니다
           </span>
         </div>
         <div className="flex flex-col items-center text-center px-6" style={{ paddingTop: 40 }}>
@@ -180,7 +180,7 @@ export default function BuyPage() {
             </div>
             <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
           </div>
-          <h1 className="font-display text-2xl mt-1.5 text-white">이런 재고 찾습니다</h1>
+          <h1 className="font-display text-2xl mt-1.5 text-white">이런 제품 찾습니다</h1>
         </div>
 
         {/* 2026-09-27: signup step1/2와 동일하게 네이비를 핵심 카피까지 확장 —

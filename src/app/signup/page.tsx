@@ -483,18 +483,15 @@ function SignupPageInner() {
             <div className="bg-white rounded-lg px-2 py-1.5 flex-shrink-0">
               <img src="/images/logo.png" alt="덤핑점핑" className="h-7 w-auto block" />
             </div>
-            <div className="flex-1 rounded-full overflow-hidden" style={{ height: 5, background: "rgba(255,255,255,0.18)" }}>
-              <div
-                style={{
-                  height: "100%",
-                  background: "var(--color-brandOrangeAccent)",
-                  borderRadius: 99,
-                  transition: "width .3s ease",
-                  width: `${Math.round((obStep / TOTAL_STEPS) * 100)}%`,
-                }}
-              />
-            </div>
-            <span className="font-mono text-xs font-bold" style={{ color: "rgba(255,255,255,0.7)" }}>{obStep}/{TOTAL_STEPS}</span>
+            {/* 2026-09-27: 2단계뿐인 플로우엔 연속형 프로그레스 바가 정보량이 적다는
+                피드백 — 바를 걷어내고 "무엇을 완료하는 단계인지"까지 담은 텍스트
+                라벨로 교체, 로고와 대칭 이루도록 우측 끝에 배치. */}
+            <span
+              className="ml-auto flex-shrink-0 font-bold rounded-full whitespace-nowrap"
+              style={{ fontSize: 11.5, color: "var(--color-brandOrangeAccent)", background: "rgba(255,255,255,0.14)", padding: "5px 12px" }}
+            >
+              알림받기 STEP {obStep}/{TOTAL_STEPS}
+            </span>
           </div>
         </div>
         {/* 2026-09-27 (재재검토): deals/buy/sell/마이페이지는 로테이션 태그가
