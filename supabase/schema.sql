@@ -669,3 +669,35 @@ where referral_note is not null and referred_by is not null
 on conflict (referrer_id, member_id) do nothing;
 
 update public.members set referral_note = null where referral_note is not null;
+
+-- 2026-09-27: 점핑파트너 실적 집계(/api/admin/partners-overview)를 애플리케이션
+-- 코드에서 "모든 추천 회원 행을 한 번에 select"로 계산했더니 두 가지 문제가 지적됨 —
+-- (1) Supabase 기본 응답 한도(1,000행)를 넘으면 실적이 실제보다 적게 잡힘,
+-- (2) "이번 달" 판정을 서버(UTC) 기준으로 해서 매달 1일 00~09시(KST)에 가입한
+-- 회원이 지난달로 잘못 집계됨. DB에서 파트너별로 직접 group by해서 both 해결 —
+-- 결과 행 수가 "추천 회원 수"가 아니라 "파트너 수"라 한도 문제가 원천적으로 없고,
+-- KST 기준으로 월을 비교함.
+create or replace function admin_partner_referral_stats()
+returns table (
+  partner_id uuid,
+  total_referrals bigint,
+  this_month_referrals bigint,
+  business_verified_referrals bigint
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    m.referred_by as partner_id,
+    count(*) as total_referrals,
+    count(*) filter (
+      where date_trunc('month', m.created_at at time zone 'Asia/Seoul')
+          = date_trunc('month', now() at time zone 'Asia/Seoul')
+    ) as this_month_referrals,
+    count(*) filter (where m.business_verified) as business_verified_referrals
+  from public.members m
+  where m.referred_by is not null
+  group by m.referred_by;
+$$;
+revoke all on function admin_partner_referral_stats() from public;
