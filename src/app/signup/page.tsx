@@ -898,29 +898,51 @@ function SignupPageInner() {
         // overflow-y:auto로 계산되면서 의도치 않은 sticky 기준 컨테이너가 됐는데
         // 그 컨테이너 자체는 내부 스크롤이 발생한 적이 없어 sticky가 무력화됨).
         // fixed로 교체하고 위 콘텐츠에 paddingBottom 132px 추가.
+        // 2026-09-27: 홈 하단 CTA와 동일한 톤으로 통일 — 불투명 흰 바+실선 테두리
+        // 대신 반투명+블러 카드 + 상단 페이드로, 스크롤 중인 폼 내용이 자연스럽게
+        // 이어지도록 함.
         <div
           className="fixed z-10 left-1/2 -translate-x-1/2 w-full max-w-md"
-          style={{ bottom: NAV_HEIGHT, padding: "14px 22px 24px", borderTop: "1px solid #EEF0F2", background: "#fff" }}
+          style={{ bottom: NAV_HEIGHT, padding: "20px 22px 24px" }}
         >
-          {/* 2026-09-27: 비활성 상태에서 흰 텍스트+#C9CFD6 배경 조합이 명도 대비
-              약 1.5:1(WCAG 최소 4.5:1)이라 "카테고리를 골라주세요" 문구가 거의
-              안 보인다는 피드백 — 비활성일 때만 텍스트를 앱 표준 보조색
-              gray500(#6B7480)로 바꿔 대비 약 3.3:1로 개선. */}
-          <button
-            onClick={goNext}
-            disabled={submitting}
-            className="w-full font-black rounded-2xl disabled:opacity-60"
+          <div
+            className="pointer-events-none absolute left-0 right-0"
             style={{
-              padding: "18px 0",
-              fontSize: 17,
-              transition: "all .2s",
-              color: obCtaDisabled ? "#6B7480" : "#fff",
-              background: obCtaDisabled ? "#C9CFD6" : "linear-gradient(135deg,#E25100,#FF6F0F)",
-              boxShadow: obCtaDisabled ? "none" : "0 8px 20px rgba(226,81,0,.3)",
+              bottom: "100%",
+              height: 28,
+              background: "linear-gradient(to bottom, rgba(245,246,248,0), rgba(255,255,255,.85))",
+            }}
+          />
+          <div
+            className="rounded-2xl"
+            style={{
+              background: "rgba(255,255,255,.9)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+              boxShadow: "0 -6px 16px rgba(11,37,64,.07)",
+              padding: 8,
             }}
           >
-            {submitting ? "처리 중..." : obCtaLabel}
-          </button>
+            {/* 2026-09-27: 비활성 상태에서 흰 텍스트+#C9CFD6 배경 조합이 명도 대비
+                약 1.5:1(WCAG 최소 4.5:1)이라 "카테고리를 골라주세요" 문구가 거의
+                안 보인다는 피드백 — 비활성일 때만 텍스트를 앱 표준 보조색
+                gray500(#6B7480)로 바꿔 대비 약 3.3:1로 개선. */}
+            <button
+              onClick={goNext}
+              disabled={submitting}
+              className="w-full font-black rounded-2xl disabled:opacity-60"
+              style={{
+                padding: "18px 0",
+                fontSize: 17,
+                transition: "all .2s",
+                color: obCtaDisabled ? "#6B7480" : "#fff",
+                background: obCtaDisabled ? "#C9CFD6" : "linear-gradient(135deg,#E25100,#FF6F0F)",
+                boxShadow: obCtaDisabled ? "none" : "0 8px 20px rgba(226,81,0,.3)",
+              }}
+            >
+              {submitting ? "처리 중..." : obCtaLabel}
+            </button>
+          </div>
         </div>
       )}
 

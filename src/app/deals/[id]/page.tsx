@@ -621,10 +621,31 @@ function DealDetailPageInner() {
             </Link>
           </div>
 
+          {/* 2026-09-27: 홈 하단 CTA와 동일한 톤으로 통일 — 불투명 흰 배경 대신
+              반투명+블러 카드 + 상단 페이드로, 스크롤 중인 상세 콘텐츠가 자연스럽게
+              이어지도록 함. */}
           <div
-            className="fixed left-1/2 -translate-x-1/2 w-full max-w-md px-5 pb-6 pt-3 bg-white"
-            style={{ boxShadow: "0 -8px 20px rgba(11,37,64,0.08)", bottom: "64px" }}
+            className="fixed left-1/2 -translate-x-1/2 w-full max-w-md px-5 pb-5 pt-5"
+            style={{ bottom: "64px" }}
           >
+            <div
+              className="pointer-events-none absolute left-0 right-0"
+              style={{
+                bottom: "100%",
+                height: 28,
+                background: "linear-gradient(to bottom, rgba(245,246,248,0), rgba(255,255,255,.85))",
+              }}
+            />
+            <div
+              className="rounded-2xl"
+              style={{
+                background: "rgba(255,255,255,.9)",
+                backdropFilter: "blur(8px)",
+                WebkitBackdropFilter: "blur(8px)",
+                boxShadow: "0 -6px 16px rgba(11,37,64,.07)",
+                padding: 8,
+              }}
+            >
             {showQuickForm && !interested ? (
               <div className="border-2 border-gray200 rounded-2xl p-4">
                 <div className="text-sm font-bold text-navy mb-1">번호만 남기면 바로 연락드려요</div>
@@ -690,6 +711,7 @@ function DealDetailPageInner() {
                 )}
               </>
             )}
+            </div>
           </div>
         </>
       )}

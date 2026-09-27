@@ -376,21 +376,43 @@ export default function BuyPage() {
           그냥 폼 맨 끝에 있는 일반 엘리먼트처럼 렌더링됨(홈/마이페이지 CTA는 동일
           문제를 안 겪는 position:fixed라 정상 동작했음). fixed로 교체하고 위
           콘텐츠에 paddingBottom 132px(홈 CTA와 동일 수치)를 더해 가려지지 않게 함. */}
+      {/* 2026-09-27: 홈 하단 CTA와 동일한 톤으로 통일 — 불투명 흰 바+실선 테두리
+          대신 반투명+블러 카드 + 상단 페이드로, 스크롤 중인 폼 내용이 자연스럽게
+          이어지도록 함. */}
       <div
-        className="fixed z-10 left-1/2 -translate-x-1/2 w-full max-w-md"
-        style={{ bottom: NAV_HEIGHT, padding: "14px 20px 20px", borderTop: "1px solid #EEF0F2", background: "#fff" }}
+        className="fixed z-10 left-1/2 -translate-x-1/2 w-full max-w-md px-5 pb-5 pt-5"
+        style={{ bottom: NAV_HEIGHT }}
       >
-        {error && (
-          <div className="text-sm text-orange font-medium mb-2.5 text-center">{error}</div>
-        )}
-        <button
-          onClick={submit}
-          disabled={submitting}
-          className="w-full font-black rounded-2xl text-white disabled:opacity-60"
-          style={{ background: "linear-gradient(135deg,#E25100,#FF6F0F)", padding: "17px 0", fontSize: 16.5, boxShadow: "0 8px 20px rgba(226,81,0,.3)" }}
+        <div
+          className="pointer-events-none absolute left-0 right-0"
+          style={{
+            bottom: "100%",
+            height: 28,
+            background: "linear-gradient(to bottom, rgba(245,246,248,0), rgba(255,255,255,.85))",
+          }}
+        />
+        <div
+          className="rounded-2xl"
+          style={{
+            background: "rgba(255,255,255,.9)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            boxShadow: "0 -6px 16px rgba(11,37,64,.07)",
+            padding: 8,
+          }}
         >
-          {submitting ? "등록 중..." : "구매 희망 등록하기"}
-        </button>
+          {error && (
+            <div className="text-sm text-orange font-medium mb-2 text-center">{error}</div>
+          )}
+          <button
+            onClick={submit}
+            disabled={submitting}
+            className="w-full font-black rounded-2xl text-white disabled:opacity-60"
+            style={{ background: "linear-gradient(135deg,#E25100,#FF6F0F)", padding: "17px 0", fontSize: 16.5, boxShadow: "0 8px 20px rgba(226,81,0,.3)" }}
+          >
+            {submitting ? "등록 중..." : "구매 희망 등록하기"}
+          </button>
+        </div>
       </div>
     </main>
   );
