@@ -1,6 +1,6 @@
 # PROGRESS
 
-마지막 업데이트: 2026-09-26 (카테고리 이름 정리, 하단 고정 CTA 수정, 긴급성 로테이션 문구 공통화, 관리자 PC 레이아웃)
+마지막 업데이트: 2026-09-27 (UI 패치 다수, 공개 통계 API, 점핑파트너 데모 스킨 + 내 추천 회원 대시보드)
 
 새 세션을 시작할 때 이 파일을 먼저 읽고, 아래 "다음에 할 일"부터 확인하세요.
 
@@ -30,7 +30,28 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
-## 최근 작업 (2026-09-25~26) — 패치 연속 적용 (전부 main 직접 커밋)
+## 최근 작업 (2026-09-27) — 패치 연속 적용 (전부 main 직접 커밋)
+
+다른 세션에서 만든 `.patch`를 `git am`으로 연속 적용. 패치 내용 오류는 별도 fix 커밋으로 보정.
+
+- **🆕 점핑파트너 (DB 변경 포함, `e6a3695`)**:
+  - `/p/[slug]` 영업용 데모 스킨 — `src/lib/partners.ts` 배열에 파트너 추가(현재 `demo`만).
+    기존 deals 데이터를 읽고 이름·강조색만 교체. AppShell에서 `/p/` 경로는 바텀탭 숨김.
+  - `/mypage/referrals` 내 추천 회원 대시보드(목록·필터·검색 + 컨택 메모).
+    `members.referral_note` 컬럼 추가 — Supabase SQL 실행 확인(REST 조회로 컬럼 존재 검증) 후 push.
+    메모 저장은 `/api/my-referrals` PATCH(서버에서 `referred_by = 요청자` 검증 후 service_role 갱신).
+- **🆕 공개 통계 API `/api/public-stats`** (`e9f69fc`): 인증 사업자 수만 반환. 홈 신뢰 배지는
+  30개 이상일 때만 "전국 N개 사업자가 함께하는 중", 아니면 무숫자 카피. 하드코딩 "890명+"는 전부 제거.
+- **공통 UI 정리**: buy/sell 헤더를 deals와 같은 구조(로고+Powered by / 라벨+로테이션 / 좌측 타이틀)로,
+  하단 고정 CTA 4곳(buy/sell/signup/deal상세)을 홈과 같은 반투명 블러 카드로 통일.
+  buy/sell 카테고리는 자동 추천 시 "추천됨 · 수정" 한 줄로 접힘. deals 필터는 커스텀 드롭다운.
+- **카피**: "재고"→"상품" 부분 통일(홈 히어로·온보딩·카테고리 섹션·signup 1단계·buy 타이틀).
+  나머지 "재고" 표기(`OnboardingIntro.tsx:88`의 "이런 재고 찾습니다", 홈 진입 카드 등)는 아직 그대로.
+- **이미지**: `manager.png`/`manager-cut.png` 리사이즈+PNG8로 약 85% 경량화, `manager-cut.png`에
+  흰 외곽선 추가. 색 배경 위 캐릭터는 전부 `manager-cut.png`로 교체.
+- **보정 커밋에서 배운 것**: Tailwind v4에서 `fixed`와 `relative`를 같이 쓰면 `relative`가 이김
+  (CSS 출력 순서) — 고정 요소에 `relative` 넣지 말 것. 한국어 큰 헤드라인은 `break-keep` 필수
+  (없으면 "잡으/세요."처럼 어절 중간 줄바꿈). 홈 히어로 헤드라인은 24px — 360px 이상에서 2줄.
 
 - **카테고리 이름 정리 (DB 변경 포함)**: `냉동냉장식품`→`수산·축산물`, `농수축산물`→`농산물`.
   categories는 id로 참조되므로 rename SQL 두 줄로 기존 매물/회원 관심 카테고리 자동 반영.
@@ -250,6 +271,14 @@ curl로 확인. 단, 이 세션엔 브라우저 접근이 없어 육안 확인�
 - 커밋 작성자 이메일이 GitHub 계정(`kimkeeyong33-sys`)의 등록 이메일(`kimkeeyong33@gmail.com`)과 다르게 찍혀 있던 최근 커밋 2개(63fd68e, c6053b5)를 `git rebase --exec "git commit --amend --reset-author --no-edit"`로 정정하고 `push --force-with-lease`로 반영. Vercel 대시보드에서 Production Deployment가 정정된 커밋(`d910791`) 기준으로 **Ready** 상태인 것 확인 — 이메일 불일치로 배포가 막혀있던 정황은 없었음.
 
 ## 다음에 할 일
+
+- [ ] **`members.referral_note` 노출 문제** (2026-09-27): 메모가 추천받은 회원의 행에 저장돼,
+  `members_self_select`/`members_self_update` 정책상 그 회원이 Supabase 직접 호출로 자기에 대한
+  메모를 읽고 수정할 수 있음(앱 화면엔 노출 안 됨). 권장: 별도 `referral_notes` 테이블 + 서버 API
+  전용. 최소 조치: `protect_business_verified`와 같은 트리거로 service_role 외 수정 차단.
+  대시보드 메모 저장 실패 시 안내가 없는 것도 함께 보완할 것
+- [ ] buy/sell 뒤로가기(←)가 `router.back()`이 아니라 홈(`/`) 링크 — 진입 경로 복귀가 목적이면 교체 검토
+- [ ] 약관 "보기"가 이용약관·개인정보 모두 `/privacy`로 연결됨 — 이용약관 전문이 생기면 `/terms` 분리
 
 - [ ] **쪽지/업체명 비공개 기능 — 관리자 승인 경로 자연 확인 대기** (2026-09-23):
   마이그레이션 실행 후 공개 API(`/api/seller-requests`)는 재검증 완료, 하지만
