@@ -39,6 +39,11 @@ function DealsPageInner() {
   );
   const [activeRegion, setActiveRegion] = useState<string>("전체");
   const [sort, setSort] = useState<"urgent" | "disc">("urgent");
+  // 2026-09-27: native <select>는 접힌 필박스만 커스텀 스타일이 먹고, 펼친 옵션
+  // 목록은 브라우저/OS 기본 스타일이 강제돼(웹 표준 한계) 다크 헤더 안에서 흰
+  // 목록이 이질적으로 튀어나오는 문제 — 버튼+커스텀 드롭다운 패널로 교체.
+  const [catOpen, setCatOpen] = useState(false);
+  const [regionOpen, setRegionOpen] = useState(false);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return; // 데모 모드: mockDeals 사용
@@ -213,52 +218,114 @@ function DealsPageInner() {
 
         <div className="flex gap-2 mt-3">
           <div className="relative flex-1 min-w-0">
-            <select
-              value={activeCat}
-              onChange={(e) => setActiveCat(e.target.value)}
-              className="w-full text-sm font-bold rounded-full appearance-none outline-none"
+            <button
+              type="button"
+              onClick={() => {
+                setCatOpen((v) => !v);
+                setRegionOpen(false);
+              }}
+              className="w-full flex items-center justify-between gap-1 text-sm font-bold rounded-full"
               style={{
-                padding: "7px 26px 7px 12px",
+                padding: "7px 12px",
                 background: "rgba(255,255,255,0.12)",
                 color: activeCat === "전체" ? "rgba(255,255,255,0.75)" : "#FFD166",
               }}
             >
-              <option value="전체">🗃️ 전체 카테고리</option>
-              {mockCategories.map((c) => (
-                <option key={c} value={c}>{categoryIcons[c]} {c}</option>
-              ))}
-            </select>
-            <span
-              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs"
-              style={{ color: activeCat === "전체" ? "rgba(255,255,255,0.75)" : "#FFD166" }}
-            >
-              ▾
-            </span>
+              <span className="truncate">
+                {activeCat === "전체" ? "🗃️ 전체 카테고리" : `${categoryIcons[activeCat] ?? "🗂️"} ${activeCat}`}
+              </span>
+              <span className="flex-shrink-0" style={{ fontSize: 10 }}>{catOpen ? "▴" : "▾"}</span>
+            </button>
+            {catOpen && (
+              <div className="absolute left-0 right-0 mt-1.5 bg-white rounded-2xl shadow-lg z-50" style={{ padding: 8 }}>
+                <div className="grid grid-cols-2 gap-1.5 overflow-y-auto" style={{ maxHeight: 280 }}>
+                  {["전체", ...mockCategories].map((c) => {
+                    const picked = activeCat === c;
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => {
+                          setActiveCat(c);
+                          setCatOpen(false);
+                        }}
+                        className="flex items-center gap-1.5 text-left rounded-xl"
+                        style={{
+                          padding: "9px 10px",
+                          fontSize: 12.5,
+                          fontWeight: 700,
+                          lineHeight: 1.25,
+                          background: picked ? "#FFF1E7" : "#fff",
+                          border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
+                          color: "#1A1F26",
+                        }}
+                      >
+                        <span className="flex-shrink-0">{c === "전체" ? "🗃️" : categoryIcons[c]}</span>
+                        <span>{c}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
           <div className="relative flex-1 min-w-0">
-            <select
-              value={activeRegion}
-              onChange={(e) => setActiveRegion(e.target.value)}
-              className="w-full text-sm font-bold rounded-full appearance-none outline-none"
+            <button
+              type="button"
+              onClick={() => {
+                setRegionOpen((v) => !v);
+                setCatOpen(false);
+              }}
+              className="w-full flex items-center justify-between gap-1 text-sm font-bold rounded-full"
               style={{
-                padding: "7px 26px 7px 12px",
+                padding: "7px 12px",
                 background: "rgba(255,255,255,0.12)",
                 color: activeRegion === "전체" ? "rgba(255,255,255,0.75)" : "#FFD166",
               }}
             >
-              <option value="전체">전 지역</option>
-              {mockRegions.map((r) => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-            <span
-              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs"
-              style={{ color: activeRegion === "전체" ? "rgba(255,255,255,0.75)" : "#FFD166" }}
-            >
-              ▾
-            </span>
+              <span className="truncate">{activeRegion === "전체" ? "전 지역" : activeRegion}</span>
+              <span className="flex-shrink-0" style={{ fontSize: 10 }}>{regionOpen ? "▴" : "▾"}</span>
+            </button>
+            {regionOpen && (
+              <div className="absolute left-0 right-0 mt-1.5 bg-white rounded-2xl shadow-lg z-50" style={{ padding: 8 }}>
+                <div className="flex flex-col overflow-y-auto" style={{ maxHeight: 280 }}>
+                  {["전체", ...mockRegions].map((r) => {
+                    const picked = activeRegion === r;
+                    return (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => {
+                          setActiveRegion(r);
+                          setRegionOpen(false);
+                        }}
+                        className="text-left rounded-lg"
+                        style={{
+                          padding: "9px 10px",
+                          fontSize: 13.5,
+                          fontWeight: 700,
+                          background: picked ? "#FFF1E7" : "#fff",
+                          color: picked ? "#E25100" : "#1A1F26",
+                        }}
+                      >
+                        {r === "전체" ? "전 지역" : r}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
+        {(catOpen || regionOpen) && (
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => {
+              setCatOpen(false);
+              setRegionOpen(false);
+            }}
+          />
+        )}
       </div>
 
       <div className="flex-1 bg-gray100 px-4 py-3.5 flex flex-col gap-3">
