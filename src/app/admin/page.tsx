@@ -699,6 +699,17 @@ function AdminDashboard({
               </button>
             ))}
           </div>
+          {/* 2026-09-27: /p/[slug] 영업 데모 링크가 어디서도 노출이 안 돼 운영자가
+              직접 못 찾는다는 지적 — 관리자 헤더에 새 탭 링크로 추가. 회원용 UI가
+              아니라 후보 파트너사에 보낼 때 운영자가 주소만 복사하러 오는 용도. */}
+          <a
+            href="/p/demo"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-white/70 font-bold underline"
+          >
+            파트너 데모 보기 →
+          </a>
           <button
             onClick={() => {
               setShowChangePassword(true);
