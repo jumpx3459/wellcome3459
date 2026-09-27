@@ -157,7 +157,10 @@ export default function Home() {
             작아 위계가 흐릿하다는 피드백 — 트러스트 배지는 11px로 더 줄이고,
             헤드라인은 한 단계 키우고(text-xl→text-2xl), 서브카피는 한 단계
             줄여서(text-sm→text-xs) "배지 < 서브카피 < 헤드라인" 3단 위계를 명확히 함. */}
-        <h1 className="font-display text-2xl leading-snug drop-shadow-sm break-keep">
+        {/* 2026-09-27 (3): text-2xl(27px)이 390px 이하 폭에서 헤드라인 2번째 줄이
+            3줄로 깨지는 원인 — 카피는 그대로 두고 24px로 한 단계만 낮춰 위계
+            개선분은 절반 남기면서 2줄을 유지. */}
+        <h1 className="font-display leading-snug drop-shadow-sm break-keep" style={{ fontSize: 24 }}>
           <span style={{ color: "#FF6F0F" }}>남는 재고는 빠르게 알리고,</span>
           <br />
           급한 재고는 남보다 먼저 잡으세요.
