@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { sendOtp, verifyOtp, isValidKoreanPhone } from "@/lib/auth";
+import { sendOtp, verifyOtp, isValidKoreanPhone, toE164Phone } from "@/lib/auth";
 import { fmtLeft } from "@/lib/format";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 
@@ -35,6 +35,15 @@ function LoginPageInner() {
   const [otpSending, setOtpSending] = useState(false);
   const [otpVerifying, setOtpVerifying] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
+
+  // 2026-09-27: 재접속마다(특히 PWA 재설치 후, 세션이 통째로 날아가는 경우) SMS
+  // OTP를 매번 받아야 하는 게 번거롭다는 피드백 — 마이페이지에서 비밀번호를
+  // 미리 설정해둔 회원은 SMS 없이 바로 로그인할 수 있는 탭을 추가. 비밀번호를
+  // 잊으면 그냥 "인증번호로 로그인" 탭으로 돌아가면 되므로 별도 찾기 플로우 불필요.
+  const [authMode, setAuthMode] = useState<"otp" | "password">("otp");
+  const [password, setPassword] = useState("");
+  const [passwordSigningIn, setPasswordSigningIn] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   const [membership, setMembership] = useState<"idle" | "checking" | "member" | "not_member">("idle");
 
@@ -109,6 +118,27 @@ function LoginPageInner() {
     // authUserId는 위 onAuthStateChange 구독이 세션 발급과 동시에 채워줌
   };
 
+  const handlePasswordSignIn = async () => {
+    setPasswordError(null);
+    if (!isValidKoreanPhone(phone)) {
+      setPasswordError("휴대폰 번호를 정확히 입력해주세요.");
+      return;
+    }
+    if (!password) {
+      setPasswordError("비밀번호를 입력해주세요.");
+      return;
+    }
+    if (!isSupabaseConfigured || !supabase) return;
+    setPasswordSigningIn(true);
+    const { error } = await supabase.auth.signInWithPassword({ phone: toE164Phone(phone), password });
+    setPasswordSigningIn(false);
+    if (error) {
+      setPasswordError("번호 또는 비밀번호가 올바르지 않아요.");
+      return;
+    }
+    // authUserId는 위 onAuthStateChange 구독이 세션 발급과 동시에 채워줌 (OTP 흐름과 동일)
+  };
+
   const onCodeChange = (value: string) => {
     const v = value.replace(/[^0-9]/g, "").slice(0, 6);
     setOtpCode(v);
@@ -168,52 +198,126 @@ function LoginPageInner() {
               가입할 때 인증했던 휴대폰 번호를 입력해주세요.
             </p>
 
-            <div className="text-sm font-bold mt-5.5 mb-2" style={{ color: "#0B2540" }}>휴대폰 번호</div>
-            <div className="flex gap-2">
-              <input
-                className="flex-1 min-w-0 rounded-xl outline-none"
-                style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: 15, fontVariantNumeric: "tabular-nums" }}
-                placeholder="010-0000-0000"
-                inputMode="numeric"
-                value={phone}
-                disabled={Boolean(authUserId)}
-                onChange={(e) => setPhone(e.target.value.replace(/[^\d-]/g, "").slice(0, 13))}
-              />
-              <button
-                onClick={handleSendOtp}
-                disabled={otpSending || Boolean(authUserId) || !isValidKoreanPhone(phone)}
-                className="flex-shrink-0 rounded-xl font-bold disabled:opacity-60"
-                style={{ border: "1.5px solid #0B2540", background: "#fff", padding: "0 15px", fontSize: 13.5, color: "#0B2540", whiteSpace: "nowrap" }}
-              >
-                {otpSending ? "발송 중..." : codeSent ? "다시 받기" : "인증번호 받기"}
-              </button>
-            </div>
-
-            {!codeSent && otpError && <p className="text-sm font-medium mt-2" style={{ color: "#E5484D" }}>{otpError}</p>}
-
-            {codeSent && !authUserId && (
-              <div>
-                <div className="flex items-center justify-between mt-4.5 mb-2">
-                  <span className="text-sm font-bold" style={{ color: "#0B2540" }}>인증번호 6자리</span>
-                  <span className="font-mono text-xs font-bold" style={{ color: "#E5484D" }}>{fmtLeft(codeLeft)}</span>
-                </div>
-                <input
-                  className="w-full rounded-xl outline-none text-center font-mono font-bold"
-                  style={{ border: "1.5px solid var(--color-brandOrange)", padding: 14, fontSize: 20, letterSpacing: "0.32em" }}
-                  inputMode="numeric"
-                  maxLength={6}
-                  placeholder="000000"
-                  value={otpCode}
-                  onChange={(e) => onCodeChange(e.target.value)}
-                  autoFocus
-                />
-                {otpError && <p className="text-sm font-medium mt-2" style={{ color: "#E5484D" }}>{otpError}</p>}
-                {!otpError && (
-                  <p className="mt-2" style={{ fontSize: 11.5, color: "#6B7480", lineHeight: 1.55 }}>
-                    문자가 오지 않으면 스팸함을 확인하거나 &quot;다시 받기&quot;를 눌러주세요.
-                  </p>
-                )}
+            {/* 2026-09-27: 비밀번호를 설정해둔 회원은 SMS 없이 바로 로그인할 수
+                있도록 탭 추가. 비밀번호를 잊으면 그냥 "인증번호로 로그인" 탭으로
+                돌아가면 되므로 별도 비밀번호 찾기 플로우는 만들지 않음. */}
+            {!authUserId && (
+              <div className="flex mt-5.5 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setAuthMode("otp")}
+                  className="flex-1 text-center font-bold rounded-xl"
+                  style={{
+                    padding: "9px 0",
+                    fontSize: 13.5,
+                    background: authMode === "otp" ? "#0B2540" : "#F5F6F8",
+                    color: authMode === "otp" ? "#fff" : "#6B7480",
+                  }}
+                >
+                  인증번호로 로그인
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuthMode("password")}
+                  className="flex-1 text-center font-bold rounded-xl"
+                  style={{
+                    padding: "9px 0",
+                    fontSize: 13.5,
+                    background: authMode === "password" ? "#0B2540" : "#F5F6F8",
+                    color: authMode === "password" ? "#fff" : "#6B7480",
+                  }}
+                >
+                  비밀번호로 로그인
+                </button>
               </div>
+            )}
+
+            {authMode === "otp" && (
+              <>
+                <div className="text-sm font-bold mt-4.5 mb-2" style={{ color: "#0B2540" }}>휴대폰 번호</div>
+                <div className="flex gap-2">
+                  <input
+                    className="flex-1 min-w-0 rounded-xl outline-none"
+                    style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: 15, fontVariantNumeric: "tabular-nums" }}
+                    placeholder="010-0000-0000"
+                    inputMode="numeric"
+                    value={phone}
+                    disabled={Boolean(authUserId)}
+                    onChange={(e) => setPhone(e.target.value.replace(/[^\d-]/g, "").slice(0, 13))}
+                  />
+                  <button
+                    onClick={handleSendOtp}
+                    disabled={otpSending || Boolean(authUserId) || !isValidKoreanPhone(phone)}
+                    className="flex-shrink-0 rounded-xl font-bold disabled:opacity-60"
+                    style={{ border: "1.5px solid #0B2540", background: "#fff", padding: "0 15px", fontSize: 13.5, color: "#0B2540", whiteSpace: "nowrap" }}
+                  >
+                    {otpSending ? "발송 중..." : codeSent ? "다시 받기" : "인증번호 받기"}
+                  </button>
+                </div>
+
+                {!codeSent && otpError && <p className="text-sm font-medium mt-2" style={{ color: "#E5484D" }}>{otpError}</p>}
+
+                {codeSent && !authUserId && (
+                  <div>
+                    <div className="flex items-center justify-between mt-4.5 mb-2">
+                      <span className="text-sm font-bold" style={{ color: "#0B2540" }}>인증번호 6자리</span>
+                      <span className="font-mono text-xs font-bold" style={{ color: "#E5484D" }}>{fmtLeft(codeLeft)}</span>
+                    </div>
+                    <input
+                      className="w-full rounded-xl outline-none text-center font-mono font-bold"
+                      style={{ border: "1.5px solid var(--color-brandOrange)", padding: 14, fontSize: 20, letterSpacing: "0.32em" }}
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="000000"
+                      value={otpCode}
+                      onChange={(e) => onCodeChange(e.target.value)}
+                      autoFocus
+                    />
+                    {otpError && <p className="text-sm font-medium mt-2" style={{ color: "#E5484D" }}>{otpError}</p>}
+                    {!otpError && (
+                      <p className="mt-2" style={{ fontSize: 11.5, color: "#6B7480", lineHeight: 1.55 }}>
+                        문자가 오지 않으면 스팸함을 확인하거나 &quot;다시 받기&quot;를 눌러주세요.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
+            {authMode === "password" && !authUserId && (
+              <>
+                <div className="text-sm font-bold mt-4.5 mb-2" style={{ color: "#0B2540" }}>휴대폰 번호</div>
+                <input
+                  className="w-full rounded-xl outline-none"
+                  style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: 15, fontVariantNumeric: "tabular-nums" }}
+                  placeholder="010-0000-0000"
+                  inputMode="numeric"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/[^\d-]/g, "").slice(0, 13))}
+                />
+                <div className="text-sm font-bold mt-3.5 mb-2" style={{ color: "#0B2540" }}>비밀번호</div>
+                <input
+                  type="password"
+                  className="w-full rounded-xl outline-none"
+                  style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: 15 }}
+                  placeholder="마이페이지에서 설정한 비밀번호"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handlePasswordSignIn()}
+                />
+                {passwordError && <p className="text-sm font-medium mt-2" style={{ color: "#E5484D" }}>{passwordError}</p>}
+                <button
+                  onClick={handlePasswordSignIn}
+                  disabled={passwordSigningIn}
+                  className="w-full text-white font-bold rounded-2xl mt-4.5 text-center disabled:opacity-60"
+                  style={{ padding: "15px 0", fontSize: 15.5, background: "linear-gradient(135deg,#E25100,#FF6F0F)" }}
+                >
+                  {passwordSigningIn ? "로그인 중..." : "로그인"}
+                </button>
+                <p className="mt-2.5" style={{ fontSize: 11.5, color: "#9AA3AD" }}>
+                  비밀번호를 아직 안 만드셨거나 잊으셨다면 &quot;인증번호로 로그인&quot;을 이용해주세요.
+                </p>
+              </>
             )}
 
             {authUserId && (
