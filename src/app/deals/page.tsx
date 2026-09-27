@@ -383,11 +383,6 @@ function DealsPageInner() {
                   </div>
                 )}
                 <div className="flex items-baseline gap-1.5 mt-2">
-                  {!isClosed && discountPct > 0 && (
-                    <span className="font-black text-white rounded" style={{ fontSize: 12, padding: "2px 7px", background: "#E25100" }}>
-                      -{Math.round(discountPct)}%
-                    </span>
-                  )}
                   <span className="text-lg font-black" style={{ color: isClosed ? "#6B7480" : "#0B2540" }}>
                     {formatPrice(d.deal_price)}
                   </span>
