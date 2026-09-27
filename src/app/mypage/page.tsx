@@ -489,35 +489,29 @@ export default function MyPage() {
 
   if (notLoggedIn) {
     return (
-      <main
-        className="flex flex-col items-center justify-center min-h-screen px-6 text-center"
-        style={{
-          backgroundImage:
-            "radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(120deg, #04101C, #1A4B78)",
-          backgroundSize: "16px 16px, cover",
-        }}
-      >
-        {/* 2026-09-26 (7): 로고만 키우는 대신 deals/홈과 같은 다크 히어로 톤으로
-            전환 — 공유 링크로 처음 들어온 방문자가 MY 탭에서 마주칠 수 있는
-            화면인데 유일하게 브랜드 컬러가 없어 밋밋했음. deals 헤더와 동일한
-            화이트필 로고 + Powered by JumpX 배지 패턴을 재사용. */}
-        <div className="bg-white rounded-xl px-3 py-2 inline-block mb-2.5 shadow-sm">
-          <img src="/images/logo.png" alt="덤핑점핑" className="h-8 w-auto" />
+      <main className="flex flex-col items-center justify-center min-h-screen px-6 text-center bg-white">
+        {/* 2026-09-27 (재검토): 다크 히어로 톤 대신 화이트로 전환 — 이 화면은
+            브라우징 탭이 아니라 로그인 유도 단일 목적 화면이라 다른 탭과 다크
+            톤을 맞출 이유가 없고, 화이트 배경이 오렌지 CTA를 더 도드라지게 함.
+            로고도 32px→80px(2.5배)로 확대, 캐릭터는 불투명 흰 배경이 박힌
+            manager.png 대신 투명 컷아웃 manager-cut.png로 교체. */}
+        <div className="rounded-xl px-3 py-2 inline-block mb-3">
+          <img src="/images/logo.png" alt="덤핑점핑" className="h-20 w-auto" />
         </div>
         <span
           className="rounded-full font-medium mb-6"
-          style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", padding: "3px 9px", background: "rgba(255,255,255,0.08)" }}
+          style={{ fontSize: 11, color: "#6B7480", padding: "3px 9px", background: "#F0F1F3" }}
         >
           Powered by JumpX
         </span>
         <img
-          src="/images/manager.png"
+          src="/images/manager-cut.png"
           alt="점핑매니저"
-          className="w-24 h-24 rounded-xl object-contain mb-4"
-          style={{ background: "rgba(255,255,255,0.08)" }}
+          className="w-24 h-24 object-contain mb-4"
+          style={{ filter: "drop-shadow(0 6px 10px rgba(11,37,64,.2))" }}
         />
-        <h1 className="font-display text-xl mb-2" style={{ color: "#fff" }}>로그인이 필요해요</h1>
-        <p className="text-base leading-relaxed mb-6" style={{ color: "rgba(255,255,255,0.75)" }}>
+        <h1 className="font-display text-xl mb-2" style={{ color: "#0B2540" }}>로그인이 필요해요</h1>
+        <p className="text-base leading-relaxed mb-6" style={{ color: "#6B7480" }}>
           이미 가입하셨다면 번호 인증만으로 바로 들어올 수 있어요.
         </p>
         <Link
@@ -530,7 +524,7 @@ export default function MyPage() {
         <Link
           href="/signup"
           className="mt-3 text-center"
-          style={{ color: "rgba(255,255,255,0.65)", fontSize: 14.5, fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 4 }}
+          style={{ color: "#6B7480", fontSize: 14.5, fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 4 }}
         >
           처음이신가요? 알림 신청하기
         </Link>
