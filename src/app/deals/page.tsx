@@ -502,7 +502,9 @@ function EmptyState({ category, region }: { category: string; region: string }) 
       className="rounded-2xl px-5 pt-6 pb-5 flex flex-col items-center text-center mt-2"
       style={{ background: color.bg }}
     >
-      <img src="/images/manager.png" alt="점핑매니저" className="w-32 h-32 object-contain -mb-1" />
+      {/* 2026-09-27: manager.png는 불투명 흰 배경이 박혀있어 카드의 틴트 배경(color.bg)
+          위에서 흰 사각형이 그대로 보이는 문제 — 투명 컷아웃(manager-cut.png)으로 교체. */}
+      <img src="/images/manager-cut.png" alt="점핑매니저" className="w-32 h-32 object-contain -mb-1" />
 
       <div
         className="mt-1 mb-3 inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-white"
