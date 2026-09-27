@@ -86,6 +86,16 @@ export default function MyPage() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
+  // 2026-09-27: 재접속마다 휴대폰 OTP 인증(SMS)을 다시 받아야 하는 게 번거롭다는
+  // 피드백 — 특히 PWA 재설치처럼 세션이 통째로 날아가는 경우, 브라우저에 저장된
+  // 걸로는 어차피 자동 로그인이 불가능하므로 "기억하는 비밀번호"가 유일한 대안.
+  // Supabase Auth가 phone 계정에 비밀번호를 얹는 걸 기본 지원해서(updateUser),
+  // 별도 테이블/해싱 없이 여기서 설정 → /login에서 signInWithPassword로 사용.
+  const [settingPassword, setSettingPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordSaved, setPasswordSaved] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [isOfficialPartner, setIsOfficialPartner] = useState(false);
   const [partnerStatus, setPartnerStatus] = useState<PartnerStatus>("none");
   const [partnerForm, setPartnerForm] = useState({ businessType: "", channelInfo: "", message: "" });
@@ -469,6 +479,26 @@ export default function MyPage() {
 
   const profileComplete = companyName.trim().length > 0;
 
+  const savePassword = async () => {
+    setPasswordError(null);
+    if (newPassword.length < 8) {
+      setPasswordError("비밀번호는 8자 이상으로 설정해주세요.");
+      return;
+    }
+    if (!supabase) return;
+    setPasswordSaving(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setPasswordSaving(false);
+    if (error) {
+      setPasswordError("설정하지 못했어요. 다시 시도해주세요.");
+      return;
+    }
+    setPasswordSaved(true);
+    setNewPassword("");
+    setSettingPassword(false);
+    setTimeout(() => setPasswordSaved(false), 2500);
+  };
+
   // 2026-09-27: 프로필 사진은 52px로만 보이므로 업로드 전 브라우저에서 축소.
   // Vercel 서버리스 함수 요청 본문 한도(4.5MB)를 원본 휴대폰 사진(3~6MB 흔함)이
   // 넘는 경우가 많아 축소 없이는 "업로드에 실패했어요"가 자주 뜰 수 있음.
@@ -773,14 +803,74 @@ export default function MyPage() {
             <span style={{ fontSize: 13.5, color: "rgba(255,255,255,.7)" }}>
               {email || "이메일 미등록"}
             </span>
-            <button
-              type="button"
-              onClick={() => setEditingProfile(true)}
-              className="font-bold flex-shrink-0"
-              style={{ fontSize: 13.5, color: "#FFD166" }}
-            >
-              정보 수정 ›
-            </button>
+            <div className="flex items-center gap-3 flex-shrink-0">
+              {/* 2026-09-27: 재접속마다(특히 재설치 후) 휴대폰 OTP를 다시 받아야
+                  해서 번거롭다는 피드백 — 비밀번호를 설정해두면 /login에서
+                  SMS 없이 바로 로그인 가능(잊으면 그냥 기존 OTP로 로그인). */}
+              <button
+                type="button"
+                onClick={() => setSettingPassword((v) => !v)}
+                className="font-bold"
+                style={{ fontSize: 13.5, color: "#FFD166" }}
+              >
+                비밀번호 설정 ›
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingProfile(true)}
+                className="font-bold"
+                style={{ fontSize: 13.5, color: "#FFD166" }}
+              >
+                정보 수정 ›
+              </button>
+            </div>
+          </div>
+        )}
+
+        {passwordSaved && (
+          <div className="mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,.12)" }}>
+            <span className="font-bold" style={{ fontSize: 13.5, color: "#5EEAD4" }}>
+              ✔ 비밀번호를 설정했어요 · 다음부터 SMS 없이 로그인할 수 있어요
+            </span>
+          </div>
+        )}
+
+        {settingPassword && (
+          <div className="mt-3 pt-3 flex flex-col gap-2" style={{ borderTop: "1px solid rgba(255,255,255,.12)" }}>
+            <input
+              type="password"
+              className="w-full rounded-xl outline-none"
+              style={{ border: "1.5px solid rgba(255,255,255,.25)", background: "rgba(255,255,255,.08)", color: "#fff", padding: 12, fontSize: 14.5 }}
+              placeholder="새 비밀번호 (8자 이상)"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+            />
+            {passwordError && (
+              <span className="font-bold" style={{ fontSize: 12.5, color: "#FF8A8A" }}>{passwordError}</span>
+            )}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={savePassword}
+                disabled={passwordSaving}
+                className="flex-1 text-center font-bold rounded-xl disabled:opacity-60"
+                style={{ padding: "10px 0", fontSize: 13.5, background: "linear-gradient(135deg,#E25100,#FF6F0F)", color: "#fff" }}
+              >
+                {passwordSaving ? "저장 중..." : "저장"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSettingPassword(false);
+                  setPasswordError(null);
+                  setNewPassword("");
+                }}
+                className="flex-1 text-center font-bold rounded-xl"
+                style={{ padding: "10px 0", fontSize: 13.5, border: "1.5px solid rgba(255,255,255,.25)", color: "rgba(255,255,255,.85)" }}
+              >
+                취소
+              </button>
+            </div>
           </div>
         )}
       </div>
