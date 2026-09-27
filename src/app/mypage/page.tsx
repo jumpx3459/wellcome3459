@@ -946,9 +946,16 @@ export default function MyPage() {
             )}
           </div>
 
-          <p className="text-sm text-gray500 mt-4 mb-2 leading-relaxed">
-            내가 추천한 회원은 여기서 확인할 수 있어요. 상세 관리 대시보드는 준비 중이에요.
-          </p>
+          <div className="flex items-center justify-between mt-4 mb-2">
+            <p className="text-sm text-gray500 leading-relaxed">
+              내가 추천한 회원은 여기서 확인할 수 있어요.
+            </p>
+            {referrals.length > 0 && (
+              <Link href="/mypage/referrals" className="text-sm font-bold flex-shrink-0" style={{ color: "#E25100" }}>
+                대시보드 열기 →
+              </Link>
+            )}
+          </div>
           <div className="flex flex-col gap-2">
             {referrals.length === 0 ? (
               <p className="text-sm text-gray500 text-center py-4">
@@ -956,7 +963,7 @@ export default function MyPage() {
               </p>
             ) : (
               <>
-                {referrals.map((r, i) => (
+                {referrals.slice(0, 3).map((r, i) => (
                   <div
                     key={i}
                     className="flex items-center justify-between bg-white border border-gray200 rounded-xl px-4 py-3"
@@ -993,6 +1000,15 @@ export default function MyPage() {
                     </div>
                   </div>
                 ))}
+                {referrals.length > 3 && (
+                  <Link
+                    href="/mypage/referrals"
+                    className="text-sm font-bold text-center py-2"
+                    style={{ color: "#6B7480" }}
+                  >
+                    +{referrals.length - 3}명 더 보기 →
+                  </Link>
+                )}
               </>
             )}
           </div>

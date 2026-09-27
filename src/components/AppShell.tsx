@@ -9,6 +9,10 @@ import DebugPanel from "./DebugPanel"; // TEMP DEBUG — 세션 소실 버그 �
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdmin = (pathname ?? "").startsWith("/admin");
+  // 2026-09-27: 점핑파트너 영업용 데모 스킨(/p/[slug])은 실제 내비게이션이 있는
+  // 앱 화면이 아니라 단일 랜딩 페이지라 하단 탭바가 어울리지 않음 — admin과
+  // 동일하게 숨기되, 모바일 앱 미리보기 느낌은 유지하기 위해 폭 제한(max-w-md)은 유지.
+  const isPartnerDemo = (pathname ?? "").startsWith("/p/");
 
   // PWA 설치 배너(beforeinstallprompt)가 뜨려면 서비스워커가 등록돼 있어야 해서,
   // 회원가입(알림 신청) 완료를 기다리지 않고 첫 방문 때부터 바로 등록해둡니다.
@@ -29,8 +33,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           : "mx-auto max-w-md min-h-screen bg-white shadow-sm overflow-x-hidden"
       }
     >
-      <div style={{ paddingBottom: isAdmin ? 0 : `${NAV_HEIGHT}px` }}>{children}</div>
-      {!isAdmin && <BottomNav />}
+      <div style={{ paddingBottom: isAdmin || isPartnerDemo ? 0 : `${NAV_HEIGHT}px` }}>{children}</div>
+      {!isAdmin && !isPartnerDemo && <BottomNav />}
       <DebugPanel />
     </div>
   );

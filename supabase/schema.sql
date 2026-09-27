@@ -638,3 +638,11 @@ alter table public.seller_requests add column if not exists pid text;
 alter table public.seller_requests add column if not exists manifest_items jsonb;
 alter table public.deals add column if not exists pid text;
 alter table public.deals add column if not exists manifest_items jsonb;
+
+-- 2026-09-27: 점핑파트너 "내 추천 회원" 대시보드(표시+컨택메모)용 컬럼.
+-- 추천인이 "내가 추천한 이 회원과 언제 통화했는지" 등을 적어두는 메모로, 회원 본인이
+-- 보는 정보가 아니라 추천인(referred_by)만 보고 쓰는 값이라 members_self_update로는
+-- 커버되지 않음(그 정책은 auth.uid() = id, 즉 "본인 행"만 수정 가능) — 별도 RLS 정책을
+-- 추가하지 않고, 기존 /api/my-referrals와 동일하게 service_role 키를 쓰는 API 라우트에서
+-- "요청자 id = 대상 회원의 referred_by"를 수동 검증한 뒤에만 갱신하도록 함.
+alter table public.members add column if not exists referral_note text;
