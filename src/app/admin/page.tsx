@@ -73,6 +73,7 @@ type ActiveDeal = {
   images: string[] | null;
   video_url: string | null;
   interest_count: number | null;
+  quick_lead_count: number | null;
 };
 
 type CategoryKpi = {
@@ -2046,13 +2047,23 @@ function ActiveDealCard({
         </div>
         {/* 2026-09-27: "관심 표시한 회원" 섹션이 전역 리스트라 어떤 매물이 뜨거운지
             한눈에 안 보였음 — deals.interest_count(이미 트리거로 실시간 유지되는
-            비정규화 카운터, 별도 조회 불필요)를 매물 관리 행에도 바로 노출. */}
+            비정규화 카운터, 별도 조회 불필요)를 매물 관리 행에도 바로 노출.
+            2026-09-28: 총합만 보이면 회원/비회원 비중을 알 수 없어 quick_lead_count를
+            추가로 빼서 회원(interest_count - quick_lead_count) · 비회원(quick_lead_count)
+            브레이크다운을 타이틀 툴팁으로 제공. */}
         {(deal.interest_count ?? 0) > 0 && (
           <span
             className="flex-shrink-0 text-xs font-bold px-2 py-0.5 rounded-full"
             style={{ background: "#FFF0E8", color: "#E25100" }}
+            title={`회원 ${(deal.interest_count ?? 0) - (deal.quick_lead_count ?? 0)} · 비회원 ${deal.quick_lead_count ?? 0}`}
           >
             ❤️ {deal.interest_count}
+            {(deal.quick_lead_count ?? 0) > 0 && (
+              <span className="font-medium" style={{ color: "#B85A2E" }}>
+                {" "}
+                (비회원 {deal.quick_lead_count})
+              </span>
+            )}
           </span>
         )}
       </div>

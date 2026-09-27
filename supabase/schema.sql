@@ -633,6 +633,38 @@ create trigger trg_quick_leads_sync_interest_count
   after insert or delete on public.quick_leads
   for each row execute function public.sync_deal_interest_count();
 
+-- 2026-09-28: interest_count는 회원(interests)+비회원(quick_leads) 합산이라 관리자가
+-- 비회원 비중을 구분할 수 없었음. quick_lead_count를 별도로 둬서 회원 수는
+-- (interest_count - quick_lead_count)로 화면에서 바로 계산, 비회원 수는 quick_lead_count
+-- 그대로 노출. 기존 interest_count 트리거/컬럼은 그대로 두고 quick_leads에 트리거 하나만 추가.
+alter table public.deals add column if not exists quick_lead_count int not null default 0;
+
+update public.deals d
+set quick_lead_count = coalesce((select count(*) from public.quick_leads q where q.deal_id = d.id), 0);
+
+create or replace function public.sync_deal_quick_lead_count()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if (tg_op = 'INSERT') then
+    update public.deals set quick_lead_count = quick_lead_count + 1 where id = new.deal_id;
+    return new;
+  elsif (tg_op = 'DELETE') then
+    update public.deals set quick_lead_count = greatest(quick_lead_count - 1, 0) where id = old.deal_id;
+    return old;
+  end if;
+  return null;
+end;
+$$;
+
+drop trigger if exists trg_quick_leads_sync_quick_lead_count on public.quick_leads;
+create trigger trg_quick_leads_sync_quick_lead_count
+  after insert or delete on public.quick_leads
+  for each row execute function public.sync_deal_quick_lead_count();
+
 -- 2026-09-26: 혼합매물(리퀴데이션/반품 팔레트) 대응 — 개별 상품 사진 없이 PID#(매니페스트
 -- 번호)와 구성품 CSV 목록만으로도 매물을 등록할 수 있게. manifest_items는 CSV 헤더를 그대로
 -- 컬럼명으로 쓴 Record<string,string>[] — 헤더 자동매핑 없이 원본 그대로 저장/노출함
