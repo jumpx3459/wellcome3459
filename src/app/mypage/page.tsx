@@ -1132,11 +1132,12 @@ export default function MyPage() {
             <p className="text-sm text-gray500 leading-relaxed">
               내가 추천한 회원은 여기서 확인할 수 있어요.
             </p>
-            {referrals.length > 0 && (
-              <Link href="/mypage/referrals" className="text-sm font-bold flex-shrink-0" style={{ color: "#E25100" }}>
-                대시보드 열기 →
-              </Link>
-            )}
+            {/* 2026-09-27: 추천 0명일 때도 링크는 항상 보이게 — 대시보드
+                (/mypage/referrals)가 0명 상태를 이미 잘 보여주고 있어서, 첫
+                추천이 생기기 전까지 진입로 자체를 숨길 이유가 없음. */}
+            <Link href="/mypage/referrals" className="text-sm font-bold flex-shrink-0" style={{ color: "#E25100" }}>
+              대시보드 열기 →
+            </Link>
           </div>
           <div className="flex flex-col gap-2">
             {referrals.length === 0 ? (
