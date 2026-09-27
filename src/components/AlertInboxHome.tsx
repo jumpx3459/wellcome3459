@@ -44,7 +44,7 @@ function bucketDeals(deals: Deal[]): FeedGroup[] {
     .filter((g) => g.items.length > 0);
 }
 
-export default function AlertInboxHome() {
+export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: boolean }) {
   const [categories, setCategories] = useState<string[]>([]);
   const [regions, setRegions] = useState<string[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
@@ -181,9 +181,15 @@ export default function AlertInboxHome() {
         }}
       >
         <div className="flex items-center gap-2.5" style={{ padding: "14px 20px 12px" }}>
+          {/* 2026-09-27: 회원 홈엔 로고 이미지 자체가 없어서 재접속마다 브랜드를
+              각인시키려던 스플래시 취지가 회원(실사용자 대부분)에게는 전혀
+              적용되지 않고 있었음 — 새 로고를 추가하는 대신, 이미 있는 이
+              캐릭터 아이콘에 동일한 바운스 애니메이션을 적용 (83px 고정 바
+              높이·레이아웃 변화 없음). */}
           <img
             src="/images/manager-cut.png"
             alt="점핑매니저"
+            className={logoAnimate ? "animate-logo-jump" : ""}
             style={{ width: 34, height: 34, objectFit: "contain", flexShrink: 0 }}
           />
           <div className="min-w-0">
