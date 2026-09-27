@@ -125,8 +125,16 @@ export default function Home() {
           </span>
         </div>
 
-        <h1 className="font-display text-xl leading-snug drop-shadow-sm">
-          <span style={{ color: "#FF6F0F" }}>남는 재고는 빠르게 알리고,</span> 급한 재고는 남보다 먼저 잡으세요.
+        {/* 2026-09-27: 메인/서브 절이 같은 크기·굵기라 위계가 없다는 피드백 —
+            실제 전환목표(구매자 알림가입)에 맞춰 "급한 재고는 먼저 잡으세요"를
+            메인(주황·크게)으로, "남는 재고는 빠르게 알리고"는 서브(흰색·작게)로 분리. */}
+        <h1 className="leading-snug drop-shadow-sm">
+          <span className="block text-sm font-bold" style={{ color: "rgba(255,255,255,.7)" }}>
+            남는 재고는 빠르게 알리고
+          </span>
+          <span className="font-display block mt-1 text-2xl" style={{ color: "#FF6F0F" }}>
+            급한 재고는 남보다 먼저 잡으세요.
+          </span>
         </h1>
         <p className="text-white/85 text-base mt-4 leading-relaxed">
           <span className="hidden sm:inline">
@@ -222,9 +230,11 @@ export default function Home() {
                   className="relative flex items-center gap-3 rounded-2xl border border-gray200 px-3.5 py-3 overflow-hidden active:scale-[0.98] transition-transform"
                 >
                   {discountPct > 0 && (
+                    // 2026-09-27: CTA(주황) 그라디언트와 색이 같아 "버튼처럼" 보이던
+                    // 문제 — 할인율은 정보 배지이므로 레드/핑크 계열로 구분.
                     <div
                       className="absolute top-0 right-0 text-sm font-black text-white px-3 py-1.5 rounded-bl-2xl"
-                      style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)" }}
+                      style={{ background: "linear-gradient(135deg, #E11D48, #F43F5E)" }}
                     >
                       -{discountPct}%
                     </div>
@@ -347,19 +357,21 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 메인 CTA — 항상 화면 하단에 고정 */}
+      {/* 메인 CTA — 항상 화면 하단에 고정.
+          2026-09-27: 이 페이지에서 비회원 전환수단이 이 CTA 하나뿐이라(당근 "글쓰기"처럼
+          보조 액션이 아님) FAB로 축소하진 않되, 패딩/그림자를 줄여 무게감만 낮춤. */}
       <div
-        className="fixed left-1/2 -translate-x-1/2 w-full max-w-md px-5 pb-6 pt-3 bg-white"
+        className="fixed left-1/2 -translate-x-1/2 w-full max-w-md px-5 pb-5 pt-2.5 bg-white"
         style={{ boxShadow: "0 -8px 20px rgba(11,37,64,0.08)", bottom: "64px" }}
       >
         <Link
           href="/signup"
-          className="block text-white text-center font-bold rounded-2xl shadow-lg"
+          className="block text-white text-center font-bold rounded-2xl"
           style={{
             background: "linear-gradient(135deg, #E25100, #FF6F0F)",
-            padding: "20px 0",
-            fontSize: "19px",
-            boxShadow: "0 10px 24px rgba(226,81,0,0.35)",
+            padding: "15px 0",
+            fontSize: "17px",
+            boxShadow: "0 4px 14px rgba(226,81,0,0.28)",
           }}
         >
           🔔 덤핑매물 무료 알림받기
