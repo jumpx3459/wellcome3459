@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { hasAppHistory } from "@/lib/appNav";
 import { CheckCircle } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockCategories, mockRegions, categoryIcons, quantityUnits, guessCategory } from "@/lib/mockData";
@@ -15,6 +17,19 @@ import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import type { ManifestRow } from "@/lib/parseCsv";
 
 export default function SellPage() {
+  const router = useRouter();
+  // 2026-09-28: ← 버튼이 무조건 홈으로 가서, deals/[id]처럼 딥링크(공유/카톡)로
+  // 바로 들어온 경우가 아니라 앱 내 다른 화면에서 들어온 경우엔 그 화면으로
+  // 돌아가도록 통일 — window.history.length는 카카오톡 인앱 브라우저 등에서
+  // 직접 진입해도 1보다 큰 경우가 있어(앱 밖으로 튕겨나감) 대신 이 세션에서
+  // 실제 앱 내 이동이 있었는지(hasAppHistory)로 판단.
+  const goBack = () => {
+    if (hasAppHistory()) {
+      router.back();
+    } else {
+      router.push("/");
+    }
+  };
   const [companyName, setCompanyName] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [memberId, setMemberId] = useState<string | null>(null);
@@ -131,7 +146,7 @@ export default function SellPage() {
     return (
       <main className="flex flex-col min-h-screen">
         <div className="flex-shrink-0 flex items-center gap-3 px-5 py-4.5" style={{ borderBottom: "1px solid #EEF0F2" }}>
-          <Link href="/" className="text-gray500" style={{ fontSize: 19 }}>←</Link>
+          <button type="button" onClick={goBack} className="text-gray500" style={{ fontSize: 19, background: "none", border: "none", padding: 0, cursor: "pointer" }}>←</button>
           {/* 2026-09-26: 탭 화면마다 로고 유무가 달라 브랜드 인지가 끊긴다는 피드백 —
               모든 하단탭 화면 헤더에 작은 로고를 공통으로 배치. */}
           <img src="/images/logo.png" alt="덤핑점핑" className="w-6 h-6 rounded-md flex-shrink-0 object-contain" />
@@ -200,7 +215,7 @@ export default function SellPage() {
           <div className="flex items-center gap-2 mb-3">
             {/* 2026-09-27: buy(찾습니다)·sell(매물등록)은 진입 경로가 다양해
                 로고=홈 링크만으로는 부족하다는 피드백 — 뒤로가기(←)를 복원. */}
-            <Link href="/" style={{ fontSize: 19, color: "rgba(255,255,255,0.8)" }}>←</Link>
+            <button type="button" onClick={goBack} style={{ fontSize: 19, color: "rgba(255,255,255,0.8)", background: "none", border: "none", padding: 0, cursor: "pointer" }}>←</button>
             <Link href="/" className="bg-white rounded-lg px-2.5 py-1.5 inline-block shadow-sm">
               <img src="/images/logo.png" alt="덤핑점핑" className="h-7 w-auto" />
             </Link>

@@ -1,14 +1,27 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import BottomNav, { NAV_HEIGHT } from "./BottomNav";
 import DebugPanel from "./DebugPanel"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
+import { markAppNavigation } from "@/lib/appNav";
 
 // 관리자 화면은 운영자 전용 도구라 회원용 하단 탭바를 보여주지 않습니다.
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdmin = (pathname ?? "").startsWith("/admin");
+
+  // 2026-09-28: 이 세션에서 실제로 화면 이동이 있었는지 기록 — 뒤로가기(←) 버튼들이
+  // "앱 안에서 들어왔으면 이전 화면, 아니면 홈"을 판단하는 데 씀 (src/lib/appNav.ts 참고).
+  // 최초 마운트(첫 진입) 때는 기록하지 않고, 그 이후 pathname이 바뀔 때만 기록.
+  const isFirstMount = useRef(true);
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
+    markAppNavigation();
+  }, [pathname]);
   // 2026-09-27: 점핑파트너 영업용 데모 스킨(/p/[slug])은 실제 내비게이션이 있는
   // 앱 화면이 아니라 단일 랜딩 페이지라 하단 탭바가 어울리지 않음 — admin과
   // 동일하게 숨기되, 모바일 앱 미리보기 느낌은 유지하기 위해 폭 제한(max-w-md)은 유지.

@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { hasAppHistory } from "@/lib/appNav";
 import { mockDeals, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import CountdownBadge from "@/components/CountdownBadge";
 import { formatPrice, percentOff } from "@/lib/format";
@@ -51,8 +52,12 @@ function DealDetailPageInner() {
 
   // 목록(홈/딜스/마이페이지 등 어디서 들어왔든)으로 돌아가는 버튼 — 공유 링크로
   // 바로 들어와 히스토리가 없는 경우에만 홈으로 폴백합니다.
+  // 2026-09-28: window.history.length는 카카오톡 인앱 브라우저 등에서 공유 링크로
+  // 직접 들어와도 1보다 큰 경우가 있어서(웹뷰 자체 히스토리), router.back()이
+  // 앱 밖(카카오톡)으로 튕겨나가는 문제가 있었음 — 이 세션에서 실제 앱 내 이동이
+  // 있었는지(hasAppHistory)로 판단하도록 교체 (buy/sell과 동일 로직, src/lib/appNav.ts).
   const goBack = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
+    if (hasAppHistory()) {
       router.back();
     } else {
       router.push("/");
