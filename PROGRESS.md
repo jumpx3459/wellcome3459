@@ -285,8 +285,8 @@ curl로 확인. 단, 이 세션엔 브라우저 접근이 없어 육안 확인�
   실행 완료(2026-09-27) — 테이블 생성, 기존 메모 이관, `members.referral_note` 비움까지 확인.
 - [ ] 비워진 `members.referral_note` 컬럼 자체는 다른 참조 없는지 한 번 더 확인 후 별도 drop
 - [x] buy/sell/매물상세 뒤로가기 — `src/lib/appNav.ts`(sessionStorage에 앱 내 이동 기록, AppShell이 pathname 변경 시 기록)로
-  "앱 안에서 왔으면 router.back(), 아니면 홈" 통일 (2026-09-28, `7e4f350`). 카운터가 줄지 않아, 딥링크 진입 → 앱 내 이동 →
-  뒤로 여러 번 → 첫 화면에서 ← 누르면 앱 밖으로 나갈 수 있는 경계 사례는 남아 있음
+  "앱 안에서 왔으면 router.back(), 아니면 홈" 통일 (2026-09-28, `7e4f350`). 브라우저/제스처 뒤로가기(popstate) 시엔
+  카운터를 줄이도록 보완(`32e2d3e`). 앞으로가기도 감소로 처리되는 등 어긋나도 항상 "홈으로" 쪽으로만 틀려 앱 밖 이탈은 없음
 - [x] `create_admin_user` anon 실행 불가 확인 (2026-09-28, 제약 위반 인자로 안전하게 호출 → 42501)
 - [ ] 인덱스 7개(0012) 생성 여부 — SQL Editor에서 `select indexname from pg_indexes where indexname like '%_idx';`로 확인
 - [ ] 약관 "보기"가 이용약관·개인정보 모두 `/privacy`로 연결됨 — 이용약관 전문이 생기면 `/terms` 분리
