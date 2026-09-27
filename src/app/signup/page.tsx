@@ -517,7 +517,7 @@ function SignupPageInner() {
         {!alreadyMember && obStep === 1 && (
           <div style={{ padding: "2px 22px 22px" }}>
             <h2 className="font-display" style={{ fontSize: 23, color: "#fff", letterSpacing: "-0.02em" }}>
-              어떤 재고를 찾고 계세요?
+              어떤 상품을 찾고 계세요?
             </h2>
             <p className="mt-2" style={{ fontSize: 14.5, lineHeight: 1.6 }}>
               <span className="font-bold" style={{ color: "#fff" }}>🔔 고른 카테고리에 매물이 뜨면 즉시 알려드려요.</span>{" "}

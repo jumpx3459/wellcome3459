@@ -80,9 +80,9 @@ export default function OnboardingIntro() {
           className="font-display mt-4 leading-[1.45]"
           style={{ fontSize: 23, letterSpacing: "-0.02em", wordBreak: "keep-all" }}
         >
-          <span style={{ color: "var(--color-brandOrange)" }}>남는 재고는 빠르게 알리고</span>
+          <span style={{ color: "var(--color-brandOrange)" }}>남는 상품은 빠르게 알리고</span>
           <br />
-          급한 재고는 남보다 먼저 잡으세요.
+          급한 상품은 남보다 먼저 잡으세요.
         </h1>
         <p className="mt-3.5" style={{ fontSize: 14.5, lineHeight: 1.7, color: "rgba(255,255,255,.88)" }}>
           전국의 임박·과잉·폐업 재고와 &quot;이런 재고 찾습니다&quot; 요청을 가장 먼저 알려드립니다.

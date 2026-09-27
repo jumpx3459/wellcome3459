@@ -242,7 +242,7 @@ export default function SellPage() {
 
       <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: 132 }}>
         <div>
-          <div className="text-sm font-bold mb-2" style={{ color: "#0B2540" }}>매물 제목</div>
+          <div className="text-sm font-bold mb-2" style={{ color: "#0B2540" }}>매물 상품명</div>
           <input
             className="w-full rounded-xl outline-none"
             style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: 14.5 }}

@@ -161,9 +161,9 @@ export default function Home() {
             3줄로 깨지는 원인 — 카피는 그대로 두고 24px로 한 단계만 낮춰 위계
             개선분은 절반 남기면서 2줄을 유지. */}
         <h1 className="font-display leading-snug drop-shadow-sm break-keep" style={{ fontSize: 24 }}>
-          <span style={{ color: "#FF6F0F" }}>남는 재고는 빠르게 알리고,</span>
+          <span style={{ color: "#FF6F0F" }}>남는 상품은 빠르게 알리고,</span>
           <br />
-          급한 재고는 남보다 먼저 잡으세요.
+          급한 상품은 남보다 먼저 잡으세요.
         </h1>
         <p className="text-white/85 text-xs mt-4 leading-relaxed">
           <span className="hidden sm:inline">
@@ -187,7 +187,7 @@ export default function Home() {
       </div>
 
       <div className="pt-5">
-        <div className="px-5 text-lg font-bold text-navy mb-3">어떤 재고를 찾고 계세요?</div>
+        <div className="px-5 text-lg font-bold text-navy mb-3">어떤 상품을 찾고 계세요?</div>
         {/* 3x3 그리드(약 300px)가 히어로 직후 화면 절반을 차지해 실제 매물 미리보기가
             스크롤 없이 안 보이던 문제 — 가로 스크롤 칩 한 줄로 축소. 카테고리 구분은
             여전히 아이콘 배지 색상만으로(카드 배경은 통일). */}
