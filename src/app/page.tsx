@@ -145,25 +145,28 @@ export default function Home() {
             /api/public-stats에서 실시간 집계한 값이 충분히 클 때만 노출하고,
             작거나 아직 안 불러왔으면 무숫자 카피로 자연스럽게 대체. */}
         <div className="inline-flex items-center gap-1.5 bg-white/10 rounded-full px-3 py-1.5 mb-4">
-          <span style={{ color: "#5EEAD4" }}>✔</span>
-          <span className="text-xs font-bold text-white/90">
+          <span style={{ color: "#5EEAD4", fontSize: 11 }}>✔</span>
+          <span className="font-bold text-white/90" style={{ fontSize: 11 }}>
             {businessCount >= BUSINESS_COUNT_THRESHOLD
               ? `전국 ${businessCount.toLocaleString()}개 사업자가 함께하는 중`
               : "지금도 계속 새 매물이 올라와요"}
           </span>
         </div>
 
-        {/* 2026-09-27 (재검토): 두 절 크기를 다르게 분리했더니 헤드라인이 두 조각처럼
-            끊겨 보인다는 피드백 — 기존 스타일(동일 크기, 강조는 첫 절 유지)로 되돌리고,
-            자연 줄바꿈 대신 쉼표 뒤에서 명시적으로 줄바꿈만 추가. */}
-        <h1 className="font-display text-xl leading-snug drop-shadow-sm">
+        {/* 2026-09-27 (재재검토): 헤드라인(text-xl)과 서브카피(text-sm) 크기 차이가
+            작아 위계가 흐릿하다는 피드백 — 트러스트 배지는 11px로 더 줄이고,
+            헤드라인은 한 단계 키우고(text-xl→text-2xl), 서브카피는 한 단계
+            줄여서(text-sm→text-xs) "배지 < 서브카피 < 헤드라인" 3단 위계를 명확히 함. */}
+        <h1 className="font-display text-2xl leading-snug drop-shadow-sm">
           <span style={{ color: "#FF6F0F" }}>남는 재고는 빠르게 알리고,</span>
           <br />
           급한 재고는 남보다 먼저 잡으세요.
         </h1>
-        <p className="text-white/85 text-sm mt-4 leading-relaxed">
+        <p className="text-white/85 text-xs mt-4 leading-relaxed">
           <span className="hidden sm:inline">
-            전국의 임박·과잉·폐업·재고처분 매물을 찾아 원하는 상품이 나오면 가장 먼저 알려드립니다.
+            전국의 임박·과잉·폐업·재고처분 매물을 찾아 원하는 상품이 나오면
+            <br />
+            가장 먼저 알려드립니다.
           </span>
           <span className="sm:hidden">임박·과잉·폐업 재고, 가장 먼저 알려드립니다.</span>
         </p>
