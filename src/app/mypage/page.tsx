@@ -560,20 +560,28 @@ export default function MyPage() {
           <div className="flex-1 min-w-0">
             <div className="font-black truncate" style={{ fontSize: 18.5, letterSpacing: "-0.02em" }}>
               {companyName || phone || "회원님"}
-              {companyName && fullName && ` · ${fullName}`}
             </div>
             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-              {memberNo != null && (
+              {companyName && fullName && (
                 <span style={{ fontSize: 13.5, fontWeight: 600, color: "rgba(255,255,255,.8)" }}>
-                  회원번호 <span className="font-mono">{formatMemberNo(memberNo)}</span>
+                  성명 {fullName}
                 </span>
               )}
+              {memberNo != null && (
+                <span style={{ fontSize: 13.5, fontWeight: 600, color: "rgba(255,255,255,.8)" }}>
+                  {companyName && fullName && "· "}회원번호 <span className="font-mono">{formatMemberNo(memberNo)}</span>
+                </span>
+              )}
+            </div>
+            {/* 2026-09-27: 신뢰 신호(사업자 인증·관리자)가 12px로 너무 작아 존재감이
+                약하다는 피드백 — 배지 크기를 키움. */}
+            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
               {(businessVerified || hasBusinessLicense) && (
                 <span
-                  className="font-bold rounded"
+                  className="font-bold rounded-md"
                   style={{
-                    fontSize: 12,
-                    padding: "2px 7px",
+                    fontSize: 13.5,
+                    padding: "4px 10px",
                     background: businessVerified ? "rgba(47,158,68,.25)" : "rgba(255,255,255,.15)",
                     color: businessVerified ? "#7EE2A0" : "rgba(255,255,255,.7)",
                   }}
@@ -584,8 +592,8 @@ export default function MyPage() {
               {adminInfo && (
                 <Link
                   href="/admin"
-                  className="font-bold rounded inline-flex items-center gap-1"
-                  style={{ fontSize: 12, padding: "2px 7px", background: "rgba(255,209,102,.2)", color: "#FFD166" }}
+                  className="font-bold rounded-md inline-flex items-center gap-1"
+                  style={{ fontSize: 13.5, padding: "4px 10px", background: "rgba(255,209,102,.2)", color: "#FFD166" }}
                   title={`관리자 화면 · ${adminInfo.name}`}
                 >
                   🛡️ 관리자
@@ -594,21 +602,29 @@ export default function MyPage() {
             </div>
           </div>
         </div>
+        {/* 2026-09-27: 이모지가 숫자 위에 세로로 쌓여 있던 걸 숫자 옆(가로)으로
+            붙여 카드 높이를 줄이고 더 컴팩트하게 정리. */}
         <div className="flex gap-2 mt-4.5">
           <div className="flex-1 rounded-xl text-center" style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px" }}>
-            <div style={{ fontSize: 14 }}>🔔</div>
-            <div className="font-mono font-bold mt-0.5" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{alertLogCount}</div>
-            <div className="mt-0.5 font-bold" style={{ fontSize: 12, color: "rgba(255,255,255,.8)" }}>받은 알림</div>
+            <div className="flex items-center justify-center gap-1.5">
+              <span style={{ fontSize: 14 }}>🔔</span>
+              <span className="font-mono font-bold" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{alertLogCount}</span>
+            </div>
+            <div className="mt-1 font-bold" style={{ fontSize: 12, color: "rgba(255,255,255,.8)" }}>받은 알림</div>
           </div>
           <div className="flex-1 rounded-xl text-center" style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px" }}>
-            <div style={{ fontSize: 14 }}>❤️</div>
-            <div className="font-mono font-bold mt-0.5" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{interests.length}</div>
-            <div className="mt-0.5 font-bold" style={{ fontSize: 12, color: "rgba(255,255,255,.8)" }}>관심 매물</div>
+            <div className="flex items-center justify-center gap-1.5">
+              <span style={{ fontSize: 14 }}>❤️</span>
+              <span className="font-mono font-bold" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{interests.length}</span>
+            </div>
+            <div className="mt-1 font-bold" style={{ fontSize: 12, color: "rgba(255,255,255,.8)" }}>관심 매물</div>
           </div>
           <div className="flex-1 rounded-xl text-center" style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px" }}>
-            <div style={{ fontSize: 14 }}>🎁</div>
-            <div className="font-mono font-bold mt-0.5" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{referrals.length}</div>
-            <div className="mt-0.5 font-bold" style={{ fontSize: 12, color: "rgba(255,255,255,.8)" }}>추천 회원</div>
+            <div className="flex items-center justify-center gap-1.5">
+              <span style={{ fontSize: 14 }}>🎁</span>
+              <span className="font-mono font-bold" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{referrals.length}</span>
+            </div>
+            <div className="mt-1 font-bold" style={{ fontSize: 12, color: "rgba(255,255,255,.8)" }}>추천 회원</div>
           </div>
         </div>
 
