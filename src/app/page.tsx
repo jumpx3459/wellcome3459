@@ -383,7 +383,7 @@ export default function Home() {
           완전 불투명 흰 배경 대신 옅은 반투명+블러로 바꾸고, 바로 위에 페이드를 얹어
           스크롤 중인 매물 리스트가 CTA 아래로 자연스럽게 이어지도록 함. */}
       <div
-        className="fixed left-1/2 -translate-x-1/2 w-full max-w-md px-5 pb-5 pt-5 relative"
+        className="fixed left-1/2 -translate-x-1/2 w-full max-w-md px-5 pb-5 pt-5"
         style={{ bottom: "64px" }}
       >
         <div
