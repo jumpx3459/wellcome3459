@@ -202,8 +202,12 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
               style={{ width: 34, height: 34, objectFit: "contain", flexShrink: 0 }}
             />
             <div className="min-w-0">
-              <div className="font-display truncate" style={{ fontSize: 20, color: "#fff" }}>
-                {deals.length > 0 ? `오늘 긴급매물 ${deals.length}건 떴어요` : "오늘의 긴급매물을 모아봤어요"}
+              {/* 2026-09-28: 0028에서 로고 블록이 좌측에 추가되며 이 텍스트 폭이
+                  줄어 360px대 화면에서 말줄임 위험이 커짐 — 캐릭터(브랜드 개성
+                  요소, 애니메이션 포함)는 유지하고, 폰트를 20→18px로 줄이고
+                  빈 상태 카피도 더 짧게 다듬어 대응. */}
+              <div className="font-display truncate" style={{ fontSize: 18, color: "#fff" }}>
+                {deals.length > 0 ? `오늘 긴급매물 ${deals.length}건 떴어요` : "오늘의 긴급매물"}
               </div>
               <div className="flex items-center gap-1.5">
                 <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
