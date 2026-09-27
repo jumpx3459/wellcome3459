@@ -723,20 +723,39 @@ export default function MyPage() {
         {/* 2026-09-27: 이모지가 숫자 위에 세로로 쌓여 있던 걸 숫자 옆(가로)으로
             붙여 카드 높이를 줄이고 더 컴팩트하게 정리. */}
         <div className="flex gap-2 mt-4.5">
-          <div className="flex-1 rounded-xl text-center" style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px" }}>
+          {/* 2026-09-27: 3개 타일이 전부 클릭 가능한 버튼처럼 보이는데 실제론 그냥
+              <div>라 눌러도 반응이 없었음 — "받은 알림"/"관심 매물"은 이 페이지
+              더 아래에 해당 목록 섹션이 이미 있어서, 눌렀을 때 그 섹션으로
+              스크롤 이동하도록 연결(추천 회원은 이미 아래쪽 "대시보드 열기 →"
+              링크가 별도로 있어서 그대로 둠). */}
+          <button
+            type="button"
+            onClick={() =>
+              document.getElementById("alert-log-section")?.scrollIntoView({ behavior: "smooth", block: "start" })
+            }
+            className="flex-1 rounded-xl text-center"
+            style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px", border: "none" }}
+          >
             <div className="flex items-center justify-center gap-1.5">
               <span style={{ fontSize: 14 }}>🔔</span>
               <span className="font-mono font-bold" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{alertLogCount}</span>
             </div>
             <div className="mt-1 font-bold" style={{ fontSize: 12, color: "rgba(255,255,255,.8)" }}>받은 알림</div>
-          </div>
-          <div className="flex-1 rounded-xl text-center" style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px" }}>
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              document.getElementById("interests-section")?.scrollIntoView({ behavior: "smooth", block: "start" })
+            }
+            className="flex-1 rounded-xl text-center"
+            style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px", border: "none" }}
+          >
             <div className="flex items-center justify-center gap-1.5">
               <span style={{ fontSize: 14 }}>❤️</span>
               <span className="font-mono font-bold" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{interests.length}</span>
             </div>
             <div className="mt-1 font-bold" style={{ fontSize: 12, color: "rgba(255,255,255,.8)" }}>관심 매물</div>
-          </div>
+          </button>
           <div className="flex-1 rounded-xl text-center" style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px" }}>
             <div className="flex items-center justify-center gap-1.5">
               <span style={{ fontSize: 14 }}>🎁</span>
@@ -1291,7 +1310,7 @@ export default function MyPage() {
         </div>
 
         {alertLog.length > 0 && (
-          <div>
+          <div id="alert-log-section">
             <div className="flex items-center justify-between mb-2.5">
               <span className="font-black" style={{ fontSize: 15, color: "#0B2540" }}>최근 받은 알림</span>
               <span style={{ fontSize: 12.5, color: "#6B7480" }}>최근 활동</span>
@@ -1348,7 +1367,7 @@ export default function MyPage() {
         </button>
         {saveError && <div className="text-sm text-orange font-medium">{saveError}</div>}
 
-        <div className="border-t border-gray200 pt-5">
+        <div id="interests-section" className="border-t border-gray200 pt-5">
           <div className="text-base font-bold text-navy mb-3">
             관심 표시한 매물 ({interests.length})
           </div>
