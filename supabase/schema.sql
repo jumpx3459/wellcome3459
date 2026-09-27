@@ -701,3 +701,82 @@ as $$
   group by m.referred_by;
 $$;
 revoke all on function admin_partner_referral_stats() from public;
+
+-- 2026-09-27: /api/admin/category-kpis도 partners-overview와 같은 1,000행 응답
+-- 한도 문제가 있었음 — interests/quick_leads/buy_requests/seller_requests 전체를
+-- 무제한 select해서 JS로 카테고리별 집계했는데, 이 중 하나라도 누적 1,000행을
+-- 넘으면 leads/완료율/액티브 지표가 전부 실제보다 적게 잡힘(심지어 "이번 달"이
+-- 아니라 전체 누적 수치라 문제가 더 빨리 드러남). DB에서 카테고리별로 직접
+-- group by해서 해결 — 결과 행 수가 "카테고리 수"(현재 9개)라 한도 문제가 없음.
+create or replace function admin_category_kpis()
+returns table (
+  category_id int,
+  leads bigint,
+  completed bigint,
+  no_match bigint,
+  active_suppliers_7d bigint,
+  active_demanders_7d bigint
+)
+language sql
+security definer
+set search_path = public
+as $$
+  with leads_union as (
+    select
+      d.category_id,
+      case i.outcome when 'completed' then 'completed' when 'no_deal' then 'no_deal' else 'pending' end as outcome,
+      i.created_at,
+      'm:' || i.member_id::text as actor_key
+    from public.interests i
+    join public.deals d on d.id = i.deal_id
+    where i.member_id is not null
+
+    union all
+
+    select
+      d.category_id,
+      case q.outcome when 'completed' then 'completed' when 'no_deal' then 'no_deal' else 'pending' end,
+      q.created_at,
+      'q:' || q.phone
+    from public.quick_leads q
+    join public.deals d on d.id = q.deal_id
+
+    union all
+
+    select
+      b.category_id,
+      case b.outcome when 'matched' then 'completed' when 'no_match' then 'no_deal' else 'pending' end,
+      b.created_at,
+      'b:' || b.contact_phone
+    from public.buy_requests b
+  ),
+  lead_stats as (
+    select
+      category_id,
+      count(*) as leads,
+      count(*) filter (where outcome = 'completed') as completed,
+      count(*) filter (where outcome = 'no_deal') as no_match,
+      count(distinct actor_key) filter (where created_at >= now() - interval '7 days') as active_demanders_7d
+    from leads_union
+    where category_id is not null
+    group by category_id
+  ),
+  supplier_stats as (
+    select
+      s.category_id,
+      count(distinct s.contact_phone) filter (where s.created_at >= now() - interval '7 days') as active_suppliers_7d
+    from public.seller_requests s
+    where s.category_id is not null
+    group by s.category_id
+  )
+  select
+    coalesce(l.category_id, sup.category_id) as category_id,
+    coalesce(l.leads, 0) as leads,
+    coalesce(l.completed, 0) as completed,
+    coalesce(l.no_match, 0) as no_match,
+    coalesce(sup.active_suppliers_7d, 0) as active_suppliers_7d,
+    coalesce(l.active_demanders_7d, 0) as active_demanders_7d
+  from lead_stats l
+  full outer join supplier_stats sup on sup.category_id = l.category_id;
+$$;
+revoke all on function admin_category_kpis() from public;
