@@ -1221,9 +1221,20 @@ export default function MyPage() {
           </div>
           <div className="flex flex-col gap-2">
             {referrals.length === 0 ? (
-              <p className="text-sm text-gray500 text-center py-4">
-                아직 추천으로 가입한 회원이 없어요. 위 링크를 공유해보세요!
-              </p>
+              // 2026-09-28: 기존엔 회색 텍스트 한 줄이라 눈에 잘 안 띈다는 피드백 —
+              // 깜빡임 대신, 이미 있는 보너스 배너(🎉 ...늘었어요)와 같은 스타일
+              // (연한 배경 박스+아이콘+볼드)로 통일. "위 링크"는 이 문단과 실제
+              // 버튼(링크복사/공유/QR) 사이에 "공식 점핑파트너" 카드가 끼어 있어
+              // 위치상 멀어서 헷갈릴 수 있어 "링크 복사·공유 버튼"으로 직접 지칭.
+              <div
+                className="flex items-center gap-2.5 rounded-xl"
+                style={{ background: "#FFF4E0", border: "1px solid #F5DDA8", padding: "12px 14px" }}
+              >
+                <span className="text-lg flex-shrink-0">📣</span>
+                <p className="text-sm font-bold leading-relaxed" style={{ color: "#966B00" }}>
+                  아직 추천으로 가입한 회원이 없어요. 위쪽 링크 복사·공유 버튼으로 친구에게 보내보세요!
+                </p>
+              </div>
             ) : (
               <>
                 {referrals.slice(0, 3).map((r, i) => (
