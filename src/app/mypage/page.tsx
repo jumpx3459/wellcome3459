@@ -1363,18 +1363,28 @@ export default function MyPage() {
                   </button>
                 </div>
                 <p className="text-sm text-gray500 mb-2">선택 안 하면 전국 매물 알림을 다 받아요</p>
+                {/* 2026-09-28: 위 카테고리 칩(2026-09-27에 signup과 톤을 맞춤)과
+                    달리 이 지역 칩만 옛날 스타일(선택 시 배경 꽉 채움)로 남아있어
+                    어긋난다는 피드백 — signup 관심지역 칩과 동일하게 흰 배경 고정 +
+                    선택 시 테두리만 두껍게 바꾸는 방식으로 통일. */}
                 <div className="grid grid-cols-4 gap-2">
-                  {mockRegions.map((r) => (
-                    <button
-                      key={r}
-                      onClick={() => toggle(regions, setRegions, r)}
-                      className={`text-sm py-2.5 rounded-full border-2 font-bold text-center ${
-                        regions.includes(r) ? "bg-[#FF6F0F] text-white border-[#FF6F0F]" : "border-gray200 text-gray500"
-                      }`}
-                    >
-                      {r}
-                    </button>
-                  ))}
+                  {mockRegions.map((r) => {
+                    const picked = regions.includes(r);
+                    return (
+                      <button
+                        key={r}
+                        onClick={() => toggle(regions, setRegions, r)}
+                        className="text-sm py-2.5 rounded-full font-bold text-center"
+                        style={{
+                          background: "#fff",
+                          border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
+                          color: "#1A1F26",
+                        }}
+                      >
+                        {r}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
