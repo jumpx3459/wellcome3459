@@ -400,7 +400,7 @@ export default function Home() {
           <div>
             <div className="text-base font-black text-navy">
               <span className="inline-block" style={{ width: 24 }}>🔍</span>
-              이런 재고 찾습니다
+              이런 상품 찾습니다
             </div>
             <div className="text-xs text-gray500 mt-0.5" style={{ marginLeft: 24 }}>구매 희망 등록 →</div>
           </div>
