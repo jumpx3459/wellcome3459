@@ -180,31 +180,34 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
           backgroundSize: "16px 16px, cover",
         }}
       >
-        <div className="flex items-center gap-2.5" style={{ padding: "14px 20px 12px" }}>
-          {/* 2026-09-27: 회원 홈엔 로고 이미지 자체가 없어서 재접속마다 브랜드를
-              각인시키려던 스플래시 취지가 회원(실사용자 대부분)에게는 전혀
-              적용되지 않고 있었음 — 새 로고를 추가하는 대신, 이미 있는 이
-              캐릭터 아이콘에 동일한 바운스 애니메이션을 적용 (83px 고정 바
-              높이·레이아웃 변화 없음). */}
-          <img
-            src="/images/manager-cut.png"
-            alt="점핑매니저"
-            className={logoAnimate ? "animate-logo-jump" : ""}
-            style={{ width: 34, height: 34, objectFit: "contain", flexShrink: 0 }}
-          />
-          <div className="min-w-0">
-            <div className="font-display truncate" style={{ fontSize: 20, color: "#fff" }}>
-              {deals.length > 0 ? `오늘 긴급매물 ${deals.length}건 떴어요` : "오늘의 긴급매물을 모아봤어요"}
-            </div>
-            <div className="flex items-center gap-1.5">
-              <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
-              {/* 2026-09-27: 다른 4개 하단 탭(buy/sell/deals/mypage)엔 전부
-                  "Powered by JumpX"가 있는데 이 화면(회원 홈)만 없던 것 —
-                  이미 83px로 실측 튜닝된 고정 바라 구조는 그대로 두고, 로테이션
-                  태그 옆에 작은 텍스트만 추가(배지 없음, 높이 변화 없음). */}
-              <span className="whitespace-nowrap" style={{ fontSize: 10.5, color: "rgba(255,255,255,0.45)" }}>
-                · Powered by JumpX
-              </span>
+        <div className="flex items-center gap-3.5" style={{ padding: "14px 20px 12px" }}>
+          {/* 2026-09-28: 회원 홈에 실제 로고가 없다는 피드백(2026-09-27 코멘트 참고,
+              당시엔 캐릭터에 애니메이션만 추가) — 좌측 끝에 로고+"Powered by JumpX"를
+              세로로 쌓은 블록을 별도로 배치하고, 간격을 띄워 캐릭터+문구 블록을
+              오른쪽에 둠. 83px 고정 바 높이는 유지(로고 배지를 작게 잡아 안에 맞춤). */}
+          <Link href="/" className="flex flex-col items-start flex-shrink-0" style={{ gap: 3 }}>
+            <span className="bg-white rounded-md inline-flex items-center" style={{ padding: "3px 6px" }}>
+              <img src="/images/logo.png" alt="덤핑점핑" className="h-5 w-auto block" />
+            </span>
+            <span className="whitespace-nowrap" style={{ fontSize: 9.5, color: "rgba(255,255,255,0.45)" }}>
+              Powered by JumpX
+            </span>
+          </Link>
+          <div className="flex items-center gap-2.5 min-w-0">
+            {/* 2026-09-27: 캐릭터 아이콘에 스플래시와 동일한 바운스 애니메이션 적용. */}
+            <img
+              src="/images/manager-cut.png"
+              alt="점핑매니저"
+              className={logoAnimate ? "animate-logo-jump" : ""}
+              style={{ width: 34, height: 34, objectFit: "contain", flexShrink: 0 }}
+            />
+            <div className="min-w-0">
+              <div className="font-display truncate" style={{ fontSize: 20, color: "#fff" }}>
+                {deals.length > 0 ? `오늘 긴급매물 ${deals.length}건 떴어요` : "오늘의 긴급매물을 모아봤어요"}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
+              </div>
             </div>
           </div>
         </div>
