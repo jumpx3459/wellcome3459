@@ -635,24 +635,34 @@ export default function MyPage() {
   return (
     <main className="flex flex-col min-h-screen">
       <div
-        className="px-5 py-5 text-white"
+        className="px-5 pt-5 pb-5 text-white"
         style={{
           backgroundImage:
-            "radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(135deg,#04101C,#0D2B47)",
+            "radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(120deg, #04101C, #1A4B78)",
           backgroundSize: "16px 16px, cover",
         }}
       >
-        {/* 2026-09-26: 탭 화면마다 로고 유무가 달라 브랜드 인지가 끊긴다는 피드백 —
-            모든 하단탭 화면 헤더에 작은 로고를 공통으로 배치. */}
-        <div className="bg-white rounded-lg px-1.5 py-1 inline-flex flex-shrink-0 mb-2.5">
-          <img src="/images/logo.png" alt="덤핑점핑" className="h-5 w-auto block" />
+        {/* 2026-09-27: buy/sell/deals와 동일한 헤더 구조로 통일 —
+            로고=홈 링크 + Powered by JumpX 배지 / 소제목 라벨+로테이션 태그 행.
+            마이페이지는 프로필 요약 카드라 caption(내 정보)만 맞추고
+            아바타·상호명·배지·통계 블록은 그대로 유지(이 화면의 "타이틀" 역할). */}
+        <div className="flex items-center gap-2 mb-3">
+          <Link href="/" className="bg-white rounded-lg px-2.5 py-1.5 inline-block shadow-sm">
+            <img src="/images/logo.png" alt="덤핑점핑" className="h-7 w-auto" />
+          </Link>
+          <span
+            className="rounded-full font-medium"
+            style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", padding: "3px 9px", background: "rgba(255,255,255,0.08)" }}
+          >
+            Powered by JumpX
+          </span>
         </div>
-
-        {/* design-v2: deals 헤더의 긴급성 로테이션 문구를 마이페이지 상단에도 노출
-            (2026-09-26) — 하단 탭 전체 화면에 동일 메시지 각인.
-            2026-09-27: deals/buy/sell은 전부 좌측 정렬인데 여기만 가운데 정렬로
-            튀던 것 — text-center 제거해 방향 통일. */}
-        <RotatingUrgencyTag className="mb-2.5" style={{ color: "var(--color-brandOrangeAccent)" }} />
+        <div className="flex items-center justify-between flex-wrap gap-y-1.5 mb-2.5">
+          <div className="text-xs font-bold tracking-widest whitespace-nowrap" style={{ color: "#FFD166" }}>
+            내 정보
+          </div>
+          <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
+        </div>
         <div className="flex items-center gap-3">
           <div
             className="rounded-full flex items-center justify-center overflow-hidden flex-shrink-0"
