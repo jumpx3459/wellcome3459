@@ -38,6 +38,7 @@ export default function PartnerReferralsPage() {
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [errorId, setErrorId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) {
@@ -94,6 +95,7 @@ export default function PartnerReferralsPage() {
   async function saveNote(memberId: string) {
     if (!accessToken) return;
     setSavingId(memberId);
+    setErrorId((cur) => (cur === memberId ? null : cur));
     try {
       const res = await fetch("/api/my-referrals", {
         method: "PATCH",
@@ -103,7 +105,11 @@ export default function PartnerReferralsPage() {
       if (res.ok) {
         setSavedId(memberId);
         setTimeout(() => setSavedId((cur) => (cur === memberId ? null : cur)), 1800);
+      } else {
+        setErrorId(memberId);
       }
+    } catch {
+      setErrorId(memberId);
     } finally {
       setSavingId(null);
     }
@@ -194,8 +200,11 @@ export default function PartnerReferralsPage() {
                     className="flex-1 min-w-0 rounded-lg outline-none resize-none"
                     style={{ border: "1.5px solid #E4E7EB", padding: "7px 10px", fontSize: 12.5 }}
                   />
-                  <span className="flex-shrink-0 text-xs font-bold" style={{ width: 34, color: "#1D8A44", paddingTop: 8 }}>
-                    {savingId === r.id ? "..." : savedId === r.id ? "저장됨" : ""}
+                  <span
+                    className="flex-shrink-0 text-xs font-bold"
+                    style={{ width: 44, color: errorId === r.id ? "#E25100" : "#1D8A44", paddingTop: 8 }}
+                  >
+                    {savingId === r.id ? "..." : errorId === r.id ? "저장 실패" : savedId === r.id ? "저장됨" : ""}
                   </span>
                 </div>
               </div>

@@ -24,11 +24,24 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await supabaseAdmin
     .from("members")
-    .select("id, member_no, is_business, created_at, phone, company_name, business_verified, referral_note")
+    .select("id, member_no, is_business, created_at, phone, company_name, business_verified")
     .eq("referred_by", userData.user.id)
     .order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // 컨택 메모는 members가 아니라 별도 referral_notes 테이블(service_role 전용)에서 조회 —
+  // members_self_select 정책상 회원 본인이 자기 행의 메모를 직접 읽을 수 없게 하기 위함.
+  const memberIds = (data ?? []).map((m) => m.id);
+  const notesById: Record<string, string | null> = {};
+  if (memberIds.length > 0) {
+    const { data: noteRows } = await supabaseAdmin
+      .from("referral_notes")
+      .select("member_id, note")
+      .eq("referrer_id", userData.user.id)
+      .in("member_id", memberIds);
+    for (const r of noteRows ?? []) notesById[r.member_id] = r.note;
+  }
 
   const items = (data ?? []).map((m) => ({
     id: m.id,
@@ -38,7 +51,7 @@ export async function POST(req: NextRequest) {
     phone: m.phone,
     company_name: m.company_name,
     business_verified: m.business_verified,
-    referral_note: m.referral_note,
+    referral_note: notesById[m.id] ?? null,
   }));
 
   return NextResponse.json({ count: items.length, items });
@@ -46,8 +59,9 @@ export async function POST(req: NextRequest) {
 
 // 2026-09-27: 점핑파트너 "내 추천 회원" 대시보드 — 추천인이 자신이 추천한 회원에 대해
 // 남기는 컨택 메모(연락 여부 등)만 갱신합니다. 대상 회원의 referred_by가 요청자 본인과
-// 일치하는지 서버에서 직접 확인한 뒤에만 service_role로 갱신 — 다른 회원 정보(전화번호,
-// 사업자 인증 등)는 이 라우트로 수정할 수 없습니다.
+// 일치하는지 서버에서 직접 확인한 뒤에만 service_role로 referral_notes에 upsert —
+// members 테이블은 건드리지 않고, 다른 회원 정보(전화번호, 사업자 인증 등)도 이 라우트로
+// 수정할 수 없습니다.
 export async function PATCH(req: NextRequest) {
   const { accessToken, memberId, note } = await req.json();
 
@@ -77,11 +91,13 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "내가 추천한 회원만 메모를 남길 수 있어요." }, { status: 403 });
   }
 
-  const { error: updateError } = await supabaseAdmin
-    .from("members")
-    .update({ referral_note: note || null })
-    .eq("id", memberId);
-  if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
+  const { error: upsertError } = await supabaseAdmin
+    .from("referral_notes")
+    .upsert(
+      { referrer_id: userData.user.id, member_id: memberId, note: note || null, updated_at: new Date().toISOString() },
+      { onConflict: "referrer_id,member_id" }
+    );
+  if (upsertError) return NextResponse.json({ error: upsertError.message }, { status: 500 });
 
   return NextResponse.json({ ok: true });
 }

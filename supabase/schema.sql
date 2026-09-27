@@ -639,10 +639,29 @@ alter table public.seller_requests add column if not exists manifest_items jsonb
 alter table public.deals add column if not exists pid text;
 alter table public.deals add column if not exists manifest_items jsonb;
 
--- 2026-09-27: 점핑파트너 "내 추천 회원" 대시보드(표시+컨택메모)용 컬럼.
--- 추천인이 "내가 추천한 이 회원과 언제 통화했는지" 등을 적어두는 메모로, 회원 본인이
--- 보는 정보가 아니라 추천인(referred_by)만 보고 쓰는 값이라 members_self_update로는
--- 커버되지 않음(그 정책은 auth.uid() = id, 즉 "본인 행"만 수정 가능) — 별도 RLS 정책을
--- 추가하지 않고, 기존 /api/my-referrals와 동일하게 service_role 키를 쓰는 API 라우트에서
--- "요청자 id = 대상 회원의 referred_by"를 수동 검증한 뒤에만 갱신하도록 함.
-alter table public.members add column if not exists referral_note text;
+-- 2026-09-27 → 2026-09-27 수정: 점핑파트너 "내 추천 회원" 대시보드(표시+컨택메모).
+-- 처음엔 members.referral_note 컬럼으로 만들었는데, members_self_select/
+-- members_self_update 정책(auth.uid() = id, "본인 행"은 자유롭게 읽고 쓸 수 있음) 때문에
+-- 추천받은 회원 본인이 Supabase를 직접 호출하면 추천인이 자신에 대해 적은 메모를
+-- 읽거나 고칠 수 있는 문제가 있었음 — members 테이블에는 손대지 않는 별도 테이블로 분리.
+-- RLS는 켜두되 정책을 하나도 만들지 않아 anon/authenticated 키로는 어떤 행도 접근할
+-- 수 없고, service_role 키를 쓰는 /api/my-referrals 라우트(요청자 id = 대상 회원의
+-- referred_by 수동 검증)를 통해서만 읽고 쓸 수 있음.
+create table if not exists public.referral_notes (
+  referrer_id uuid not null references public.members(id) on delete cascade,
+  member_id uuid not null references public.members(id) on delete cascade,
+  note text,
+  updated_at timestamptz not null default now(),
+  primary key (referrer_id, member_id)
+);
+alter table public.referral_notes enable row level security;
+
+-- 이미 배포돼 있던 members.referral_note에 데이터가 있으면 새 테이블로 옮기고 비움.
+-- (컬럼 자체는 당장 drop하지 않음 — 다른 데서 참조가 없는 걸 한 번 더 확인한 뒤 별도로 제거)
+insert into public.referral_notes (referrer_id, member_id, note)
+select referred_by, id, referral_note
+from public.members
+where referral_note is not null and referred_by is not null
+on conflict (referrer_id, member_id) do nothing;
+
+update public.members set referral_note = null where referral_note is not null;
