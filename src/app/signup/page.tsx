@@ -497,7 +497,11 @@ function SignupPageInner() {
             <span className="font-mono text-xs font-bold" style={{ color: "rgba(255,255,255,0.7)" }}>{obStep}/{TOTAL_STEPS}</span>
           </div>
         </div>
-        <div className="flex items-center justify-center gap-2" style={{ padding: "9px 22px" }}>
+        {/* 2026-09-27 (재재검토): deals/buy/sell/마이페이지는 로테이션 태그가
+            좌측 정렬(라벨 있으면 라벨 좌·태그 우) 기준인데 여기만 가운데 정렬로
+            묶여 있던 것 — justify-between으로 신뢰 마커는 좌측, 태그는 우측으로
+            분리해 방향을 맞춤. */}
+        <div className="flex items-center justify-between" style={{ padding: "9px 22px" }}>
           {/* 2026-09-27 (재검토): 고정 숫자("890명+")는 하드코딩이라 실제 가입자
               수와 어긋날 수 있어, 홈/온보딩과 동일하게 숫자 없는 신뢰 마커로 교체.
               로테이션 태그와 한 줄에 나란히 서야 해서 짧게 "실시간"만 표기. */}

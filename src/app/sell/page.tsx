@@ -205,7 +205,10 @@ export default function SellPage() {
             수수료 0원
           </span>
         </div>
-        <div className="flex items-center justify-center" style={{ padding: "9px 20px" }}>
+        {/* 2026-09-27: deals/buy는 로테이션 태그가 좌측 정렬(가운데 정렬 아님)로
+            통일돼 있어 sell만 가운데 정렬로 튀던 것 — 방향만 맞춤(뒤로가기는
+            등록 진입 경로가 다양해 필요하므로 유지). */}
+        <div className="flex items-center" style={{ padding: "9px 20px" }}>
           <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
         </div>
       </div>

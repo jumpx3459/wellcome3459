@@ -555,8 +555,10 @@ export default function MyPage() {
         </div>
 
         {/* design-v2: deals 헤더의 긴급성 로테이션 문구를 마이페이지 상단에도 노출
-            (2026-09-26) — 하단 탭 전체 화면에 동일 메시지 각인. */}
-        <RotatingUrgencyTag className="mb-2.5 text-center" style={{ color: "var(--color-brandOrangeAccent)" }} />
+            (2026-09-26) — 하단 탭 전체 화면에 동일 메시지 각인.
+            2026-09-27: deals/buy/sell은 전부 좌측 정렬인데 여기만 가운데 정렬로
+            튀던 것 — text-center 제거해 방향 통일. */}
+        <RotatingUrgencyTag className="mb-2.5" style={{ color: "var(--color-brandOrangeAccent)" }} />
         <div className="flex items-center gap-3">
           <div className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 52, height: 52, background: "rgba(255,255,255,.14)", fontSize: 23 }}>
             🏪
