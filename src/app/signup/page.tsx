@@ -880,7 +880,7 @@ function SignupPageInner() {
                       {a.on ? "✓" : ""}
                     </span>
                     <span className="text-xs font-bold flex-shrink-0" style={{ color: a.tag === "필수" ? "#E25100" : "#6B7480" }}>[{a.tag}]</span>
-                    <span className="flex-1 truncate" style={{ fontSize: 12.5, lineHeight: 1.45, color: a.on ? "#1A1F26" : "#6B7480" }}>{a.label}</span>
+                    <span className="flex-1" style={{ fontSize: 12.5, lineHeight: 1.45, color: a.on ? "#1A1F26" : "#6B7480" }}>{a.label}</span>
                   </button>
                   {a.href && (
                     <a
