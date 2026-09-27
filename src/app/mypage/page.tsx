@@ -80,6 +80,9 @@ export default function MyPage() {
   const [email, setEmail] = useState("");
   const [businessVerified, setBusinessVerified] = useState(false);
   const [hasBusinessLicense, setHasBusinessLicense] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
@@ -118,7 +121,7 @@ export default function MyPage() {
 
       const { data: member } = await supabase
         .from("members")
-        .select("phone, ref_code, member_no, company_name, name, email, business_verified, business_license_path, bonus_photo_slots")
+        .select("phone, ref_code, member_no, company_name, name, email, business_verified, business_license_path, bonus_photo_slots, avatar_url")
         .eq("id", userId)
         .single();
       if (member) {
@@ -130,6 +133,7 @@ export default function MyPage() {
         setBusinessVerified(Boolean(member.business_verified));
         setHasBusinessLicense(Boolean(member.business_license_path));
         setBonusPhotoSlots(member.bonus_photo_slots ?? 0);
+        setAvatarUrl(member.avatar_url ?? null);
       }
 
       if (member?.ref_code) {
@@ -465,6 +469,50 @@ export default function MyPage() {
 
   const profileComplete = companyName.trim().length > 0;
 
+  // 2026-09-27: 프로필 사진 업로드 — 기존 deal-images 업로드 API 재사용, 선택 즉시
+  // 업로드+저장(자동 반영). 본인 행 수정이라 members_self_update RLS로 충분.
+  const handleAvatarSelect = async (file: File | null) => {
+    if (!file || !supabase) return;
+    if (!file.type.startsWith("image/")) {
+      setAvatarError("이미지 파일만 업로드할 수 있어요.");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setAvatarError("8MB 이하 사진만 업로드할 수 있어요.");
+      return;
+    }
+    setAvatarError("");
+    setAvatarUploading(true);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return;
+      const formData = new FormData();
+      formData.append("files", file);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      const url: string | undefined = data.urls?.[0];
+      if (!url) {
+        setAvatarError("업로드에 실패했어요. 다시 시도해주세요.");
+        return;
+      }
+      await supabase.from("members").update({ avatar_url: url }).eq("id", userData.user.id);
+      setAvatarUrl(url);
+    } catch {
+      setAvatarError("업로드에 실패했어요. 다시 시도해주세요.");
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleAvatarRemove = async () => {
+    if (!supabase) return;
+    setAvatarError("");
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return;
+    setAvatarUrl(null);
+    await supabase.from("members").update({ avatar_url: null }).eq("id", userData.user.id);
+  };
+
   if (!isSupabaseConfigured) {
     return (
       <main className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
@@ -554,13 +602,59 @@ export default function MyPage() {
             튀던 것 — text-center 제거해 방향 통일. */}
         <RotatingUrgencyTag className="mb-2.5" style={{ color: "var(--color-brandOrangeAccent)" }} />
         <div className="flex items-center gap-3">
-          <div className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 52, height: 52, background: "rgba(255,255,255,.14)", fontSize: 23 }}>
-            🏪
+          <div className="relative flex-shrink-0" style={{ width: 52, height: 52 }}>
+            <div
+              className="rounded-full flex items-center justify-center overflow-hidden w-full h-full"
+              style={{ background: "rgba(255,255,255,.14)", fontSize: 23 }}
+            >
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt="프로필 사진" className="w-full h-full object-cover" />
+              ) : (
+                "🏪"
+              )}
+              {avatarUploading && (
+                <div className="absolute inset-0 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,.45)", fontSize: 11, color: "#fff" }}>
+                  ...
+                </div>
+              )}
+            </div>
+            <label
+              className="absolute flex items-center justify-center rounded-full cursor-pointer"
+              style={{ width: 20, height: 20, right: -2, bottom: -2, background: "#FFD166", border: "2px solid #0B2540", fontSize: 10 }}
+              title="프로필 사진 변경"
+            >
+              📷
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={avatarUploading}
+                onChange={(e) => {
+                  handleAvatarSelect(e.target.files?.[0] ?? null);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            {avatarUrl && !avatarUploading && (
+              <button
+                type="button"
+                onClick={handleAvatarRemove}
+                className="absolute flex items-center justify-center rounded-full"
+                style={{ width: 16, height: 16, left: -2, top: -2, background: "rgba(0,0,0,.55)", color: "#fff", fontSize: 9, lineHeight: 1 }}
+                title="프로필 사진 삭제"
+              >
+                ✕
+              </button>
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <div className="font-black truncate" style={{ fontSize: 18.5, letterSpacing: "-0.02em" }}>
               {companyName || phone || "회원님"}
             </div>
+            {avatarError && (
+              <div style={{ fontSize: 11.5, color: "#FFB4A3", marginTop: 2 }}>{avatarError}</div>
+            )}
             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
               {companyName && fullName && (
                 <span style={{ fontSize: 13.5, fontWeight: 600, color: "rgba(255,255,255,.8)" }}>

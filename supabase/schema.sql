@@ -307,6 +307,10 @@ create trigger members_protect_business_verified
 -- 브라우저 콘솔에서 bonus_photo_slots를 마음대로 올릴 수 있음). 지급 로직 자체를 이
 -- 트리거 안(서버 사이드)에서 계산하는 방식으로 막습니다 — signup/page.tsx는 손대지 않고
 -- referred_by만 기존처럼 넘기면, 신규 회원 본인 +2 · 추천인 +2가 트리거에서 처리됩니다.
+-- 2026-09-27: 마이페이지 프로필 사진. 본인 행에만 쓰는 값이라 기존
+-- members_self_update 정책(auth.uid() = id)으로 충분 — 별도 RLS 불필요.
+alter table public.members add column if not exists avatar_url text;
+
 alter table public.members add column if not exists bonus_photo_slots integer not null default 0;
 alter table public.members add column if not exists referral_bonus_granted boolean not null default false;
 
