@@ -272,11 +272,11 @@ curl로 확인. 단, 이 세션엔 브라우저 접근이 없어 육안 확인�
 
 ## 다음에 할 일
 
-- [ ] **컨택 메모 `referral_notes` 테이블 분리 — Supabase SQL 실행 필요** (2026-09-27, `81a60c4`):
-  `members.referral_note` 노출 문제(추천받은 회원 본인이 자기 메모를 읽고 수정 가능)를 정책 없는
-  RLS 테이블 + service_role API 전용으로 해결. 코드는 테이블이 없어도 목록은 정상 표시(메모만
-  "저장 실패")라 먼저 배포됨. `schema.sql` 맨 끝 `referral_notes` 블록(테이블 생성 + 기존 메모 이관)
-  실행 후 체크. 이관 확인되면 `members.referral_note` 컬럼은 별도로 drop
+- [x] **컨택 메모 `referral_notes` 테이블 분리** (2026-09-27, `81a60c4`): `members.referral_note`
+  노출 문제(추천받은 회원 본인이 자기 메모를 읽고 수정 가능)를 정책 없는 RLS 테이블 +
+  service_role API 전용으로 해결. `schema.sql` 맨 끝 `referral_notes` 블록 Supabase SQL Editor
+  실행 완료(2026-09-27) — 테이블 생성, 기존 메모 이관, `members.referral_note` 비움까지 확인.
+- [ ] 비워진 `members.referral_note` 컬럼 자체는 다른 참조 없는지 한 번 더 확인 후 별도 drop
 - [ ] buy/sell 뒤로가기(←)가 `router.back()`이 아니라 홈(`/`) 링크 — 진입 경로 복귀가 목적이면 교체 검토
 - [ ] 약관 "보기"가 이용약관·개인정보 모두 `/privacy`로 연결됨 — 이용약관 전문이 생기면 `/terms` 분리
 
