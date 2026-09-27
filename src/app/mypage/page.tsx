@@ -654,59 +654,21 @@ export default function MyPage() {
             튀던 것 — text-center 제거해 방향 통일. */}
         <RotatingUrgencyTag className="mb-2.5" style={{ color: "var(--color-brandOrangeAccent)" }} />
         <div className="flex items-center gap-3">
-          <div className="relative flex-shrink-0" style={{ width: 52, height: 52 }}>
-            <div
-              className="rounded-full flex items-center justify-center overflow-hidden w-full h-full"
-              style={{ background: "rgba(255,255,255,.14)", fontSize: 23 }}
-            >
-              {avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarUrl} alt="프로필 사진" className="w-full h-full object-cover" />
-              ) : (
-                "🏪"
-              )}
-              {avatarUploading && (
-                <div className="absolute inset-0 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,.45)", fontSize: 11, color: "#fff" }}>
-                  ...
-                </div>
-              )}
-            </div>
-            <label
-              className="absolute flex items-center justify-center rounded-full cursor-pointer"
-              style={{ width: 20, height: 20, right: -2, bottom: -2, background: "#FFD166", border: "2px solid #0B2540", fontSize: 10 }}
-              title="프로필 사진 변경"
-            >
-              📷
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                disabled={avatarUploading}
-                onChange={(e) => {
-                  handleAvatarSelect(e.target.files?.[0] ?? null);
-                  e.target.value = "";
-                }}
-              />
-            </label>
-            {avatarUrl && !avatarUploading && (
-              <button
-                type="button"
-                onClick={handleAvatarRemove}
-                className="absolute flex items-center justify-center rounded-full"
-                style={{ width: 16, height: 16, left: -2, top: -2, background: "rgba(0,0,0,.55)", color: "#fff", fontSize: 9, lineHeight: 1 }}
-                title="프로필 사진 삭제"
-              >
-                ✕
-              </button>
+          <div
+            className="rounded-full flex items-center justify-center overflow-hidden flex-shrink-0"
+            style={{ width: 52, height: 52, background: "rgba(255,255,255,.14)", fontSize: 23 }}
+          >
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarUrl} alt="프로필 사진" className="w-full h-full object-cover" />
+            ) : (
+              "🏪"
             )}
           </div>
           <div className="flex-1 min-w-0">
             <div className="font-black truncate" style={{ fontSize: 18.5, letterSpacing: "-0.02em" }}>
               {companyName || phone || "회원님"}
             </div>
-            {avatarError && (
-              <div style={{ fontSize: 11.5, color: "#FFB4A3", marginTop: 2 }}>{avatarError}</div>
-            )}
             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
               {companyName && fullName && (
                 <span style={{ fontSize: 13.5, fontWeight: 600, color: "rgba(255,255,255,.8)" }}>
@@ -802,6 +764,54 @@ export default function MyPage() {
                 <p className="text-sm text-gray500 leading-relaxed">
                   채워주시면 점핑매니저가 더 정확하게 도와드려요. 전부 선택 입력이라 지금 안 채워도 괜찮아요.
                 </p>
+              </div>
+
+              <div>
+                <label className="text-sm font-bold text-navy mb-2 flex items-center gap-1.5">
+                  프로필 사진
+                  <span className="text-sm font-medium text-gray500 bg-gray100 px-2 py-0.5 rounded-full">선택</span>
+                </label>
+                <div className="flex items-center gap-3">
+                  <div
+                    className="rounded-full flex items-center justify-center overflow-hidden flex-shrink-0"
+                    style={{ width: 60, height: 60, background: "#F5F6F8", fontSize: 26 }}
+                  >
+                    {avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={avatarUrl} alt="프로필 사진" className="w-full h-full object-cover" />
+                    ) : (
+                      "🏪"
+                    )}
+                  </div>
+                  <div className="flex flex-col items-start gap-1.5">
+                    <label
+                      className="text-sm font-bold rounded-lg cursor-pointer text-navy"
+                      style={{ padding: "8px 14px", border: "2px solid #E4E7EB" }}
+                    >
+                      {avatarUploading ? "업로드 중..." : avatarUrl ? "사진 변경" : "사진 추가"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={avatarUploading}
+                        onChange={(e) => {
+                          handleAvatarSelect(e.target.files?.[0] ?? null);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                    {avatarUrl && !avatarUploading && (
+                      <button
+                        type="button"
+                        onClick={handleAvatarRemove}
+                        className="text-xs text-gray500 underline"
+                      >
+                        기본 아이콘으로 되돌리기
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {avatarError && <p className="text-xs text-orange mt-1.5">{avatarError}</p>}
               </div>
 
               <div>
