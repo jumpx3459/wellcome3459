@@ -701,6 +701,10 @@ as $$
   group by m.referred_by;
 $$;
 revoke all on function admin_partner_referral_stats() from public;
+-- 2026-09-27: "from public"만으로는 Supabase가 anon/authenticated에 따로 주는 EXECUTE
+-- 기본 권한이 남아, 공개 anon 키로 /rest/v1/rpc/...를 호출하면 관리자 집계가 그대로
+-- 반환되는 것을 실측으로 확인함 — 두 역할에서도 명시적으로 회수(service_role만 호출).
+revoke execute on function admin_partner_referral_stats() from anon, authenticated;
 
 -- 2026-09-27: /api/admin/category-kpis도 partners-overview와 같은 1,000행 응답
 -- 한도 문제가 있었음 — interests/quick_leads/buy_requests/seller_requests 전체를
@@ -780,6 +784,10 @@ as $$
   full outer join supplier_stats sup on sup.category_id = l.category_id;
 $$;
 revoke all on function admin_category_kpis() from public;
+-- 2026-09-27: "from public"만으로는 Supabase가 anon/authenticated에 따로 주는 EXECUTE
+-- 기본 권한이 남아, 공개 anon 키로 /rest/v1/rpc/...를 호출하면 관리자 집계가 그대로
+-- 반환되는 것을 실측으로 확인함 — 두 역할에서도 명시적으로 회수(service_role만 호출).
+revoke execute on function admin_category_kpis() from anon, authenticated;
 
 -- 2026-09-27: 회원/리드 10만 규모 대비 — admin_partner_referral_stats(),
 -- admin_category_kpis() 둘 다 group by/join 하는 컬럼(FK)에 인덱스가 하나도
