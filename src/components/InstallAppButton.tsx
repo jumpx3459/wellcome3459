@@ -87,9 +87,12 @@ export default function InstallAppButton({
       >
         <span className="flex-shrink-0" style={{ fontSize: 22 }}>📲</span>
         <span className="flex-1 min-w-0">
+          {/* 2026-09-27: "앱처럼 열 수 있다"는 기능 설명보다, 실제 혜택(마감 임박
+              매물을 더 빨리 받는다)을 앞세우는 카피로 변경. 구체적 쿠폰/금액은
+              실제 지급 로직이 없어 표기하지 않음. */}
           <span className="block font-bold" style={{ fontSize: 13.5, color: "#0B2540" }}>홈 화면에 추가하기</span>
           <span className="block mt-0.5" style={{ fontSize: 11.5, color: "#6B7480" }}>
-            앱처럼 바로 열고, 마감 알림도 놓치지 마세요
+            설치하면 마감 임박 알림을 가장 먼저 받아요
           </span>
         </span>
       </button>

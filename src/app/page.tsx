@@ -23,7 +23,15 @@ export default function Home() {
   const [isExample, setIsExample] = useState(true);
   const [isMember, setIsMember] = useState(false);
   const [signupPending, setSignupPending] = useState(false);
+  const [installDismissed, setInstallDismissed] = useState(false);
   const { canInstall, promptInstall } = useInstallPrompt();
+
+  const dismissInstallBanner = () => {
+    try {
+      localStorage.setItem("dj_install_banner_dismissed", "1");
+    } catch {}
+    setInstallDismissed(true);
+  };
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
@@ -35,6 +43,7 @@ export default function Home() {
   useEffect(() => {
     try {
       setSignupPending(localStorage.getItem("dj_signup_pending") === "1");
+      setInstallDismissed(localStorage.getItem("dj_install_banner_dismissed") === "1");
     } catch {}
   }, []);
 
@@ -125,18 +134,15 @@ export default function Home() {
           </span>
         </div>
 
-        {/* 2026-09-27: 메인/서브 절이 같은 크기·굵기라 위계가 없다는 피드백 —
-            실제 전환목표(구매자 알림가입)에 맞춰 "급한 재고는 먼저 잡으세요"를
-            메인(주황·크게)으로, "남는 재고는 빠르게 알리고"는 서브(흰색·작게)로 분리. */}
-        <h1 className="leading-snug drop-shadow-sm">
-          <span className="block text-sm font-bold" style={{ color: "rgba(255,255,255,.7)" }}>
-            남는 재고는 빠르게 알리고
-          </span>
-          <span className="font-display block mt-1 text-2xl" style={{ color: "#FF6F0F" }}>
-            급한 재고는 남보다 먼저 잡으세요.
-          </span>
+        {/* 2026-09-27 (재검토): 두 절 크기를 다르게 분리했더니 헤드라인이 두 조각처럼
+            끊겨 보인다는 피드백 — 기존 스타일(동일 크기, 강조는 첫 절 유지)로 되돌리고,
+            자연 줄바꿈 대신 쉼표 뒤에서 명시적으로 줄바꿈만 추가. */}
+        <h1 className="font-display text-xl leading-snug drop-shadow-sm">
+          <span style={{ color: "#FF6F0F" }}>남는 재고는 빠르게 알리고,</span>
+          <br />
+          급한 재고는 남보다 먼저 잡으세요.
         </h1>
-        <p className="text-white/85 text-base mt-4 leading-relaxed">
+        <p className="text-white/85 text-sm mt-4 leading-relaxed">
           <span className="hidden sm:inline">
             전국의 임박·과잉·폐업·재고처분 매물을 찾아 원하는 상품이 나오면 가장 먼저 알려드립니다.
           </span>
@@ -193,13 +199,26 @@ export default function Home() {
       {/* 상단은 핵심 전환(회원가입→맞춤 알림)에만 집중 — 카카오톡 채널 추가는
           같은 "카카오 버튼" 스타일로 나란히 있으면 가입과 중복돼 보여서
           매물을 먼저 보여준 뒤(아래) 저관여 위치로 옮김. */}
-      {canInstall && (
+      {canInstall && !installDismissed && (
         <div className="px-5 pt-5">
+          {/* 2026-09-27: 배너가 전체폭을 다 써서 주목도가 과하다는 피드백 — 폭을
+              절반 정도로 줄이고, 부담 없이 넘길 수 있게 닫기(X) 버튼을 추가. */}
           <div
-            className="rounded-2xl px-4 py-3.5"
-            style={{ border: "2px solid rgba(255,111,15,0.35)" }}
+            className="rounded-2xl px-4 py-3.5 relative"
+            style={{ border: "2px solid rgba(255,111,15,0.35)", maxWidth: "58%" }}
           >
-            <InstallAppButton canInstall={canInstall} promptInstall={promptInstall} />
+            <button
+              type="button"
+              onClick={dismissInstallBanner}
+              aria-label="닫기"
+              className="absolute flex items-center justify-center"
+              style={{ top: 6, right: 6, width: 20, height: 20, color: "#B8BFC7", fontSize: 13, lineHeight: 1 }}
+            >
+              ✕
+            </button>
+            <div className="pr-4">
+              <InstallAppButton canInstall={canInstall} promptInstall={promptInstall} />
+            </div>
           </div>
         </div>
       )}
@@ -230,11 +249,12 @@ export default function Home() {
                   className="relative flex items-center gap-3 rounded-2xl border border-gray200 px-3.5 py-3 overflow-hidden active:scale-[0.98] transition-transform"
                 >
                   {discountPct > 0 && (
-                    // 2026-09-27: CTA(주황) 그라디언트와 색이 같아 "버튼처럼" 보이던
-                    // 문제 — 할인율은 정보 배지이므로 레드/핑크 계열로 구분.
+                    // 2026-09-27 (재검토): 브랜드 색(레드) 통일성을 유지하기 위해 주황
+                    // 계열로 되돌리되, CTA와 헷갈리지 않도록 형태(코너 리본 → 필)와
+                    // 채도/투명도를 낮춰 "정보 배지"로만 읽히게 구분.
                     <div
-                      className="absolute top-0 right-0 text-sm font-black text-white px-3 py-1.5 rounded-bl-2xl"
-                      style={{ background: "linear-gradient(135deg, #E11D48, #F43F5E)" }}
+                      className="absolute top-2 right-2 text-xs font-black text-white px-2.5 py-1 rounded-full"
+                      style={{ background: "rgba(226,81,0,0.72)" }}
                     >
                       -{discountPct}%
                     </div>
@@ -359,23 +379,44 @@ export default function Home() {
 
       {/* 메인 CTA — 항상 화면 하단에 고정.
           2026-09-27: 이 페이지에서 비회원 전환수단이 이 CTA 하나뿐이라(당근 "글쓰기"처럼
-          보조 액션이 아님) FAB로 축소하진 않되, 패딩/그림자를 줄여 무게감만 낮춤. */}
+          보조 액션이 아님) FAB로 축소하진 않되, 패딩/그림자를 줄여 무게감만 낮춤.
+          완전 불투명 흰 배경 대신 옅은 반투명+블러로 바꾸고, 바로 위에 페이드를 얹어
+          스크롤 중인 매물 리스트가 CTA 아래로 자연스럽게 이어지도록 함. */}
       <div
-        className="fixed left-1/2 -translate-x-1/2 w-full max-w-md px-5 pb-5 pt-2.5 bg-white"
-        style={{ boxShadow: "0 -8px 20px rgba(11,37,64,0.08)", bottom: "64px" }}
+        className="fixed left-1/2 -translate-x-1/2 w-full max-w-md px-5 pb-5 pt-5 relative"
+        style={{ bottom: "64px" }}
       >
-        <Link
-          href="/signup"
-          className="block text-white text-center font-bold rounded-2xl"
+        <div
+          className="pointer-events-none absolute left-0 right-0"
           style={{
-            background: "linear-gradient(135deg, #E25100, #FF6F0F)",
-            padding: "15px 0",
-            fontSize: "17px",
-            boxShadow: "0 4px 14px rgba(226,81,0,0.28)",
+            bottom: "100%",
+            height: 28,
+            background: "linear-gradient(to bottom, rgba(245,246,248,0), rgba(255,255,255,.85))",
+          }}
+        />
+        <div
+          className="rounded-2xl"
+          style={{
+            background: "rgba(255,255,255,.9)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            boxShadow: "0 -6px 16px rgba(11,37,64,.07)",
+            padding: 8,
           }}
         >
-          🔔 덤핑매물 무료 알림받기
-        </Link>
+          <Link
+            href="/signup"
+            className="block text-white text-center font-bold rounded-2xl"
+            style={{
+              background: "linear-gradient(135deg, #E25100, #FF6F0F)",
+              padding: "15px 0",
+              fontSize: "17px",
+              boxShadow: "0 4px 14px rgba(226,81,0,0.28)",
+            }}
+          >
+            🔔 덤핑매물 무료 알림받기
+          </Link>
+        </div>
       </div>
     </main>
     )}
