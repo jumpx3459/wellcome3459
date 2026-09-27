@@ -17,6 +17,21 @@ export function markAppNavigation() {
   }
 }
 
+// 2026-09-28: depth가 이동할 때마다 증가만 하고 줄지 않으면, 공유 링크로 들어와 →
+// 다른 화면 이동 → 브라우저/제스처 뒤로가기로 여러 번 돌아와 처음 화면까지 온 뒤
+// 다시 ←를 누르면 depth가 여전히 0보다 커서 router.back()이 앱 밖으로 나가는
+// 경계 사례가 있었음(로컬 세션 QA 지적). popstate(뒤로/앞으로 브라우저 버튼)가
+// 발생할 때는 AppShell이 markAppBack()을 호출해 depth를 다시 줄임.
+export function markAppBack() {
+  if (typeof window === "undefined") return;
+  try {
+    const current = Number(sessionStorage.getItem(KEY) || "0");
+    sessionStorage.setItem(KEY, String(Math.max(current - 1, 0)));
+  } catch {
+    // sessionStorage 접근 불가 — 조용히 무시
+  }
+}
+
 // 앱 안에서 들어왔으면(이 세션 중 다른 화면에서 이동해온 경우) true — router.back()이 안전함.
 // 공유 링크로 바로 들어온 첫 진입이면 false — 홈으로 보내는 게 안전함.
 export function hasAppHistory(): boolean {

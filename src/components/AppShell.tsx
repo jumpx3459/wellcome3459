@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import BottomNav, { NAV_HEIGHT } from "./BottomNav";
 import DebugPanel from "./DebugPanel"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
-import { markAppNavigation } from "@/lib/appNav";
+import { markAppNavigation, markAppBack } from "@/lib/appNav";
 
 // 관리자 화면은 운영자 전용 도구라 회원용 하단 탭바를 보여주지 않습니다.
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -14,13 +14,31 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // 2026-09-28: 이 세션에서 실제로 화면 이동이 있었는지 기록 — 뒤로가기(←) 버튼들이
   // "앱 안에서 들어왔으면 이전 화면, 아니면 홈"을 판단하는 데 씀 (src/lib/appNav.ts 참고).
   // 최초 마운트(첫 진입) 때는 기록하지 않고, 그 이후 pathname이 바뀔 때만 기록.
+  // popstate(브라우저/제스처 뒤로·앞으로가기)로 인한 이동은 depth를 오히려 줄여야
+  // 하는데, pathname 변경 이펙트만으로는 이동 방향(앞으로 vs 뒤로)을 구분할 수
+  // 없어서 popstate 리스너가 먼저 viaPopState 플래그를 세우고, pathname 이펙트가
+  // 그 플래그를 보고 증가 대신 감소를 호출 — 그렇지 않으면 depth가 계속 쌓이기만
+  // 해서 "뒤로 여러 번 눌러 첫 화면까지 온 뒤 다시 ←" 같은 경우 앱 밖으로 나갈 수 있음.
   const isFirstMount = useRef(true);
+  const viaPopState = useRef(false);
+  useEffect(() => {
+    const onPopState = () => {
+      viaPopState.current = true;
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
   useEffect(() => {
     if (isFirstMount.current) {
       isFirstMount.current = false;
       return;
     }
-    markAppNavigation();
+    if (viaPopState.current) {
+      viaPopState.current = false;
+      markAppBack();
+    } else {
+      markAppNavigation();
+    }
   }, [pathname]);
   // 2026-09-27: 점핑파트너 영업용 데모 스킨(/p/[slug])은 실제 내비게이션이 있는
   // 앱 화면이 아니라 단일 랜딩 페이지라 하단 탭바가 어울리지 않음 — admin과
