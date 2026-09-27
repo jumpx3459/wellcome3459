@@ -7,7 +7,13 @@ import { useEffect, useState } from "react";
 // 홈 페이지를 감싸고 있어서, 이게 없으면 홈 탭을 누를 때마다 1.8초 스플래시가 다시 뜸.
 let shownThisLoad = false;
 
-export default function SplashScreen({ children }: { children: React.ReactNode }) {
+export default function SplashScreen({
+  children,
+  onFinish,
+}: {
+  children: React.ReactNode;
+  onFinish?: () => void;
+}) {
   const [show, setShow] = useState(!shownThisLoad);
 
   useEffect(() => {
@@ -15,9 +21,13 @@ export default function SplashScreen({ children }: { children: React.ReactNode }
     // 네이티브 앱처럼 실행(재접속)할 때마다 브랜드 로고를 각인시키는 게
     // 낫다는 판단으로 변경 — 짧은 1.8초 + 건너뛰기 버튼으로 피로감을 낮춘다.
     shownThisLoad = true;
-    if (!show) return;
+    if (!show) {
+      onFinish?.();
+      return;
+    }
     const timer = setTimeout(() => setShow(false), 1800);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [show]);
 
   return (

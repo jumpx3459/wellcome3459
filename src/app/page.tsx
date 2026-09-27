@@ -26,6 +26,10 @@ export default function Home() {
   const [isMember, setIsMember] = useState(false);
   const [signupPending, setSignupPending] = useState(false);
   const [installDismissed, setInstallDismissed] = useState(false);
+  // 2026-09-27: 로고 바운스(animate-logo-jump)가 스플래시(1.8초)와 동시에
+  // 마운트돼 화면에 드러날 일 없이 가려진 채로 끝나던 버그 — 스플래시가
+  // 실제로 사라지는 시점(onFinish)에야 애니메이션 클래스를 붙이도록 지연.
+  const [logoAnimate, setLogoAnimate] = useState(false);
   const { canInstall, promptInstall } = useInstallPrompt();
 
   const dismissInstallBanner = () => {
@@ -111,7 +115,7 @@ export default function Home() {
   }, []);
 
   return (
-    <SplashScreen>
+    <SplashScreen onFinish={() => setLogoAnimate(true)}>
     <OnboardingIntro />
     {signupPending && (
       <Link
@@ -132,7 +136,7 @@ export default function Home() {
       >
         <div className="flex items-center gap-2 mb-5">
           <div className="bg-white rounded-xl px-3 py-2 inline-block">
-            <img src="/images/logo.png" alt="덤핑점핑" className="h-8 w-auto animate-logo-jump" />
+            <img src="/images/logo.png" alt="덤핑점핑" className={`h-8 w-auto ${logoAnimate ? "animate-logo-jump" : ""}`} />
           </div>
           <span className="text-white/70 text-sm tracking-wide self-end mb-1">
             Powered by JumpX
