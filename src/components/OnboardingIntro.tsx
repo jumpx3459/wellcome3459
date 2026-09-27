@@ -12,7 +12,7 @@ const STATS = [
   { value: "3분", label: "평균 알림 속도" },
 ];
 
-export default function OnboardingIntro() {
+export default function OnboardingIntro({ logoAnimate = false }: { logoAnimate?: boolean }) {
   const router = useRouter();
   const [visible, setVisible] = useState(false);
 
@@ -55,7 +55,15 @@ export default function OnboardingIntro() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="bg-white rounded-2xl inline-block" style={{ padding: "10px 14px" }}>
-              <img src="/images/logo.png" alt="덤핑점핑" className="animate-logo-jump" style={{ height: 34, width: "auto", display: "block" }} />
+              {/* 2026-09-27: 홈 헤더 로고와 동일한 문제 — 마운트 즉시 애니메이션이
+                  걸려 스플래시(1.8초)에 가려진 채로 재생·종료됨. 스플래시가 실제로
+                  사라지는 시점(logoAnimate)에야 클래스를 붙이도록 지연. */}
+              <img
+                src="/images/logo.png"
+                alt="덤핑점핑"
+                className={logoAnimate ? "animate-logo-jump" : ""}
+                style={{ height: 34, width: "auto", display: "block" }}
+              />
             </div>
             <div className="text-xs mt-2 tracking-wide" style={{ color: "rgba(255,255,255,.75)" }}>
               Powered by JumpX

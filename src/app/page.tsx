@@ -29,6 +29,7 @@ export default function Home() {
   // 2026-09-27: 로고 바운스(animate-logo-jump)가 스플래시(1.8초)와 동시에
   // 마운트돼 화면에 드러날 일 없이 가려진 채로 끝나던 버그 — 스플래시가
   // 실제로 사라지는 시점(onFinish)에야 애니메이션 클래스를 붙이도록 지연.
+  // OnboardingIntro(첫 방문자 화면)의 자체 로고도 같은 문제라 이 값을 그대로 전달.
   const [logoAnimate, setLogoAnimate] = useState(false);
   const { canInstall, promptInstall } = useInstallPrompt();
 
@@ -116,7 +117,7 @@ export default function Home() {
 
   return (
     <SplashScreen onFinish={() => setLogoAnimate(true)}>
-    <OnboardingIntro />
+    <OnboardingIntro logoAnimate={logoAnimate} />
     {signupPending && (
       <Link
         href="/signup"
