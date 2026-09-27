@@ -341,11 +341,13 @@ function DealsPageInner() {
                 </div>
                 {/* 2026-09-27: 홈 미리보기 카드와 가격/할인율 표시를 통일 — 할인율을
                     가격 옆 각진 배지 대신 썸네일 위 반투명 필 배지로 이동(홈과 동일
-                    스타일). 우상단은 마감 카운트다운이 이미 차지하고 있어 좌상단에 배치. */}
+                    스타일). 우상단은 마감 카운트다운이 이미 차지하고 있어 좌상단에 배치.
+                    2026-09-27 (재검토): 풀와이드 카드 규모에 비해 배지 글자(12px)가
+                    작다는 피드백 — 24px로 확대, 배지 비율 유지 위해 패딩도 비례 확대. */}
                 {!isClosed && discountPct > 0 && (
                   <div
-                    className="absolute top-2.5 left-2.5 text-xs font-black text-white px-2.5 py-1 rounded-full"
-                    style={{ background: "rgba(226,81,0,0.72)" }}
+                    className="absolute top-2.5 left-2.5 font-black text-white rounded-full"
+                    style={{ background: "rgba(226,81,0,0.72)", fontSize: 24, padding: "4px 12px" }}
                   >
                     -{Math.round(discountPct)}%
                   </div>
@@ -369,7 +371,11 @@ function DealsPageInner() {
                     </div>
                   )}
                 </div>
-                <div className="text-base font-bold text-gray900 mt-2">{d.title}</div>
+                {/* 2026-09-27 (재검토): text-base(18px)가 풀와이드 이미지 대비 작다는
+                    피드백 — text-lg로 확대. 가격 옆 할인 배지는 위 썸네일 필 배지와
+                    중복 노출이라 제거(빠뜨렸던 부분), 가격 색도 홈처럼 카테고리
+                    강조색(color.text)으로 통일. */}
+                <div className="text-lg font-bold text-gray900 mt-2">{d.title}</div>
                 <div className="text-sm font-medium mt-1" style={{ color: "#495057" }}>
                   {isClosed
                     ? d.location
@@ -383,7 +389,7 @@ function DealsPageInner() {
                   </div>
                 )}
                 <div className="flex items-baseline gap-1.5 mt-2">
-                  <span className="text-lg font-black" style={{ color: isClosed ? "#6B7480" : "#0B2540" }}>
+                  <span className="text-lg font-black" style={{ color: isClosed ? "#6B7480" : color.text }}>
                     {formatPrice(d.deal_price)}
                   </span>
                   <span className="text-sm text-gray500 font-normal line-through">
@@ -450,11 +456,13 @@ function DealsPageInner() {
                       )}
                       {/* 2026-09-27: 실제 매물 카드/홈 미리보기와 동일하게 할인율을
                           썸네일 위 필 배지로 — 예시 카드는 경합하는 오버레이가 없어
-                          홈과 같은 우상단에 배치, 톤만 회색으로 낮춰 "예시" 느낌 유지. */}
+                          홈과 같은 우상단에 배치, 톤만 회색으로 낮춰 "예시" 느낌 유지.
+                          2026-09-27 (재검토): 실제 카드와 동일하게 24px로 확대. 단
+                          가격 색은 무채색 그대로 둬서 "예시"라는 구분감은 유지. */}
                       {pct > 0 && (
                         <div
-                          className="absolute top-2.5 right-2.5 text-xs font-black text-white px-2.5 py-1 rounded-full"
-                          style={{ background: "rgba(107,116,128,0.72)" }}
+                          className="absolute top-2.5 right-2.5 font-black text-white rounded-full"
+                          style={{ background: "rgba(107,116,128,0.72)", fontSize: 24, padding: "4px 12px" }}
                         >
                           -{pct}%
                         </div>
@@ -464,7 +472,7 @@ function DealsPageInner() {
                       <div className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#E9ECEF", color: "#495057" }}>
                         예시 · {d.category}
                       </div>
-                      <div className="text-base font-bold text-gray900 mt-2">{d.title}</div>
+                      <div className="text-lg font-bold text-gray900 mt-2">{d.title}</div>
                       <div className="text-sm text-gray500 mt-1">
                         잔여 {d.remaining_qty}{d.quantity_unit || "개"} · {d.location}
                       </div>
