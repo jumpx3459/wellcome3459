@@ -406,13 +406,16 @@ export default function Home() {
           </div>
         </Link>
 
-        {/* 점프엑스 생태계 서비스 — 재고 알림(이 앱의 유일한 역할)과 무관한 별도
+        {/* 점핑 서비스 — 재고 알림(이 앱의 유일한 역할)과 무관한 별도
             서비스라, 메인 재고 흐름과 섞이지 않게 하단에 별도 구역으로 분리.
+            2026-09-28: "점프엑스 생태계 서비스"는 덤핑점핑 화면에 다른 법인/
+            플랫폼 이름이 불쑥 등장해 브랜드 혼선을 줘서 "점핑 서비스"로 변경
+            (기존 "점핑매니저"/"점핑파트너" 네이밍 컨벤션과 통일).
             타일 3개(화물배차/계산기/정부지원금)는 마이페이지와 마크업이 완전히
             겹쳐서 <EcosystemGrid />로 추출함 (2026-09-26) — 여기선 라벨/구분선만
             홈 전용으로 유지. */}
         <div className="mt-3 pt-4" style={{ borderTop: "1px solid #EEF0F2" }}>
-          <div className="text-xs font-bold text-gray500 mb-2">점프엑스 생태계 서비스</div>
+          <div className="text-xs font-bold text-gray500 mb-2">점핑 서비스</div>
           <EcosystemGrid />
         </div>
       </div>
