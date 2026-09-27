@@ -41,13 +41,19 @@ export default function SellPage() {
   }, []);
   const [category, setCategory] = useState<string>("");
   const [categoryTouched, setCategoryTouched] = useState(false);
+  // 2026-09-27: buy/page.tsx와 동일하게 자동 추천되면 칩 목록 대신 요약
+  // 한 줄("추천됨" 배지 포함)로 접고, "수정"을 눌러야 다시 펼치도록 통일.
+  const [categoryEditing, setCategoryEditing] = useState(true);
   const [region, setRegion] = useState<string>("");
   const [productName, setProductName] = useState("");
 
   useEffect(() => {
     if (categoryTouched || !productName.trim()) return;
     const guessed = guessCategory(productName);
-    if (guessed) setCategory(guessed);
+    if (guessed) {
+      setCategory(guessed);
+      setCategoryEditing(false);
+    }
   }, [productName, categoryTouched]);
   const [quantity, setQuantity] = useState("");
   const [quantityUnit, setQuantityUnit] = useState(quantityUnits[0]);
@@ -173,14 +179,11 @@ export default function SellPage() {
 
   return (
     <main className="flex flex-col min-h-screen bg-white">
-      {/* 2026-09-26 (2): 화이트 헤더 바로 아래에 네이비 스트립이 붙어 있어 톤이
-          뚝 끊겨 보인다는 피드백 — buy/sell/signup 3개 화면 모두 헤더와 긴급성
-          로테이션 스트립을 하나의 네이비 블록으로 병합 (deals/마이페이지는
-          원래부터 헤더 자체가 다크 히어로라 이 문제가 없었음). 수수료 배지는
-          네이비 배경 위에서도 눈에 띄도록 네이버 연두색(#03C75A) 솔리드로 교체. */}
-      {/* 2026-09-26 (6): deals/홈과 나란히 볼 때 이 화면만 단색 네이비라 밋밋해
-          보인다는 피드백 — 높이는 그대로 두고 배경만 deals/홈과 동일한 도트
-          텍스처 그라디언트로 통일 (폼 필드 위치·스크롤은 불변). */}
+      {/* 2026-09-27 (deals/buy 스타일 통일): 하단 탭 레벨 화면 중 sell만 유일하게
+          뒤로가기(←)+인라인 타이틀 구조를 쓰던 불일치 — deals/buy와 동일하게
+          "로고=홈 링크 + Powered by JumpX 배지(+수수료 0원 배지) / 라벨+로테이션
+          태그 행 / 좌측 정렬 대형 타이틀" 구조로 교체. 매니저+안내문구도 buy처럼
+          네이비 헤더 안으로 이동. */}
       <div
         className="flex-shrink-0"
         style={{
@@ -189,40 +192,48 @@ export default function SellPage() {
           backgroundSize: "16px 16px, cover",
         }}
       >
-        <div className="flex items-center gap-3 px-5 py-4.5">
-          <Link href="/" style={{ fontSize: 19, color: "rgba(255,255,255,0.8)" }}>←</Link>
-          <div className="bg-white rounded-lg px-1.5 py-1 flex-shrink-0">
-            <img src="/images/logo.png" alt="덤핑점핑" className="h-5 w-auto block" />
+        <div className="px-5 pt-5 pb-3">
+          <div className="flex items-center gap-2 mb-3">
+            <Link href="/" className="bg-white rounded-lg px-2.5 py-1.5 inline-block shadow-sm">
+              <img src="/images/logo.png" alt="덤핑점핑" className="h-7 w-auto" />
+            </Link>
+            <span
+              className="rounded-full font-medium"
+              style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", padding: "3px 9px", background: "rgba(255,255,255,0.08)" }}
+            >
+              Powered by JumpX
+            </span>
+            {/* 2026-09-26 (3): 흰 글자+#03C75A 배경은 2.25:1로 11px 텍스트 기준(4.5:1)
+                미달 — 네이비 글자로 바꿔 6.89:1 확보. */}
+            <span className="ml-auto flex-shrink-0 font-bold rounded-full" style={{ fontSize: 11, color: "#0B2540", background: "#03C75A", padding: "5px 10px" }}>
+              수수료 0원
+            </span>
           </div>
-          <span className="font-display text-2xl whitespace-nowrap" style={{ color: "#fff" }}>
-            재고 판매 등록
-          </span>
-          {/* 2026-09-26 (3): 흰 글자+#03C75A 배경은 2.25:1로 11px 텍스트 기준(4.5:1)
-              미달 — 네이비 글자로 바꿔 6.89:1 확보.
-              2026-09-26 (8): 타이틀이 17px→27px로 커지면서 360px 폭에서 텍스트가
-              줄바꿈돼 배지와 겹치던 문제 — whitespace-nowrap으로 고정. */}
-          <span className="ml-auto flex-shrink-0 font-bold rounded-full" style={{ fontSize: 11, color: "#0B2540", background: "#03C75A", padding: "5px 10px" }}>
-            수수료 0원
-          </span>
+          <div className="flex items-center justify-between flex-wrap gap-y-1.5">
+            <div className="text-xs font-bold tracking-widest whitespace-nowrap" style={{ color: "#FFD166" }}>
+              재고 판매 등록
+            </div>
+            <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
+          </div>
+          <h1 className="font-display text-2xl mt-1.5 text-white">지금 등록하고 빠르게 파세요</h1>
         </div>
-        {/* 2026-09-27: deals/buy는 로테이션 태그가 좌측 정렬(가운데 정렬 아님)로
-            통일돼 있어 sell만 가운데 정렬로 튀던 것 — 방향만 맞춤(뒤로가기는
-            등록 진입 경로가 다양해 필요하므로 유지). */}
-        <div className="flex items-center" style={{ padding: "9px 20px" }}>
-          <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
+
+        <div className="flex items-center gap-3.5" style={{ padding: "2px 22px 22px" }}>
+          {/* 2026-09-27: manager.png는 불투명 흰 배경이 박혀있어 네이비 위에서
+              흰 사각형이 그대로 보이는 문제 — 투명 컷아웃(buy와 동일 에셋/크기)으로 교체. */}
+          <img
+            src="/images/manager-cut.png"
+            alt="점핑매니저"
+            className="flex-shrink-0"
+            style={{ width: 76, height: 76, objectFit: "contain", filter: "drop-shadow(0 6px 10px rgba(0,0,0,.35))" }}
+          />
+          <p className="leading-snug" style={{ fontSize: 13, color: "rgba(255,255,255,.92)", fontWeight: 500 }}>
+            신청서를 검토한 뒤 점핑매니저가 직접 연락드려요.
+          </p>
         </div>
       </div>
 
       <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: 132 }}>
-        <div className="flex items-center gap-3 rounded-2xl" style={{ background: "#EEF1F5", padding: "13px 15px" }}>
-          {/* 2026-09-27: manager.png는 불투명 흰 배경이 박혀있어 연한 회색(#EEF1F5)
-              카드 위에서 흰 사각형이 도드라지는 문제 — 투명 컷아웃으로 교체. */}
-          <img src="/images/manager-cut.png" alt="점핑매니저" className="flex-shrink-0" style={{ width: 44, height: 44, objectFit: "contain" }} />
-          <p className="leading-snug" style={{ fontSize: 12.5, color: "#0B2540", fontWeight: 500 }}>
-            신청서를 검토한 뒤 점핑매니저가 직접 연락드려요.
-          </p>
-        </div>
-
         <div>
           <div className="text-sm font-bold mb-2" style={{ color: "#0B2540" }}>매물 제목</div>
           <input
@@ -235,34 +246,69 @@ export default function SellPage() {
         </div>
 
         <div>
-          <div className="text-sm font-bold mb-2" style={{ color: "#0B2540" }}>카테고리</div>
-          <div className="flex gap-1.5 overflow-x-auto pb-1">
-            {mockCategories.map((c) => {
-              const picked = category === c;
-              return (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => {
-                    setCategoryTouched(true);
-                    setCategory(picked ? "" : c);
-                  }}
-                  className="flex items-center gap-1 rounded-full whitespace-nowrap flex-shrink-0"
-                  style={{
-                    padding: "9px 13px",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    background: "#fff",
-                    border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
-                    color: "#1A1F26",
-                  }}
-                >
-                  <span>{categoryIcons[c]}</span>
-                  {c}
-                </button>
-              );
-            })}
+          <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
+            카테고리
+            <span className="text-xs font-bold" style={{ color: "#6B7480" }}>(선택)</span>
           </div>
+          {categoryEditing ? (
+            <div className="flex gap-1.5 overflow-x-auto pb-1">
+              {mockCategories.map((c) => {
+                const picked = category === c;
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => {
+                      setCategoryTouched(true);
+                      setCategory(picked ? "" : c);
+                      setCategoryEditing(false);
+                    }}
+                    className="flex items-center gap-1 rounded-full whitespace-nowrap flex-shrink-0"
+                    style={{
+                      padding: "9px 13px",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      background: "#fff",
+                      border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
+                      color: "#1A1F26",
+                    }}
+                  >
+                    <span>{categoryIcons[c]}</span>
+                    {c}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between rounded-xl" style={{ border: "1.5px solid #E4E7EB", padding: "10px 13px" }}>
+              <span className="flex items-center gap-1.5 text-sm font-bold min-w-0">
+                {category ? (
+                  <>
+                    <span className="flex-shrink-0">{categoryIcons[category]}</span>
+                    <span className="truncate" style={{ color: "#1A1F26" }}>{category}</span>
+                    {!categoryTouched && (
+                      <span
+                        className="flex-shrink-0 text-xs font-bold rounded-full"
+                        style={{ color: "var(--color-brandOrange)", background: "#FFF1E7", padding: "2px 8px" }}
+                      >
+                        추천됨
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span style={{ color: "#9AA3AD", fontWeight: 700 }}>카테고리 선택 안 함</span>
+                )}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCategoryEditing(true)}
+                className="flex-shrink-0 text-xs font-bold"
+                style={{ color: "#6B7480" }}
+              >
+                수정
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2.5">

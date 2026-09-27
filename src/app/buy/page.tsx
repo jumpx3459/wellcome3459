@@ -14,6 +14,12 @@ export default function BuyPage() {
   const [productName, setProductName] = useState("");
   const [category, setCategory] = useState<string>("");
   const [categoryTouched, setCategoryTouched] = useState(false);
+  // 2026-09-27: 상품명 입력 시 카테고리가 자동 추천되지만 가로 스크롤 목록 중간에
+  // 묻혀 있어 "선택은 됐는데 안 보임" 문제 — 추천되면 칩 목록 대신 요약 한 줄
+  // ("추천됨" 배지 포함)로 접고, "수정"을 눌러야 다시 전체 목록을 펼치도록 변경.
+  // 상품명이 비었거나 추천 결과가 없으면(guessCategory가 null) 기본값 true라
+  // 처음부터 펼쳐진 상태로 보임.
+  const [categoryEditing, setCategoryEditing] = useState(true);
   const [regions, setRegions] = useState<string[]>([]);
   const [quantity, setQuantity] = useState("");
   const [quantityUnit, setQuantityUnit] = useState(quantityUnits[0]);
@@ -43,7 +49,10 @@ export default function BuyPage() {
   useEffect(() => {
     if (categoryTouched || !productName.trim()) return;
     const guessed = guessCategory(productName);
-    if (guessed) setCategory(guessed);
+    if (guessed) {
+      setCategory(guessed);
+      setCategoryEditing(false);
+    }
   }, [productName, categoryTouched]);
 
   const allRegionsOn = regions.length === mockRegions.length;
@@ -235,33 +244,65 @@ export default function BuyPage() {
             카테고리
             <span className="text-xs font-bold" style={{ color: "#6B7480" }}>(선택)</span>
           </div>
-          <div className="flex gap-1.5 overflow-x-auto pb-1">
-            {mockCategories.map((c) => {
-              const picked = category === c;
-              return (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => {
-                    setCategoryTouched(true);
-                    setCategory(picked ? "" : c);
-                  }}
-                  className="flex items-center gap-1 rounded-full whitespace-nowrap flex-shrink-0"
-                  style={{
-                    padding: "9px 13px",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    background: "#fff",
-                    border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
-                    color: "#1A1F26",
-                  }}
-                >
-                  <span>{categoryIcons[c]}</span>
-                  {c}
-                </button>
-              );
-            })}
-          </div>
+          {categoryEditing ? (
+            <div className="flex gap-1.5 overflow-x-auto pb-1">
+              {mockCategories.map((c) => {
+                const picked = category === c;
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => {
+                      setCategoryTouched(true);
+                      setCategory(picked ? "" : c);
+                      setCategoryEditing(false);
+                    }}
+                    className="flex items-center gap-1 rounded-full whitespace-nowrap flex-shrink-0"
+                    style={{
+                      padding: "9px 13px",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      background: "#fff",
+                      border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
+                      color: "#1A1F26",
+                    }}
+                  >
+                    <span>{categoryIcons[c]}</span>
+                    {c}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between rounded-xl" style={{ border: "1.5px solid #E4E7EB", padding: "10px 13px" }}>
+              <span className="flex items-center gap-1.5 text-sm font-bold min-w-0">
+                {category ? (
+                  <>
+                    <span className="flex-shrink-0">{categoryIcons[category]}</span>
+                    <span className="truncate" style={{ color: "#1A1F26" }}>{category}</span>
+                    {!categoryTouched && (
+                      <span
+                        className="flex-shrink-0 text-xs font-bold rounded-full"
+                        style={{ color: "var(--color-brandOrange)", background: "#FFF1E7", padding: "2px 8px" }}
+                      >
+                        추천됨
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span style={{ color: "#9AA3AD", fontWeight: 700 }}>카테고리 선택 안 함</span>
+                )}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCategoryEditing(true)}
+                className="flex-shrink-0 text-xs font-bold"
+                style={{ color: "#6B7480" }}
+              >
+                수정
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2.5">
