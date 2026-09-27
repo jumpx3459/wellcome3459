@@ -14,11 +14,13 @@ import EcosystemGrid from "@/components/EcosystemGrid";
 import AlertInboxHome from "@/components/AlertInboxHome";
 
 const TODAY_BADGE_THRESHOLD = 5; // 이보다 적으면 "오늘 N건" 배너를 아예 숨김 (빈약한 숫자 노출 방지)
+const BUSINESS_COUNT_THRESHOLD = 30; // 이보다 적으면 사업자 수 대신 무숫자 카피로 대체 (빈약한 숫자 노출 방지)
 
 const EXAMPLE_DEALS = mockDeals.filter((d) => d.status !== "closed").slice(0, 3);
 
 export default function Home() {
   const [todayCount, setTodayCount] = useState(0);
+  const [businessCount, setBusinessCount] = useState(0);
   const [preview, setPreview] = useState<Deal[]>(EXAMPLE_DEALS);
   const [isExample, setIsExample] = useState(true);
   const [isMember, setIsMember] = useState(false);
@@ -47,6 +49,15 @@ export default function Home() {
     } catch {}
   }, []);
 
+  // 2026-09-27: 신뢰 지표용 인증 사업자 수 — 개인정보 없이 숫자만 내려주는
+  // 공개 API(/api/public-stats)에서 가져옴 (members 테이블 RLS는 본인만 조회 가능).
+  useEffect(() => {
+    fetch("/api/public-stats")
+      .then((res) => res.json())
+      .then((data) => setBusinessCount(data.businessCount ?? 0))
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return; // 데모 모드: 예시 매물 그대로 노출
 
@@ -63,7 +74,7 @@ export default function Home() {
         supabase
           .from("deals")
           .select(
-            "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, created_at, location, images, categories(name), regions(name)"
+            "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, created_at, location, images, package_unit, min_order_qty, quantity_unit, categories(name), regions(name)"
           )
           .eq("status", "active")
           .gt("closes_at", new Date().toISOString())
@@ -87,6 +98,9 @@ export default function Home() {
             closes_at: d.closes_at,
             created_at: d.created_at,
             images: d.images ?? [],
+            package_unit: d.package_unit ?? null,
+            min_order_qty: d.min_order_qty ?? null,
+            quantity_unit: d.quantity_unit ?? null,
           }))
         );
         setIsExample(false);
@@ -125,15 +139,17 @@ export default function Home() {
           </span>
         </div>
 
-        {/* 신뢰 지표 — 2026-09-27 (재검토): 고정 숫자(890명)는 하드코딩이라 실제
-            가입자가 늘어도 코드를 안 고치면 계속 정체된 값으로 남아, 시간이 지날수록
-            "표시가 사실과 다른" 리스크가 커짐. 숫자 자체를 빼고, 실제로 항상 참인
-            서술형 카피로 교체. 구체적인 오늘 등록 건수는 아래 긴급성 배너(실시간 DB
-            값 + CTA)가 이미 전담하므로 여기서 중복 표기하지 않음. */}
+        {/* 신뢰 지표 — 2026-09-27 (재검토 2): 동종업계 문자광고("전국 4,973개
+            업체 공유") 벤치마킹 — "명"(개인) 대신 "개 업체"(사업자 인증 회원) 단위로
+            바꾸면 같은 실측치라도 B2B 플랫폼 성격에 더 맞고 설득력도 큼.
+            /api/public-stats에서 실시간 집계한 값이 충분히 클 때만 노출하고,
+            작거나 아직 안 불러왔으면 무숫자 카피로 자연스럽게 대체. */}
         <div className="inline-flex items-center gap-1.5 bg-white/10 rounded-full px-3 py-1.5 mb-4">
           <span style={{ color: "#5EEAD4" }}>✔</span>
           <span className="text-xs font-bold text-white/90">
-            지금도 계속 새 매물이 올라와요
+            {businessCount >= BUSINESS_COUNT_THRESHOLD
+              ? `전국 ${businessCount.toLocaleString()}개 사업자가 함께하는 중`
+              : "지금도 계속 새 매물이 올라와요"}
           </span>
         </div>
 
@@ -280,9 +296,19 @@ export default function Home() {
                     <div className="text-sm font-bold text-navy truncate">{d.title}</div>
                     <div className="text-xs text-gray500 mt-0.5">
                       {d.category} · {d.location}
+                      {d.package_unit && ` · ${d.package_unit}`}
                     </div>
+                    {/* 2026-09-27: 동종업계 문자광고(가격/출고지/물량단위/최소주문 등을
+                        항상 함께 표기)를 벤치마킹 — 상세페이지엔 이미 있던 최소주문
+                        수량을 미리보기 카드에도 노출해 구매 결정에 필요한 정보 밀도를 높임. */}
                     <div className="text-[11px] text-gray500 mt-0.5 flex items-center gap-1.5">
                       <span>{d.remaining_qty}/{d.total_qty} 남음</span>
+                      {d.min_order_qty && (
+                        <>
+                          <span>·</span>
+                          <span>최소 {d.min_order_qty}{d.quantity_unit || "개"}</span>
+                        </>
+                      )}
                       {formatRelativeTime(d.created_at) && (
                         <>
                           <span>·</span>
