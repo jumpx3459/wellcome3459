@@ -52,7 +52,11 @@ export default function SellPage() {
     const guessed = guessCategory(productName);
     if (guessed) {
       setCategory(guessed);
-      setCategoryEditing(false);
+      // 2026-09-27: "수정"으로 직접 펼친 상태에서 상품명을 계속 입력하면 이
+      // effect가 매번 다시 실행돼 추천 카테고리로 도로 접혀버리는 문제 —
+      // 카테고리가 비어있을 때(=아직 한 번도 추천된 적 없을 때)만 자동으로
+      // 접고, 이미 펼쳐서 보고 있는 중이면 그대로 유지한다.
+      if (!category) setCategoryEditing(false);
     }
   }, [productName, categoryTouched]);
   const [quantity, setQuantity] = useState("");
@@ -194,6 +198,9 @@ export default function SellPage() {
       >
         <div className="px-5 pt-5 pb-3">
           <div className="flex items-center gap-2 mb-3">
+            {/* 2026-09-27: buy(찾습니다)·sell(매물등록)은 진입 경로가 다양해
+                로고=홈 링크만으로는 부족하다는 피드백 — 뒤로가기(←)를 복원. */}
+            <Link href="/" style={{ fontSize: 19, color: "rgba(255,255,255,0.8)" }}>←</Link>
             <Link href="/" className="bg-white rounded-lg px-2.5 py-1.5 inline-block shadow-sm">
               <img src="/images/logo.png" alt="덤핑점핑" className="h-7 w-auto" />
             </Link>
