@@ -854,26 +854,46 @@ function SignupPageInner() {
                 <span className="text-sm font-bold" style={{ color: "#0B2540" }}>약관 전체 동의</span>
               </button>
 
+              {/* 2026-09-27: 동의 체크박스에 실제 약관 내용을 볼 수 있는 경로가 없던
+                  문제 — 서비스 이용약관/개인정보 동의 항목에 "보기" 링크 추가, /privacy
+                  페이지(이용약관 요약 + 개인정보 처리방침이 같이 있음)를 새 탭으로 연결.
+                  마케팅 동의는 별도 약관 문서가 없어 링크 없이 유지. */}
               {[
-                { key: "tos", label: "서비스 이용약관 동의", tag: "필수", on: agreeTos, toggle: () => setAgreeTos(!agreeTos) },
-                { key: "privacy", label: "개인정보 수집·이용 동의", tag: "필수", on: agreePrivacy, toggle: () => setAgreePrivacy(!agreePrivacy) },
-                { key: "marketing", label: "마케팅·광고 정보 수신 (카카오톡 채널 소식)", tag: "선택", on: kakao, toggle: () => setKakao(!kakao) },
+                { key: "tos", label: "서비스 이용약관 동의", tag: "필수", on: agreeTos, toggle: () => setAgreeTos(!agreeTos), href: "/privacy" },
+                { key: "privacy", label: "개인정보 수집·이용 동의", tag: "필수", on: agreePrivacy, toggle: () => setAgreePrivacy(!agreePrivacy), href: "/privacy" },
+                { key: "marketing", label: "마케팅·광고 정보 수신 (카카오톡 채널 소식)", tag: "선택", on: kakao, toggle: () => setKakao(!kakao), href: undefined },
               ].map((a) => (
-                <button
+                <div
                   key={a.key}
-                  onClick={a.toggle}
-                  className="flex items-center gap-2.5 w-full text-left"
-                  style={{ borderBottom: "1px solid #F1F3F5", background: "#fff", padding: "12px 15px" }}
+                  className="flex items-center w-full"
+                  style={{ borderBottom: "1px solid #F1F3F5", background: "#fff" }}
                 >
-                  <span
-                    className="rounded flex items-center justify-center flex-shrink-0 text-white font-black"
-                    style={{ width: 20, height: 20, fontSize: 12, background: a.on ? "var(--color-brandOrange)" : "#fff", border: a.on ? "1.5px solid var(--color-brandOrange)" : "1.5px solid #C9CFD6" }}
+                  <button
+                    onClick={a.toggle}
+                    className="flex items-center gap-2.5 flex-1 min-w-0 text-left"
+                    style={{ padding: "12px 15px" }}
                   >
-                    {a.on ? "✓" : ""}
-                  </span>
-                  <span className="text-xs font-bold flex-shrink-0" style={{ color: a.tag === "필수" ? "#E25100" : "#6B7480" }}>[{a.tag}]</span>
-                  <span className="flex-1" style={{ fontSize: 12.5, lineHeight: 1.45, color: a.on ? "#1A1F26" : "#6B7480" }}>{a.label}</span>
-                </button>
+                    <span
+                      className="rounded flex items-center justify-center flex-shrink-0 text-white font-black"
+                      style={{ width: 20, height: 20, fontSize: 12, background: a.on ? "var(--color-brandOrange)" : "#fff", border: a.on ? "1.5px solid var(--color-brandOrange)" : "1.5px solid #C9CFD6" }}
+                    >
+                      {a.on ? "✓" : ""}
+                    </span>
+                    <span className="text-xs font-bold flex-shrink-0" style={{ color: a.tag === "필수" ? "#E25100" : "#6B7480" }}>[{a.tag}]</span>
+                    <span className="flex-1 truncate" style={{ fontSize: 12.5, lineHeight: 1.45, color: a.on ? "#1A1F26" : "#6B7480" }}>{a.label}</span>
+                  </button>
+                  {a.href && (
+                    <a
+                      href={a.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-shrink-0 font-bold"
+                      style={{ fontSize: 11.5, color: "#9AA3AD", padding: "12px 15px 12px 4px" }}
+                    >
+                      보기 ›
+                    </a>
+                  )}
+                </div>
               ))}
             </div>
             <p className="mt-3" style={{ fontSize: 11, color: "#6B7480", lineHeight: 1.6 }}>
