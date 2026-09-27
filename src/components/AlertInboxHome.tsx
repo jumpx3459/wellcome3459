@@ -203,11 +203,17 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
               {/* 2026-09-28: 0028에서 로고 블록이 좌측에 추가되며 이 텍스트 폭이
                   줄어 360px대 화면에서 말줄임 위험이 커짐 — 캐릭터(브랜드 개성
                   요소, 애니메이션 포함)는 유지하고, 폰트를 20→18px로 줄이고
-                  빈 상태 카피도 더 짧게 다듬어 대응. */}
+                  빈 상태 카피도 더 짧게 다듬어 대응.
+                  2026-09-28 (2차, 되돌림): 태그를 제목과 같은 줄·bar 우측 끝으로
+                  뺐다가(0035) 로컬 세션 실측 결과 flexShrink:0 태그가 150px 가까이
+                  고정 차지해 360px 화면에서 제목이 "오늘 긴…" 수준까지 잘리고,
+                  두 줄→한 줄로 바뀌며 바 높이(83px 실측 튜닝값)도 어긋나 빈 틈이
+                  생기는 걸 확인 — 제목 폭·바 높이를 그대로 지키기 위해 태그는
+                  다시 둘째 줄로 되돌리되, 그 줄 안에서만 justify-end로 우측 정렬. */}
               <div className="font-display truncate" style={{ fontSize: 18, color: "#fff" }}>
                 {deals.length > 0 ? `오늘 긴급매물 ${deals.length}건 떴어요` : "오늘의 긴급매물"}
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex justify-end">
                 <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
               </div>
             </div>
