@@ -11,6 +11,7 @@ import Toast, { useToast } from "@/components/Toast";
 import BusinessLicenseUploader from "@/components/BusinessLicenseUploader";
 import EcosystemGrid from "@/components/EcosystemGrid";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
+import { resizeImageForUpload } from "@/lib/resizeImage";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 
 type InterestItem = {
@@ -502,39 +503,9 @@ export default function MyPage() {
   // 2026-09-27: 프로필 사진은 52px로만 보이므로 업로드 전 브라우저에서 축소.
   // Vercel 서버리스 함수 요청 본문 한도(4.5MB)를 원본 휴대폰 사진(3~6MB 흔함)이
   // 넘는 경우가 많아 축소 없이는 "업로드에 실패했어요"가 자주 뜰 수 있음.
-  const resizeImageForAvatar = (file: File, maxDim = 640, quality = 0.85): Promise<Blob> =>
-    new Promise((resolve, reject) => {
-      const img = new Image();
-      const objectUrl = URL.createObjectURL(file);
-      img.onload = () => {
-        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-        const w = Math.round(img.width * scale);
-        const h = Math.round(img.height * scale);
-        const canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          URL.revokeObjectURL(objectUrl);
-          reject(new Error("canvas unsupported"));
-          return;
-        }
-        ctx.drawImage(img, 0, 0, w, h);
-        canvas.toBlob(
-          (blob) => {
-            URL.revokeObjectURL(objectUrl);
-            blob ? resolve(blob) : reject(new Error("resize failed"));
-          },
-          "image/jpeg",
-          quality
-        );
-      };
-      img.onerror = () => {
-        URL.revokeObjectURL(objectUrl);
-        reject(new Error("image load failed"));
-      };
-      img.src = objectUrl;
-    });
+  // 2026-09-28: ImageUploader(매물 사진)도 같은 문제가 있어서 src/lib/resizeImage.ts로
+  // 공용 유틸을 뽑아냄 — 여기서는 아바타 전용 크기(640px)로 호출.
+  const resizeImageForAvatar = (file: File) => resizeImageForUpload(file, 640, 0.85);
 
   // 2026-09-27: 프로필 사진 업로드 — 기존 deal-images 업로드 API 재사용, 선택 즉시
   // 업로드+저장(자동 반영). 본인 행 수정이라 members_self_update RLS로 충분.

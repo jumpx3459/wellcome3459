@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { resizeImageForUpload } from "@/lib/resizeImage";
 
 type Item = { preview: string; url?: string; uploading: boolean };
 
@@ -38,33 +39,39 @@ export default function ImageUploader({
       preview: URL.createObjectURL(f),
       uploading: true,
     }));
-    const merged = [...items, ...newItems];
-    setItems(merged);
+    const startIndex = items.length;
+    setItems([...items, ...newItems]);
 
-    try {
-      const formData = new FormData();
-      files.forEach((f) => formData.append("files", f));
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const data = await res.json();
-      const urls: string[] = data.urls ?? [];
-
-      setItems((prev) => {
-        const updated = [...prev];
-        // 방금 추가된 항목들(뒤에서 files.length개)에 순서대로 URL 매칭
-        let urlIdx = 0;
-        for (let i = updated.length - newItems.length; i < updated.length; i++) {
-          updated[i] = { ...updated[i], url: urls[urlIdx], uploading: false };
-          urlIdx++;
-        }
-        emitChange(updated);
-        return updated;
-      });
-    } catch {
-      setItems((prev) => {
-        const updated = prev.map((it) => (it.uploading ? { ...it, uploading: false } : it));
-        emitChange(updated);
-        return updated;
-      });
+    // 2026-09-28: 여러 장을 한 요청에 모아 보내면 Vercel 서버리스 함수 요청
+    // 본문 한도(4.5MB)를 원본 휴대폰 사진 2~3장만으로도 넘기기 쉬워서, 업로드
+    // 전 축소(resizeImageForUpload) + 장당 개별 요청으로 변경 — 한 장이
+    // 실패해도 나머지 장은 정상 업로드되고, 실패한 자리만 표시할 수 있음.
+    for (let i = 0; i < files.length; i++) {
+      try {
+        const resized = await resizeImageForUpload(files[i]);
+        const formData = new FormData();
+        formData.append("files", resized, files[i].name || "photo.jpg");
+        const res = await fetch("/api/upload", { method: "POST", body: formData });
+        const data = await res.json();
+        const url: string | undefined = data.urls?.[0];
+        setItems((prev) => {
+          const updated = [...prev];
+          if (updated[startIndex + i]) {
+            updated[startIndex + i] = { ...updated[startIndex + i], url, uploading: false };
+          }
+          emitChange(updated);
+          return updated;
+        });
+      } catch {
+        setItems((prev) => {
+          const updated = [...prev];
+          if (updated[startIndex + i]) {
+            updated[startIndex + i] = { ...updated[startIndex + i], uploading: false };
+          }
+          emitChange(updated);
+          return updated;
+        });
+      }
     }
   };
 
@@ -107,23 +114,41 @@ export default function ImageUploader({
 
       {items.length > 0 && (
         <div className="flex gap-2 mt-2.5 overflow-x-auto">
-          {items.map((it, i) => (
-            <div key={i} className="relative flex-shrink-0">
-              <img
-                src={it.preview}
-                alt={`첨부 사진 ${i + 1}`}
-                className="w-16 h-16 rounded-lg object-cover border border-gray200"
-                style={{ opacity: it.uploading ? 0.5 : 1 }}
-              />
-              <button
-                type="button"
-                onClick={() => removeAt(i)}
-                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gray900 text-white text-xs flex items-center justify-center"
-              >
-                ×
-              </button>
-            </div>
-          ))}
+          {items.map((it, i) => {
+            // 2026-09-28: 업로드가 끝났는데(uploading: false) url이 없으면 실패한
+            // 것 — 전엔 조용히 목록에서 빠져서(emitChange가 url 없는 항목을
+            // 걸러냄) 사용자가 실패를 알아챌 방법이 없었음. 미리보기는 로컬
+            // blob이라 실패해도 그대로 보여서, 테두리+배지로 구분해줘야 함.
+            const failed = !it.uploading && !it.url;
+            return (
+              <div key={i} className="relative flex-shrink-0">
+                <img
+                  src={it.preview}
+                  alt={`첨부 사진 ${i + 1}`}
+                  className="w-16 h-16 rounded-lg object-cover"
+                  style={{
+                    opacity: it.uploading ? 0.5 : 1,
+                    border: failed ? "1.5px solid #E5484D" : "1px solid #E4E7EB",
+                  }}
+                />
+                {failed && (
+                  <span
+                    className="absolute bottom-0 left-0 right-0 text-center font-bold rounded-b-lg"
+                    style={{ fontSize: 9, color: "#fff", background: "rgba(229,72,77,0.9)", padding: "1px 0" }}
+                  >
+                    실패 · 삭제 후 재시도
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => removeAt(i)}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gray900 text-white text-xs flex items-center justify-center"
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
