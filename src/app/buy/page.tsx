@@ -158,7 +158,12 @@ export default function BuyPage() {
           backgroundSize: "16px 16px, cover",
         }}
       >
-        <div className="flex items-center gap-3 px-5 py-4.5">
+        {/* 2026-09-27 (재검토): 타이틀 행과 로테이션 태그 행 순서를 맞바꿈 — 타이틀
+            자체 크기(font-display text-2xl)는 그대로라 시각적 우선순위는 유지됨. */}
+        <div className="flex items-center justify-center" style={{ padding: "14px 20px 9px" }}>
+          <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)", fontSize: 19 }} />
+        </div>
+        <div className="flex items-center gap-3 px-5 pb-4.5">
           <Link href="/" style={{ fontSize: 19, color: "rgba(255,255,255,0.8)" }}>←</Link>
           <div className="bg-white rounded-lg px-1.5 py-1 flex-shrink-0">
             <img src="/images/logo.png" alt="덤핑점핑" className="h-5 w-auto block" />
@@ -167,19 +172,19 @@ export default function BuyPage() {
             이런 재고 찾습니다
           </span>
         </div>
-        {/* 2026-09-26 (5): 중앙 정렬 + buy는 하단 탭 중 핵심 화면이라 로테이션
-            문구를 16px → 19px로 키워 더 강조.
-            2026-09-26 (8): 타이틀을 deals 헤드라인과 동일한 font-display
-            text-2xl(27px, 루트 112.5% 스케일 적용)로 키워서 로테이션 태그보다
-            타이틀이 시각적으로 우선하도록 정리. */}
-        <div className="flex items-center justify-center" style={{ padding: "9px 20px" }}>
-          <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)", fontSize: 19 }} />
-        </div>
 
         {/* 2026-09-27: signup step1/2와 동일하게 네이비를 핵심 카피까지 확장 —
-            기존 회색 카드(#EEF1F5) 배경을 걷어내고 네이비 위에 흰 텍스트로 직접 배치. */}
-        <div className="flex items-center gap-3" style={{ padding: "2px 22px 22px" }}>
-          <img src="/images/manager.png" alt="점핑매니저" className="flex-shrink-0" style={{ width: 40, height: 40, objectFit: "contain" }} />
+            기존 회색 카드(#EEF1F5) 배경을 걷어내고 네이비 위에 흰 텍스트로 직접 배치.
+            2026-09-27 (재검토): manager.png는 불투명 흰 배경이 박혀있어 네이비 위에서
+            흰 사각형이 그대로 보이는 문제 — 투명 배경 버전(manager-cut.png, 온보딩
+            메인 캐릭터와 동일 에셋)으로 교체하고 크기도 2배 가까이 키움. */}
+        <div className="flex items-center gap-3.5" style={{ padding: "2px 22px 22px" }}>
+          <img
+            src="/images/manager-cut.png"
+            alt="점핑매니저"
+            className="flex-shrink-0"
+            style={{ width: 76, height: 76, objectFit: "contain", filter: "drop-shadow(0 6px 10px rgba(0,0,0,.35))" }}
+          />
           <p className="leading-snug" style={{ fontSize: 13, color: "rgba(255,255,255,.92)", fontWeight: 500 }}>
             찾는 재고를 올려두면 점핑매니저가 매입처를 직접 찾아 연결해드려요.
           </p>
