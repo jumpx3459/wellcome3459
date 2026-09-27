@@ -38,6 +38,15 @@ export default function OnboardingIntro({ logoAnimate = false }: { logoAnimate?:
     router.push("/signup");
   }
 
+  // 2026-09-27: "이미 가입했어요 · 둘러보기" 버튼 하나가 온보딩만 닫고 마케팅 홈을
+  // 보여줬는데, 이미 가입한 사람 입장에선 다시 가입 유도 화면(무료 알림받기 CTA)이
+  // 뜨는 셈이라 혼란스러움. 기존 회원 전용 경량 로그인(/login, 전화번호+OTP만
+  // 물어보고 세션 있으면 재인증 없이 바로 /mypage로 보냄)으로 분리 연결.
+  function goToLogin() {
+    dismiss();
+    router.push("/login");
+  }
+
   if (!visible) return null;
 
   return (
@@ -147,22 +156,39 @@ export default function OnboardingIntro({ logoAnimate = false }: { logoAnimate?:
         >
           🔔 30초만에 알림 설정하기
         </button>
-        <button
-          onClick={dismiss}
-          className="text-center"
-          style={{
-            background: "none",
-            border: "none",
-            color: "rgba(255,255,255,.7)",
-            fontSize: 13,
-            fontWeight: 500,
-            textDecoration: "underline",
-            textUnderlineOffset: 4,
-            padding: 10,
-          }}
-        >
-          이미 가입했어요 · 둘러보기
-        </button>
+        <div className="flex items-center justify-center gap-1" style={{ padding: "2px 10px 0" }}>
+          <button
+            onClick={goToLogin}
+            style={{
+              background: "none",
+              border: "none",
+              color: "rgba(255,255,255,.85)",
+              fontSize: 13,
+              fontWeight: 700,
+              textDecoration: "underline",
+              textUnderlineOffset: 4,
+              padding: 8,
+            }}
+          >
+            이미 가입했어요
+          </button>
+          <span style={{ color: "rgba(255,255,255,.35)", fontSize: 13 }}>·</span>
+          <button
+            onClick={dismiss}
+            style={{
+              background: "none",
+              border: "none",
+              color: "rgba(255,255,255,.7)",
+              fontSize: 13,
+              fontWeight: 500,
+              textDecoration: "underline",
+              textUnderlineOffset: 4,
+              padding: 8,
+            }}
+          >
+            둘러보기
+          </button>
+        </div>
       </div>
     </div>
   );
