@@ -215,7 +215,9 @@ export default function SellPage() {
 
       <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: 132 }}>
         <div className="flex items-center gap-3 rounded-2xl" style={{ background: "#EEF1F5", padding: "13px 15px" }}>
-          <img src="/images/manager.png" alt="점핑매니저" className="flex-shrink-0" style={{ width: 44, height: 44, objectFit: "contain" }} />
+          {/* 2026-09-27: manager.png는 불투명 흰 배경이 박혀있어 연한 회색(#EEF1F5)
+              카드 위에서 흰 사각형이 도드라지는 문제 — 투명 컷아웃으로 교체. */}
+          <img src="/images/manager-cut.png" alt="점핑매니저" className="flex-shrink-0" style={{ width: 44, height: 44, objectFit: "contain" }} />
           <p className="leading-snug" style={{ fontSize: 12.5, color: "#0B2540", fontWeight: 500 }}>
             신청서를 검토한 뒤 점핑매니저가 직접 연락드려요.
           </p>

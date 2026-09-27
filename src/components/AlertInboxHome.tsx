@@ -169,7 +169,9 @@ export default function AlertInboxHome() {
           112.5% 적용 시 실제 18px)보다 확실히 크게. 단, 이 바는 스크롤해도 항상
           고정으로 떠 있어서 deals 히어로(27px)만큼 키우진 않음 — 매물 피드
           공간을 계속 깎아먹지 않도록 "태그보다만 크게" 수준으로 절충.
-          manager.png는 불투명 흰 배경이라 rounded-lg로 뱃지처럼 마감. */}
+          2026-09-27: manager.png는 불투명 흰 배경이 박혀있어 네이비 상단바
+          위에서 흰 사각형이 그대로 보이는 문제 — buy 페이지와 동일하게 투명
+          컷아웃(manager-cut.png)으로 교체, 뱃지처럼 마감하던 rounded-lg도 제거. */}
       <div
         className="fixed top-0 z-10 left-1/2 -translate-x-1/2 w-full max-w-md"
         style={{
@@ -180,9 +182,8 @@ export default function AlertInboxHome() {
       >
         <div className="flex items-center gap-2.5" style={{ padding: "14px 20px 12px" }}>
           <img
-            src="/images/manager.png"
+            src="/images/manager-cut.png"
             alt="점핑매니저"
-            className="rounded-lg"
             style={{ width: 34, height: 34, objectFit: "contain", flexShrink: 0 }}
           />
           <div className="min-w-0">
