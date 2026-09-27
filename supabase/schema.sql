@@ -780,3 +780,18 @@ as $$
   full outer join supplier_stats sup on sup.category_id = l.category_id;
 $$;
 revoke all on function admin_category_kpis() from public;
+
+-- 2026-09-27: 회원/리드 10만 규모 대비 — admin_partner_referral_stats(),
+-- admin_category_kpis() 둘 다 group by/join 하는 컬럼(FK)에 인덱스가 하나도
+-- 없었음. 지금(초기 리드 검증 단계) 데이터량에선 순차 스캔으로도 체감 차이가
+-- 없지만, 각 테이블이 수만~수십만 행으로 커지면 이 RPC들과 관리자 화면의
+-- 다른 조회(파트너별 추천 회원, 카테고리별 매물 등)가 전부 풀스캔을 타게 됨.
+-- 지금 미리 걸어두면 비용이 거의 0이고 나중에 걸면 운영 중 락 이슈가 생길 수
+-- 있어 먼저 반영.
+create index if not exists interests_deal_id_idx on public.interests (deal_id);
+create index if not exists interests_member_id_idx on public.interests (member_id);
+create index if not exists quick_leads_deal_id_idx on public.quick_leads (deal_id);
+create index if not exists members_referred_by_idx on public.members (referred_by);
+create index if not exists buy_requests_category_id_idx on public.buy_requests (category_id);
+create index if not exists seller_requests_category_id_idx on public.seller_requests (category_id);
+create index if not exists deals_category_id_idx on public.deals (category_id);
