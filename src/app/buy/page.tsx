@@ -158,19 +158,20 @@ export default function BuyPage() {
           backgroundSize: "16px 16px, cover",
         }}
       >
-        {/* 2026-09-27 (재재검토): 구 버전처럼 중앙 자리엔 타이틀, 로테이션 태그는
-            로고 옆 행으로 이동 — 로고 위치·크기는 그대로 유지. */}
-        <div className="flex items-center justify-center" style={{ padding: "14px 20px 9px" }}>
-          <span className="font-display text-2xl whitespace-nowrap" style={{ color: "#fff" }}>
-            이런 재고 찾습니다
-          </span>
-        </div>
-        <div className="flex items-center gap-3 px-5 pb-4.5">
+        {/* 2026-09-27 (재재재검토): 행 순서는 그대로(로고 행이 위, 타이틀 행이 아래)
+            두고 내용만 맞바꿔야 했는데 행 자체를 뒤집어서 타이틀이 맨 위로 튀는
+            버그 — 로고 행을 다시 위로, 타이틀(구버전 로테이션 위치)을 아래로. */}
+        <div className="flex items-center gap-3 px-5 pt-3.5 pb-1">
           <Link href="/" style={{ fontSize: 19, color: "rgba(255,255,255,0.8)" }}>←</Link>
           <div className="bg-white rounded-lg px-1.5 py-1 flex-shrink-0">
             <img src="/images/logo.png" alt="덤핑점핑" className="h-5 w-auto block" />
           </div>
           <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)", fontSize: 19 }} />
+        </div>
+        <div className="flex items-center justify-center" style={{ padding: "9px 20px 14px" }}>
+          <span className="font-display text-2xl whitespace-nowrap" style={{ color: "#fff" }}>
+            이런 재고 찾습니다
+          </span>
         </div>
 
         {/* 2026-09-27: signup step1/2와 동일하게 네이비를 핵심 카피까지 확장 —
