@@ -65,9 +65,11 @@ export default function OnboardingIntro() {
             className="inline-flex items-center gap-1.5 rounded-full flex-shrink-0"
             style={{ background: "rgba(255,255,255,.12)", padding: "7px 13px", marginTop: 2 }}
           >
+            {/* 2026-09-27 (재검토): 고정 숫자(890명)는 실제 가입자 수와 어긋날 수
+                있는 하드코딩 값이라, 홈과 동일하게 숫자 없는 서술형 카피로 교체. */}
             <span className="text-xs" style={{ color: "#5EEAD4" }}>✔</span>
             <span className="text-xs font-bold" style={{ color: "rgba(255,255,255,.92)" }}>
-              890명+ 덤핑재고 알림 받는 중
+              지금도 계속 새 매물이 올라와요
             </span>
           </div>
         </div>

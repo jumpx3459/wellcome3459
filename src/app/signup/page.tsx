@@ -498,14 +498,15 @@ function SignupPageInner() {
           </div>
         </div>
         <div className="flex items-center justify-center gap-2" style={{ padding: "9px 22px" }}>
-          {/* 2026-09-27: 홈 화면과 동일한 사회적 증거 배지를 가입 직전 화면에도 노출.
-              로테이션 태그와 한 줄에 나란히 서야 해서 문구는 "890명+"로 축약. */}
+          {/* 2026-09-27 (재검토): 고정 숫자("890명+")는 하드코딩이라 실제 가입자
+              수와 어긋날 수 있어, 홈/온보딩과 동일하게 숫자 없는 신뢰 마커로 교체.
+              로테이션 태그와 한 줄에 나란히 서야 해서 짧게 "실시간"만 표기. */}
           <div
             className="inline-flex items-center gap-1 rounded-full flex-shrink-0"
             style={{ background: "rgba(255,255,255,.12)", padding: "5px 10px" }}
           >
             <span style={{ color: "#5EEAD4", fontSize: 11 }}>✔</span>
-            <span className="font-bold" style={{ fontSize: 11, color: "rgba(255,255,255,.92)" }}>890명+</span>
+            <span className="font-bold" style={{ fontSize: 11, color: "rgba(255,255,255,.92)" }}>실시간 업데이트</span>
           </div>
           <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
         </div>

@@ -125,12 +125,15 @@ export default function Home() {
           </span>
         </div>
 
-        {/* 신뢰 지표 — 실제 IR 확인 수치만 표기 */}
+        {/* 신뢰 지표 — 2026-09-27 (재검토): 고정 숫자(890명)는 하드코딩이라 실제
+            가입자가 늘어도 코드를 안 고치면 계속 정체된 값으로 남아, 시간이 지날수록
+            "표시가 사실과 다른" 리스크가 커짐. 숫자 자체를 빼고, 실제로 항상 참인
+            서술형 카피로 교체. 구체적인 오늘 등록 건수는 아래 긴급성 배너(실시간 DB
+            값 + CTA)가 이미 전담하므로 여기서 중복 표기하지 않음. */}
         <div className="inline-flex items-center gap-1.5 bg-white/10 rounded-full px-3 py-1.5 mb-4">
           <span style={{ color: "#5EEAD4" }}>✔</span>
           <span className="text-xs font-bold text-white/90">
-            890명+ 덤핑재고 알림 받는 중
-            {todayCount > 0 && ` · 오늘 등록 ${todayCount}건`}
+            지금도 계속 새 매물이 올라와요
           </span>
         </div>
 
