@@ -182,16 +182,14 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
       >
         <div className="flex items-center gap-3.5" style={{ padding: "14px 20px 12px" }}>
           {/* 2026-09-28: 회원 홈에 실제 로고가 없다는 피드백(2026-09-27 코멘트 참고,
-              당시엔 캐릭터에 애니메이션만 추가) — 좌측 끝에 로고+"Powered by JumpX"를
-              세로로 쌓은 블록을 별도로 배치하고, 간격을 띄워 캐릭터+문구 블록을
-              오른쪽에 둠. 83px 고정 바 높이는 유지(로고 배지를 작게 잡아 안에 맞춤). */}
-          <Link href="/" className="flex flex-col items-start flex-shrink-0" style={{ gap: 3 }}>
-            <span className="bg-white rounded-md inline-flex items-center" style={{ padding: "3px 6px" }}>
-              <img src="/images/logo.png" alt="덤핑점핑" className="h-5 w-auto block" />
-            </span>
-            <span className="whitespace-nowrap" style={{ fontSize: 9.5, color: "rgba(255,255,255,0.45)" }}>
-              Powered by JumpX
-            </span>
+              당시엔 캐릭터에 애니메이션만 추가) — 좌측 끝에 로고 배지를 배치하고,
+              간격을 띄워 캐릭터+문구 블록을 오른쪽에 둠.
+              2026-09-28 (2차): "Powered by JumpX" 서브텍스트가 잘 안 보이는 데다
+              오히려 로고 배지보다 폭이 넓어서(9.5px 텍스트가 로고보다 김) 제목
+              공간을 깎아먹고 있었음 — 빼고 로고를 키움(h-5→h-6). 세로 스택이
+              아니게 돼 flex-col도 제거. */}
+          <Link href="/" className="bg-white rounded-md inline-flex items-center flex-shrink-0" style={{ padding: "4px 7px" }}>
+            <img src="/images/logo.png" alt="덤핑점핑" className="h-6 w-auto block" />
           </Link>
           <div className="flex items-center gap-2.5 min-w-0">
             {/* 2026-09-27: 캐릭터 아이콘에 스플래시와 동일한 바운스 애니메이션 적용. */}
