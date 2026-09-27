@@ -724,9 +724,13 @@ function SignupPageInner() {
               </div>
             )}
 
-            <div className="flex items-center gap-2.5 rounded-2xl mt-4.5" style={{ padding: "14px 16px", background: verified ? "#E8F8EC" : "#F5F6F8" }}>
-              <span style={{ fontSize: 16 }}>📱</span>
-              <span className="flex-1 text-xs font-bold" style={{ lineHeight: 1.5, color: verified ? "#2F9E44" : "#6B7480" }}>
+            {/* 2026-09-27: 미인증 상태의 안내 문구가 무채색(#F5F6F8/#6B7480)이라
+                "중요한 정보"인데도 눈에 안 띈다는 피드백 — 같은 화면 상단 가입미완료
+                배너에 쓰던 주의 환기 톤(#FFF4E0/#966B00)을 재사용해 존재감을 높임.
+                verified(성공) 상태는 그대로 초록 유지. */}
+            <div className="flex items-center gap-2.5 rounded-2xl mt-4.5" style={{ padding: "14px 16px", background: verified ? "#E8F8EC" : "#FFF4E0" }}>
+              <span style={{ fontSize: 17 }}>📱</span>
+              <span className="flex-1 text-xs font-bold" style={{ lineHeight: 1.5, color: verified ? "#2F9E44" : "#966B00" }}>
                 {verified ? "✔ 인증 완료 · 이 번호로 알림을 보냅니다" : "인증된 번호로만 판매자 연락처를 열람할 수 있어요"}
               </span>
             </div>
