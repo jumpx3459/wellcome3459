@@ -8,6 +8,7 @@ import { sendOtp, verifyOtp, isValidKoreanPhone, toE164Phone } from "@/lib/auth"
 import { fmtLeft } from "@/lib/format";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 import { NAV_HEIGHT } from "@/components/BottomNav";
+import { rem } from "@/lib/rem";
 
 // 2026-09-28 (3): "비밀번호 로그인도 결국 번호를 매번 입력해야 하냐"는 지적 —
 // phone+password는 Supabase Auth 구조상 식별자(번호) 없이는 로그인이 불가능해
@@ -207,7 +208,7 @@ function LoginPageInner() {
           <div className="flex items-center gap-3 mb-3">
             <button
               onClick={() => router.push("/")}
-              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "rgba(255,255,255,0.8)", padding: 0, lineHeight: 1 }}
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: rem(20), color: "rgba(255,255,255,0.8)", padding: 0, lineHeight: 1 }}
             >
               ←
             </button>
@@ -233,7 +234,7 @@ function LoginPageInner() {
             )}
           </h1>
           {membership !== "not_member" && (
-            <p className="mt-2" style={{ fontSize: 13.5, color: "rgba(255,255,255,0.65)", lineHeight: 1.6 }}>
+            <p className="mt-2" style={{ fontSize: rem(13.5), color: "rgba(255,255,255,0.65)", lineHeight: 1.6 }}>
               가입할 때 인증했던 휴대폰 번호를 입력해주세요.
             </p>
           )}
@@ -243,10 +244,10 @@ function LoginPageInner() {
       <div className="flex-1 flex flex-col" style={{ padding: "24px 22px 20px" }}>
         {membership === "not_member" ? (
           <div className="flex flex-col items-center text-center" style={{ padding: "12px 6px 0" }}>
-            <div className="rounded-full flex items-center justify-center" style={{ width: 76, height: 76, background: "#FDEEE8", fontSize: 34 }}>
+            <div className="rounded-full flex items-center justify-center" style={{ width: 76, height: 76, background: "#FDEEE8", fontSize: rem(34) }}>
               🔍
             </div>
-            <p className="mt-4.5" style={{ fontSize: 14, color: "#6B7480", lineHeight: 1.7 }}>
+            <p className="mt-4.5" style={{ fontSize: rem(14), color: "#6B7480", lineHeight: 1.7 }}>
               이 번호로 등록된 계정이 없어요.
               <br />
               알림 신청부터 시작해주세요.
@@ -254,7 +255,7 @@ function LoginPageInner() {
             <Link
               href={signupHref}
               className="w-full text-white font-bold rounded-2xl mt-5 text-center"
-              style={{ padding: "17px 0", fontSize: 16.5, background: "linear-gradient(135deg,#E25100,#FF6F0F)", boxShadow: "0 8px 20px rgba(226,81,0,.3)" }}
+              style={{ padding: "17px 0", fontSize: rem(16.5), background: "linear-gradient(135deg,#E25100,#FF6F0F)", boxShadow: "0 8px 20px rgba(226,81,0,.3)" }}
             >
               알림 신청하러 가기
             </Link>
@@ -273,7 +274,7 @@ function LoginPageInner() {
                   className="flex-1 text-center font-bold rounded-xl"
                   style={{
                     padding: "9px 0",
-                    fontSize: 13.5,
+                    fontSize: rem(13.5),
                     background: authMode === "otp" ? "linear-gradient(135deg,#E25100,#FF6F0F)" : "#F5F6F8",
                     color: authMode === "otp" ? "#fff" : "#6B7480",
                   }}
@@ -286,7 +287,7 @@ function LoginPageInner() {
                   className="flex-1 text-center font-bold rounded-xl"
                   style={{
                     padding: "9px 0",
-                    fontSize: 13.5,
+                    fontSize: rem(13.5),
                     background: authMode === "password" ? "linear-gradient(135deg,#E25100,#FF6F0F)" : "#F5F6F8",
                     color: authMode === "password" ? "#fff" : "#6B7480",
                   }}
@@ -309,7 +310,7 @@ function LoginPageInner() {
                 <div className="flex gap-2">
                   <input
                     className="flex-1 min-w-0 rounded-xl outline-none"
-                    style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: 15, fontVariantNumeric: "tabular-nums" }}
+                    style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: rem(15), fontVariantNumeric: "tabular-nums" }}
                     placeholder="010-0000-0000"
                     inputMode="numeric"
                     value={phone}
@@ -324,7 +325,7 @@ function LoginPageInner() {
                       border: "none",
                       background: "linear-gradient(135deg,#E25100,#FF6F0F)",
                       padding: "0 15px",
-                      fontSize: 13.5,
+                      fontSize: rem(13.5),
                       color: "#fff",
                       whiteSpace: "nowrap",
                     }}
@@ -343,7 +344,7 @@ function LoginPageInner() {
                     </div>
                     <input
                       className="w-full rounded-xl outline-none text-center font-mono font-bold"
-                      style={{ border: "1.5px solid var(--color-brandOrange)", padding: 14, fontSize: 20, letterSpacing: "0.32em" }}
+                      style={{ border: "1.5px solid var(--color-brandOrange)", padding: 14, fontSize: rem(20), letterSpacing: "0.32em" }}
                       inputMode="numeric"
                       maxLength={6}
                       placeholder="000000"
@@ -353,7 +354,7 @@ function LoginPageInner() {
                     />
                     {otpError && <p className="text-sm font-medium mt-2" style={{ color: "#E5484D" }}>{otpError}</p>}
                     {!otpError && (
-                      <p className="mt-2" style={{ fontSize: 11.5, color: "#6B7480", lineHeight: 1.55 }}>
+                      <p className="mt-2" style={{ fontSize: rem(11.5), color: "#6B7480", lineHeight: 1.55 }}>
                         문자가 오지 않으면 스팸함을 확인하거나 &quot;다시 받기&quot;를 눌러주세요.
                       </p>
                     )}
@@ -374,7 +375,7 @@ function LoginPageInner() {
                 </div>
                 <input
                   className="w-full rounded-xl outline-none"
-                  style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: 15, fontVariantNumeric: "tabular-nums" }}
+                  style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: rem(15), fontVariantNumeric: "tabular-nums" }}
                   placeholder="010-0000-0000"
                   inputMode="numeric"
                   value={phone}
@@ -384,7 +385,7 @@ function LoginPageInner() {
                 <input
                   type="password"
                   className="w-full rounded-xl outline-none"
-                  style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: 15 }}
+                  style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: rem(15) }}
                   placeholder="마이페이지에서 설정한 비밀번호"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -395,11 +396,11 @@ function LoginPageInner() {
                   onClick={handlePasswordSignIn}
                   disabled={passwordSigningIn}
                   className="w-full text-white font-bold rounded-2xl mt-4.5 text-center disabled:opacity-60"
-                  style={{ padding: "15px 0", fontSize: 15.5, background: "linear-gradient(135deg,#E25100,#FF6F0F)" }}
+                  style={{ padding: "15px 0", fontSize: rem(15.5), background: "linear-gradient(135deg,#E25100,#FF6F0F)" }}
                 >
                   {passwordSigningIn ? "로그인 중..." : "로그인"}
                 </button>
-                <p className="mt-2.5" style={{ fontSize: 11.5, color: "#9AA3AD" }}>
+                <p className="mt-2.5" style={{ fontSize: rem(11.5), color: "#9AA3AD" }}>
                   비밀번호를 아직 안 만드셨거나 잊으셨다면 &quot;인증번호로 로그인&quot;을 이용해주세요.
                 </p>
               </>
@@ -407,14 +408,14 @@ function LoginPageInner() {
 
             {authUserId && (
               <div className="flex items-center gap-2.5 rounded-2xl mt-4.5" style={{ padding: "14px 16px", background: "#E8F8EC" }}>
-                <span style={{ fontSize: 16 }}>✔</span>
+                <span style={{ fontSize: rem(16) }}>✔</span>
                 <span className="flex-1 text-xs font-bold" style={{ lineHeight: 1.5, color: "#2F9E44" }}>
                   인증 완료 · 계정 확인 중...
                 </span>
               </div>
             )}
 
-            <p className="mt-6 text-center" style={{ fontSize: 12.5, color: "#9AA3AD" }}>
+            <p className="mt-6 text-center" style={{ fontSize: rem(12.5), color: "#9AA3AD" }}>
               처음이신가요?{" "}
               <Link href={signupHref} style={{ color: "#0B2540", fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 3 }}>
                 알림 신청하기

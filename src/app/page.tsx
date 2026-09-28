@@ -14,6 +14,7 @@ import EcosystemGrid from "@/components/EcosystemGrid";
 import AlertInboxHome from "@/components/AlertInboxHome";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
+import { rem } from "@/lib/rem";
 
 const TODAY_BADGE_THRESHOLD = 5; // 이보다 적으면 "오늘 N건" 배너를 아예 숨김 (빈약한 숫자 노출 방지)
 const BUSINESS_COUNT_THRESHOLD = 30; // 이보다 적으면 사업자 수 대신 무숫자 카피로 대체 (빈약한 숫자 노출 방지)
@@ -184,8 +185,8 @@ export default function Home() {
             /api/public-stats에서 실시간 집계한 값이 충분히 클 때만 노출하고,
             작거나 아직 안 불러왔으면 무숫자 카피로 자연스럽게 대체. */}
         <div className="inline-flex items-center gap-1.5 bg-white/10 rounded-full px-3 py-1.5 mb-4">
-          <span style={{ color: "#5EEAD4", fontSize: 11 }}>✔</span>
-          <span className="font-bold text-white/90" style={{ fontSize: 11 }}>
+          <span style={{ color: "#5EEAD4", fontSize: rem(11) }}>✔</span>
+          <span className="font-bold text-white/90" style={{ fontSize: rem(11) }}>
             {businessCount >= BUSINESS_COUNT_THRESHOLD
               ? `전국 ${businessCount.toLocaleString()}개 사업자가 함께하는 중`
               : "지금도 계속 새 매물이 올라와요"}
@@ -199,7 +200,7 @@ export default function Home() {
         {/* 2026-09-27 (3): text-2xl(27px)이 390px 이하 폭에서 헤드라인 2번째 줄이
             3줄로 깨지는 원인 — 카피는 그대로 두고 24px로 한 단계만 낮춰 위계
             개선분은 절반 남기면서 2줄을 유지. */}
-        <h1 className="font-display leading-snug drop-shadow-sm break-keep" style={{ fontSize: 24 }}>
+        <h1 className="font-display leading-snug drop-shadow-sm break-keep" style={{ fontSize: rem(24) }}>
           <span style={{ color: "#FF6F0F" }}>남는 상품은 빠르게 알리고,</span>
           <br />
           급한 상품은 남보다 먼저 잡으세요.
@@ -276,7 +277,7 @@ export default function Home() {
               onClick={dismissInstallBanner}
               aria-label="닫기"
               className="absolute flex items-center justify-center"
-              style={{ top: 6, right: 6, width: 20, height: 20, color: "#B8BFC7", fontSize: 13, lineHeight: 1 }}
+              style={{ top: 6, right: 6, width: 20, height: 20, color: "#B8BFC7", fontSize: rem(13), lineHeight: 1 }}
             >
               ✕
             </button>
@@ -346,7 +347,7 @@ export default function Home() {
                     {/* 2026-09-27: 동종업계 문자광고(가격/출고지/물량단위/최소주문 등을
                         항상 함께 표기)를 벤치마킹 — 상세페이지엔 이미 있던 최소주문
                         수량을 미리보기 카드에도 노출해 구매 결정에 필요한 정보 밀도를 높임. */}
-                    <div className="text-[11px] text-gray500 mt-0.5 flex items-center gap-1.5">
+                    <div className="text-[0.7222rem] text-gray500 mt-0.5 flex items-center gap-1.5">
                       <span>{d.remaining_qty}/{d.total_qty} 남음</span>
                       {d.min_order_qty && (
                         <>
@@ -487,7 +488,7 @@ export default function Home() {
             style={{
               background: "linear-gradient(135deg, #E25100, #FF6F0F)",
               padding: "15px 0",
-              fontSize: "17px",
+              fontSize: rem(17),
               boxShadow: "0 4px 14px rgba(226,81,0,0.28)",
             }}
           >

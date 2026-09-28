@@ -14,7 +14,7 @@ export default function AdSlot({ className = "" }: AdSlotProps) {
       className={`w-full rounded-2xl border border-dashed flex flex-col items-center justify-center gap-1 py-6 ${className}`}
       style={{ borderColor: "#C7CBD1", background: "#F1F1EF" }}
     >
-      <span className="text-[10px] font-bold text-gray500 tracking-widest">AD</span>
+      <span className="text-[0.7222rem] font-bold text-gray500 tracking-widest">AD</span>
       <span className="text-xs text-gray500">광고 영역</span>
     </div>
   );

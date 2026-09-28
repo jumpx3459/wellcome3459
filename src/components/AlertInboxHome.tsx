@@ -12,6 +12,7 @@ import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 import { matchesConditions } from "@/lib/dealMatching";
 import { EXAMPLE_DEALS, shouldShowExamples } from "@/lib/exampleDeals";
+import { rem } from "@/lib/rem";
 
 // 헤더(점핑매니저 안내줄)의 실측 높이 — 아래 콘텐츠의 paddingTop 보정에 사용.
 // 2026-09-26 로컬 Playwright 실측 77.3px(360/390/430px 폭 동일) → 78로 올림.
@@ -241,7 +242,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                   두 줄→한 줄로 바뀌며 바 높이(83px 실측 튜닝값)도 어긋나 빈 틈이
                   생기는 걸 확인 — 제목 폭·바 높이를 그대로 지키기 위해 태그는
                   다시 둘째 줄로 되돌리되, 그 줄 안에서만 justify-end로 우측 정렬. */}
-              <div className="font-display truncate" style={{ fontSize: 18, color: "#fff" }}>
+              <div className="font-display truncate" style={{ fontSize: rem(18), color: "#fff" }}>
                 {deals.length > 0 ? `내 조건 긴급매물 ${deals.length}건` : "내 조건 긴급매물"}
               </div>
               <div className="flex justify-end">
@@ -273,9 +274,9 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
         className="flex items-center gap-2 w-full text-left"
         style={{ borderBottom: "1px solid #F1F3F5", padding: "9px 20px" }}
       >
-        <span style={{ fontSize: 12 }}>⚙️</span>
-        <span className="flex-1 min-w-0 truncate" style={{ fontSize: 12.5, color: "#6B7480" }}>{myCondText}</span>
-        <span className="flex-shrink-0 font-bold" style={{ fontSize: 12, color: "#E25100" }}>조건 수정</span>
+        <span style={{ fontSize: rem(12) }}>⚙️</span>
+        <span className="flex-1 min-w-0 truncate" style={{ fontSize: rem(12.5), color: "#6B7480" }}>{myCondText}</span>
+        <span className="flex-shrink-0 font-bold" style={{ fontSize: rem(12), color: "#E25100" }}>조건 수정</span>
       </Link>
 
       {showInstall && canInstall && (
@@ -283,7 +284,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
           <div className="flex-1 min-w-0">
             <InstallAppButton canInstall={canInstall} promptInstall={promptInstall} />
           </div>
-          <button onClick={dismissInstall} className="flex-shrink-0" style={{ border: "none", background: "none", color: "#9AA3AD", fontSize: 16, width: 28, height: 28 }}>
+          <button onClick={dismissInstall} className="flex-shrink-0" style={{ border: "none", background: "none", color: "#9AA3AD", fontSize: rem(16), width: 28, height: 28 }}>
             ×
           </button>
         </div>
@@ -292,9 +293,9 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
       {groups.map((g) => (
         <div key={g.label}>
           <div className="flex items-center gap-2" style={{ padding: "18px 20px 9px" }}>
-            <span className="font-black" style={{ fontSize: 12, color: "#0B2540", letterSpacing: "0.02em" }}>{g.label}</span>
+            <span className="font-black" style={{ fontSize: rem(12), color: "#0B2540", letterSpacing: "0.02em" }}>{g.label}</span>
             <span className="flex-1" style={{ height: 1, background: "#EEF0F2" }} />
-            <span className="font-mono font-bold" style={{ fontSize: 11, color: "#6B7480" }}>{g.items.length}건</span>
+            <span className="font-mono font-bold" style={{ fontSize: rem(11), color: "#6B7480" }}>{g.items.length}건</span>
           </div>
           {g.items.map((d) => {
             const cd = formatCountdown(d.closes_at);
@@ -307,8 +308,8 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                 style={{ borderBottom: "1px solid #F1F3F5", padding: "14px 20px", background: "#fff" }}
               >
                 <div className="flex items-center gap-1.5" style={{ marginBottom: 8 }}>
-                  <span style={{ fontSize: 12, color: "#6B7480" }}>{d.location}</span>
-                  <span className="font-mono font-bold ml-auto" style={{ fontSize: 12, color: cd.urgent ? "var(--color-urgent)" : "#6B7480" }}>
+                  <span style={{ fontSize: rem(12), color: "#6B7480" }}>{d.location}</span>
+                  <span className="font-mono font-bold ml-auto" style={{ fontSize: rem(12), color: cd.urgent ? "var(--color-urgent)" : "#6B7480" }}>
                     ⏱ {cd.label}
                   </span>
                 </div>
@@ -331,11 +332,11 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                       <img src={d.images[0]} alt={d.title} className="w-full h-full object-cover" />
                       {d.video_url && (
                         <span className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,.25)" }}>
-                          <span style={{ fontSize: wideLayout ? 32 : 18, color: "#fff" }}>▶</span>
+                          <span style={{ fontSize: wideLayout ? rem(32) : rem(18), color: "#fff" }}>▶</span>
                         </span>
                       )}
                       {d.images.length > 1 && (
-                        <span className="absolute bottom-1 right-1 rounded font-bold text-white" style={{ fontSize: 10, padding: "1px 5px", background: "rgba(0,0,0,.5)" }}>
+                        <span className="absolute bottom-1 right-1 rounded font-bold text-white" style={{ fontSize: rem(10), padding: "1px 5px", background: "rgba(0,0,0,.5)" }}>
                           1/{d.images.length}
                         </span>
                       )}
@@ -349,12 +350,12 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                     </span>
                   )}
                   <span className="flex-1 min-w-0">
-                    <span className="block font-bold leading-snug" style={{ fontSize: 16, color: "#1A1F26" }}>{d.title}</span>
-                    <span className="block mt-0.5" style={{ fontSize: 12.5, color: "#6B7480" }}>
+                    <span className="block font-bold leading-snug" style={{ fontSize: rem(16), color: "#1A1F26" }}>{d.title}</span>
+                    <span className="block mt-0.5" style={{ fontSize: rem(12.5), color: "#6B7480" }}>
                       {d.category} · {d.location} · 잔여 {d.remaining_qty}{d.quantity_unit || "개"}
                     </span>
                     {(d.origin || d.min_order_qty) && (
-                      <span className="block mt-0.5" style={{ fontSize: 11.5, color: "#9AA3AD" }}>
+                      <span className="block mt-0.5" style={{ fontSize: rem(11.5), color: "#9AA3AD" }}>
                         {d.origin && `🌍 ${d.origin}`}
                         {d.origin && d.min_order_qty ? " · " : ""}
                         {d.min_order_qty && `MOQ ${d.min_order_qty}${d.quantity_unit || "개"}`}
@@ -362,12 +363,12 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                     )}
                     <span className="flex items-baseline gap-1.5 mt-1.5">
                       {pct > 0 && (
-                        <span className="font-black text-white rounded" style={{ fontSize: 12, padding: "2px 7px", background: "#E25100" }}>
+                        <span className="font-black text-white rounded" style={{ fontSize: rem(12), padding: "2px 7px", background: "#E25100" }}>
                           -{pct}%
                         </span>
                       )}
-                      <span className="font-black" style={{ fontSize: 18, color: "#0B2540" }}>{formatPrice(d.deal_price)}</span>
-                      <span style={{ fontSize: 12.5, color: "#6B7480", textDecoration: "line-through" }}>{formatPrice(d.original_price)}</span>
+                      <span className="font-black" style={{ fontSize: rem(18), color: "#0B2540" }}>{formatPrice(d.deal_price)}</span>
+                      <span style={{ fontSize: rem(12.5), color: "#6B7480", textDecoration: "line-through" }}>{formatPrice(d.original_price)}</span>
                     </span>
                   </span>
                 </div>
@@ -379,24 +380,24 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
 
       {loaded && groups.length === 0 && (
         <div className="text-center" style={{ padding: "40px 20px 28px" }}>
-          <p className="font-bold" style={{ fontSize: 15, color: "#1A1F26" }}>
+          <p className="font-bold" style={{ fontSize: rem(15), color: "#1A1F26" }}>
             내 조건에 맞는 진행 중 매물이 없어요
           </p>
-          <p className="mt-1" style={{ fontSize: 13, color: "#6B7480" }}>
+          <p className="mt-1" style={{ fontSize: rem(13), color: "#6B7480" }}>
             조건에 맞는 매물이 올라오면 가장 먼저 알려드릴게요.
           </p>
           <div className="flex justify-center gap-2 mt-4">
             <Link
               href="/mypage#alerts"
               className="font-bold rounded-full"
-              style={{ fontSize: 13, padding: "9px 16px", border: "1.5px solid #E25100", color: "#E25100" }}
+              style={{ fontSize: rem(13), padding: "9px 16px", border: "1.5px solid #E25100", color: "#E25100" }}
             >
               조건 넓히기
             </Link>
             <Link
               href="/deals"
               className="font-bold rounded-full text-white"
-              style={{ fontSize: 13, padding: "9px 16px", background: "#0B2540" }}
+              style={{ fontSize: rem(13), padding: "9px 16px", background: "#0B2540" }}
             >
               전체 매물 보기
             </Link>
@@ -407,7 +408,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
       {loaded && shouldShowExamples(deals.length, isSupabaseConfigured) && (
         <div>
           <div className="flex items-center gap-2" style={{ padding: "18px 20px 9px" }}>
-            <span className="font-black" style={{ fontSize: 13, color: "#0B2540", letterSpacing: "0.02em" }}>💡 이런 매물이 올라와요</span>
+            <span className="font-black" style={{ fontSize: rem(13), color: "#0B2540", letterSpacing: "0.02em" }}>💡 이런 매물이 올라와요</span>
             <span className="flex-1" style={{ height: 1, background: "#EEF0F2" }} />
             <span className="text-xs font-bold rounded-full" style={{ padding: "2px 8px", background: "#E9ECEF", color: "#495057" }}>예시</span>
           </div>
@@ -416,8 +417,8 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
             return (
               <Link key={`example-${d.id}`} href={`/deals/example-${d.id}`} className="block w-full text-left" style={{ borderBottom: "1px solid #F1F3F5", padding: "14px 20px", opacity: 0.8 }}>
                 <div className="flex items-center gap-1.5" style={{ marginBottom: 8 }}>
-                  <span className="font-black rounded" style={{ fontSize: 11.5, padding: "3px 8px", background: "#E9ECEF", color: "#495057" }}>예시</span>
-                  <span style={{ fontSize: 12, color: "#6B7480" }}>{d.location}</span>
+                  <span className="font-black rounded" style={{ fontSize: rem(11.5), padding: "3px 8px", background: "#E9ECEF", color: "#495057" }}>예시</span>
+                  <span style={{ fontSize: rem(12), color: "#6B7480" }}>{d.location}</span>
                 </div>
                 <div className="flex flex-col gap-2.5">
                   {d.images && d.images.length > 0 ? (
@@ -425,11 +426,11 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                       <img src={d.images[0]} alt={d.title} className="w-full h-full object-cover" />
                       {d.video_url && (
                         <span className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,.25)" }}>
-                          <span style={{ fontSize: 30, color: "#fff" }}>▶</span>
+                          <span style={{ fontSize: rem(30), color: "#fff" }}>▶</span>
                         </span>
                       )}
                       {d.images.length > 1 && (
-                        <span className="absolute bottom-1.5 right-1.5 rounded font-bold text-white" style={{ fontSize: 10, padding: "1px 5px", background: "rgba(0,0,0,.5)" }}>
+                        <span className="absolute bottom-1.5 right-1.5 rounded font-bold text-white" style={{ fontSize: rem(10), padding: "1px 5px", background: "rgba(0,0,0,.5)" }}>
                           1/{d.images.length}
                         </span>
                       )}
@@ -440,28 +441,28 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                     </span>
                   )}
                   <span className="flex-1 min-w-0">
-                    <span className="block font-bold leading-snug" style={{ fontSize: 16, color: "#1A1F26" }}>{d.title}</span>
-                    <span className="block mt-0.5" style={{ fontSize: 12.5, color: "#6B7480" }}>
+                    <span className="block font-bold leading-snug" style={{ fontSize: rem(16), color: "#1A1F26" }}>{d.title}</span>
+                    <span className="block mt-0.5" style={{ fontSize: rem(12.5), color: "#6B7480" }}>
                       {d.category} · {d.location} · 잔여 {d.remaining_qty}{d.quantity_unit || "개"}
                     </span>
                     {(d.origin || d.min_order_qty) && (
-                      <span className="block mt-0.5" style={{ fontSize: 11.5, color: "#9AA3AD" }}>
+                      <span className="block mt-0.5" style={{ fontSize: rem(11.5), color: "#9AA3AD" }}>
                         {d.origin && `🌍 ${d.origin}`}
                         {d.origin && d.min_order_qty ? " · " : ""}
                         {d.min_order_qty && `MOQ ${d.min_order_qty}${d.quantity_unit || "개"}`}
                       </span>
                     )}
                     <span className="flex items-baseline gap-1.5 mt-1.5">
-                      {pct > 0 && <span className="font-black text-white rounded" style={{ fontSize: 12, padding: "2px 7px", background: "#9AA3AD" }}>-{pct}%</span>}
-                      <span className="font-black" style={{ fontSize: 18, color: "#6B7480" }}>{formatPrice(d.deal_price)}</span>
-                      <span style={{ fontSize: 12.5, color: "#9AA3AD", textDecoration: "line-through" }}>{formatPrice(d.original_price)}</span>
+                      {pct > 0 && <span className="font-black text-white rounded" style={{ fontSize: rem(12), padding: "2px 7px", background: "#9AA3AD" }}>-{pct}%</span>}
+                      <span className="font-black" style={{ fontSize: rem(18), color: "#6B7480" }}>{formatPrice(d.deal_price)}</span>
+                      <span style={{ fontSize: rem(12.5), color: "#9AA3AD", textDecoration: "line-through" }}>{formatPrice(d.original_price)}</span>
                     </span>
                   </span>
                 </div>
               </Link>
             );
           })}
-          <p className="text-center" style={{ padding: "10px 20px 4px", fontSize: 11.5, color: "#9AA3AD" }}>
+          <p className="text-center" style={{ padding: "10px 20px 4px", fontSize: rem(11.5), color: "#9AA3AD" }}>
             실제 매물이 아닌 예시예요 · 매물이 등록되면 실시간으로 알려드려요
           </p>
         </div>
@@ -472,8 +473,8 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
       {loaded && outsideCount > 0 && (
         <div style={{ padding: "22px 20px 30px" }}>
           <Link href="/deals" className="flex items-center justify-between gap-3">
-            <span style={{ fontSize: 13, color: "#6B7480" }}>내 조건 밖 진행 중 매물 {outsideCount}건</span>
-            <span className="font-bold flex-shrink-0" style={{ fontSize: 13, color: "#E25100" }}>전체 매물 보기 →</span>
+            <span style={{ fontSize: rem(13), color: "#6B7480" }}>내 조건 밖 진행 중 매물 {outsideCount}건</span>
+            <span className="font-bold flex-shrink-0" style={{ fontSize: rem(13), color: "#E25100" }}>전체 매물 보기 →</span>
           </Link>
         </div>
       )}
@@ -487,7 +488,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
           <button
             onClick={() => setViewer(null)}
             className="absolute top-4 right-4 text-white"
-            style={{ fontSize: 28, background: "none", border: "none" }}
+            style={{ fontSize: rem(28), background: "none", border: "none" }}
           >
             ×
           </button>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { rem } from "@/lib/rem";
 
 // 표준 타입에 없는 크로미움 전용 PWA 설치 이벤트.
 type InstallPromptEvent = Event & {
@@ -85,13 +86,13 @@ export default function InstallAppButton({
         className="w-full flex items-center gap-2.5 text-left"
         style={{ background: "none", border: "none", padding: 0 }}
       >
-        <span className="flex-shrink-0" style={{ fontSize: 22 }}>📲</span>
+        <span className="flex-shrink-0" style={{ fontSize: rem(22) }}>📲</span>
         <span className="flex-1 min-w-0">
           {/* 2026-09-27: "앱처럼 열 수 있다"는 기능 설명보다, 실제 혜택(마감 임박
               매물을 더 빨리 받는다)을 앞세우는 카피로 변경. 구체적 쿠폰/금액은
               실제 지급 로직이 없어 표기하지 않음. */}
-          <span className="block font-bold" style={{ fontSize: 13.5, color: "#0B2540" }}>홈 화면에 추가하기</span>
-          <span className="block mt-0.5" style={{ fontSize: 11.5, color: "#6B7480" }}>
+          <span className="block font-bold" style={{ fontSize: rem(13.5), color: "#0B2540" }}>홈 화면에 추가하기</span>
+          <span className="block mt-0.5" style={{ fontSize: rem(11.5), color: "#6B7480" }}>
             설치하면 마감 임박 알림을 가장 먼저 받아요
           </span>
         </span>

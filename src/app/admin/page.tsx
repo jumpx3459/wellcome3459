@@ -11,6 +11,7 @@ import Toast, { useToast } from "@/components/Toast";
 import { formatPriceInput, parsePriceInput, formatMemberNo } from "@/lib/format";
 import type { ManifestRow } from "@/lib/parseCsv";
 import { SITE_URL } from "@/lib/siteUrl";
+import { rem } from "@/lib/rem";
 
 type SellerRequest = {
   id: string;
@@ -832,12 +833,12 @@ function AdminDashboard({
                   : { background: "#fff", border: "1px solid #E4E7EB" }
               }
             >
-              <div className="font-black" style={{ fontSize: 20, color: stat.value > 0 ? "#C2410C" : "#0B2540" }}>
+              <div className="font-black" style={{ fontSize: rem(20), color: stat.value > 0 ? "#C2410C" : "#0B2540" }}>
                 {stat.value}
               </div>
               <div
                 className="mt-0.5 font-bold leading-tight"
-                style={{ fontSize: 12.5, color: stat.value > 0 ? "#C2410C" : "#6B7480" }}
+                style={{ fontSize: rem(12.5), color: stat.value > 0 ? "#C2410C" : "#6B7480" }}
               >
                 {stat.label}
               </div>
@@ -876,8 +877,8 @@ function AdminDashboard({
             },
           ].map((stat) => (
             <div key={stat.label} className="bg-white border border-gray200 rounded-xl px-1 py-2.5 text-center">
-              <div className="font-black text-navy" style={{ fontSize: 16 }}>{stat.value}</div>
-              <div className="mt-0.5 font-bold text-gray500 leading-tight" style={{ fontSize: 12.5 }}>{stat.label}</div>
+              <div className="font-black text-navy" style={{ fontSize: rem(16) }}>{stat.value}</div>
+              <div className="mt-0.5 font-bold text-gray500 leading-tight" style={{ fontSize: rem(12.5) }}>{stat.label}</div>
             </div>
           ))}
         </div>
@@ -886,7 +887,7 @@ function AdminDashboard({
         <div className={isDesktop ? "bg-white border border-gray200 rounded-2xl p-4" : ""}>
         <div className={isDesktop ? "text-xs font-bold text-gray500 mb-1.5" : "text-xs font-bold text-gray500 mb-1.5 mt-3"}>카테고리별 현황 (액티브 = 최근 7일)</div>
         <div className={isDesktop ? "overflow-hidden" : "bg-white border border-gray200 rounded-xl overflow-hidden"}>
-          <div className="grid grid-cols-[1.4fr_0.7fr_0.7fr_0.7fr_0.7fr] gap-1 px-3 py-2 bg-gray100" style={{ fontSize: 12.5 }}>
+          <div className="grid grid-cols-[1.4fr_0.7fr_0.7fr_0.7fr_0.7fr] gap-1 px-3 py-2 bg-gray100" style={{ fontSize: rem(12.5) }}>
             <span className="font-bold text-gray500">카테고리</span>
             <span className="font-bold text-gray500 text-right">리드</span>
             <span className="font-bold text-gray500 text-right">성사율</span>
@@ -899,7 +900,7 @@ function AdminDashboard({
               <div
                 key={c.name}
                 className="grid grid-cols-[1.4fr_0.7fr_0.7fr_0.7fr_0.7fr] gap-1 px-3 py-2"
-                style={{ borderTop: "1px solid #F1F3F5", fontSize: 13.5 }}
+                style={{ borderTop: "1px solid #F1F3F5", fontSize: rem(13.5) }}
               >
                 <span className="truncate">{categoryIcons[c.name] ?? "🗂️"} {c.name}</span>
                 <span className="text-right font-mono font-bold text-navy">{c.leads}</span>
@@ -911,7 +912,7 @@ function AdminDashboard({
               </div>
             ))}
           {categoryKpis.every((c) => c.leads === 0 && c.activeSuppliers === 0 && c.activeDemanders === 0) && (
-            <div className="text-center text-gray500" style={{ fontSize: 12, padding: "16px 12px" }}>
+            <div className="text-center text-gray500" style={{ fontSize: rem(12), padding: "16px 12px" }}>
               아직 데이터가 없어요.
             </div>
           )}
@@ -1673,19 +1674,19 @@ function AdminDashboard({
                   </div>
                   <div className="mt-2 flex gap-4">
                     <div>
-                      <div className="font-mono font-bold text-navy" style={{ fontSize: 17 }}>
+                      <div className="font-mono font-bold text-navy" style={{ fontSize: rem(17) }}>
                         {p.total_referrals}
                       </div>
                       <div className="text-xs text-gray500">총 추천</div>
                     </div>
                     <div>
-                      <div className="font-mono font-bold text-navy" style={{ fontSize: 17 }}>
+                      <div className="font-mono font-bold text-navy" style={{ fontSize: rem(17) }}>
                         {p.this_month_referrals}
                       </div>
                       <div className="text-xs text-gray500">이번달</div>
                     </div>
                     <div>
-                      <div className="font-mono font-bold text-navy" style={{ fontSize: 17 }}>
+                      <div className="font-mono font-bold text-navy" style={{ fontSize: rem(17) }}>
                         {p.business_verified_referrals}
                       </div>
                       <div className="text-xs text-gray500">사업자 인증</div>

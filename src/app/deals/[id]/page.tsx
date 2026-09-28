@@ -617,12 +617,12 @@ function DealDetailPageInner() {
                 </p>
                 <div className="flex items-center gap-1 mt-1.5">
                   <span
-                    className="text-[11px] font-bold px-2 py-1 rounded-full"
+                    className="text-[0.7222rem] font-bold px-2 py-1 rounded-full"
                     style={{ background: "#E8F8EC", color: "#1D8A44" }}
                   >
                     ✓ 검증된 매니저
                   </span>
-                  <span className="text-[11px] font-bold text-gray500 px-2 py-1 rounded-full bg-white">
+                  <span className="text-[0.7222rem] font-bold text-gray500 px-2 py-1 rounded-full bg-white">
                     당일 연락 원칙
                   </span>
                 </div>

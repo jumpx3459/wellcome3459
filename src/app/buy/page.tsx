@@ -11,6 +11,7 @@ import { isValidKoreanPhone, fromE164Phone } from "@/lib/auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { NAV_HEIGHT } from "@/components/BottomNav";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
+import { rem } from "@/lib/rem";
 
 export default function BuyPage() {
   const router = useRouter();
@@ -125,7 +126,7 @@ export default function BuyPage() {
     return (
       <main className="flex flex-col min-h-screen">
         <div className="flex-shrink-0 flex items-center gap-3 px-5 py-4.5" style={{ borderBottom: "1px solid #EEF0F2" }}>
-          <button type="button" onClick={goBack} className="text-gray500" style={{ fontSize: 19, background: "none", border: "none", padding: 0, cursor: "pointer" }}>←</button>
+          <button type="button" onClick={goBack} className="text-gray500" style={{ fontSize: rem(19), background: "none", border: "none", padding: 0, cursor: "pointer" }}>←</button>
           {/* 2026-09-26: 탭 화면마다 로고 유무가 달라 브랜드 인지가 끊긴다는 피드백 —
               모든 하단탭 화면 헤더에 작은 로고를 공통으로 배치. */}
           <img src="/images/logo.png" alt="덤핑점핑" className="w-6 h-6 rounded-md flex-shrink-0 object-contain" />
@@ -143,7 +144,7 @@ export default function BuyPage() {
           </p>
           <div className="w-full text-left rounded-2xl" style={{ background: "#F5F6F8", padding: "14px 16px" }}>
             <div className="text-xs font-bold" style={{ color: "#6B7480" }}>등록한 조건</div>
-            <div className="font-bold mt-1.5 leading-relaxed" style={{ fontSize: 14, color: "#0B2540" }}>{summary}</div>
+            <div className="font-bold mt-1.5 leading-relaxed" style={{ fontSize: rem(14), color: "#0B2540" }}>{summary}</div>
           </div>
 
           <Link
@@ -160,7 +161,7 @@ export default function BuyPage() {
           <Link
             href="/"
             className="w-full block text-center font-bold rounded-2xl text-white mt-5"
-            style={{ background: "#0B2540", padding: "15px 0", fontSize: 15 }}
+            style={{ background: "#0B2540", padding: "15px 0", fontSize: rem(15) }}
           >
             홈으로
           </Link>
@@ -194,13 +195,13 @@ export default function BuyPage() {
           <div className="flex items-center gap-2 mb-3">
             {/* 2026-09-27: buy(찾습니다)·sell(매물등록)은 진입 경로가 다양해
                 로고=홈 링크만으로는 부족하다는 피드백 — 뒤로가기(←)를 복원. */}
-            <button type="button" onClick={goBack} style={{ fontSize: 19, color: "rgba(255,255,255,0.8)", background: "none", border: "none", padding: 0, cursor: "pointer" }}>←</button>
+            <button type="button" onClick={goBack} style={{ fontSize: rem(19), color: "rgba(255,255,255,0.8)", background: "none", border: "none", padding: 0, cursor: "pointer" }}>←</button>
             <Link href="/" className="bg-white rounded-lg px-2.5 py-1.5 inline-block shadow-sm">
               <img src="/images/logo.png" alt="덤핑점핑" className="h-7 w-auto" />
             </Link>
             <span
               className="rounded-full font-medium"
-              style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", padding: "3px 9px", background: "rgba(255,255,255,0.08)" }}
+              style={{ fontSize: rem(11), color: "rgba(255,255,255,0.6)", padding: "3px 9px", background: "rgba(255,255,255,0.08)" }}
             >
               Powered by JumpX
             </span>
@@ -226,7 +227,7 @@ export default function BuyPage() {
             className="flex-shrink-0"
             style={{ width: 76, height: 76, objectFit: "contain", filter: "drop-shadow(0 6px 10px rgba(0,0,0,.35))" }}
           />
-          <p className="leading-snug" style={{ fontSize: 13, color: "rgba(255,255,255,.92)", fontWeight: 500 }}>
+          <p className="leading-snug" style={{ fontSize: rem(13), color: "rgba(255,255,255,.92)", fontWeight: 500 }}>
             찾는 재고를 올려두면 점핑매니저가 매입처를 직접 찾아 연결해드려요.
           </p>
         </div>
@@ -240,7 +241,7 @@ export default function BuyPage() {
           </div>
           <input
             className="w-full rounded-xl outline-none"
-            style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: 14.5 }}
+            style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: rem(14.5) }}
             value={productName}
             onChange={(e) => setProductName(e.target.value)}
             placeholder="예: 냉동 삼겹살 500kg 이상"
@@ -254,7 +255,7 @@ export default function BuyPage() {
           </div>
           <input
             className="w-full rounded-xl outline-none"
-            style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: 14.5 }}
+            style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: rem(14.5) }}
             value={contactPhone}
             onChange={(e) => setContactPhone(e.target.value)}
             placeholder="010-0000-0000"
@@ -282,7 +283,7 @@ export default function BuyPage() {
                     className="flex items-center gap-1 rounded-full whitespace-nowrap flex-shrink-0"
                     style={{
                       padding: "9px 13px",
-                      fontSize: 13,
+                      fontSize: rem(13),
                       fontWeight: 700,
                       background: "#fff",
                       border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
@@ -336,14 +337,14 @@ export default function BuyPage() {
             <div className="flex rounded-xl overflow-hidden" style={{ border: "1.5px solid #E4E7EB" }}>
               <input
                 className="flex-1 min-w-0 outline-none"
-                style={{ border: "none", padding: "14px 10px", fontSize: 14.5 }}
+                style={{ border: "none", padding: "14px 10px", fontSize: rem(14.5) }}
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
                 placeholder="500"
               />
               <select
                 className="flex-shrink-0 outline-none"
-                style={{ width: 74, border: "none", borderLeft: "1px solid #E4E7EB", padding: "14px 8px", fontSize: 13, fontWeight: 700, color: "#0B2540", background: "#FAFBFC", textAlign: "center" }}
+                style={{ width: 74, border: "none", borderLeft: "1px solid #E4E7EB", padding: "14px 8px", fontSize: rem(13), fontWeight: 700, color: "#0B2540", background: "#FAFBFC", textAlign: "center" }}
                 value={quantityUnit}
                 onChange={(e) => setQuantityUnit(e.target.value)}
               >
@@ -363,7 +364,7 @@ export default function BuyPage() {
                 type="text"
                 inputMode="numeric"
                 className="flex-1 min-w-0 outline-none"
-                style={{ border: "none", padding: "14px 0 14px 10px", fontSize: 14.5 }}
+                style={{ border: "none", padding: "14px 0 14px 10px", fontSize: rem(14.5) }}
                 value={formatPriceInput(hopePrice)}
                 onChange={(e) => setHopePrice(e.target.value)}
                 placeholder="30,000"
@@ -383,7 +384,7 @@ export default function BuyPage() {
               type="button"
               onClick={() => setRegions(allRegionsOn ? [] : [...mockRegions])}
               className="font-bold"
-              style={{ fontSize: 12, color: "#E25100" }}
+              style={{ fontSize: rem(12), color: "#E25100" }}
             >
               {allRegionsOn ? "선택 해제" : "전 지역 선택"}
             </button>
@@ -399,7 +400,7 @@ export default function BuyPage() {
                   className="rounded-full font-bold"
                   style={{
                     padding: "8px 13px",
-                    fontSize: 12.5,
+                    fontSize: rem(12.5),
                     background: "#fff",
                     border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
                     color: "#1A1F26",
@@ -422,7 +423,7 @@ export default function BuyPage() {
           </div>
           <textarea
             className="w-full rounded-xl outline-none resize-none"
-            style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: 14, lineHeight: 1.55, height: 88 }}
+            style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: rem(14), lineHeight: 1.55, height: 88 }}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="보관 조건, 인수 가능 시기, 결제 조건 등"
@@ -437,8 +438,8 @@ export default function BuyPage() {
         <div className="flex items-center gap-3 rounded-2xl" style={{ background: "#fff", border: "1.5px solid #E4E7EB", padding: "15px 16px" }}>
           <img src="/images/manager.png" alt="점핑매니저" className="flex-shrink-0 rounded-xl bg-white" style={{ width: 46, height: 46, objectFit: "contain" }} />
           <span className="flex-1 min-w-0">
-            <span className="block font-black" style={{ fontSize: 15, color: "#0B2540" }}>등록은 완전 무료</span>
-            <span className="block font-bold mt-0.5 leading-relaxed" style={{ fontSize: 12.5, color: "#E25100" }}>
+            <span className="block font-black" style={{ fontSize: rem(15), color: "#0B2540" }}>등록은 완전 무료</span>
+            <span className="block font-bold mt-0.5 leading-relaxed" style={{ fontSize: rem(12.5), color: "#E25100" }}>
               매칭되면 점핑매니저가 먼저 연락드립니다
             </span>
           </span>
@@ -494,7 +495,7 @@ export default function BuyPage() {
             onClick={submit}
             disabled={submitting}
             className="w-full font-black rounded-2xl text-white disabled:opacity-60"
-            style={{ background: "linear-gradient(135deg,#E25100,#FF6F0F)", padding: "17px 0", fontSize: 16.5, boxShadow: "0 8px 20px rgba(226,81,0,.3)" }}
+            style={{ background: "linear-gradient(135deg,#E25100,#FF6F0F)", padding: "17px 0", fontSize: rem(16.5), boxShadow: "0 8px 20px rgba(226,81,0,.3)" }}
           >
             {submitting ? "등록 중..." : "구매 희망 등록하기"}
           </button>

@@ -13,6 +13,7 @@ import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 
 import { EXAMPLE_DEALS, shouldShowExamples } from "@/lib/exampleDeals";
+import { rem } from "@/lib/rem";
 
 // design-v2: 헤더 우측의 "정부지원금" 링크를 마이페이지로 옮기고, 그 자리를
 // 이 화면이 다루는 매물 성격을 보여주는 순수 카피 로테이션으로 채움 (클릭 동작 없음).
@@ -192,7 +193,7 @@ function DealsPageInner() {
           </Link>
           <span
             className="rounded-full font-medium"
-            style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", padding: "3px 9px", background: "rgba(255,255,255,0.08)" }}
+            style={{ fontSize: rem(11), color: "rgba(255,255,255,0.6)", padding: "3px 9px", background: "rgba(255,255,255,0.08)" }}
           >
             Powered by JumpX
           </span>
@@ -248,7 +249,7 @@ function DealsPageInner() {
               <span className="truncate">
                 {activeCat === "전체" ? "🗃️ 전체 카테고리" : `${categoryIcons[activeCat] ?? "🗂️"} ${activeCat}`}
               </span>
-              <span className="flex-shrink-0" style={{ fontSize: 10 }}>{catOpen ? "▴" : "▾"}</span>
+              <span className="flex-shrink-0" style={{ fontSize: rem(10) }}>{catOpen ? "▴" : "▾"}</span>
             </button>
             {catOpen && (
               <div className="absolute left-0 right-0 mt-1.5 bg-white rounded-2xl shadow-lg z-50" style={{ padding: 8 }}>
@@ -266,7 +267,7 @@ function DealsPageInner() {
                         className="text-left rounded-xl"
                         style={{
                           padding: "9px 10px",
-                          fontSize: 12.5,
+                          fontSize: rem(12.5),
                           fontWeight: 700,
                           lineHeight: 1.25,
                           background: picked ? "#FFF1E7" : "#fff",
@@ -297,7 +298,7 @@ function DealsPageInner() {
               }}
             >
               <span className="truncate">{activeRegion === "전체" ? "전 지역" : activeRegion}</span>
-              <span className="flex-shrink-0" style={{ fontSize: 10 }}>{regionOpen ? "▴" : "▾"}</span>
+              <span className="flex-shrink-0" style={{ fontSize: rem(10) }}>{regionOpen ? "▴" : "▾"}</span>
             </button>
             {regionOpen && (
               <div className="absolute left-0 right-0 mt-1.5 bg-white rounded-2xl shadow-lg z-50" style={{ padding: 8 }}>
@@ -315,7 +316,7 @@ function DealsPageInner() {
                         className="text-left rounded-lg"
                         style={{
                           padding: "9px 10px",
-                          fontSize: 13.5,
+                          fontSize: rem(13.5),
                           fontWeight: 700,
                           background: picked ? "#FFF1E7" : "#fff",
                           color: picked ? "#E25100" : "#1A1F26",
@@ -425,7 +426,7 @@ function DealsPageInner() {
                 {!isClosed && discountPct > 0 && (
                   <div
                     className="absolute top-2.5 left-2.5 font-black text-white rounded-full"
-                    style={{ background: "rgba(226,81,0,0.72)", fontSize: 24, padding: "4px 12px" }}
+                    style={{ background: "rgba(226,81,0,0.72)", fontSize: rem(24), padding: "4px 12px" }}
                   >
                     -{Math.round(discountPct)}%
                   </div>
@@ -512,7 +513,7 @@ function DealsPageInner() {
         {showExamples && (
           <div className="mt-2">
             <div className="flex items-center gap-2 mb-2">
-              <span className="font-black" style={{ fontSize: 13, color: "#0B2540" }}>💡 이런 매물이 올라와요</span>
+              <span className="font-black" style={{ fontSize: rem(13), color: "#0B2540" }}>💡 이런 매물이 올라와요</span>
               <span className="flex-1" style={{ height: 1, background: "#E4E7EB" }} />
               <span className="text-xs font-bold rounded-full" style={{ padding: "2px 8px", background: "#E9ECEF", color: "#495057" }}>예시</span>
             </div>
@@ -537,7 +538,7 @@ function DealsPageInner() {
                       {pct > 0 && (
                         <div
                           className="absolute top-2.5 right-2.5 font-black text-white rounded-full"
-                          style={{ background: "rgba(107,116,128,0.72)", fontSize: 24, padding: "4px 12px" }}
+                          style={{ background: "rgba(107,116,128,0.72)", fontSize: rem(24), padding: "4px 12px" }}
                         >
                           -{pct}%
                         </div>

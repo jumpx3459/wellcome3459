@@ -50,9 +50,9 @@ function SupportPageInner() {
         </div>
 
         <div className="flex items-center gap-1.5">
-          <h1 className="font-display text-[22px] leading-tight">정부지원금 정보</h1>
+          <h1 className="font-display text-[1.2222rem] leading-tight">정부지원금 정보</h1>
           <span
-            className="text-[10px] font-bold tracking-wide rounded-full px-2 py-0.5 whitespace-nowrap"
+            className="text-[0.7222rem] font-bold tracking-wide rounded-full px-2 py-0.5 whitespace-nowrap"
             style={{ background: "rgba(255,209,102,0.18)", color: "#FFD166" }}
           >
             사업자 전용

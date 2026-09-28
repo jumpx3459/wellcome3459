@@ -98,7 +98,7 @@ function LogisticsPageInner() {
           </Link>
           <span className="text-white/70 text-xs tracking-wide">Powered by JumpX</span>
         </div>
-        <h1 className="font-display text-[22px] leading-tight">점핑전국물류</h1>
+        <h1 className="font-display text-[1.2222rem] leading-tight">점핑전국물류</h1>
         <p className="text-white/70 text-xs mt-1.5 leading-relaxed">
           소싱부터 배송까지, 물류 실무 도구를 한 곳에 모았어요.
         </p>
@@ -110,7 +110,7 @@ function LogisticsPageInner() {
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className="text-[13px] font-bold rounded-full px-4 py-2.5 whitespace-nowrap transition-colors"
+              className="text-[0.7222rem] font-bold rounded-full px-4 py-2.5 whitespace-nowrap transition-colors"
               style={
                 tab === t.key
                   ? { background: TEAL, color: "#fff" }
@@ -192,7 +192,7 @@ function FxCalculator() {
               <div>
                 <div className="text-sm font-bold leading-tight">{c.code}</div>
                 <div
-                  className="text-[11px] leading-tight"
+                  className="text-[0.7222rem] leading-tight"
                   style={{ color: currency === c.code ? "rgba(255,255,255,0.7)" : "#6B7480" }}
                 >
                   {c.label}
@@ -236,7 +236,7 @@ function FxCalculator() {
         )}
       </div>
 
-      <p className="text-[11px] text-gray500 leading-relaxed">
+      <p className="text-[0.7222rem] text-gray500 leading-relaxed">
         ※ 실시간 매매기준율이며, 실제 송금·결제 시 은행/카드사 수수료가 추가로 붙을 수 있어요.
       </p>
     </div>
@@ -284,7 +284,7 @@ function TariffCalculator() {
           />
         </div>
       </div>
-      <p className="text-[11px] text-gray500 -mt-3">
+      <p className="text-[0.7222rem] text-gray500 -mt-3">
         💡 환율 계산기에서 나온 원화 환산액을 상품가에 입력하면 편해요.
       </p>
 
@@ -351,7 +351,7 @@ function TariffCalculator() {
         </div>
       </div>
 
-      <p className="text-[11px] text-gray500 leading-relaxed">
+      <p className="text-[0.7222rem] text-gray500 leading-relaxed">
         ※ 실제 관세율은 HS코드·품목·협정세율(FTA)에 따라 달라져요. 이 계산기는 사전 마진 검토용
         참고자료이며, 정확한 세액은 관세청 또는 관세사를 통해 확인해주세요.
       </p>
@@ -455,11 +455,11 @@ function WeatherWidget() {
 
             <div className="grid grid-cols-2 gap-2 mt-5">
               <div className="bg-white rounded-xl px-3 py-3 text-center">
-                <div className="text-[11px] text-gray500 mb-0.5">강수확률</div>
+                <div className="text-[0.7222rem] text-gray500 mb-0.5">강수확률</div>
                 <div className="text-base font-bold text-navy">{data.precipProb}%</div>
               </div>
               <div className="bg-white rounded-xl px-3 py-3 text-center">
-                <div className="text-[11px] text-gray500 mb-0.5">풍속</div>
+                <div className="text-[0.7222rem] text-gray500 mb-0.5">풍속</div>
                 <div className="text-base font-bold text-navy">{Math.round(data.windSpeed)}km/h</div>
               </div>
             </div>
@@ -480,7 +480,7 @@ function WeatherWidget() {
         </div>
       )}
 
-      <p className="text-[11px] text-gray500 leading-relaxed">
+      <p className="text-[0.7222rem] text-gray500 leading-relaxed">
         ※ 도/시 단위 대표 좌표 기준 예보이며, 실제 상하차 현장 날씨와 다를 수 있어요.
       </p>
     </div>
@@ -578,7 +578,7 @@ function PalletCalculator() {
         </div>
       </div>
 
-      <p className="text-[11px] text-gray500 leading-relaxed">
+      <p className="text-[0.7222rem] text-gray500 leading-relaxed">
         ※ 박스를 90도 돌려 쌓는 경우까지 비교해 더 많이 들어가는 배치를 자동으로 보여줘요. 파렛트
         자체 높이, 랩핑 여유공간, 무게 제한(적재 중량)은 별도로 고려해주세요.
       </p>
@@ -599,7 +599,7 @@ function NumField({
 }) {
   return (
     <div>
-      <label className="text-[11px] font-bold text-gray500 mb-1.5 block">
+      <label className="text-[0.7222rem] font-bold text-gray500 mb-1.5 block">
         {label} ({unit})
       </label>
       <input
@@ -622,7 +622,7 @@ function ShippingMatchTeaser() {
         style={{ background: "linear-gradient(135deg, #123A4A, #0B2540)" }}
       >
         <span
-          className="inline-block text-[11px] font-bold px-3 py-1 rounded-full mb-3"
+          className="inline-block text-[0.7222rem] font-bold px-3 py-1 rounded-full mb-3"
           style={{ background: "rgba(94,234,212,0.15)", color: TEAL_LIGHT }}
         >
           준비중 · COMING SOON
@@ -638,7 +638,7 @@ function ShippingMatchTeaser() {
 
       <div className="rounded-2xl border-2 border-gray200 px-5 py-5">
         <div className="text-sm font-bold text-navy mb-1">지금 당장 운송이 필요하다면</div>
-        <p className="text-[13px] text-gray500 leading-relaxed mb-4">
+        <p className="text-[0.7222rem] text-gray500 leading-relaxed mb-4">
           점핑로지스 자체 매칭 서비스가 열리기 전까지는, 검증된 화물 운송 플랫폼을 통해
           견적을 받아보실 수 있어요.
         </p>
@@ -653,7 +653,7 @@ function ShippingMatchTeaser() {
         </a>
       </div>
 
-      <p className="text-[11px] text-gray500 leading-relaxed">
+      <p className="text-[0.7222rem] text-gray500 leading-relaxed">
         ※ 카고링크는 점프엑스와 제휴 관계가 아닌 외부 서비스이며, 이용 시 해당 플랫폼의
         약관이 적용됩니다.
       </p>

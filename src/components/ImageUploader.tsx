@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { resizeImageForUpload } from "@/lib/resizeImage";
+import { rem } from "@/lib/rem";
 
 type Item = { preview: string; url?: string; uploading: boolean };
 
@@ -134,7 +135,7 @@ export default function ImageUploader({
                 {failed && (
                   <span
                     className="absolute bottom-0 left-0 right-0 text-center font-bold rounded-b-lg"
-                    style={{ fontSize: 9, color: "#fff", background: "rgba(229,72,77,0.9)", padding: "1px 0" }}
+                    style={{ fontSize: rem(9), color: "#fff", background: "rgba(229,72,77,0.9)", padding: "1px 0" }}
                   >
                     실패 · 삭제 후 재시도
                   </span>

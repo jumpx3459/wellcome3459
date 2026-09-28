@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { formatMemberNo } from "@/lib/format";
+import { rem } from "@/lib/rem";
 
 type ReferralItem = {
   id: string;
@@ -122,7 +123,7 @@ export default function PartnerReferralsPage() {
   return (
     <main className="flex flex-col min-h-screen bg-white">
       <div className="flex-shrink-0 flex items-center gap-3 px-5 py-4.5" style={{ borderBottom: "1px solid #EEF0F2" }}>
-        <Link href="/mypage#referral" className="text-gray500" style={{ fontSize: 19 }}>←</Link>
+        <Link href="/mypage#referral" className="text-gray500" style={{ fontSize: rem(19) }}>←</Link>
         <span className="font-display text-2xl whitespace-nowrap" style={{ color: "#0B2540" }}>
           내 추천 회원
         </span>
@@ -136,8 +137,8 @@ export default function PartnerReferralsPage() {
             { label: "사업자", value: businessCount },
           ].map((s) => (
             <div key={s.label} className="bg-white border border-gray200 rounded-xl px-1 py-2.5 text-center">
-              <div className="font-black text-navy" style={{ fontSize: 18 }}>{s.value}</div>
-              <div className="mt-0.5 font-bold text-gray500 leading-tight" style={{ fontSize: 12 }}>{s.label}</div>
+              <div className="font-black text-navy" style={{ fontSize: rem(18) }}>{s.value}</div>
+              <div className="mt-0.5 font-bold text-gray500 leading-tight" style={{ fontSize: rem(12) }}>{s.label}</div>
             </div>
           ))}
         </div>
@@ -198,7 +199,7 @@ export default function PartnerReferralsPage() {
                     placeholder="컨택 메모 (예: 9/27 통화, 다음주 재연락)"
                     rows={1}
                     className="flex-1 min-w-0 rounded-lg outline-none resize-none"
-                    style={{ border: "1.5px solid #E4E7EB", padding: "7px 10px", fontSize: 12.5 }}
+                    style={{ border: "1.5px solid #E4E7EB", padding: "7px 10px", fontSize: rem(12.5) }}
                   />
                   <span
                     className="flex-shrink-0 text-xs font-bold"

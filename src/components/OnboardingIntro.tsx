@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
+import { rem } from "@/lib/rem";
 
 const STORAGE_KEY = "dj_onboarded"; // "1" = 명시적 액션(가입 시작/로그인 이동/둘러보기)으로 닫음 — 영구 억제
 const LAST_SHOWN_KEY = "dj_onboarding_last_shown"; // 버튼 없이 그냥 닫힌 경우 재노출 쿨다운 계산용
@@ -115,13 +116,13 @@ export default function OnboardingIntro({
         <RotatingUrgencyTag className="mt-4" style={{ color: "var(--color-brandOrangeAccent)" }} />
         <h1
           className="font-display mt-4 leading-[1.45]"
-          style={{ fontSize: 23, letterSpacing: "-0.02em", wordBreak: "keep-all" }}
+          style={{ fontSize: rem(23), letterSpacing: "-0.02em", wordBreak: "keep-all" }}
         >
           <span style={{ color: "var(--color-brandOrange)" }}>남는 상품은 빠르게 알리고</span>
           <br />
           급한 상품은 남보다 먼저 잡으세요.
         </h1>
-        <p className="mt-3.5" style={{ fontSize: 14.5, lineHeight: 1.7, color: "rgba(255,255,255,.88)" }}>
+        <p className="mt-3.5" style={{ fontSize: rem(14.5), lineHeight: 1.7, color: "rgba(255,255,255,.88)" }}>
           전국의 임박·과잉·폐업 재고와 &quot;이런 상품 찾습니다&quot; 요청을 가장 먼저 알려드립니다.
         </p>
       </div>
@@ -172,7 +173,7 @@ export default function OnboardingIntro({
           style={{
             padding: "19px 0",
             background: "linear-gradient(135deg,#E25100,#FF6F0F)",
-            fontSize: 18,
+            fontSize: rem(18),
             boxShadow: "0 10px 24px rgba(226,81,0,.4)",
           }}
         >
@@ -185,7 +186,7 @@ export default function OnboardingIntro({
               background: "none",
               border: "none",
               color: "rgba(255,255,255,.85)",
-              fontSize: 13,
+              fontSize: rem(13),
               fontWeight: 700,
               textDecoration: "underline",
               textUnderlineOffset: 4,
@@ -194,14 +195,14 @@ export default function OnboardingIntro({
           >
             이미 가입했어요
           </button>
-          <span style={{ color: "rgba(255,255,255,.35)", fontSize: 13 }}>·</span>
+          <span style={{ color: "rgba(255,255,255,.35)", fontSize: rem(13) }}>·</span>
           <button
             onClick={dismiss}
             style={{
               background: "none",
               border: "none",
               color: "rgba(255,255,255,.7)",
-              fontSize: 13,
+              fontSize: rem(13),
               fontWeight: 500,
               textDecoration: "underline",
               textUnderlineOffset: 4,

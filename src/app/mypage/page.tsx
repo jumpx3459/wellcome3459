@@ -16,6 +16,7 @@ import { MESSAGES_ENABLED } from "@/lib/features";
 import { SITE_URL } from "@/lib/siteUrl";
 import { resizeImageForUpload } from "@/lib/resizeImage";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
+import { rem } from "@/lib/rem";
 
 type InterestItem = {
   id: string;
@@ -634,7 +635,7 @@ export default function MyPage() {
         </div>
         <span
           className="rounded-full font-medium mb-6"
-          style={{ fontSize: 11, color: "#6B7480", padding: "3px 9px", background: "#F0F1F3" }}
+          style={{ fontSize: rem(11), color: "#6B7480", padding: "3px 9px", background: "#F0F1F3" }}
         >
           Powered by JumpX
         </span>
@@ -658,7 +659,7 @@ export default function MyPage() {
         <Link
           href="/signup"
           className="mt-3 text-center"
-          style={{ color: "#6B7480", fontSize: 14.5, fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 4 }}
+          style={{ color: "#6B7480", fontSize: rem(14.5), fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 4 }}
         >
           처음이신가요? 알림 신청하기
         </Link>
@@ -686,7 +687,7 @@ export default function MyPage() {
           </Link>
           <span
             className="rounded-full font-medium"
-            style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", padding: "3px 9px", background: "rgba(255,255,255,0.08)" }}
+            style={{ fontSize: rem(11), color: "rgba(255,255,255,0.6)", padding: "3px 9px", background: "rgba(255,255,255,0.08)" }}
           >
             Powered by JumpX
           </span>
@@ -700,7 +701,7 @@ export default function MyPage() {
         <div className="flex items-center gap-3">
           <div
             className="rounded-full flex items-center justify-center overflow-hidden flex-shrink-0"
-            style={{ width: 52, height: 52, background: "rgba(255,255,255,.14)", fontSize: 23 }}
+            style={{ width: 52, height: 52, background: "rgba(255,255,255,.14)", fontSize: rem(23) }}
           >
             {avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -710,17 +711,17 @@ export default function MyPage() {
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="font-black truncate" style={{ fontSize: 18.5, letterSpacing: "-0.02em" }}>
+            <div className="font-black truncate" style={{ fontSize: rem(18.5), letterSpacing: "-0.02em" }}>
               {companyName || phone || "회원님"}
             </div>
             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
               {companyName && fullName && (
-                <span style={{ fontSize: 13.5, fontWeight: 600, color: "rgba(255,255,255,.8)" }}>
+                <span style={{ fontSize: rem(13.5), fontWeight: 600, color: "rgba(255,255,255,.8)" }}>
                   성명 {fullName}
                 </span>
               )}
               {memberNo != null && (
-                <span style={{ fontSize: 13.5, fontWeight: 600, color: "rgba(255,255,255,.8)" }}>
+                <span style={{ fontSize: rem(13.5), fontWeight: 600, color: "rgba(255,255,255,.8)" }}>
                   {companyName && fullName && "· "}회원번호 <span className="font-mono">{formatMemberNo(memberNo)}</span>
                 </span>
               )}
@@ -732,7 +733,7 @@ export default function MyPage() {
                 <span
                   className="font-bold rounded-md"
                   style={{
-                    fontSize: 13.5,
+                    fontSize: rem(13.5),
                     padding: "4px 10px",
                     background: businessVerified ? "rgba(47,158,68,.25)" : "rgba(255,255,255,.15)",
                     color: businessVerified ? "#7EE2A0" : "rgba(255,255,255,.7)",
@@ -745,7 +746,7 @@ export default function MyPage() {
                 <Link
                   href="/admin"
                   className="font-bold rounded-md inline-flex items-center gap-1"
-                  style={{ fontSize: 13.5, padding: "4px 10px", background: "rgba(255,209,102,.2)", color: "#FFD166" }}
+                  style={{ fontSize: rem(13.5), padding: "4px 10px", background: "rgba(255,209,102,.2)", color: "#FFD166" }}
                   title={`관리자 화면 · ${adminInfo.name}`}
                 >
                   🛡️ 관리자
@@ -771,10 +772,10 @@ export default function MyPage() {
             style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px", border: "none" }}
           >
             <div className="flex items-center justify-center gap-1.5">
-              <span style={{ fontSize: 14 }}>🔔</span>
-              <span className="font-mono font-bold" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{alertLogCount}</span>
+              <span style={{ fontSize: rem(14) }}>🔔</span>
+              <span className="font-mono font-bold" style={{ fontSize: rem(19), color: "var(--color-brandOrangeAccent)" }}>{alertLogCount}</span>
             </div>
-            <div className="mt-1 font-bold" style={{ fontSize: 12, color: "rgba(255,255,255,.8)" }}>받은 알림</div>
+            <div className="mt-1 font-bold" style={{ fontSize: rem(12), color: "rgba(255,255,255,.8)" }}>받은 알림</div>
           </button>
           <button
             type="button"
@@ -785,17 +786,17 @@ export default function MyPage() {
             style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px", border: "none" }}
           >
             <div className="flex items-center justify-center gap-1.5">
-              <span style={{ fontSize: 14 }}>❤️</span>
-              <span className="font-mono font-bold" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{interests.length}</span>
+              <span style={{ fontSize: rem(14) }}>❤️</span>
+              <span className="font-mono font-bold" style={{ fontSize: rem(19), color: "var(--color-brandOrangeAccent)" }}>{interests.length}</span>
             </div>
-            <div className="mt-1 font-bold" style={{ fontSize: 12, color: "rgba(255,255,255,.8)" }}>관심 매물</div>
+            <div className="mt-1 font-bold" style={{ fontSize: rem(12), color: "rgba(255,255,255,.8)" }}>관심 매물</div>
           </button>
           <div className="flex-1 rounded-xl text-center" style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px" }}>
             <div className="flex items-center justify-center gap-1.5">
-              <span style={{ fontSize: 14 }}>🎁</span>
-              <span className="font-mono font-bold" style={{ fontSize: 19, color: "var(--color-brandOrangeAccent)" }}>{referrals.length}</span>
+              <span style={{ fontSize: rem(14) }}>🎁</span>
+              <span className="font-mono font-bold" style={{ fontSize: rem(19), color: "var(--color-brandOrangeAccent)" }}>{referrals.length}</span>
             </div>
-            <div className="mt-1 font-bold" style={{ fontSize: 12, color: "rgba(255,255,255,.8)" }}>추천 회원</div>
+            <div className="mt-1 font-bold" style={{ fontSize: rem(12), color: "rgba(255,255,255,.8)" }}>추천 회원</div>
           </div>
         </div>
 
@@ -804,7 +805,7 @@ export default function MyPage() {
             className="flex items-center justify-between mt-3 pt-3"
             style={{ borderTop: "1px solid rgba(255,255,255,.12)" }}
           >
-            <span style={{ fontSize: 13.5, color: "rgba(255,255,255,.7)" }}>
+            <span style={{ fontSize: rem(13.5), color: "rgba(255,255,255,.7)" }}>
               {email || "이메일 미등록"}
             </span>
             <div className="flex items-center gap-3 flex-shrink-0">
@@ -815,7 +816,7 @@ export default function MyPage() {
                 type="button"
                 onClick={() => setSettingPassword((v) => !v)}
                 className="font-bold"
-                style={{ fontSize: 13.5, color: "#FFD166" }}
+                style={{ fontSize: rem(13.5), color: "#FFD166" }}
               >
                 비밀번호 설정 ›
               </button>
@@ -823,7 +824,7 @@ export default function MyPage() {
                 type="button"
                 onClick={() => setEditingProfile(true)}
                 className="font-bold"
-                style={{ fontSize: 13.5, color: "#FFD166" }}
+                style={{ fontSize: rem(13.5), color: "#FFD166" }}
               >
                 정보 수정 ›
               </button>
@@ -833,7 +834,7 @@ export default function MyPage() {
 
         {passwordSaved && (
           <div className="mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,.12)" }}>
-            <span className="font-bold" style={{ fontSize: 13.5, color: "#5EEAD4" }}>
+            <span className="font-bold" style={{ fontSize: rem(13.5), color: "#5EEAD4" }}>
               ✔ 비밀번호를 설정했어요 · 다음부터 SMS 없이 로그인할 수 있어요
             </span>
           </div>
@@ -844,13 +845,13 @@ export default function MyPage() {
             <input
               type="password"
               className="w-full rounded-xl outline-none"
-              style={{ border: "1.5px solid rgba(255,255,255,.25)", background: "rgba(255,255,255,.08)", color: "#fff", padding: 12, fontSize: 14.5 }}
+              style={{ border: "1.5px solid rgba(255,255,255,.25)", background: "rgba(255,255,255,.08)", color: "#fff", padding: 12, fontSize: rem(14.5) }}
               placeholder="새 비밀번호 (8자 이상)"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
             />
             {passwordError && (
-              <span className="font-bold" style={{ fontSize: 12.5, color: "#FF8A8A" }}>{passwordError}</span>
+              <span className="font-bold" style={{ fontSize: rem(12.5), color: "#FF8A8A" }}>{passwordError}</span>
             )}
             <div className="flex gap-2">
               <button
@@ -858,7 +859,7 @@ export default function MyPage() {
                 onClick={savePassword}
                 disabled={passwordSaving}
                 className="flex-1 text-center font-bold rounded-xl disabled:opacity-60"
-                style={{ padding: "10px 0", fontSize: 13.5, background: "linear-gradient(135deg,#E25100,#FF6F0F)", color: "#fff" }}
+                style={{ padding: "10px 0", fontSize: rem(13.5), background: "linear-gradient(135deg,#E25100,#FF6F0F)", color: "#fff" }}
               >
                 {passwordSaving ? "저장 중..." : "저장"}
               </button>
@@ -870,7 +871,7 @@ export default function MyPage() {
                   setNewPassword("");
                 }}
                 className="flex-1 text-center font-bold rounded-xl"
-                style={{ padding: "10px 0", fontSize: 13.5, border: "1.5px solid rgba(255,255,255,.25)", color: "rgba(255,255,255,.85)" }}
+                style={{ padding: "10px 0", fontSize: rem(13.5), border: "1.5px solid rgba(255,255,255,.25)", color: "rgba(255,255,255,.85)" }}
               >
                 취소
               </button>
@@ -897,7 +898,7 @@ export default function MyPage() {
                 <div className="flex items-center gap-3">
                   <div
                     className="rounded-full flex items-center justify-center overflow-hidden flex-shrink-0"
-                    style={{ width: 60, height: 60, background: "#F5F6F8", fontSize: 26 }}
+                    style={{ width: 60, height: 60, background: "#F5F6F8", fontSize: rem(26) }}
                   >
                     {avatarUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -1162,10 +1163,10 @@ export default function MyPage() {
           )}
 
           <div className="mt-6 rounded-2xl" style={{ background: "#FFF9EC", border: "1px solid #F0DCA8", padding: "14px 15px" }}>
-            <h3 className="font-black" style={{ fontSize: 14.5, color: "#8A6100" }}>🏅 공식 점핑파트너</h3>
+            <h3 className="font-black" style={{ fontSize: rem(14.5), color: "#8A6100" }}>🏅 공식 점핑파트너</h3>
             {!isOfficialPartner && (
               <>
-                <p className="mt-1.5 leading-relaxed" style={{ fontSize: 13.5, color: "#7A5230" }}>
+                <p className="mt-1.5 leading-relaxed" style={{ fontSize: rem(14.5), color: "#7A5230" }}>
                   이미 덤핑·재고 유통업, 도매업, 밴드/카톡채널/블로그 등 SNS 운영자, 대기업 대리점,
                   제조·수입·커뮤니티 운영자로 활동 중이신가요? 공급자이자 수요자 역할을 함께 할 수 있는
                   리더에게 드리는 공식 등급입니다.
@@ -1177,7 +1178,7 @@ export default function MyPage() {
                     "점핑매니저와 우선 연결",
                     "내 판매·구매 신청 현황을 마이페이지에서 한 번에 확인",
                   ].map((b) => (
-                    <li key={b} className="flex items-center gap-1.5" style={{ fontSize: 13.5, color: "#7A5230" }}>
+                    <li key={b} className="flex items-center gap-1.5" style={{ fontSize: rem(14.5), color: "#7A5230" }}>
                       <span style={{ color: "#2F9E44", fontWeight: 900 }}>✔</span>{b}
                     </li>
                   ))}
@@ -1185,7 +1186,7 @@ export default function MyPage() {
               </>
             )}
             {isOfficialPartner && (
-              <p className="mt-1.5 leading-relaxed" style={{ fontSize: 13.5, color: "#7A5230" }}>
+              <p className="mt-1.5 leading-relaxed" style={{ fontSize: rem(14.5), color: "#7A5230" }}>
                 공식 파트너 배지 · 우선 리워드 · 점핑매니저 우선 연결 혜택을 받고 계세요.
               </p>
             )}
@@ -1193,38 +1194,38 @@ export default function MyPage() {
             {isOfficialPartner ? (
               <div className="mt-2.5 inline-flex items-center gap-1.5 rounded-full" style={{ background: "#E8F8EC", padding: "6px 12px" }}>
                 <span style={{ color: "#2F9E44", fontWeight: 900 }}>✔</span>
-                <span className="font-bold" style={{ fontSize: 13.5, color: "#2F9E44" }}>공식 점핑파트너입니다</span>
+                <span className="font-bold" style={{ fontSize: rem(14.5), color: "#2F9E44" }}>공식 점핑파트너입니다</span>
               </div>
             ) : partnerStatus === "pending" ? (
               <div className="flex items-center gap-2.5 mt-2.5 rounded-xl" style={{ background: "#FFF4E0", padding: "12px 13px" }}>
-                <span className="font-black flex-shrink-0 rounded" style={{ fontSize: 12, padding: "3px 9px", background: "#F5E3BC", color: "#966B00" }}>심사중</span>
-                <span className="flex-1 leading-relaxed" style={{ fontSize: 13.5, color: "#7A5230" }}>
+                <span className="font-black flex-shrink-0 rounded" style={{ fontSize: rem(12), padding: "3px 9px", background: "#F5E3BC", color: "#966B00" }}>심사중</span>
+                <span className="flex-1 leading-relaxed" style={{ fontSize: rem(14.5), color: "#7A5230" }}>
                   신청서를 검토하고 있어요. 보통 2영업일 안에 결과를 알려드립니다.
                 </span>
               </div>
             ) : partnerStatus === "rejected" ? (
-              <p className="mt-2.5 rounded-xl text-center" style={{ background: "#F5F6F8", padding: "10px", fontSize: 14, color: "#6B7480" }}>
+              <p className="mt-2.5 rounded-xl text-center" style={{ background: "#F5F6F8", padding: "10px", fontSize: rem(14), color: "#6B7480" }}>
                 신청이 반려되었어요. 문의는 점핑매니저에게 연락주세요.
               </p>
             ) : (
               <div className="mt-2.5 space-y-2.5">
                 <input
                   className="w-full rounded-xl outline-none"
-                  style={{ border: "1.5px solid #E4D5AE", padding: 12, fontSize: 14.5 }}
+                  style={{ border: "1.5px solid #E4D5AE", padding: 12, fontSize: rem(14.5) }}
                   placeholder="업종/사업형태 (예: 냉동수산물 도매)"
                   value={partnerForm.businessType}
                   onChange={(e) => setPartnerForm((f) => ({ ...f, businessType: e.target.value }))}
                 />
                 <input
                   className="w-full rounded-xl outline-none"
-                  style={{ border: "1.5px solid #E4D5AE", padding: 12, fontSize: 14.5 }}
+                  style={{ border: "1.5px solid #E4D5AE", padding: 12, fontSize: rem(14.5) }}
                   placeholder="채널 정보 (카카오톡 채널/블로그 URL 등)"
                   value={partnerForm.channelInfo}
                   onChange={(e) => setPartnerForm((f) => ({ ...f, channelInfo: e.target.value }))}
                 />
                 <textarea
                   className="w-full rounded-xl outline-none resize-none"
-                  style={{ border: "1.5px solid #E4D5AE", padding: 12, fontSize: 14, lineHeight: 1.5, height: 70 }}
+                  style={{ border: "1.5px solid #E4D5AE", padding: 12, fontSize: rem(14), lineHeight: 1.5, height: 70 }}
                   placeholder="추가로 전달하고 싶은 내용 (선택)"
                   value={partnerForm.message}
                   onChange={(e) => setPartnerForm((f) => ({ ...f, message: e.target.value }))}
@@ -1234,7 +1235,7 @@ export default function MyPage() {
                   onClick={submitPartnerRequest}
                   disabled={partnerSubmitting}
                   className="w-full font-bold rounded-xl text-white disabled:opacity-50"
-                  style={{ background: "#8A6100", padding: "13px 0", fontSize: 14.5 }}
+                  style={{ background: "#8A6100", padding: "13px 0", fontSize: rem(14.5) }}
                 >
                   {partnerSubmitting ? "신청 중..." : "공식 점핑파트너 신청하기"}
                 </button>
@@ -1331,10 +1332,10 @@ export default function MyPage() {
             className="w-full flex items-center gap-3 rounded-2xl text-left"
             style={{ border: "1px solid #E4E7EB", padding: "15px 16px" }}
           >
-            <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 38, height: 38, background: "#FDEEE8", fontSize: 17 }}>🔔</span>
+            <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 38, height: 38, background: "#FDEEE8", fontSize: rem(17) }}>🔔</span>
             <span className="flex-1 min-w-0">
-              <span className="block font-bold" style={{ fontSize: 14, color: "#0B2540" }}>내 알림 조건</span>
-              <span className="block truncate mt-0.5" style={{ fontSize: 12.5, color: "#6B7480" }}>
+              <span className="block font-bold" style={{ fontSize: rem(14), color: "#0B2540" }}>내 알림 조건</span>
+              <span className="block truncate mt-0.5" style={{ fontSize: rem(12.5), color: "#6B7480" }}>
                 {categories.length > 0 ? categories.slice(0, 2).join("·") + (categories.length > 2 ? ` 외 ${categories.length - 2}` : "") : "전체 카테고리"}
                 {" · "}
                 {regions.length === 0 ? "전 지역" : regions.slice(0, 2).join("·") + (regions.length > 2 ? ` 외 ${regions.length - 2}` : "")}
@@ -1374,7 +1375,7 @@ export default function MyPage() {
                       >
                         <span
                           className="rounded-full flex items-center justify-center flex-shrink-0"
-                          style={{ width: 30, height: 30, fontSize: 15, background: categoryColors[c].bg }}
+                          style={{ width: 30, height: 30, fontSize: rem(15), background: categoryColors[c].bg }}
                         >
                           {categoryIcons[c]}
                         </span>
@@ -1440,8 +1441,8 @@ export default function MyPage() {
             className="w-full flex items-center justify-between disabled:opacity-60"
           >
             <span className="text-left">
-              <span className="block font-bold" style={{ fontSize: 14, color: "#0B2540" }}>긴급 공지 알림</span>
-              <span className="block mt-0.5" style={{ fontSize: 12.5, color: "#6B7480" }}>
+              <span className="block font-bold" style={{ fontSize: rem(14), color: "#0B2540" }}>긴급 공지 알림</span>
+              <span className="block mt-0.5" style={{ fontSize: rem(12.5), color: "#6B7480" }}>
                 폐업·정리 부동산·설비 소식 — 재고 매물 알림과 별개예요
               </span>
             </span>
@@ -1472,8 +1473,8 @@ export default function MyPage() {
         {alertLog.length > 0 && (
           <div id="alert-log-section">
             <div className="flex items-center justify-between mb-2.5">
-              <span className="font-black" style={{ fontSize: 15, color: "#0B2540" }}>최근 받은 알림</span>
-              <span style={{ fontSize: 12.5, color: "#6B7480" }}>최근 활동</span>
+              <span className="font-black" style={{ fontSize: rem(15), color: "#0B2540" }}>최근 받은 알림</span>
+              <span style={{ fontSize: rem(12.5), color: "#6B7480" }}>최근 활동</span>
             </div>
             <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #E4E7EB", background: "#fff" }}>
               {alertLog.map((a) => {
@@ -1490,15 +1491,15 @@ export default function MyPage() {
                     style={{ borderBottom: "1px solid #F1F3F5", padding: "13px 14px" }}
                   >
                     <span className="flex-1 min-w-0">
-                      <span className="block truncate font-bold" style={{ fontSize: 14, color: "#1A1F26" }}>{a.deals.title}</span>
-                      <span className="block mt-0.5" style={{ fontSize: 12.5, color: "#6B7480" }}>
+                      <span className="block truncate font-bold" style={{ fontSize: rem(14), color: "#1A1F26" }}>{a.deals.title}</span>
+                      <span className="block mt-0.5" style={{ fontSize: rem(12.5), color: "#6B7480" }}>
                         {formatRelativeTime(a.sent_at)} · {a.deals.categories?.name ?? "기타"}
                         {discount > 0 && ` · -${discount}%`}
                       </span>
                     </span>
                     <span
                       className="flex-shrink-0 font-bold"
-                      style={{ fontSize: 12, color: closed ? "#6B7480" : urgent ? "var(--color-urgent)" : "var(--color-verified)" }}
+                      style={{ fontSize: rem(12), color: closed ? "#6B7480" : urgent ? "var(--color-urgent)" : "var(--color-verified)" }}
                     >
                       {closed ? "마감" : urgent ? "마감임박" : "진행중"}
                     </span>

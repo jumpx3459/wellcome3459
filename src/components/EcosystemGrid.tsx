@@ -20,7 +20,7 @@ export default function EcosystemGrid() {
           <span className="text-2xl leading-none">🚚</span>
         </div>
         <div className="text-xs font-black text-navy mt-2">화물배차</div>
-        <div className="text-[10px] font-bold mt-0.5" style={{ color: "#1B3A5C" }}>
+        <div className="text-[0.7222rem] font-bold mt-0.5" style={{ color: "#1B3A5C" }}>
           3분 신청
         </div>
       </Link>
@@ -37,7 +37,7 @@ export default function EcosystemGrid() {
           <span className="text-2xl leading-none">🧮</span>
         </div>
         <div className="text-xs font-black text-navy mt-2">계산기</div>
-        <div className="text-[10px] font-bold mt-0.5" style={{ color: "#1B3A5C" }}>
+        <div className="text-[0.7222rem] font-bold mt-0.5" style={{ color: "#1B3A5C" }}>
           환율·관부가세
         </div>
       </Link>
@@ -54,7 +54,7 @@ export default function EcosystemGrid() {
           <span className="text-2xl leading-none">🏛️</span>
         </div>
         <div className="text-xs font-black text-navy mt-2">정부지원금</div>
-        <div className="text-[10px] font-bold mt-0.5" style={{ color: "#1B3A5C" }}>
+        <div className="text-[0.7222rem] font-bold mt-0.5" style={{ color: "#1B3A5C" }}>
           지원사업 찾기
         </div>
       </Link>
@@ -74,7 +74,7 @@ export default function EcosystemGrid() {
           <span className="text-2xl leading-none">📋</span>
         </div>
         <div className="text-xs font-black text-navy mt-2">긴급 공지</div>
-        <div className="text-[10px] font-bold mt-0.5" style={{ color: "#1B3A5C" }}>
+        <div className="text-[0.7222rem] font-bold mt-0.5" style={{ color: "#1B3A5C" }}>
           부동산·설비 처분
         </div>
       </Link>

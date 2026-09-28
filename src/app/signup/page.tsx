@@ -13,6 +13,7 @@ import { fmtLeft } from "@/lib/format";
 import { NAV_HEIGHT } from "@/components/BottomNav";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import { SITE_URL, isCanonicalHost } from "@/lib/siteUrl";
+import { rem } from "@/lib/rem";
 
 // "01012345678" -> "010****5678" 형태로 화면에만 일부 가려서 보여줍니다
 function maskPhone(phone: string): string {
@@ -484,7 +485,7 @@ function SignupPageInner() {
       >
         <div style={{ padding: "20px 22px 14px" }}>
           <div className="flex items-center gap-3">
-            <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "rgba(255,255,255,0.8)", padding: 0, lineHeight: 1 }}>
+            <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", fontSize: rem(20), color: "rgba(255,255,255,0.8)", padding: 0, lineHeight: 1 }}>
               ←
             </button>
             {/* 2026-09-26: 탭 화면마다 로고 유무가 달라 브랜드 인지가 끊긴다는 피드백 —
@@ -500,7 +501,7 @@ function SignupPageInner() {
                 라벨로 교체, 로고와 대칭 이루도록 우측 끝에 배치. */}
             <span
               className="ml-auto flex-shrink-0 font-bold rounded-full whitespace-nowrap"
-              style={{ fontSize: 11.5, color: "var(--color-brandOrangeAccent)", background: "rgba(255,255,255,0.14)", padding: "5px 12px" }}
+              style={{ fontSize: rem(11.5), color: "var(--color-brandOrangeAccent)", background: "rgba(255,255,255,0.14)", padding: "5px 12px" }}
             >
               알림받기 STEP {obStep}/{TOTAL_STEPS}
             </span>
@@ -518,8 +519,8 @@ function SignupPageInner() {
             className="inline-flex items-center gap-1 rounded-full flex-shrink-0"
             style={{ background: "rgba(255,255,255,.12)", padding: "5px 10px" }}
           >
-            <span style={{ color: "#5EEAD4", fontSize: 11 }}>✔</span>
-            <span className="font-bold" style={{ fontSize: 11, color: "rgba(255,255,255,.92)" }}>실시간 업데이트</span>
+            <span style={{ color: "#5EEAD4", fontSize: rem(11) }}>✔</span>
+            <span className="font-bold" style={{ fontSize: rem(11), color: "rgba(255,255,255,.92)" }}>실시간 업데이트</span>
           </div>
           <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
         </div>
@@ -528,10 +529,10 @@ function SignupPageInner() {
             카테고리 그리드(흰 카드)부터는 다시 흰 배경으로 전환. */}
         {!alreadyMember && obStep === 1 && (
           <div style={{ padding: "2px 22px 22px" }}>
-            <h2 className="font-display" style={{ fontSize: 23, color: "#fff", letterSpacing: "-0.02em" }}>
+            <h2 className="font-display" style={{ fontSize: rem(23), color: "#fff", letterSpacing: "-0.02em" }}>
               어떤 상품을 찾고 계세요?
             </h2>
-            <p className="mt-2" style={{ fontSize: 14.5, lineHeight: 1.6 }}>
+            <p className="mt-2" style={{ fontSize: rem(14.5), lineHeight: 1.6 }}>
               <span className="font-bold" style={{ color: "#fff" }}>🔔 고른 카테고리에 매물이 뜨면 즉시 알려드려요.</span>{" "}
               <span style={{ color: "rgba(255,255,255,.7)" }}>여러 개 고를 수 있어요.</span>
             </p>
@@ -540,10 +541,10 @@ function SignupPageInner() {
         {/* 2026-09-27: step1과 동일하게 네이비를 헤드라인까지 확장 — 일관성 유지. */}
         {!alreadyMember && obStep === 2 && (
           <div style={{ padding: "2px 22px 22px" }}>
-            <h2 className="font-display" style={{ fontSize: 23, color: "#fff", letterSpacing: "-0.02em" }}>
+            <h2 className="font-display" style={{ fontSize: rem(23), color: "#fff", letterSpacing: "-0.02em" }}>
               휴대폰 인증만 하면 끝이에요
             </h2>
-            <p className="mt-2" style={{ fontSize: 14, lineHeight: 1.6, color: "rgba(255,255,255,.75)" }}>
+            <p className="mt-2" style={{ fontSize: rem(14), lineHeight: 1.6, color: "rgba(255,255,255,.75)" }}>
               인증된 번호로 알림을 보내고, 판매자 연락처 열람도 이 번호로 확인합니다.
             </p>
           </div>
@@ -555,35 +556,35 @@ function SignupPageInner() {
           <div className="flex flex-col items-center text-center" style={{ padding: "32px 6px 0" }}>
             <div
               className="rounded-full flex items-center justify-center"
-              style={{ width: 76, height: 76, background: "#E8F8EC", fontSize: 34 }}
+              style={{ width: 76, height: 76, background: "#E8F8EC", fontSize: rem(34) }}
             >
               ✔
             </div>
-            <h2 className="font-display mt-4.5" style={{ fontSize: 23, color: "#0B2540", letterSpacing: "-0.02em" }}>
+            <h2 className="font-display mt-4.5" style={{ fontSize: rem(23), color: "#0B2540", letterSpacing: "-0.02em" }}>
               이미 가입된 번호예요
             </h2>
-            <p className="mt-2.5" style={{ fontSize: 14, color: "#6B7480", lineHeight: 1.7 }}>
+            <p className="mt-2.5" style={{ fontSize: rem(14), color: "#6B7480", lineHeight: 1.7 }}>
               이 번호로 등록된 계정이 있어요.
               <br />
               기존 알림 조건 그대로 바로 이용하실 수 있습니다.
             </p>
             <div className="w-full rounded-2xl mt-5 text-left" style={{ background: "#F5F6F8", padding: "15px 16px" }}>
               <div className="text-xs font-bold" style={{ color: "#6B7480" }}>가입된 번호</div>
-              <div className="mt-1 font-bold" style={{ fontSize: 16, color: "#0B2540", fontVariantNumeric: "tabular-nums" }}>
+              <div className="mt-1 font-bold" style={{ fontSize: rem(16), color: "#0B2540", fontVariantNumeric: "tabular-nums" }}>
                 {maskPhone(phone)}
               </div>
             </div>
             <button
               onClick={() => router.push(returnTo || "/mypage")}
               className="w-full text-white font-bold rounded-2xl mt-4.5"
-              style={{ padding: "17px 0", fontSize: 16.5, background: "linear-gradient(135deg,#E25100,#FF6F0F)", boxShadow: "0 8px 20px rgba(226,81,0,.3)" }}
+              style={{ padding: "17px 0", fontSize: rem(16.5), background: "linear-gradient(135deg,#E25100,#FF6F0F)", boxShadow: "0 8px 20px rgba(226,81,0,.3)" }}
             >
               {returnTo ? "매물 보러 가기" : "마이페이지로 이동"}
             </button>
             <button
               onClick={tryDifferentNumber}
               className="mt-2.5"
-              style={{ background: "none", border: "none", color: "#6B7480", fontSize: 13.5, fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 4, padding: 10 }}
+              style={{ background: "none", border: "none", color: "#6B7480", fontSize: rem(13.5), fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 4, padding: 10 }}
             >
               다른 번호로 가입하기
             </button>
@@ -609,7 +610,7 @@ function SignupPageInner() {
                   >
                     <span
                       className="rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ width: 30, height: 30, fontSize: 15, background: categoryColors[c].bg }}
+                      style={{ width: 30, height: 30, fontSize: rem(15), background: categoryColors[c].bg }}
                     >
                       {categoryIcons[c]}
                     </span>
@@ -626,7 +627,7 @@ function SignupPageInner() {
             <button
               onClick={pickAllCategories}
               className="mt-4"
-              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, fontWeight: 700, color: "#6B7480", textDecoration: "underline", textUnderlineOffset: 4, padding: "8px 0" }}
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: rem(14), fontWeight: 700, color: "#6B7480", textDecoration: "underline", textUnderlineOffset: 4, padding: "8px 0" }}
             >
               아직 잘 모르겠어요 · 전체 받기 →
             </button>
@@ -637,10 +638,10 @@ function SignupPageInner() {
                 onClick={() => setRegionOpen((v) => !v)}
                 className="w-full flex items-center justify-between flex-wrap gap-x-2 gap-y-1"
               >
-                <span style={{ color: "#0B2540", fontSize: 15, fontWeight: 700, wordBreak: "keep-all" }}>
+                <span style={{ color: "#0B2540", fontSize: rem(15), fontWeight: 700, wordBreak: "keep-all" }}>
                   🗺️ 관심지역
                 </span>
-                <span className="font-bold ml-auto" style={{ color: "#6B7480", fontSize: 13, whiteSpace: "nowrap" }}>
+                <span className="font-bold ml-auto" style={{ color: "#6B7480", fontSize: rem(13), whiteSpace: "nowrap" }}>
                   {regionOpen
                     ? "접기 ▲"
                     : allRegionsOn || regions.length === 0
@@ -660,7 +661,7 @@ function SignupPageInner() {
                           className="rounded-full font-bold"
                           style={{
                             padding: "10px 14px",
-                            fontSize: 14,
+                            fontSize: rem(14),
                             background: "#fff",
                             border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
                             color: "#1A1F26",
@@ -674,7 +675,7 @@ function SignupPageInner() {
                   <button
                     onClick={pickAllRegions}
                     className="mt-3"
-                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12.5, fontWeight: 700, color: "#6B7480", textDecoration: "underline", textUnderlineOffset: 4, padding: "6px 0" }}
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: rem(12.5), fontWeight: 700, color: "#6B7480", textDecoration: "underline", textUnderlineOffset: 4, padding: "6px 0" }}
                   >
                     {allRegionsOn ? "전국 전체 선택됨 · 해제하기" : "전국 어디든 괜찮아요 →"}
                   </button>
@@ -692,7 +693,7 @@ function SignupPageInner() {
               <input
                 ref={phoneInputRef}
                 className="flex-1 min-w-0 rounded-xl outline-none"
-                style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: 15, fontVariantNumeric: "tabular-nums" }}
+                style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: rem(15), fontVariantNumeric: "tabular-nums" }}
                 placeholder="010-0000-0000"
                 inputMode="numeric"
                 value={phone}
@@ -712,7 +713,7 @@ function SignupPageInner() {
                   border: "1.5px solid #0B2540",
                   background: "#fff",
                   padding: "0 15px",
-                  fontSize: 13.5,
+                  fontSize: rem(13.5),
                   color: "#0B2540",
                   whiteSpace: "nowrap",
                   opacity: otpSending || verified || !isValidKoreanPhone(phone) ? 0.6 : 1,
@@ -736,7 +737,7 @@ function SignupPageInner() {
                 </div>
                 <input
                   className="w-full rounded-xl outline-none text-center font-mono font-bold"
-                  style={{ border: "1.5px solid var(--color-brandOrange)", padding: 14, fontSize: 20, letterSpacing: "0.32em" }}
+                  style={{ border: "1.5px solid var(--color-brandOrange)", padding: 14, fontSize: rem(20), letterSpacing: "0.32em" }}
                   inputMode="numeric"
                   maxLength={6}
                   placeholder="000000"
@@ -746,7 +747,7 @@ function SignupPageInner() {
                 />
                 {otpError && <p className="text-sm font-medium mt-2" style={{ color: "#E5484D" }}>{otpError}</p>}
                 {!otpError && (
-                  <p className="mt-2" style={{ fontSize: 11.5, color: "#6B7480", lineHeight: 1.55 }}>
+                  <p className="mt-2" style={{ fontSize: rem(14), color: "#6B7480", lineHeight: 1.55 }}>
                     문자가 오지 않으면 스팸함을 확인하거나 &quot;다시 받기&quot;를 눌러주세요.
                   </p>
                 )}
@@ -758,7 +759,7 @@ function SignupPageInner() {
                 배너에 쓰던 주의 환기 톤(#FFF4E0/#966B00)을 재사용해 존재감을 높임.
                 verified(성공) 상태는 그대로 초록 유지. */}
             <div className="flex items-center gap-2.5 rounded-2xl mt-4.5" style={{ padding: "14px 16px", background: verified ? "#E8F8EC" : "#FFF4E0" }}>
-              <span style={{ fontSize: 17 }}>📱</span>
+              <span style={{ fontSize: rem(17) }}>📱</span>
               <span className="flex-1 text-xs font-bold" style={{ lineHeight: 1.5, color: verified ? "#2F9E44" : "#966B00" }}>
                 {verified ? "✔ 인증 완료 · 이 번호로 알림을 보냅니다" : "인증된 번호로만 판매자 연락처를 열람할 수 있어요"}
               </span>
@@ -769,7 +770,7 @@ function SignupPageInner() {
                 <label className="text-sm font-bold mb-2 block" style={{ color: "#0B2540" }}>업체명 (선택)</label>
                 <input
                   className="w-full rounded-xl outline-none"
-                  style={{ border: "1.5px solid #E4E7EB", padding: "13px 14px", fontSize: 15 }}
+                  style={{ border: "1.5px solid #E4E7EB", padding: "13px 14px", fontSize: rem(15) }}
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   placeholder="예: 웰컴코리아(주)"
@@ -803,7 +804,7 @@ function SignupPageInner() {
                 className="w-full flex items-center gap-3 text-left rounded-2xl"
                 style={{ padding: "13px 15px", background: "#fff", border: push ? "2px solid var(--color-toggleOn)" : "1.5px solid #E4E7EB" }}
               >
-                <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 34, height: 34, background: "#FDEEE8", fontSize: 16 }}>🔔</span>
+                <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 34, height: 34, background: "#FDEEE8", fontSize: rem(16) }}>🔔</span>
                 <span className="flex-1">
                   <span className="flex items-center gap-1.5">
                     <span className="text-sm font-bold" style={{ color: "#0B2540" }}>앱 푸시 알림</span>
@@ -830,7 +831,7 @@ function SignupPageInner() {
                 className="w-full flex items-center gap-3 text-left rounded-2xl mt-2"
                 style={{ padding: "13px 15px", background: "#fff", border: kakao ? "2px solid var(--color-toggleOn)" : "1.5px solid #E4E7EB" }}
               >
-                <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 34, height: 34, background: "#FEE500", fontSize: 16 }}>💬</span>
+                <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 34, height: 34, background: "#FEE500", fontSize: rem(16) }}>💬</span>
                 <span className="flex-1">
                   <span className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-sm font-bold" style={{ color: "#0B2540", whiteSpace: "nowrap" }}>카카오톡 채널 추가</span>
@@ -845,7 +846,7 @@ function SignupPageInner() {
                 </span>
               </button>
 
-              <p className="mt-2.5" style={{ fontSize: 11, color: "#6B7480", lineHeight: 1.6 }}>
+              <p className="mt-2.5" style={{ fontSize: rem(14), color: "#6B7480", lineHeight: 1.6 }}>
                 맞춤 특가 알림은 앱 푸시로만 발송돼요. 카카오톡 채널은 공지·이벤트 소식용 보조 채널입니다.
               </p>
 
@@ -854,7 +855,7 @@ function SignupPageInner() {
                   className="flex items-center gap-2.5 w-full text-left rounded-2xl mt-2.5"
                   style={{ border: "1.5px solid #E5484D", background: "#FDEEE8", padding: "13px 15px" }}
                 >
-                  <span style={{ fontSize: 15 }}>⚠️</span>
+                  <span style={{ fontSize: rem(15) }}>⚠️</span>
                   <span className="flex-1 text-xs font-bold" style={{ color: "#E5484D", lineHeight: 1.5 }}>
                     알림 받을 방법이 없어요 · 앱 푸시를 켜주세요
                   </span>
@@ -878,7 +879,7 @@ function SignupPageInner() {
                   style={{
                     width: 22,
                     height: 22,
-                    fontSize: 13,
+                    fontSize: rem(13),
                     background: agreeTos && agreePrivacy && kakao ? "var(--color-brandOrange)" : "#fff",
                     border: agreeTos && agreePrivacy && kakao ? "1.5px solid var(--color-brandOrange)" : "1.5px solid #C9CFD6",
                   }}
@@ -909,12 +910,12 @@ function SignupPageInner() {
                   >
                     <span
                       className="rounded flex items-center justify-center flex-shrink-0 text-white font-black"
-                      style={{ width: 20, height: 20, fontSize: 12, background: a.on ? "var(--color-brandOrange)" : "#fff", border: a.on ? "1.5px solid var(--color-brandOrange)" : "1.5px solid #C9CFD6" }}
+                      style={{ width: 20, height: 20, fontSize: rem(12), background: a.on ? "var(--color-brandOrange)" : "#fff", border: a.on ? "1.5px solid var(--color-brandOrange)" : "1.5px solid #C9CFD6" }}
                     >
                       {a.on ? "✓" : ""}
                     </span>
                     <span className="text-xs font-bold flex-shrink-0" style={{ color: a.tag === "필수" ? "#E25100" : "#6B7480" }}>[{a.tag}]</span>
-                    <span className="flex-1" style={{ fontSize: 12.5, lineHeight: 1.45, color: a.on ? "#1A1F26" : "#6B7480" }}>{a.label}</span>
+                    <span className="flex-1" style={{ fontSize: rem(14), lineHeight: 1.45, color: a.on ? "#1A1F26" : "#6B7480" }}>{a.label}</span>
                   </button>
                   {a.href && (
                     <a
@@ -922,7 +923,7 @@ function SignupPageInner() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex-shrink-0 font-bold"
-                      style={{ fontSize: 11.5, color: "#9AA3AD", padding: "12px 15px 12px 4px" }}
+                      style={{ fontSize: rem(14), color: "#9AA3AD", padding: "12px 15px 12px 4px" }}
                     >
                       보기 ›
                     </a>
@@ -930,7 +931,7 @@ function SignupPageInner() {
                 </div>
               ))}
             </div>
-            <p className="mt-3" style={{ fontSize: 11, color: "#6B7480", lineHeight: 1.6 }}>
+            <p className="mt-3" style={{ fontSize: rem(14), color: "#6B7480", lineHeight: 1.6 }}>
               개인정보는 재고 알림 발송·본인 확인 목적으로만 사용하며, 알림 해지 시 즉시 파기합니다. 사업자 인증은 MY에서 언제든 추가할 수 있어요.
             </p>
 
@@ -1008,7 +1009,7 @@ function SignupPageInner() {
               className="w-full font-black rounded-2xl disabled:opacity-60"
               style={{
                 padding: "18px 0",
-                fontSize: 17,
+                fontSize: rem(17),
                 transition: "all .2s",
                 color: obCtaDisabled ? "#6B7480" : "#fff",
                 background: obCtaDisabled ? "#C9CFD6" : "linear-gradient(135deg,#E25100,#FF6F0F)",

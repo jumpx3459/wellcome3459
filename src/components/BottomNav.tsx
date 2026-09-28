@@ -105,7 +105,7 @@ export default function BottomNav() {
               />
             )}
             <span
-              className="text-[11px] font-bold"
+              className="text-[0.7222rem] font-bold"
               style={{ color: active ? "#0B2540" : "#6B7480" }}
             >
               {tab.label}

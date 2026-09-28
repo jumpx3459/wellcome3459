@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { formatRelativeTime } from "@/lib/format";
 import KakaoChannelButton from "@/components/KakaoChannelButton";
+import { rem } from "@/lib/rem";
 
 // 2026-09-28: 긴급 공지(부동산·설비 처분 등) 공개 목록 — 재고 매물(deals)과는
 // 완전히 별개의 가벼운 공지판이라 카드 구조도 단순함(수량/할인율 없음). 구인/구직은
@@ -58,7 +59,7 @@ export default function NoticesPage() {
       >
         <div className="text-xs font-bold tracking-widest" style={{ color: "#FFD166" }}>긴급 공지</div>
         <h1 className="font-display text-2xl mt-1.5 text-white">폐업·정리 부동산·설비 소식</h1>
-        <p className="mt-2" style={{ fontSize: 13.5, color: "rgba(255,255,255,0.65)", lineHeight: 1.6 }}>
+        <p className="mt-2" style={{ fontSize: rem(13.5), color: "rgba(255,255,255,0.65)", lineHeight: 1.6 }}>
           재고 매물과 별개로, 사업 정리 과정에서 나오는 공장·상가·설비 소식을 모아드려요.
         </p>
       </div>

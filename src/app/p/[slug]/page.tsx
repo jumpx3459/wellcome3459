@@ -8,6 +8,7 @@ import { mockDeals, categoryIcons, categoryColors, type Deal } from "@/lib/mockD
 import { formatPrice } from "@/lib/format";
 import { getPartner } from "@/lib/partners";
 import { formatDealLocation } from "@/lib/formatDealLocation";
+import { rem } from "@/lib/rem";
 
 const PREVIEW_COUNT = 4;
 
@@ -74,20 +75,20 @@ export default function PartnerDemoPage() {
       >
         <span
           className="inline-block rounded-full font-medium"
-          style={{ fontSize: 11, color: "rgba(255,255,255,0.65)", padding: "3px 9px", background: "rgba(255,255,255,0.1)" }}
+          style={{ fontSize: rem(11), color: "rgba(255,255,255,0.65)", padding: "3px 9px", background: "rgba(255,255,255,0.1)" }}
         >
           Powered by 덤핑점핑 × JumpX
         </span>
-        <h1 className="font-display mt-3" style={{ fontSize: 26, letterSpacing: "-0.02em" }}>
+        <h1 className="font-display mt-3" style={{ fontSize: rem(26), letterSpacing: "-0.02em" }}>
           {partner.name}
         </h1>
-        <p className="mt-2.5" style={{ fontSize: 14, lineHeight: 1.6, color: "rgba(255,255,255,.88)" }}>
+        <p className="mt-2.5" style={{ fontSize: rem(14), lineHeight: 1.6, color: "rgba(255,255,255,.88)" }}>
           {partner.tagline}
         </p>
         <Link
           href={signupHref}
           className="inline-flex items-center gap-1.5 mt-5 font-bold rounded-2xl"
-          style={{ padding: "13px 22px", fontSize: 15, background: "#fff", color: partner.accentColor }}
+          style={{ padding: "13px 22px", fontSize: rem(15), background: "#fff", color: partner.accentColor }}
         >
           🔔 지금 무료로 알림받기
         </Link>
@@ -131,7 +132,7 @@ export default function PartnerDemoPage() {
         <Link
           href={signupHref}
           className="w-full block text-center font-bold rounded-2xl text-white mt-6"
-          style={{ background: partner.accentColor, padding: "15px 0", fontSize: 15 }}
+          style={{ background: partner.accentColor, padding: "15px 0", fontSize: rem(15) }}
         >
           {partner.name} 알림 무료로 받기
         </Link>
