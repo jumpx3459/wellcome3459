@@ -1542,8 +1542,10 @@ function AdminDashboard({
                 adminKey={adminKey}
                 prefill={{
                   title: r.product_name,
-                  category: r.categories?.name ?? mockCategories[0],
-                  region: r.regions?.name ?? mockRegions[0],
+                  // 신청서에 없으면 비워서 관리자가 직접 고르게 함 — 예전엔 첫 항목(수산·축산물/서울)이
+                  // 조용히 들어가 엉뚱한 구독자에게 알림이 갈 수 있었음
+                  category: r.categories?.name ?? undefined,
+                  region: r.regions?.name ?? undefined,
                   dealPrice: r.hope_price ?? undefined,
                   totalQty: r.quantity,
                   quantityUnit: r.quantity_unit ?? undefined,
@@ -2450,6 +2452,15 @@ function DealForm({
       <p className="text-xs text-gray500">
         <span className="text-orange font-bold">*</span> 필수 항목
       </p>
+      {requestId && (!prefill?.category || !prefill?.region) && (
+        <div
+          className="rounded-lg text-sm font-bold leading-relaxed"
+          style={{ background: "#FDEEE8", color: "#C2410C", padding: "10px 12px" }}
+        >
+          이 판매신청에는 {!prefill?.category && !prefill?.region ? "카테고리·지역이" : !prefill?.category ? "카테고리가" : "지역이"}{" "}
+          없어요. 카테고리·지역을 지정해야 알림이 발송돼요 — 아래에서 선택해주세요.
+        </div>
+      )}
 
       <DealFormField label="매물명" required error={fieldErrors.title} htmlFor="deal-title">
         <input
