@@ -9,6 +9,7 @@ import { mockDeals, categoryIcons, categoryColors, type Deal } from "@/lib/mockD
 import CountdownBadge from "@/components/CountdownBadge";
 import { formatPrice, percentOff } from "@/lib/format";
 import { SITE_URL } from "@/lib/siteUrl";
+import { MESSAGES_ENABLED } from "@/lib/features";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 
@@ -209,6 +210,11 @@ function DealDetailPageInner() {
     if (!supabase || !memberId || !deal.seller_member_id) return;
     if (!messageBody.trim()) {
       setMessageError("내용을 입력해주세요.");
+      return;
+    }
+    // DB 정책(messages_insert_valid)과 같은 규칙 — 1~1000자
+    if (messageBody.trim().length > 1000) {
+      setMessageError("쪽지는 1000자까지 보낼 수 있어요.");
       return;
     }
     setMessageSending(true);
@@ -460,7 +466,7 @@ function DealDetailPageInner() {
               <div className="text-xs text-gray500 font-bold mb-0.5">판매자</div>
               <div className="text-sm font-bold text-navy">{deal.seller_display_name}</div>
             </div>
-            {deal.seller_member_id && isMember && memberId !== deal.seller_member_id && (
+            {MESSAGES_ENABLED && deal.seller_member_id && isMember && memberId !== deal.seller_member_id && (
               <button
                 type="button"
                 onClick={() => setShowMessageForm((v) => !v)}
@@ -473,12 +479,13 @@ function DealDetailPageInner() {
           </div>
         )}
 
-        {showMessageForm && deal.seller_member_id && (
+        {MESSAGES_ENABLED && showMessageForm && deal.seller_member_id && (
           <div className="border-2 border-gray200 rounded-2xl p-4">
             <textarea
               value={messageBody}
               onChange={(e) => setMessageBody(e.target.value)}
               placeholder="가격·수량 등 궁금한 점을 남겨주세요."
+              maxLength={1000}
               className="w-full border-2 border-gray200 rounded-xl p-3 text-sm outline-none focus:border-navy"
               rows={3}
             />

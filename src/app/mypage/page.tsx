@@ -12,6 +12,7 @@ import BusinessLicenseUploader from "@/components/BusinessLicenseUploader";
 import EcosystemGrid from "@/components/EcosystemGrid";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import PushStatusCard from "@/components/PushStatusCard";
+import { MESSAGES_ENABLED } from "@/lib/features";
 import { SITE_URL } from "@/lib/siteUrl";
 import { resizeImageForUpload } from "@/lib/resizeImage";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
@@ -360,6 +361,7 @@ export default function MyPage() {
   };
 
   useEffect(() => {
+    if (!MESSAGES_ENABLED) return;
     loadMessages();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memberId]);
@@ -368,6 +370,10 @@ export default function MyPage() {
     if (!supabase || !memberId) return;
     const body = (replyDraft[thread.key] || "").trim();
     if (!body) return;
+    if (body.length > 1000) {
+      showToast("쪽지는 1000자까지 보낼 수 있어요.");
+      return;
+    }
     setReplySending(thread.key);
     const { error } = await supabase.from("messages").insert({
       deal_id: thread.dealId,
@@ -375,7 +381,9 @@ export default function MyPage() {
       receiver_id: thread.counterpartId,
       body,
     });
-    if (!error) {
+    if (error) {
+      showToast("전송에 실패했어요. 잠시 후 다시 시도해주세요.");
+    } else {
       setReplyDraft((prev) => ({ ...prev, [thread.key]: "" }));
       await loadMessages();
     }
@@ -1556,6 +1564,7 @@ export default function MyPage() {
           </div>
         </div>
 
+        {MESSAGES_ENABLED && (
         <div id="messages" className="border-t border-gray200 pt-5">
           <div className="text-base font-bold text-navy mb-3">쪽지함 ({threads.length})</div>
           {threads.length === 0 && (
@@ -1586,6 +1595,7 @@ export default function MyPage() {
                     value={replyDraft[t.key] ?? ""}
                     onChange={(e) => setReplyDraft((prev) => ({ ...prev, [t.key]: e.target.value }))}
                     placeholder="답장 입력..."
+                    maxLength={1000}
                     className="flex-1 min-w-0 border-2 border-gray200 rounded-xl px-3 text-sm outline-none focus:border-navy"
                     style={{ height: "40px" }}
                   />
@@ -1602,6 +1612,7 @@ export default function MyPage() {
             ))}
           </div>
         </div>
+        )}
 
         {/* design-v2: 홈 화면 "잠든 재고" 카드와 동일 스타일로 일괄 정리 —
             배경 화이트 + 서브텍스트를 이모지 폭(24px)만큼 들여씀. */}

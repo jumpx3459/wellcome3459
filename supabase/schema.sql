@@ -891,3 +891,43 @@ select cron.schedule(
 );
 -- 확인: select jobname, schedule, active from cron.job;
 -- 해제: select cron.unschedule('purge-otp-request-log');
+
+-- 2026-09-28: 쪽지 기능 당분간 숨김 (messages 0건, 사용 이력 없음 — src/lib/features.ts의
+-- MESSAGES_ENABLED = false). 새 쪽지 저장을 막기 위해 insert 정책을 전부 제거한다.
+-- select 정책(messages_select_own)은 유지. Supabase SQL Editor 실행 대상:
+drop policy if exists "messages_insert_own" on public.messages;
+drop policy if exists "messages_insert_valid" on public.messages;
+
+-- [재오픈용 — 지금은 실행하지 말 것] 다시 열 때 할 일:
+--   1) 아래 messages_insert_valid 정책 생성
+--   2) read_at update 정책 추가 (받은 사람만, read_at 컬럼만 — 안 읽음 표시용)
+--   3) 새 쪽지 알림(푸시 또는 배지) 추가
+--   4) MESSAGES_ENABLED = true
+-- 기존 messages_insert_own은 sender_id = auth.uid()만 봐서 아무 회원 id·아무 매물로나
+-- 쪽지를 보낼 수 있었음. 아래 정책은 허용 경우를 둘로 제한:
+--   (a) 첫 쪽지/후속 문의: 받는 사람이 그 매물의 판매자(deals.seller_member_id)
+--   (b) 답장: 같은 매물에서 받는 사람이 먼저 나에게 보낸 쪽지가 있음
+-- 공통: 보낸 사람 = 나, 나 자신에게는 불가, 본문은 공백 아닌 글자 포함 1~1000자.
+-- 서브쿼리의 messages 조회는 messages_select_own, deals 조회는 deals_public_select로 통과.
+--
+-- create policy "messages_insert_valid" on public.messages
+--   for insert with check (
+--     sender_id = auth.uid()
+--     and receiver_id is not null
+--     and sender_id <> receiver_id
+--     and deal_id is not null
+--     and char_length(body) between 1 and 1000
+--     and body ~ '\S'
+--     and (
+--       exists (
+--         select 1 from public.deals d
+--         where d.id = messages.deal_id and d.seller_member_id = messages.receiver_id
+--       )
+--       or exists (
+--         select 1 from public.messages prev
+--         where prev.deal_id = messages.deal_id
+--           and prev.sender_id = messages.receiver_id
+--           and prev.receiver_id = messages.sender_id
+--       )
+--     )
+--   );
