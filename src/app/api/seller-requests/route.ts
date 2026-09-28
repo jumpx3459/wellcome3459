@@ -36,6 +36,10 @@ export async function POST(req: NextRequest) {
   if (!isValidKoreanPhone(contactPhone)) {
     return NextResponse.json({ error: "올바른 휴대폰 번호를 입력해주세요." }, { status: 400 });
   }
+  // 2026-09-28: 수량보다 큰 MOQ(예: 수량 100kg, MOQ 1000kg)가 그대로 저장된 사례 — 폼(sell)과 같은 규칙
+  if (minOrderQty != null && minOrderQty !== "" && Number(minOrderQty) > Number(quantity)) {
+    return NextResponse.json({ error: "최소주문량은 총수량보다 클 수 없어요.", field: "minOrderQty" }, { status: 400 });
+  }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

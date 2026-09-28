@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
   if (totalQty == null || totalQty === "") return bad("수량을 입력해주세요.", "totalQty");
   if (!isPositive(totalQty)) return bad("수량은 0보다 커야 해요.", "totalQty");
   if (minOrderQty != null && !isPositive(minOrderQty)) return bad("최소 주문량은 0보다 커야 해요.", "minOrderQty");
+  if (minOrderQty != null && minOrderQty > totalQty) return bad("최소주문량은 총수량보다 클 수 없어요.", "minOrderQty");
   if (!closesAt || Number.isNaN(Date.parse(closesAt))) return bad("마감 시간이 올바르지 않아요.", "closesAt");
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {

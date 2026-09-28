@@ -2371,6 +2371,7 @@ function DealForm({
     if (!totalQty.trim()) errs.totalQty = "수량을 입력해주세요.";
     else if (!Number.isFinite(qty) || qty <= 0) errs.totalQty = "수량은 0보다 커야 해요.";
     if (minOrderQty.trim() && !(Number(minOrderQty) > 0)) errs.minOrderQty = "최소 주문량은 0보다 커야 해요.";
+    else if (minOrderQty.trim() && qty > 0 && Number(minOrderQty) > qty) errs.minOrderQty = "최소주문량은 총수량보다 클 수 없어요.";
     return errs;
   };
 

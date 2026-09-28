@@ -77,6 +77,13 @@ export default function SellPage() {
   const [quantity, setQuantity] = useState("");
   const [quantityUnit, setQuantityUnit] = useState(quantityUnits[0]);
   const [minOrderQty, setMinOrderQty] = useState("");
+  const [moqError, setMoqError] = useState<string | null>(null);
+  const showMoqError = (msg: string) => {
+    setMoqError(msg);
+    const el = document.getElementById("sell-minOrderQty");
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    el?.focus({ preventScroll: true });
+  };
   const [hopePrice, setHopePrice] = useState("");
   const [hopeDurationHours, setHopeDurationHours] = useState("24");
   const [description, setDescription] = useState("");
@@ -95,12 +102,18 @@ export default function SellPage() {
 
   const submit = async () => {
     setError(null);
+    setMoqError(null);
     if (!productName || !quantity || !contactPhone) {
       setError("매물명 · 수량 · 연락처는 꼭 입력해주세요.");
       return;
     }
     if (!isValidKoreanPhone(contactPhone)) {
       setError("올바른 휴대폰 번호를 입력해주세요.");
+      return;
+    }
+    // 2026-09-28: 수량 100kg·MOQ 1000kg 같은 신청이 그대로 들어온 사례 — 서버(/api/seller-requests)도 같은 검증
+    if (minOrderQty && quantity && Number(minOrderQty) > Number(quantity)) {
+      showMoqError("최소주문량은 총수량보다 클 수 없어요.");
       return;
     }
     setSubmitting(true);
@@ -133,7 +146,14 @@ export default function SellPage() {
           videoUrl,
         }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data.field === "minOrderQty") {
+          showMoqError(data.error ?? "최소주문량은 총수량보다 클 수 없어요.");
+          return;
+        }
+        throw new Error();
+      }
       setDone(true);
     } catch {
       setError("신청 처리 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");
@@ -402,17 +422,22 @@ export default function SellPage() {
             최소주문수량(MOQ)
             <span className="text-xs font-bold" style={{ color: "#6B7480" }}>(선택)</span>
           </div>
-          <div className="flex items-center rounded-xl" style={{ border: "1.5px solid #E4E7EB" }}>
+          <div className="flex items-center rounded-xl" style={{ border: moqError ? "1.5px solid var(--color-orange)" : "1.5px solid #E4E7EB" }}>
             <input
+              id="sell-minOrderQty"
               type="number"
               className="flex-1 min-w-0 outline-none"
               style={{ border: "none", padding: "14px 0 14px 14px", fontSize: 14.5 }}
               value={minOrderQty}
-              onChange={(e) => setMinOrderQty(e.target.value)}
+              onChange={(e) => {
+                setMinOrderQty(e.target.value);
+                setMoqError(null);
+              }}
               placeholder="예: 5"
             />
             <span className="flex-shrink-0 text-sm font-medium" style={{ color: "#6B7480", padding: "0 14px" }}>{quantityUnit} 이상</span>
           </div>
+          {moqError && <p className="text-sm font-medium mt-1.5" style={{ color: "var(--color-orange)" }}>{moqError}</p>}
         </div>
 
         <div>
