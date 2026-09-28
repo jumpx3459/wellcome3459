@@ -931,3 +931,22 @@ drop policy if exists "messages_insert_valid" on public.messages;
 --       )
 --     )
 --   );
+
+-- 2026-09-29: 기능 오픈 알림 신청 (현재 "quotes" = 내 견적함 예고 카드). 회원당 기능별 1회,
+-- role = 어떻게 쓸지(받은 견적 보관 receiver / 보낸 견적 관리 sender).
+-- 관리자 집계는 service_role(/api/admin/feature-waitlist).
+create table if not exists public.feature_waitlist (
+  id uuid primary key default gen_random_uuid(),
+  member_id uuid references public.members(id) on delete cascade,
+  feature text not null,
+  role text check (role in ('receiver', 'sender')), -- 내 견적함: 받은 견적 보관 / 보낸 견적 관리
+  created_at timestamptz default now(),
+  unique (member_id, feature)
+);
+alter table public.feature_waitlist enable row level security;
+drop policy if exists "feature_waitlist_self_insert" on public.feature_waitlist;
+create policy "feature_waitlist_self_insert" on public.feature_waitlist
+  for insert with check (auth.uid() = member_id);
+drop policy if exists "feature_waitlist_self_select" on public.feature_waitlist;
+create policy "feature_waitlist_self_select" on public.feature_waitlist
+  for select using (auth.uid() = member_id);

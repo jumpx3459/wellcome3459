@@ -363,6 +363,7 @@ function AdminDashboard({
   // "모바일"/"PC"는 창 폭과 무관하게 강제 고정(미리보기·개인 취향용).
   // 우선 핵심 구간(조치 필요·참고 지표·진행 중인 매물)에만 적용.
   const [viewMode, setViewMode] = useState<"auto" | "mobile" | "desktop">("auto");
+  const [quotesWaitlist, setQuotesWaitlist] = useState<{ total: number; receiver: number; sender: number } | null>(null);
   const [windowWidth, setWindowWidth] = useState(0);
   useEffect(() => {
     const update = () => setWindowWidth(window.innerWidth);
@@ -438,6 +439,11 @@ function AdminDashboard({
       fetch("/api/admin/admins", { headers: { "x-admin-key": adminKey } })
         .then((r) => r.json())
         .then((d) => setAdmins(d.items ?? [])),
+      // 내 견적함 오픈 알림 신청 수 — 테이블이 아직 없거나 실패하면 null("—" 표시)
+      fetch("/api/admin/feature-waitlist", { headers: { "x-admin-key": adminKey } })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => setQuotesWaitlist(d?.quotes ?? null))
+        .catch(() => setQuotesWaitlist(null)),
       fetch("/api/admin/category-kpis", { headers: { "x-admin-key": adminKey } })
         .then((r) => r.json())
         .then((d) => setCategoryKpis(d.items ?? [])),
@@ -881,6 +887,20 @@ function AdminDashboard({
               <div className="mt-0.5 font-bold text-gray500 leading-tight" style={{ fontSize: rem(12.5) }}>{stat.label}</div>
             </div>
           ))}
+        </div>
+        {/* 2026-09-29: 내 견적함 "곧 오픈" 예고 카드의 오픈 알림 신청 수 (feature_waitlist) */}
+        <div className="mt-1.5 bg-white border border-gray200 rounded-xl px-3 py-2.5" style={{ fontSize: rem(14), color: "#1F2937" }}>
+          <span className="font-bold">내 견적함 오픈 알림 신청</span>{" "}
+          {quotesWaitlist === null ? (
+            <span className="text-gray500">—</span>
+          ) : (
+            <>
+              <b className="text-navy">{quotesWaitlist.total}명</b>{" "}
+              <span className="text-gray500">
+                (받은 견적 {quotesWaitlist.receiver} / 보낸 견적 {quotesWaitlist.sender})
+              </span>
+            </>
+          )}
         </div>
         </div>
 

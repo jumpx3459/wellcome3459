@@ -12,7 +12,8 @@ import BusinessLicenseUploader from "@/components/BusinessLicenseUploader";
 import EcosystemGrid, { SECTION_TITLE_STYLE } from "@/components/EcosystemGrid";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import PushStatusCard from "@/components/PushStatusCard";
-import { MESSAGES_ENABLED } from "@/lib/features";
+import { MESSAGES_ENABLED, QUOTES_ENABLED } from "@/lib/features";
+import QuotesTeaserCard from "@/components/QuotesTeaserCard";
 import { SITE_URL } from "@/lib/siteUrl";
 import { resizeImageForUpload } from "@/lib/resizeImage";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
@@ -1651,22 +1652,13 @@ export default function MyPage() {
           <div className="mb-2.5" style={SECTION_TITLE_STYLE}>점핑 서비스</div>
           <EcosystemGrid />
 
-          <button
-            type="button"
-            onClick={() => showToast("개발 중인 기능이에요. 곧 만나보실 수 있어요!")}
-            className="w-full mt-2.5 bg-white border border-gray200 rounded-xl px-4 py-3 flex items-center justify-between"
-          >
-            <span className="flex items-center gap-2">
-              <span className="text-xl leading-none">📋</span>
-              <span className="text-sm font-bold text-gray900">견적함</span>
-            </span>
-            <span
-              className="text-sm font-bold px-2.5 py-1 rounded-full flex-shrink-0"
-              style={{ background: "#F5F6F8", color: "#6B7480" }}
-            >
-              준비중
-            </span>
-          </button>
+          {/* 2026-09-29: "견적함 · 준비중"(누르면 토스트만) → "곧 오픈" 예고 카드 + 오픈 알림 신청.
+              실제 견적함이 생기면 QUOTES_ENABLED = true로 바꾸고 이 자리에 진짜 진입점을 둘 것. */}
+          {!QUOTES_ENABLED && (
+            <div className="mt-2.5">
+              <QuotesTeaserCard memberId={memberId} />
+            </div>
+          )}
         </div>
 
         <Link href="/unsubscribe" className="text-center text-sm text-gray500 underline py-2">
