@@ -72,17 +72,23 @@ export default function BuyPage() {
     })();
   }, []);
 
+  // 카테고리 자동 추천 (2026-09-29 규칙 정리):
+  //   - 직접 고르기 전(categoryTouched=false)엔 상품명이 바뀔 때마다 다시 계산
+  //   - 상품명을 지우거나 매칭이 없으면 비움 (기본값 없음 — 예전엔 이전 추천이 그대로 남았음)
+  //   - 직접 고른 뒤엔 상품명이 바뀌어도 덮어쓰지 않음
   useEffect(() => {
-    if (categoryTouched || !productName.trim()) return;
+    if (categoryTouched) return;
     const guessed = guessCategory(productName);
-    if (guessed) {
-      setCategory(guessed);
-      // 2026-09-27: "수정"으로 직접 펼친 상태에서 상품명을 계속 입력하면 이
-      // effect가 매번 다시 실행돼 추천 카테고리로 도로 접혀버리는 문제 —
-      // 카테고리가 비어있을 때(=아직 한 번도 추천된 적 없을 때)만 자동으로
-      // 접고, 이미 펼쳐서 보고 있는 중이면 그대로 유지한다.
-      if (!category) setCategoryEditing(false);
+    setCategory(guessed ?? "");
+    if (!guessed) {
+      setCategoryEditing(true);
+      return;
     }
+    // 2026-09-27: "수정"으로 직접 펼친 상태에서 상품명을 계속 입력하면 이
+    // effect가 매번 다시 실행돼 추천 카테고리로 도로 접혀버리는 문제 —
+    // 카테고리가 비어있을 때(=아직 한 번도 추천된 적 없을 때)만 자동으로
+    // 접고, 이미 펼쳐서 보고 있는 중이면 그대로 유지한다.
+    if (!category) setCategoryEditing(false);
   }, [productName, categoryTouched]);
 
   const allRegionsOn = regions.length === mockRegions.length;
@@ -270,6 +276,9 @@ export default function BuyPage() {
             onChange={(e) => setProductName(e.target.value)}
             placeholder="예: 냉동 삼겹살 500kg 이상"
           />
+          <p className="mt-1.5" style={{ fontSize: rem(14), color: "#4B5563" }}>
+            💡 상품명을 입력하면 카테고리를 자동으로 골라드려요
+          </p>
         </div>
 
         <div>
@@ -294,6 +303,10 @@ export default function BuyPage() {
             <span className="text-xs font-bold" style={{ color: "#6B7480" }}>(선택)</span>
           </div>
           {categoryEditing ? (
+            <>
+            {!category && !categoryTouched && (
+              <p className="mb-2" style={{ fontSize: rem(14), color: "#6B7480" }}>상품명을 입력하면 자동으로 골라드려요</p>
+            )}
             <div className="flex gap-1.5 overflow-x-auto pb-1">
               {mockCategories.map((c) => {
                 const picked = category === c;
@@ -322,6 +335,7 @@ export default function BuyPage() {
                 );
               })}
             </div>
+            </>
           ) : (
             <div className="flex items-center justify-between rounded-xl" style={{ border: "1.5px solid #E4E7EB", padding: "10px 13px" }}>
               <span className="flex items-center gap-1.5 text-sm font-bold min-w-0">
