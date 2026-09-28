@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { rem } from "@/lib/rem";
+import { isInAppBrowser, isIOS as detectIOS, isStandalone as detectStandalone } from "@/lib/browserEnv";
+import IosInstallSteps, { IOS_INSTALL_TITLE } from "@/components/IosInstallSteps";
 
 // 표준 타입에 없는 크로미움 전용 PWA 설치 이벤트.
 type InstallPromptEvent = Event & {
@@ -26,14 +28,14 @@ type InstallPromptEvent = Event & {
 export function useInstallPrompt() {
   const [installEvent, setInstallEvent] = useState<InstallPromptEvent | null>(null);
   const [isIOS, setIsIOS] = useState(false);
-  const [isStandalone, setIsStandalone] = useState(false);
+  // 판별 전엔 배너를 띄우지 않음(인앱에서 잠깐 보였다 사라지는 깜빡임 방지)
+  const [eligible, setEligible] = useState(false);
 
   useEffect(() => {
-    const standalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (navigator as unknown as { standalone?: boolean }).standalone === true;
-    setIsStandalone(standalone);
-    setIsIOS(/iPhone|iPad|iPod/.test(navigator.userAgent));
+    // 2026-09-29: 상황별로 안내는 하나만 — 설치 앱(standalone)이면 숨김, 인앱 브라우저는 설치가
+    // 안 되므로 숨김(대신 InAppBanner가 크롬/사파리로 유도). 예전엔 인앱에서도 떴었음.
+    setEligible(!detectStandalone() && !isInAppBrowser());
+    setIsIOS(detectIOS());
 
     const handler = (e: Event) => {
       e.preventDefault();
@@ -45,7 +47,7 @@ export function useInstallPrompt() {
 
   // 설치 안 된 상태면 항상 배너를 보여준다. 네이티브 프롬프트가 아직
   // 안 쏘여도(브라우저 쿨다운 등) 최소한 수동 설치 경로는 열어둔다.
-  const canInstall = !isStandalone;
+  const canInstall = eligible;
 
   const promptInstall = async (): Promise<"prompted" | "ios-guide" | "manual-guide"> => {
     if (installEvent) {
@@ -70,6 +72,8 @@ export default function InstallAppButton({
 }) {
   const [showIOSGuide, setShowIOSGuide] = useState(false);
   const [showManualGuide, setShowManualGuide] = useState(false);
+  const [isIOSDevice, setIsIOSDevice] = useState(false);
+  useEffect(() => setIsIOSDevice(detectIOS()), []);
 
   if (!canInstall) return null;
 
@@ -93,7 +97,7 @@ export default function InstallAppButton({
               실제 지급 로직이 없어 표기하지 않음. */}
           <span className="block font-bold" style={{ fontSize: rem(13.5), color: "#0B2540" }}>홈 화면에 추가하기</span>
           <span className="block mt-0.5" style={{ fontSize: rem(11.5), color: "#6B7480" }}>
-            설치하면 마감 임박 알림을 가장 먼저 받아요
+            {isIOSDevice ? IOS_INSTALL_TITLE : "설치하면 마감 임박 알림을 가장 먼저 받아요"}
           </span>
         </span>
       </button>
@@ -108,33 +112,9 @@ export default function InstallAppButton({
             className="bg-white w-full max-w-md rounded-t-3xl p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="font-display text-xl text-navy mb-5">아이폰에 설치하는 방법</div>
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-3">
-                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-navy text-white text-sm font-bold flex-shrink-0">
-                  1
-                </span>
-                <div className="text-sm text-gray900">
-                  Safari 하단의 <b>공유 버튼 ⬆️</b> 을 눌러주세요
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-navy text-white text-sm font-bold flex-shrink-0">
-                  2
-                </span>
-                <div className="text-sm text-gray900">
-                  메뉴에서 <b>&quot;홈 화면에 추가&quot;</b>를 찾아 눌러주세요
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-navy text-white text-sm font-bold flex-shrink-0">
-                  3
-                </span>
-                <div className="text-sm text-gray900">
-                  오른쪽 위 <b>&quot;추가&quot;</b>를 누르면 완료!
-                </div>
-              </div>
-            </div>
+            {/* 알림 안내(PushBlockerNotice)와 같은 문구·디자인 — IosInstallSteps */}
+            <div className="font-bold mb-4" style={{ fontSize: rem(17), color: "#0B2540" }}>{IOS_INSTALL_TITLE}</div>
+            <IosInstallSteps />
             <button
               onClick={() => setShowIOSGuide(false)}
               className="mt-6 w-full text-center font-bold rounded-xl py-3 bg-gray100 text-gray500"

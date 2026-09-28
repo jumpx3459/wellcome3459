@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { isKakaoInApp, type PushBlocker } from "@/lib/browserEnv";
-import { openExternal, copyCurrentUrl } from "@/lib/openExternal";
+import { openExternal, copyCurrentUrl, externalTarget } from "@/lib/openExternal";
 import { rem } from "@/lib/rem";
+import IosInstallSteps, { IOS_INSTALL_TITLE } from "@/components/IosInstallSteps";
 
 // 웹푸시를 받을 수 없는 환경(인앱 브라우저 / iPhone 홈 화면 미설치) 안내 — PushStatusCard·가입 화면 공용.
 // 이 상태에선 [알림 켜기]를 누르게 하지 않는다(눌러도 실패).
@@ -14,16 +15,15 @@ export default function PushBlockerNotice({ kind }: { kind: PushBlocker }) {
   if (kind === "ios_needs_install") {
     return (
       <div className="rounded-lg leading-relaxed" style={{ background: "#F5F6F8", padding: "12px 14px", fontSize: rem(14), color: "#1A1F26" }}>
-        <p className="font-bold">iPhone은 홈 화면에 추가해야 알림을 받을 수 있어요</p>
-        <ol className="mt-1.5 list-decimal pl-5" style={{ color: "#495057" }}>
-          <li>Safari 아래쪽 공유 버튼(□↑) 누르기</li>
-          <li>&quot;홈 화면에 추가&quot; 선택</li>
-          <li>홈 화면에 생긴 앱을 열고 [알림 켜기]</li>
-        </ol>
+        <p className="font-bold mb-2.5">{IOS_INSTALL_TITLE}</p>
+        <IosInstallSteps />
       </div>
     );
   }
 
+  // Android 인앱 → "크롬으로 열기", iPhone 카톡 → "사파리로 열기", iPhone 기타 인앱 → 처음부터 수동 안내
+  const target = externalTarget();
+  const showManual = manual || !target;
   const open = () => {
     if (!openExternal()) setManual(true);
   };
@@ -31,19 +31,19 @@ export default function PushBlockerNotice({ kind }: { kind: PushBlocker }) {
   return (
     <div className="rounded-lg leading-relaxed" style={{ background: "#FFF4E0", padding: "12px 14px", fontSize: rem(14), color: "#1A1F26" }}>
       <p className="font-bold">{isKakaoInApp() ? "카카오톡" : "이 앱"} 안에서는 새 매물 알림을 받을 수 없어요</p>
-      {!manual ? (
+      {!showManual ? (
         <button
           type="button"
           onClick={open}
           className="mt-2 w-full font-bold rounded-lg text-white"
           style={{ background: "#0B2540", padding: "10px 0", fontSize: rem(14) }}
         >
-          외부 브라우저로 열기
+          {target?.label}
         </button>
       ) : (
         <>
           <p className="mt-1.5" style={{ color: "#495057" }}>
-            화면 오른쪽 위 <b>···</b> 메뉴 → <b>Safari로 열기</b>를 눌러주세요.
+            화면 오른쪽 위 <b>···</b> 메뉴 → <b>사파리로 열기</b>를 눌러주세요.
           </p>
           <button
             type="button"

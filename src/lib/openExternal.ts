@@ -16,6 +16,16 @@ export function buildExternalUrl(url: string, ua: string): string | null {
   return null;
 }
 
+// 버튼 문구 — 40~60대 기준으로 "외부 브라우저" 대신 실제 앱 이름으로.
+//   Android 인앱 → "크롬으로 열기" / iPhone 카톡 → "사파리로 열기" / iPhone 기타 인앱 → null(자동 열기 불가)
+export type ExternalTarget = { label: string; browser: "크롬" | "사파리" } | null;
+
+export function externalTarget(ua: string = typeof navigator !== "undefined" ? navigator.userAgent : ""): ExternalTarget {
+  if (/Android/i.test(ua)) return { label: "크롬으로 열기", browser: "크롬" };
+  if (/KAKAOTALK/i.test(ua)) return { label: "사파리로 열기", browser: "사파리" };
+  return null;
+}
+
 export function openExternal(url: string = window.location.href): boolean {
   const target = buildExternalUrl(url, navigator.userAgent);
   if (!target) return false;
