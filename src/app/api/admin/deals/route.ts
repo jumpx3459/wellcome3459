@@ -38,9 +38,19 @@ export async function POST(req: NextRequest) {
     manifestItems,
   } = body;
 
-  if (!title || !category || !region || !dealPrice || !totalQty || !closesAt) {
-    return NextResponse.json({ error: "필수 항목이 누락되었습니다." }, { status: 400 });
-  }
+  // 2026-09-28: 관리자 폼(DealForm)과 같은 필수 규칙 — field로 어느 칸인지 알려준다.
+  const bad = (error: string, field: string) => NextResponse.json({ error, field }, { status: 400 });
+  const isPositive = (v: unknown) => typeof v === "number" && Number.isFinite(v) && v > 0;
+  if (typeof title !== "string" || !title.trim()) return bad("매물명을 입력해주세요.", "title");
+  if (!category) return bad("카테고리를 선택해주세요.", "category");
+  if (!region) return bad("지역을 선택해주세요.", "region");
+  if (dealPrice == null || dealPrice === "") return bad("판매가를 입력해주세요.", "dealPrice");
+  if (!isPositive(dealPrice)) return bad("판매가는 0보다 커야 해요.", "dealPrice");
+  if (originalPrice != null && !isPositive(originalPrice)) return bad("정상가는 0보다 커야 해요.", "originalPrice");
+  if (totalQty == null || totalQty === "") return bad("수량을 입력해주세요.", "totalQty");
+  if (!isPositive(totalQty)) return bad("수량은 0보다 커야 해요.", "totalQty");
+  if (minOrderQty != null && !isPositive(minOrderQty)) return bad("최소 주문량은 0보다 커야 해요.", "minOrderQty");
+  if (!closesAt || Number.isNaN(Date.parse(closesAt))) return bad("마감 시간이 올바르지 않아요.", "closesAt");
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return NextResponse.json({ ok: true, demo: true, id: "demo-deal" });
@@ -61,6 +71,9 @@ export async function POST(req: NextRequest) {
     .select("id")
     .eq("name", region)
     .single();
+  // 이름이 DB에 없으면 예전엔 category_id/region_id가 비어서 알림 매칭이 안 되는 매물이 조용히 생겼음
+  if (!catRow) return bad("없는 카테고리예요.", "category");
+  if (!regRow) return bad("없는 지역이에요.", "region");
 
   let sellerMemberId: string | null = null;
   let isAnonymous = false;

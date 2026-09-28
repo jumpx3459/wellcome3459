@@ -2319,8 +2319,10 @@ function DealForm({
   onDone: () => void;
 }) {
   const [title, setTitle] = useState(prefill?.title ?? "");
-  const [category, setCategory] = useState(prefill?.category ?? mockCategories[0]);
-  const [region, setRegion] = useState(prefill?.region ?? mockRegions[0]);
+  // prefill이 없으면 비워둬서 관리자가 직접 고르게 함 (예전엔 첫 항목이 미리 선택돼 있어
+  // 카테고리·지역을 안 고르고 그대로 등록되는 실수가 가능했음)
+  const [category, setCategory] = useState(prefill?.category ?? "");
+  const [region, setRegion] = useState(prefill?.region ?? "");
   const [originalPrice, setOriginalPrice] = useState("");
   const [dealPrice, setDealPrice] = useState(prefill?.dealPrice ? String(prefill.dealPrice) : "");
   const [totalQty, setTotalQty] = useState(prefill?.totalQty ? String(prefill.totalQty) : "");
@@ -2343,11 +2345,50 @@ function DealForm({
   const [manifestItems, setManifestItems] = useState<ManifestRow[]>(prefill?.manifestItems ?? []);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<DealField, string>>>({});
+
+  // 2026-09-28: 필수 = 매물명·카테고리·지역·판매가·수량. 서버(/api/admin/deals)도 같은 규칙으로
+  // 400 { error, field }를 돌려준다. 제출 시 첫 누락 칸으로 스크롤·포커스.
+  const focusField = (field: DealField) => {
+    const el = document.getElementById(`deal-${field}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    el?.focus({ preventScroll: true });
+  };
+
+  const validate = (): Partial<Record<DealField, string>> => {
+    const errs: Partial<Record<DealField, string>> = {};
+    const deal = parsePriceInput(dealPrice);
+    const orig = parsePriceInput(originalPrice);
+    const qty = Number(totalQty);
+    if (!title.trim()) errs.title = "매물명을 입력해주세요.";
+    if (!category) errs.category = "카테고리를 선택해주세요.";
+    if (!region) errs.region = "지역을 선택해주세요.";
+    if (!dealPrice.trim()) errs.dealPrice = "판매가를 입력해주세요.";
+    else if (!deal || deal <= 0) errs.dealPrice = "판매가는 0보다 커야 해요.";
+    if (originalPrice.trim() && (!orig || orig <= 0)) errs.originalPrice = "정상가는 0보다 커야 해요.";
+    if (!totalQty.trim()) errs.totalQty = "수량을 입력해주세요.";
+    else if (!Number.isFinite(qty) || qty <= 0) errs.totalQty = "수량은 0보다 커야 해요.";
+    if (minOrderQty.trim() && !(Number(minOrderQty) > 0)) errs.minOrderQty = "최소 주문량은 0보다 커야 해요.";
+    return errs;
+  };
+
+  const clearErr = (field: DealField) =>
+    setFieldErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
 
   const submit = async () => {
     setError(null);
-    if (!title || !dealPrice || !totalQty) {
-      setError("매물명·판매가·수량은 필수예요.");
+    const errs = validate();
+    setFieldErrors(errs);
+    const firstMissing = DEAL_FIELD_ORDER.find((f) => errs[f]);
+    if (firstMissing) {
+      setError("빨간 안내가 있는 칸을 확인해주세요.");
+      focusField(firstMissing);
+      return;
+    }
+    const deal = parsePriceInput(dealPrice) ?? 0;
+    const orig = parsePriceInput(originalPrice);
+    if (orig && deal > orig && !window.confirm("판매가가 정상가보다 높아요. 할인율이 표시되지 않아요. 그대로 등록할까요?")) {
+      focusField("dealPrice");
       return;
     }
     setSubmitting(true);
@@ -2357,11 +2398,11 @@ function DealForm({
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
         body: JSON.stringify({
-          title,
+          title: title.trim(),
           category,
           region,
-          originalPrice: parsePriceInput(originalPrice),
-          dealPrice: parsePriceInput(dealPrice) ?? 0,
+          originalPrice: orig,
+          dealPrice: deal,
           totalQty: Number(totalQty),
           quantityUnit,
           minOrderQty: minOrderQty ? Number(minOrderQty) : null,
@@ -2379,8 +2420,16 @@ function DealForm({
           manifestItems: manifestItems.length ? manifestItems : null,
         }),
       });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const field = data.field as DealField | undefined;
+        if (field && DEAL_FIELD_ORDER.includes(field)) {
+          setFieldErrors({ [field]: data.error ?? "값을 확인해주세요." });
+          focusField(field);
+        }
+        setError(data.error ?? "등록에 실패했어요.");
+        return;
+      }
       const sent = data.push?.sentCount ?? 0;
       alert(`매물이 등록됐어요. 구독자 ${sent}명에게 알림을 발송했어요.`);
       onDone();
@@ -2391,132 +2440,214 @@ function DealForm({
     }
   };
 
+  const inputCls = (field?: DealField) =>
+    `w-full min-w-0 border-2 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-orange ${
+      field && fieldErrors[field] ? "border-orange" : "border-gray200"
+    }`;
+
   return (
     <div className="mt-3 bg-gray100 rounded-xl p-3.5 flex flex-col gap-3">
-      <input
-        className="border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-orange"
-        placeholder="매물명 *"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-      />
-      <div className="flex gap-2">
-        <select
-          className="flex-1 min-w-0 border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-        >
-          {mockCategories.map((c) => (
-            <option key={c} value={c}>
-              {categoryIcons[c]} {c}
-            </option>
-          ))}
-        </select>
-        <select
-          className="flex-1 min-w-0 border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm"
-          value={region}
-          onChange={(e) => setRegion(e.target.value)}
-        >
-          {mockRegions.map((r) => (
-            <option key={r} value={r}>
-              {r}
-            </option>
-          ))}
-        </select>
+      <p className="text-xs text-gray500">
+        <span className="text-orange font-bold">*</span> 필수 항목
+      </p>
+
+      <DealFormField label="매물명" required error={fieldErrors.title} htmlFor="deal-title">
+        <input
+          id="deal-title"
+          className={inputCls("title")}
+          placeholder="예: 국내산 갈치 5kg"
+          value={title}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            clearErr("title");
+          }}
+        />
+      </DealFormField>
+
+      <div className="grid grid-cols-2 gap-2">
+        <DealFormField label="카테고리" required error={fieldErrors.category} htmlFor="deal-category">
+          <select
+            id="deal-category"
+            className={inputCls("category")}
+            value={category}
+            onChange={(e) => {
+              setCategory(e.target.value);
+              clearErr("category");
+            }}
+          >
+            <option value="">선택해주세요</option>
+            {mockCategories.map((c) => (
+              <option key={c} value={c}>
+                {categoryIcons[c]} {c}
+              </option>
+            ))}
+          </select>
+        </DealFormField>
+        <DealFormField label="지역" required error={fieldErrors.region} htmlFor="deal-region">
+          <select
+            id="deal-region"
+            className={inputCls("region")}
+            value={region}
+            onChange={(e) => {
+              setRegion(e.target.value);
+              clearErr("region");
+            }}
+          >
+            <option value="">선택해주세요</option>
+            {mockRegions.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
+        </DealFormField>
       </div>
       <p className="text-xs text-gray500 -mt-1.5">
-        지역 = 물건이 있는 곳(알림 매칭 기준), 상세 주소는 아래 입력칸에 따로 적어주세요.
+        지역 = 물건이 있는 곳(알림 매칭 기준). 상세 주소는 아래 &quot;지역 상세&quot;에 따로 적어주세요.
       </p>
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <input
-            type="text"
-            inputMode="numeric"
-            className="w-full border-2 border-gray200 rounded-lg pl-3 pr-8 py-2.5 text-sm outline-none focus:border-orange"
-            placeholder="정상가 (선택)"
-            value={formatPriceInput(originalPrice)}
-            onChange={(e) => setOriginalPrice(e.target.value)}
-          />
-          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray500">원</span>
-        </div>
-        <div className="relative flex-1">
-          <input
-            type="text"
-            inputMode="numeric"
-            className="w-full border-2 border-gray200 rounded-lg pl-3 pr-8 py-2.5 text-sm outline-none focus:border-orange"
-            placeholder="판매가 *"
-            value={formatPriceInput(dealPrice)}
-            onChange={(e) => setDealPrice(e.target.value)}
-          />
-          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray500">원</span>
-        </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <DealFormField label="정상가(원)" error={fieldErrors.originalPrice} htmlFor="deal-originalPrice">
+          <div className="relative">
+            <input
+              id="deal-originalPrice"
+              type="text"
+              inputMode="numeric"
+              className={`${inputCls("originalPrice")} pr-8`}
+              placeholder="예: 50,000"
+              value={formatPriceInput(originalPrice)}
+              onChange={(e) => {
+                setOriginalPrice(e.target.value);
+                clearErr("originalPrice");
+              }}
+            />
+            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray500">원</span>
+          </div>
+        </DealFormField>
+        <DealFormField label="판매가(원)" required error={fieldErrors.dealPrice} htmlFor="deal-dealPrice">
+          <div className="relative">
+            <input
+              id="deal-dealPrice"
+              type="text"
+              inputMode="numeric"
+              className={`${inputCls("dealPrice")} pr-8`}
+              placeholder="예: 30,000"
+              value={formatPriceInput(dealPrice)}
+              onChange={(e) => {
+                setDealPrice(e.target.value);
+                clearErr("dealPrice");
+              }}
+            />
+            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray500">원</span>
+          </div>
+        </DealFormField>
       </div>
-      <p className="text-xs text-gray500 -mt-1.5">창고 출고가 기준이에요 (배송비 별도).</p>
-      <div className="flex gap-2">
+      <p className="text-xs text-gray500 -mt-1.5">
+        창고 출고가 기준이에요 (배송비 별도). 정상가를 비우면 할인율 없이 표시돼요.
+      </p>
+
+      <div className="grid grid-cols-[1fr_88px] gap-2">
+        <DealFormField label="총 수량" required error={fieldErrors.totalQty} htmlFor="deal-totalQty">
+          <input
+            id="deal-totalQty"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            className={inputCls("totalQty")}
+            placeholder="예: 100"
+            value={totalQty}
+            onChange={(e) => {
+              setTotalQty(e.target.value);
+              clearErr("totalQty");
+            }}
+          />
+        </DealFormField>
+        <DealFormField label="단위" htmlFor="deal-quantityUnit">
+          <select
+            id="deal-quantityUnit"
+            className={`${inputCls()} px-2`}
+            value={quantityUnit}
+            onChange={(e) => setQuantityUnit(e.target.value)}
+          >
+            {quantityUnits.map((u) => (
+              <option key={u} value={u}>
+                {u}
+              </option>
+            ))}
+          </select>
+        </DealFormField>
+      </div>
+      <DealFormField label="최소 주문량(MOQ)" error={fieldErrors.minOrderQty} htmlFor="deal-minOrderQty">
         <input
+          id="deal-minOrderQty"
           type="number"
-          className="flex-1 min-w-0 border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-orange"
-          placeholder="총 수량 *"
-          value={totalQty}
-          onChange={(e) => setTotalQty(e.target.value)}
-        />
-        <select
-          className="border-2 border-gray200 rounded-lg px-2 py-2.5 text-sm"
-          style={{ width: "90px" }}
-          value={quantityUnit}
-          onChange={(e) => setQuantityUnit(e.target.value)}
-        >
-          {quantityUnits.map((u) => (
-            <option key={u} value={u}>
-              {u}
-            </option>
-          ))}
-        </select>
-        <input
-          type="number"
-          className="flex-1 min-w-0 border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-orange"
-          placeholder="MOQ"
+          inputMode="numeric"
+          min={1}
+          className={inputCls("minOrderQty")}
+          placeholder="예: 10"
           value={minOrderQty}
-          onChange={(e) => setMinOrderQty(e.target.value)}
+          onChange={(e) => {
+            setMinOrderQty(e.target.value);
+            clearErr("minOrderQty");
+          }}
         />
+      </DealFormField>
+
+      <DealFormField label="지역 상세" htmlFor="deal-location">
+        <input
+          id="deal-location"
+          className={inputCls()}
+          placeholder="예: 가락동 (시·도는 위 지역에서 선택)"
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+        />
+      </DealFormField>
+
+      <div className="grid grid-cols-2 gap-2">
+        <DealFormField label="포장 단위" htmlFor="deal-packageUnit">
+          <input
+            id="deal-packageUnit"
+            className={inputCls()}
+            placeholder="예: 5kg 박스"
+            value={packageUnit}
+            onChange={(e) => setPackageUnit(e.target.value)}
+          />
+        </DealFormField>
+        <DealFormField label="규격/사이즈" htmlFor="deal-spec">
+          <input
+            id="deal-spec"
+            className={inputCls()}
+            placeholder="예: 대 / 30cm"
+            value={spec}
+            onChange={(e) => setSpec(e.target.value)}
+          />
+        </DealFormField>
       </div>
-      <input
-        className="w-full border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-orange"
-        placeholder="지역 상세 (예: 서울 가락동)"
-        value={location}
-        onChange={(e) => setLocation(e.target.value)}
-      />
-      <div className="flex gap-2">
-        <input
-          className="flex-1 min-w-0 border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-orange"
-          placeholder="포장 단위"
-          value={packageUnit}
-          onChange={(e) => setPackageUnit(e.target.value)}
-        />
-        <input
-          className="flex-1 min-w-0 border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-orange"
-          placeholder="규격/사이즈"
-          value={spec}
-          onChange={(e) => setSpec(e.target.value)}
-        />
+      <div className="grid grid-cols-2 gap-2">
+        <DealFormField label="원산지" htmlFor="deal-origin">
+          <input
+            id="deal-origin"
+            className={inputCls()}
+            placeholder="예: 국내산"
+            value={origin}
+            onChange={(e) => setOrigin(e.target.value)}
+          />
+        </DealFormField>
+        <DealFormField label="보관조건·유통기한" htmlFor="deal-storageCondition">
+          <input
+            id="deal-storageCondition"
+            className={inputCls()}
+            placeholder="예: 냉동 · 26.12"
+            value={storageCondition}
+            onChange={(e) => setStorageCondition(e.target.value)}
+          />
+        </DealFormField>
       </div>
-      <div className="flex gap-2">
-        <input
-          className="flex-1 min-w-0 border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-orange"
-          placeholder="원산지"
-          value={origin}
-          onChange={(e) => setOrigin(e.target.value)}
-        />
-        <input
-          className="flex-1 min-w-0 border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-orange"
-          placeholder="보관조건·유통기한"
-          value={storageCondition}
-          onChange={(e) => setStorageCondition(e.target.value)}
-        />
-      </div>
-      <div>
-        <label className="text-xs font-bold text-gray500 mb-1 block">마감까지 남은 시간</label>
+
+      <DealFormField label="마감까지 남은 시간" htmlFor="deal-closesIn">
         <select
-          className="w-full border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm"
+          id="deal-closesIn"
+          className={inputCls()}
           value={closesInHours}
           onChange={(e) => setClosesInHours(e.target.value)}
         >
@@ -2526,27 +2657,31 @@ function DealForm({
           <option value="72">3일</option>
           <option value="168">7일</option>
         </select>
-      </div>
+      </DealFormField>
 
-      <textarea
-        className="border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-navy"
-        rows={2}
-        placeholder="소비기한, 보관상태 등 상세 설명 (선택)"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-      />
+      <DealFormField label="상세 설명" htmlFor="deal-description">
+        <textarea
+          id="deal-description"
+          className={`${inputCls()} focus:border-navy`}
+          rows={2}
+          placeholder="예: 소비기한 26년 10월, 냉동 보관 상태 양호"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+      </DealFormField>
 
       {/* 2026-09-26: 혼합매물(리퀴데이션 팔레트 등) — 신청서에서 이미 첨부됐으면 prefill로
           채워지고, 여기서도 직접 추가/수정 가능 (전화 접수 등 신청서 없이 등록하는 경우 대비). */}
-      <input
-        className="border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-orange"
-        placeholder="PID / 매니페스트 번호 (선택)"
-        value={pid}
-        onChange={(e) => setPid(e.target.value)}
-      />
+      <DealFormField label="PID / 매니페스트 번호" htmlFor="deal-pid">
+        <input
+          id="deal-pid"
+          className={inputCls()}
+          placeholder="예: PID-240915-01"
+          value={pid}
+          onChange={(e) => setPid(e.target.value)}
+        />
+      </DealFormField>
       <ManifestUploader onChange={setManifestItems} initialRows={prefill?.manifestItems} />
-
-      {error && <div className="text-xs text-orange font-medium">{error}</div>}
 
       <ImageUploader
         onChange={setImages}
@@ -2557,6 +2692,11 @@ function DealForm({
 
       <VideoUploader onChange={setVideoUrl} initialUrl={prefill?.videoUrl} />
 
+      {error && <div className="text-xs text-orange font-medium">{error}</div>}
+      <p className="text-xs text-gray500 -mt-1">
+        <span className="text-orange font-bold">*</span> 매물명·카테고리·지역·판매가·수량은 필수예요.
+      </p>
+
       <button
         onClick={submit}
         disabled={submitting}
@@ -2565,6 +2705,35 @@ function DealForm({
       >
         {submitting ? "등록 중..." : "매물 등록 확정"}
       </button>
+    </div>
+  );
+}
+
+type DealField = "title" | "category" | "region" | "originalPrice" | "dealPrice" | "totalQty" | "minOrderQty";
+// 화면 위→아래 순서 (첫 누락 칸 포커스용)
+const DEAL_FIELD_ORDER: DealField[] = ["title", "category", "region", "originalPrice", "dealPrice", "totalQty", "minOrderQty"];
+
+function DealFormField({
+  label,
+  required,
+  error,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  error?: string;
+  htmlFor: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="min-w-0">
+      <label htmlFor={htmlFor} className="text-xs font-bold text-gray500 mb-1 block">
+        {label}
+        {required && <span className="text-orange ml-0.5">*</span>}
+      </label>
+      {children}
+      {error && <p className="text-xs text-orange font-medium mt-1">{error}</p>}
     </div>
   );
 }
