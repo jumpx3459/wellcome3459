@@ -11,6 +11,7 @@ import Toast, { useToast } from "@/components/Toast";
 import BusinessLicenseUploader from "@/components/BusinessLicenseUploader";
 import EcosystemGrid from "@/components/EcosystemGrid";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
+import PushStatusCard from "@/components/PushStatusCard";
 import { resizeImageForUpload } from "@/lib/resizeImage";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 
@@ -1309,7 +1310,9 @@ export default function MyPage() {
           </div>
         </div>
 
-        <div id="alerts" className="border-t border-gray200 pt-5">
+        <div id="alerts" className="border-t border-gray200 pt-5 flex flex-col gap-3">
+          <PushStatusCard accessToken={accessToken} />
+          <div>
           <button
             type="button"
             onClick={() => setAlertsOpen((v) => !v)}
@@ -1410,6 +1413,7 @@ export default function MyPage() {
               </div>
             </div>
           )}
+          </div>
         </div>
 
         {/* 2026-09-28: 긴급 공지(부동산·설비 처분) 알림 — "내 알림 조건"(카테고리/

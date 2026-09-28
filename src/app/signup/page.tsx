@@ -5,13 +5,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { sendOtp, verifyOtp, isValidKoreanPhone } from "@/lib/auth";
 import { mockCategories, mockRegions, categoryIcons, categoryColors } from "@/lib/mockData";
-import { subscribeToPush } from "@/lib/pushClient";
+import { subscribeToPush, savePushSubscription } from "@/lib/pushClient";
 import { generateRefCode } from "@/lib/refCode";
 import Toast, { useToast } from "@/components/Toast";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 import { fmtLeft } from "@/lib/format";
 import { NAV_HEIGHT } from "@/components/BottomNav";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
+import { SITE_URL, isCanonicalHost } from "@/lib/siteUrl";
 
 // "01012345678" -> "010****5678" 형태로 화면에만 일부 가려서 보여줍니다
 function maskPhone(phone: string): string {
@@ -75,9 +76,16 @@ function SignupPageInner() {
   const [companyName, setCompanyName] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
-  const [pushStatus, setPushStatus] = useState<"idle" | "granted" | "denied" | "unsupported">(
+  const [pushStatus, setPushStatus] = useState<"idle" | "granted" | "denied" | "unsupported" | "noncanonical">(
     "idle"
   );
+  // 비정식 주소(xxx.vercel.app 등)에선 구독을 막으므로(src/lib/pushClient.ts), 제출
+  // 전에 알림 토글 옆에 정식 주소 링크를 미리 보여준다 — 제출 후엔 곧바로 다른
+  // 화면으로 넘어가서 그때 안내하면 거의 안 보임.
+  const [nonCanonicalHost, setNonCanonicalHost] = useState(false);
+  useEffect(() => {
+    setNonCanonicalHost(!isCanonicalHost(window.location.hostname));
+  }, []);
   const [error, setError] = useState<string | null>(null);
 
   const applySession = (user: { id: string; phone?: string | null } | null | undefined) => {
@@ -262,6 +270,7 @@ function SignupPageInner() {
         const pushResult = await subscribeToPush();
         if (pushResult.status === "denied") setPushStatus("denied");
         else if (pushResult.status === "unsupported") setPushStatus("unsupported");
+        else if (pushResult.status === "noncanonical") setPushStatus("noncanonical");
         else setPushStatus("granted");
       }
       await new Promise((r) => setTimeout(r, 500));
@@ -327,6 +336,7 @@ function SignupPageInner() {
         pushResult = await subscribeToPush();
         if (pushResult.status === "denied") setPushStatus("denied");
         else if (pushResult.status === "unsupported") setPushStatus("unsupported");
+        else if (pushResult.status === "noncanonical") setPushStatus("noncanonical");
         else setPushStatus("granted");
       }
 
@@ -351,11 +361,12 @@ function SignupPageInner() {
       }
 
       if (pushResult?.status === "subscribed" && pushResult.subscription.endpoint) {
-        await fetch("/api/push/subscribe", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ memberId: userId, subscription: pushResult.subscription }),
-        });
+        // 저장 실패해도 가입 자체는 진행 — 기기엔 구독이 남아 있어서 마이페이지 알림 카드가
+        // 열릴 때 조용히 다시 저장한다(PushStatusCard).
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        const saved = token ? await savePushSubscription(pushResult.subscription, token) : false;
+        if (!saved) debugLog(`[signup] push subscription save failed token=${!!token}`);
       }
 
       try {
@@ -804,6 +815,15 @@ function SignupPageInner() {
                 </span>
               </button>
 
+              {push && nonCanonicalHost && (
+                <div className="text-xs rounded-xl mt-2 leading-relaxed" style={{ color: "#6B7480", background: "#F5F6F8", padding: "10px 14px" }}>
+                  이 주소에서는 알림을 켤 수 없어요. 정식 주소에서 알림을 켜주세요 →{" "}
+                  <a href={`${SITE_URL}/signup`} className="font-bold underline" style={{ color: "#E25100" }}>
+                    {SITE_URL.replace(/^https?:\/\//, "")}
+                  </a>
+                </div>
+              )}
+
               <button
                 onClick={() => setKakao(!kakao)}
                 className="w-full flex items-center gap-3 text-left rounded-2xl mt-2"
@@ -916,6 +936,14 @@ function SignupPageInner() {
             {pushStatus === "denied" && (
               <div className="text-sm rounded-lg mt-3" style={{ color: "var(--color-orange)", background: "var(--color-dangerBg)", padding: "12px 16px" }}>
                 브라우저 알림이 차단돼 있어요. 주소창 왼쪽 자물쇠 아이콘에서 알림을 허용해주세요.
+              </div>
+            )}
+            {pushStatus === "noncanonical" && (
+              <div className="text-sm rounded-lg mt-3 leading-relaxed" style={{ color: "#6B7480", background: "#F5F6F8", padding: "12px 16px" }}>
+                정식 주소에서 알림을 켜주세요 →{" "}
+                <a href={`${SITE_URL}/mypage`} className="font-bold underline" style={{ color: "#E25100" }}>
+                  {SITE_URL.replace(/^https?:\/\//, "")}
+                </a>
               </div>
             )}
             {pushStatus === "unsupported" && (
