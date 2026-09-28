@@ -101,8 +101,21 @@ export async function POST(req: NextRequest) {
 // 자신을 해제/강등 가능"하도록 예외 처리. 변수 미설정 시 이 보호는 그냥 꺼짐.
 const FOUNDER_ADMIN_PHONE = process.env.FOUNDER_ADMIN_PHONE || null;
 
+// admin_users.phone은 "01012345678"(국내형식)로 저장된 행과 "+8210..."(E.164) 행이
+// 섞일 수 있어서, 문자열 그대로 비교하면 형식만 달라도 보호가 조용히 꺼짐 —
+// 숫자만 남기고 국가코드 82를 0으로 되돌린 국내형식으로 맞춰서 비교.
+function normalizePhone(p: string) {
+  const digits = p.replace(/\D/g, "");
+  return digits.startsWith("82") ? `0${digits.slice(2)}` : digits;
+}
+
 function isFounderProtected(targetPhone: string | null, requesterId: string, targetId: string) {
-  return Boolean(FOUNDER_ADMIN_PHONE) && targetPhone === FOUNDER_ADMIN_PHONE && requesterId !== targetId;
+  return (
+    Boolean(FOUNDER_ADMIN_PHONE) &&
+    Boolean(targetPhone) &&
+    normalizePhone(targetPhone!) === normalizePhone(FOUNDER_ADMIN_PHONE!) &&
+    requesterId !== targetId
+  );
 }
 
 // 관리자 해제 — 최고관리자만 가능, 마지막 남은 최고관리자는 해제 불가
