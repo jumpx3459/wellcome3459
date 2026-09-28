@@ -9,6 +9,8 @@ import CountdownBadge from "@/components/CountdownBadge";
 import AdSlot from "@/components/AdSlot";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import { formatPrice } from "@/lib/format";
+import { formatDealLocation } from "@/lib/formatDealLocation";
+import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 
 const DEALS_EXAMPLE_THRESHOLD = 5;
 const EXAMPLE_DEALS = mockDeals.filter((d) => d.status !== "closed").slice(0, 4);
@@ -78,7 +80,7 @@ function DealsPageInner() {
             title: d.title,
             category: (d.categories as unknown as { name: string } | null)?.name ?? "기타",
             region: (d.regions as unknown as { name: string } | null)?.name ?? "",
-            location: d.location ?? "",
+            location: formatDealLocation(((d.regions as unknown) as { name: string } | null)?.name, d.location),
             original_price: d.original_price,
             deal_price: d.deal_price,
             total_qty: d.total_qty,
@@ -117,7 +119,7 @@ function DealsPageInner() {
             title: d.title,
             category: (d.categories as unknown as { name: string } | null)?.name ?? "기타",
             region: (d.regions as unknown as { name: string } | null)?.name ?? "",
-            location: d.location ?? "",
+            location: formatDealLocation(((d.regions as unknown) as { name: string } | null)?.name, d.location),
             original_price: d.original_price,
             deal_price: d.deal_price,
             total_qty: d.total_qty,
@@ -405,9 +407,7 @@ function DealsPageInner() {
                     style={{ filter: isClosed ? "grayscale(40%)" : "none" }}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-5xl" style={{ background: isClosed ? "#F1F1EF" : color.bg }}>
-                    {categoryIcons[d.category] ?? "🗂️"}
-                  </div>
+                  <NoPhotoPlaceholder category={d.category} muted={isClosed} />
                 )}
                 <div className="absolute top-2.5 right-2.5">
                   {isClosed ? (
@@ -519,7 +519,6 @@ function DealsPageInner() {
             </div>
             <div className="flex flex-col gap-3">
               {EXAMPLE_DEALS.map((d) => {
-                const color = categoryColors[d.category] ?? categoryColors["기타"];
                 const pct = d.original_price
                   ? Math.round(((d.original_price - d.deal_price) / d.original_price) * 100)
                   : 0;
@@ -529,9 +528,7 @@ function DealsPageInner() {
                       {d.images && d.images.length > 0 ? (
                         <img src={d.images[0]} alt={d.title} className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-5xl" style={{ background: color.bg }}>
-                          {categoryIcons[d.category] ?? "🗂️"}
-                        </div>
+                        <NoPhotoPlaceholder category={d.category} />
                       )}
                       {/* 2026-09-27: 실제 매물 카드/홈 미리보기와 동일하게 할인율을
                           썸네일 위 필 배지로 — 예시 카드는 경합하는 오버레이가 없어

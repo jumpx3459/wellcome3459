@@ -12,6 +12,8 @@ import KakaoChannelButton from "@/components/KakaoChannelButton";
 import CategoryScroller from "@/components/CategoryScroller";
 import EcosystemGrid from "@/components/EcosystemGrid";
 import AlertInboxHome from "@/components/AlertInboxHome";
+import { formatDealLocation } from "@/lib/formatDealLocation";
+import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 
 const TODAY_BADGE_THRESHOLD = 5; // 이보다 적으면 "오늘 N건" 배너를 아예 숨김 (빈약한 숫자 노출 방지)
 const BUSINESS_COUNT_THRESHOLD = 30; // 이보다 적으면 사업자 수 대신 무숫자 카피로 대체 (빈약한 숫자 노출 방지)
@@ -95,7 +97,7 @@ export default function Home() {
             title: d.title,
             category: (d.categories as unknown as { name: string } | null)?.name ?? "기타",
             region: (d.regions as unknown as { name: string } | null)?.name ?? "",
-            location: d.location ?? "",
+            location: formatDealLocation(((d.regions as unknown) as { name: string } | null)?.name, d.location),
             original_price: d.original_price,
             deal_price: d.deal_price,
             total_qty: d.total_qty,
@@ -300,7 +302,7 @@ export default function Home() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      categoryIcons[d.category] ?? "🗂️"
+                      <NoPhotoPlaceholder category={d.category} size="sm" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0 pr-10">

@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { mockDeals, categoryIcons, categoryColors, mockRegions, type Deal } from "@/lib/mockData";
+import { mockDeals, mockRegions, type Deal } from "@/lib/mockData";
 import { formatPrice } from "@/lib/format";
 import { formatCountdown } from "@/lib/format";
 import InstallAppButton, { useInstallPrompt } from "@/components/InstallAppButton";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
+import { formatDealLocation } from "@/lib/formatDealLocation";
+import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 
 // 헤더(점핑매니저 안내줄)의 실측 높이 — 아래 콘텐츠의 paddingTop 보정에 사용.
 // 2026-09-26 로컬 Playwright 실측 77.3px(360/390/430px 폭 동일) → 78로 올림.
@@ -103,7 +105,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
           title: d.title,
           category: (d.categories as unknown as { name: string } | null)?.name ?? "기타",
           region: (d.regions as unknown as { name: string } | null)?.name ?? "",
-          location: d.location ?? "",
+          location: formatDealLocation(((d.regions as unknown) as { name: string } | null)?.name, d.location),
           original_price: d.original_price,
           deal_price: d.deal_price,
           total_qty: d.total_qty,
@@ -267,7 +269,6 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
           </div>
           {g.items.map((d) => {
             const match = matches(d);
-            const color = categoryColors[d.category] ?? categoryColors["기타"];
             const cd = formatCountdown(d.closes_at);
             const pct = d.original_price ? Math.round(((d.original_price - d.deal_price) / d.original_price) * 100) : 0;
             return (
@@ -319,10 +320,10 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                     </div>
                   ) : (
                     <span
-                      className="rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={wideLayout ? { width: "100%", height: 120, fontSize: 32, background: color.bg } : { width: 64, height: 64, fontSize: 22, background: color.bg }}
+                      className="rounded-xl overflow-hidden flex-shrink-0 block"
+                      style={wideLayout ? { width: "100%", aspectRatio: "16/9" } : { width: 64, height: 64 }}
                     >
-                      {categoryIcons[d.category] ?? "🗂️"}
+                      <NoPhotoPlaceholder category={d.category} size={wideLayout ? "lg" : "sm"} />
                     </span>
                   )}
                   <span className="flex-1 min-w-0">
@@ -368,7 +369,6 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
             <span className="text-xs font-bold rounded-full" style={{ padding: "2px 8px", background: "#E9ECEF", color: "#495057" }}>예시</span>
           </div>
           {EXAMPLE_DEALS.map((d) => {
-            const color = categoryColors[d.category] ?? categoryColors["기타"];
             const pct = d.original_price ? Math.round(((d.original_price - d.deal_price) / d.original_price) * 100) : 0;
             return (
               <Link key={`example-${d.id}`} href={`/deals/example-${d.id}`} className="block w-full text-left" style={{ borderBottom: "1px solid #F1F3F5", padding: "14px 20px", opacity: 0.8 }}>
@@ -392,8 +392,8 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                       )}
                     </div>
                   ) : (
-                    <span className="rounded-xl flex items-center justify-center" style={{ width: "100%", height: 120, fontSize: 30, background: color.bg }}>
-                      {categoryIcons[d.category] ?? "🗂️"}
+                    <span className="rounded-xl overflow-hidden block" style={{ width: "100%", aspectRatio: "16/9" }}>
+                      <NoPhotoPlaceholder category={d.category} />
                     </span>
                   )}
                   <span className="flex-1 min-w-0">

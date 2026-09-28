@@ -9,6 +9,13 @@ import { mockDeals, categoryIcons, categoryColors, type Deal } from "@/lib/mockD
 import CountdownBadge from "@/components/CountdownBadge";
 import { formatPrice, percentOff } from "@/lib/format";
 import { SITE_URL } from "@/lib/siteUrl";
+import { formatDealLocation } from "@/lib/formatDealLocation";
+import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
+
+// 값이 없거나 공백뿐이면 섹션/행 자체를 그리지 않는다 (빈 공간 방지)
+function hasText(v: string | null | undefined): boolean {
+  return typeof v === "string" && v.trim() !== "";
+}
 
 export default function DealDetailPage() {
   return (
@@ -126,7 +133,7 @@ function DealDetailPageInner() {
           title: data.title,
           category: (data.categories as unknown as { name: string } | null)?.name ?? "기타",
           region: (data.regions as unknown as { name: string } | null)?.name ?? "",
-          location: data.location ?? "",
+          location: formatDealLocation(((data.regions as unknown) as { name: string } | null)?.name, data.location),
           original_price: data.original_price,
           deal_price: data.deal_price,
           total_qty: data.total_qty,
@@ -154,6 +161,7 @@ function DealDetailPageInner() {
 
   const images = deal.images ?? [];
   const heroImage = activeImage ?? images[0];
+  const hasManifest = Boolean(deal.manifest_items?.length && Object.keys(deal.manifest_items[0] ?? {}).length > 0);
 
   const remainPct = Math.round((deal.remaining_qty / deal.total_qty) * 100);
   const color = categoryColors[deal.category] ?? categoryColors["기타"];
@@ -293,10 +301,8 @@ function DealDetailPageInner() {
       </div>
 
       <div className="px-5 pt-4">
-        <div
-          className="h-[220px] relative rounded-2xl overflow-hidden"
-          style={heroImage ? {} : { background: `linear-gradient(135deg, ${color.solid}, #0B2540)` }}
-        >
+        <div className="h-[220px] relative rounded-2xl overflow-hidden">
+          {!heroImage && <NoPhotoPlaceholder category={deal.category} muted={deal.status === "closed"} />}
           {heroImage && (
             <button
               onClick={() => setLightboxOpen(true)}
@@ -358,9 +364,9 @@ function DealDetailPageInner() {
       </div>
 
       <div className="flex-1 p-5 flex flex-col gap-4" style={{ paddingBottom: "24px" }}>
-        {deal.video_url && (
+        {hasText(deal.video_url) && (
           <video
-            src={deal.video_url}
+            src={deal.video_url!}
             controls
             playsInline
             className="w-full rounded-2xl bg-black"
@@ -390,8 +396,10 @@ function DealDetailPageInner() {
           </div>
           <div className="flex items-center justify-between gap-2 mt-1">
             <span className="text-sm text-gray500">
-              <span className="line-through">{formatPrice(deal.original_price)}</span>
-              {deal.min_order_qty && ` · 최소주문 ${deal.min_order_qty}${deal.quantity_unit || "개"}`}
+              {deal.original_price > deal.deal_price && (
+                <span className="line-through">{formatPrice(deal.original_price)}</span>
+              )}
+              {deal.min_order_qty ? `${deal.original_price > deal.deal_price ? " · " : ""}최소주문 ${deal.min_order_qty}${deal.quantity_unit || "개"}` : null}
             </span>
             <button
               type="button"
@@ -427,10 +435,10 @@ function DealDetailPageInner() {
             [
               { k: "지역", v: deal.location },
               { k: "카테고리", v: deal.category },
-              deal.package_unit ? { k: "포장 단위", v: deal.package_unit } : null,
-              deal.spec ? { k: "규격", v: deal.spec } : null,
-              deal.origin ? { k: "원산지", v: deal.origin } : null,
-              deal.storage_condition ? { k: "보관조건", v: deal.storage_condition } : null,
+              hasText(deal.package_unit) ? { k: "포장 단위", v: deal.package_unit! } : null,
+              hasText(deal.spec) ? { k: "규격", v: deal.spec! } : null,
+              hasText(deal.origin) ? { k: "원산지", v: deal.origin! } : null,
+              hasText(deal.storage_condition) ? { k: "보관조건", v: deal.storage_condition! } : null,
               {
                 k: "수량",
                 v: `${deal.total_qty}${deal.quantity_unit || "개"} 중 ${deal.remaining_qty}${deal.quantity_unit || "개"} 남음`,
@@ -491,7 +499,7 @@ function DealDetailPageInner() {
           </div>
         )}
 
-        {deal.description && (
+        {hasText(deal.description) && (
           <div className="border-t border-gray200 pt-4">
             <div className="text-sm font-bold text-navy mb-2">상세 설명</div>
             <p className="text-sm text-gray500 leading-relaxed whitespace-pre-line">
@@ -502,14 +510,14 @@ function DealDetailPageInner() {
 
         {/* 2026-09-26: 혼합매물(리퀴데이션 팔레트) — 개별 사진 대신 PID#/구성품 목록으로
             신뢰도를 보완. 목록은 품목이 많을 수 있어 기본은 접어두고 펼쳐보게 함. */}
-        {(deal.pid || (deal.manifest_items && deal.manifest_items.length > 0)) && (
+        {(hasText(deal.pid) || hasManifest) && (
           <div className="border-t border-gray200 pt-4">
-            {deal.pid && (
+            {hasText(deal.pid) && (
               <div className="text-xs text-gray500 mb-2">
                 🧾 매니페스트 번호(PID#): <span className="font-mono font-bold text-navy">{deal.pid}</span>
               </div>
             )}
-            {deal.manifest_items && deal.manifest_items.length > 0 && (
+            {hasManifest && deal.manifest_items && (
               <>
                 <button
                   type="button"

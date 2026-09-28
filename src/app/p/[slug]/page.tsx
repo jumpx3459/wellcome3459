@@ -7,6 +7,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockDeals, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import { formatPrice } from "@/lib/format";
 import { getPartner } from "@/lib/partners";
+import { formatDealLocation } from "@/lib/formatDealLocation";
 
 const PREVIEW_COUNT = 4;
 
@@ -40,7 +41,7 @@ export default function PartnerDemoPage() {
           return {
             ...rec,
             category: (rec.categories as { name: string } | null)?.name ?? "기타",
-            location: (rec.regions as { name: string } | null)?.name ?? rec.location,
+            location: formatDealLocation((rec.regions as { name: string } | null)?.name, rec.location as string | null),
           } as unknown as Deal;
         })
       );
