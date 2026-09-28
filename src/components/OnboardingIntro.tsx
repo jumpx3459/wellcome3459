@@ -20,6 +20,9 @@ export default function OnboardingIntro({ logoAnimate = false }: { logoAnimate?:
     try {
       if (!localStorage.getItem(STORAGE_KEY)) {
         setVisible(true);
+        // 버튼 클릭(dismiss 등) 전에 창을 그냥 닫아도 "1회 노출"로 쳐야 하므로,
+        // 뜨는 시점에 바로 기록. 클릭 시 재기록은 중복이라 무해하게 그대로 둠.
+        localStorage.setItem(STORAGE_KEY, "1");
       }
     } catch {
       // localStorage 접근 불가 시 온보딩 생략
