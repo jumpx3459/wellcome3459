@@ -71,12 +71,29 @@ function LoginPageInner() {
 
   // 2026-09-28 (3): 이전에 로그인 성공했던 번호를 자동으로 채워줌 — 사용자가
   // 이미 입력을 시작했으면(phone 값 존재) 덮어쓰지 않도록 마운트 시 1회만.
+  // 2026-09-28 (4): 공용 PC/타인 기기에서 로그인하면 번호가 그 기기에 남는다는
+  // 지적 — 로그아웃 기능 자체가 회원 화면엔 아직 없어(관리자 화면에만 있음)
+  // "로그아웃 시 삭제"는 걸 데가 없어서, 대신 자동으로 채워진 번호 옆에 수동으로
+  // 지울 수 있는 링크를 노출. rememberedPhone은 "이 번호가 로컬에 저장된
+  // 값에서 왔다"는 표시로만 씀 — 지우기 링크 노출 여부 판단용.
+  const [rememberedPhone, setRememberedPhone] = useState(false);
   useEffect(() => {
     try {
       const saved = localStorage.getItem(LAST_PHONE_KEY);
-      if (saved) setPhone(saved);
+      if (saved) {
+        setPhone(saved);
+        setRememberedPhone(true);
+      }
     } catch {}
   }, []);
+
+  const forgetSavedPhone = () => {
+    try {
+      localStorage.removeItem(LAST_PHONE_KEY);
+    } catch {}
+    setPhone("");
+    setRememberedPhone(false);
+  };
 
   // 인증 성공(또는 이미 로그인된 세션 발견) 시, 실제 members row가 있는지 확인해서
   // 있으면 바로 이동 — 없으면 화면에 "아직 가입 안 된 번호" 안내만 보여주고
@@ -281,7 +298,14 @@ function LoginPageInner() {
 
             {authMode === "otp" && (
               <>
-                <div className="text-sm font-bold mt-4.5 mb-2" style={{ color: "#0B2540" }}>휴대폰 번호</div>
+                <div className="flex items-center justify-between mt-4.5 mb-2">
+                  <span className="text-sm font-bold" style={{ color: "#0B2540" }}>휴대폰 번호</span>
+                  {rememberedPhone && !authUserId && (
+                    <button type="button" onClick={forgetSavedPhone} className="text-xs font-bold underline" style={{ color: "#9AA3AD" }}>
+                      다른 번호세요? 지우기
+                    </button>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <input
                     className="flex-1 min-w-0 rounded-xl outline-none"
@@ -340,7 +364,14 @@ function LoginPageInner() {
 
             {authMode === "password" && !authUserId && (
               <>
-                <div className="text-sm font-bold mt-4.5 mb-2" style={{ color: "#0B2540" }}>휴대폰 번호</div>
+                <div className="flex items-center justify-between mt-4.5 mb-2">
+                  <span className="text-sm font-bold" style={{ color: "#0B2540" }}>휴대폰 번호</span>
+                  {rememberedPhone && (
+                    <button type="button" onClick={forgetSavedPhone} className="text-xs font-bold underline" style={{ color: "#9AA3AD" }}>
+                      다른 번호세요? 지우기
+                    </button>
+                  )}
+                </div>
                 <input
                   className="w-full rounded-xl outline-none"
                   style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: 15, fontVariantNumeric: "tabular-nums" }}
