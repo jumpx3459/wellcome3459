@@ -9,6 +9,12 @@ import { fmtLeft } from "@/lib/format";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 import { NAV_HEIGHT } from "@/components/BottomNav";
 
+// 2026-09-28 (3): "비밀번호 로그인도 결국 번호를 매번 입력해야 하냐"는 지적 —
+// phone+password는 Supabase Auth 구조상 식별자(번호) 없이는 로그인이 불가능해
+// 번호 자체를 없앨 수는 없지만, 로그인 성공 시 이 기기에 번호를 기억해뒀다가
+// 다음 방문부터 자동으로 채워주면 체감상 "비밀번호만 입력"하는 경험이 된다.
+const LAST_PHONE_KEY = "dj_last_phone";
+
 // 기존 회원 전용 경량 로그인 — 전화번호+OTP만 물어보고, 카테고리/지역/채널/약관
 // 같은 가입 전용 항목은 다시 안 물어봅니다. signup/page.tsx의 4단계(전화인증)와
 // 같은 sendOtp()/verifyOtp()를 그대로 재사용하며, 회원가입 위저드 자체는
@@ -61,6 +67,15 @@ function LoginPageInner() {
       if (session?.user?.id) setAuthUserId(session.user.id);
     });
     return () => sub.subscription.unsubscribe();
+  }, []);
+
+  // 2026-09-28 (3): 이전에 로그인 성공했던 번호를 자동으로 채워줌 — 사용자가
+  // 이미 입력을 시작했으면(phone 값 존재) 덮어쓰지 않도록 마운트 시 1회만.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(LAST_PHONE_KEY);
+      if (saved) setPhone(saved);
+    } catch {}
   }, []);
 
   // 인증 성공(또는 이미 로그인된 세션 발견) 시, 실제 members row가 있는지 확인해서
@@ -116,6 +131,9 @@ function LoginPageInner() {
       setOtpCode("");
       return;
     }
+    try {
+      localStorage.setItem(LAST_PHONE_KEY, phone);
+    } catch {}
     // authUserId는 위 onAuthStateChange 구독이 세션 발급과 동시에 채워줌
   };
 
@@ -137,6 +155,9 @@ function LoginPageInner() {
       setPasswordError("번호 또는 비밀번호가 올바르지 않아요.");
       return;
     }
+    try {
+      localStorage.setItem(LAST_PHONE_KEY, phone);
+    } catch {}
     // authUserId는 위 onAuthStateChange 구독이 세션 발급과 동시에 채워줌 (OTP 흐름과 동일)
   };
 
