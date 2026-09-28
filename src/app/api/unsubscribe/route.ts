@@ -45,6 +45,15 @@ export async function POST(req: NextRequest) {
   }
   const memberId = userData.user.id;
 
+  if (action === "push_off") {
+    // 플래그를 먼저 세워야, 다른 기기에 남은 브라우저 구독이 마이페이지에서 조용히
+    // 재저장되는 걸 막을 수 있다(/api/push/subscribe가 이 값을 본다).
+    const { error: optError } = await supabaseAdmin.from("members").update({ push_opt_out: true }).eq("id", memberId);
+    if (optError) {
+      return NextResponse.json({ error: "알림 해지 중 오류가 발생했어요." }, { status: 500 });
+    }
+  }
+
   const { error: pushError } = await supabaseAdmin.from("push_subscriptions").delete().eq("member_id", memberId);
   if (pushError) {
     return NextResponse.json({ error: "알림 해지 중 오류가 발생했어요." }, { status: 500 });

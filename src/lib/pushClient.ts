@@ -89,20 +89,27 @@ export async function getPushState(): Promise<PushState> {
   }
 }
 
-// 구독 정보를 서버에 저장합니다. 실패하면 false — 호출부에서 반드시 확인할 것
+// 구독 정보를 서버에 저장합니다. 결과를 호출부에서 반드시 확인할 것
 // (예전엔 결과를 안 봐서 저장이 실패해도 "알림 켜짐"처럼 보였음).
+// explicit=true는 사용자가 직접 알림을 켠 경우 — 서버의 "알림 끔"(push_opt_out)을 해제한다.
+// explicit 없이 부르면(조용한 재저장) 알림을 끈 회원은 저장되지 않고 "opted_out"이 온다.
+export type SaveResult = "saved" | "opted_out" | "failed";
+
 export async function savePushSubscription(
   subscription: PushSubscriptionJSON,
-  accessToken: string
-): Promise<boolean> {
+  accessToken: string,
+  options: { explicit?: boolean } = {}
+): Promise<SaveResult> {
   try {
     const res = await fetch("/api/push/subscribe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, subscription }),
+      body: JSON.stringify({ accessToken, subscription, explicit: options.explicit === true ? true : undefined }),
     });
-    return res.ok;
+    if (!res.ok) return "failed";
+    const data = await res.json().catch(() => ({}));
+    return data.skipped === "opted_out" ? "opted_out" : "saved";
   } catch {
-    return false;
+    return "failed";
   }
 }

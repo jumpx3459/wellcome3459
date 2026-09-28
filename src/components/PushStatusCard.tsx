@@ -7,7 +7,7 @@ import { SITE_URL } from "@/lib/siteUrl";
 // 2026-09-28: 마이페이지 알림 상태 카드. 예전엔 푸시 구독이 가입 화면에서만 가능해서
 // 기존 회원이 알림을 다시 켤 곳이 없었음(구독자 0명). 권한 요청은 반드시 버튼 클릭
 // 핸들러 안에서만 한다 — 마운트 시엔 getPushState()로 현재 상태만 조회.
-type CardState = "loading" | "unsupported" | "noncanonical" | "denied" | "off" | "on" | "saveFailed";
+type CardState = "loading" | "unsupported" | "noncanonical" | "denied" | "off" | "on" | "optedOut" | "saveFailed";
 
 export default function PushStatusCard({ accessToken }: { accessToken: string | null }) {
   const [state, setState] = useState<CardState>("loading");
@@ -23,15 +23,16 @@ export default function PushStatusCard({ accessToken }: { accessToken: string | 
         return;
       }
       // 기기엔 구독이 있는데 DB엔 없는 경우(가입 때 저장 실패 등) 복구용으로 조용히 1회 재저장.
-      // API가 endpoint 기준 upsert라 이미 있으면 그대로 덮어쓸 뿐이다.
+      // API가 endpoint 기준 upsert라 이미 있으면 그대로 덮어쓸 뿐이다. 단 /unsubscribe에서
+      // "알림만 끄기"를 한 회원이면 서버가 저장을 건너뛰고 opted_out을 준다(다른 기기에서 끈 경우).
       if (!accessToken) {
         setState("on");
         return;
       }
       if (resynced.current) return;
       resynced.current = true;
-      const ok = await savePushSubscription(s.subscription, accessToken);
-      if (!cancelled) setState(ok ? "on" : "saveFailed");
+      const saved = await savePushSubscription(s.subscription, accessToken);
+      if (!cancelled) setState(saved === "saved" ? "on" : saved === "opted_out" ? "optedOut" : "saveFailed");
     });
     return () => {
       cancelled = true;
@@ -52,8 +53,8 @@ export default function PushStatusCard({ accessToken }: { accessToken: string | 
         setState("on");
         return;
       }
-      const ok = await savePushSubscription(r.subscription, accessToken);
-      setState(ok ? "on" : "saveFailed");
+      const saved = await savePushSubscription(r.subscription, accessToken, { explicit: true });
+      setState(saved === "failed" ? "saveFailed" : "on");
     } catch {
       setState("saveFailed");
     } finally {
@@ -77,6 +78,7 @@ export default function PushStatusCard({ accessToken }: { accessToken: string | 
             {state === "denied" && "브라우저에서 알림이 차단돼 있어요"}
             {state === "noncanonical" && "이 주소에서는 알림을 켤 수 없어요"}
             {state === "unsupported" && "이 브라우저는 기기 알림을 지원하지 않아요"}
+            {state === "optedOut" && "알림을 끈 상태예요"}
             {state === "saveFailed" && "알림 등록에 실패했어요"}
           </span>
         </span>
@@ -85,7 +87,7 @@ export default function PushStatusCard({ accessToken }: { accessToken: string | 
             알림 받는 중
           </span>
         )}
-        {(state === "off" || state === "saveFailed") && (
+        {(state === "off" || state === "optedOut" || state === "saveFailed") && (
           <button
             type="button"
             onClick={enable}
@@ -93,7 +95,7 @@ export default function PushStatusCard({ accessToken }: { accessToken: string | 
             className="flex-shrink-0 rounded-full font-bold text-white disabled:opacity-60"
             style={{ fontSize: 13, padding: "8px 14px", background: "var(--color-brandOrange)" }}
           >
-            {busy ? "켜는 중…" : state === "saveFailed" ? "다시 시도" : "알림 켜기"}
+            {busy ? "켜는 중…" : state === "saveFailed" ? "다시 시도" : state === "optedOut" ? "다시 켜기" : "알림 켜기"}
           </button>
         )}
       </div>

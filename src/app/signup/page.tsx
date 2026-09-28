@@ -365,8 +365,9 @@ function SignupPageInner() {
         // 열릴 때 조용히 다시 저장한다(PushStatusCard).
         const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData.session?.access_token;
-        const saved = token ? await savePushSubscription(pushResult.subscription, token) : false;
-        if (!saved) debugLog(`[signup] push subscription save failed token=${!!token}`);
+        // 가입 화면에서 앱 푸시를 켜고 제출한 것 자체가 명시적 동의라 explicit
+        const saved = token ? await savePushSubscription(pushResult.subscription, token, { explicit: true }) : "failed";
+        if (saved !== "saved") debugLog(`[signup] push subscription save failed token=${!!token}`);
       }
 
       try {

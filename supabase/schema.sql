@@ -872,3 +872,9 @@ create index if not exists urgent_notices_region_id_idx on public.urgent_notices
 -- 긴급 공지 알림 opt-in — 기존 member_categories/member_regions(재고 매물 매칭)와는
 -- 완전히 별개. 기본값 false로, 회원이 마이페이지에서 직접 켜야만 대상이 된다.
 alter table public.members add column if not exists notice_alerts_opt_in boolean not null default false;
+
+-- 2026-09-28: 푸시 알림 끄기 존중 — /unsubscribe "알림만 끄기"가 서버 구독만 지우면
+-- 다른 기기에 남은 브라우저 구독을 마이페이지 알림 카드가 조용히 재저장해 알림이 되살아남.
+-- true면 조용한 재저장(/api/push/subscribe, explicit 없음)은 건너뛰고, 사용자가 [알림 켜기]를
+-- 직접 누를 때(explicit=true)만 false로 되돌린다. sendDealPush/sendNoticePush도 이 회원을 제외.
+alter table public.members add column if not exists push_opt_out boolean not null default false;

@@ -56,8 +56,13 @@ export async function sendDealPush(dealId: string) {
     (regionRows ?? []).filter((r) => r.region_id === deal.region_id).map((r) => r.member_id)
   );
 
+  // 알림 끄기(push_opt_out)한 회원 제외 — 끌 때 구독도 지우지만 이중 안전장치.
+  // 대상 id를 .in()으로 또 넘기면 URL이 길어지니, 수가 적은 opt-out 쪽을 따로 조회한다.
+  const { data: optedOutRows } = await supabaseAdmin.from("members").select("id").eq("push_opt_out", true);
+  const optedOut = new Set((optedOutRows ?? []).map((m) => m.id));
+
   const memberIds = catMemberIds.filter(
-    (id) => regionMatchIds.has(id) || !membersWithAnyRegion.has(id)
+    (id) => (regionMatchIds.has(id) || !membersWithAnyRegion.has(id)) && !optedOut.has(id)
   );
 
   if (memberIds.length === 0) {
@@ -129,7 +134,8 @@ export async function sendNoticePush(noticeId: string) {
   const { data: optedIn } = await supabaseAdmin
     .from("members")
     .select("id")
-    .eq("notice_alerts_opt_in", true);
+    .eq("notice_alerts_opt_in", true)
+    .eq("push_opt_out", false);
 
   let memberIds = (optedIn ?? []).map((m) => m.id);
 

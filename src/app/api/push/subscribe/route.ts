@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "정식 주소에서만 알림을 켤 수 있어요." }, { status: 403 });
   }
 
-  const { accessToken, subscription } = await req.json();
+  const { accessToken, subscription, explicit } = await req.json();
   if (!accessToken || !subscription?.endpoint || !subscription.keys?.p256dh || !subscription.keys?.auth) {
     return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });
   }
@@ -37,9 +37,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "인증이 만료됐어요." }, { status: 401 });
   }
 
+  // explicit=true: 사용자가 [알림 켜기]를 직접 누름 → 알림 끄기 상태 해제 후 저장.
+  // explicit 없음: 마이페이지의 조용한 재저장 → 알림을 끈 회원이면 저장하지 않는다.
+  const memberId = userData.user.id;
+  if (explicit === true) {
+    const { error: optError } = await supabaseAdmin.from("members").update({ push_opt_out: false }).eq("id", memberId);
+    if (optError) {
+      return NextResponse.json({ error: optError.message }, { status: 500 });
+    }
+  } else {
+    const { data: member, error: memberError } = await supabaseAdmin
+      .from("members")
+      .select("push_opt_out")
+      .eq("id", memberId)
+      .maybeSingle();
+    if (memberError) {
+      return NextResponse.json({ error: memberError.message }, { status: 500 });
+    }
+    if (member?.push_opt_out) {
+      return NextResponse.json({ ok: true, skipped: "opted_out" });
+    }
+  }
+
   const { error } = await supabaseAdmin.from("push_subscriptions").upsert(
     {
-      member_id: userData.user.id,
+      member_id: memberId,
       endpoint: subscription.endpoint,
       p256dh: subscription.keys.p256dh,
       auth_key: subscription.keys.auth,
