@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
+import { matchesConditions } from "@/lib/dealMatching";
 
 const vapidPublic = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 const vapidPrivate = process.env.VAPID_PRIVATE_KEY;
@@ -51,18 +52,25 @@ export async function sendDealPush(dealId: string) {
     .select("member_id, region_id")
     .in("member_id", catMemberIds.length ? catMemberIds : ["00000000-0000-0000-0000-000000000000"]);
 
-  const membersWithAnyRegion = new Set((regionRows ?? []).map((r) => r.member_id));
-  const regionMatchIds = new Set(
-    (regionRows ?? []).filter((r) => r.region_id === deal.region_id).map((r) => r.member_id)
-  );
+  const regionsByMember = new Map<string, number[]>();
+  for (const r of regionRows ?? []) {
+    regionsByMember.set(r.member_id, [...(regionsByMember.get(r.member_id) ?? []), r.region_id]);
+  }
 
   // 알림 끄기(push_opt_out)한 회원 제외 — 끌 때 구독도 지우지만 이중 안전장치.
   // 대상 id를 .in()으로 또 넘기면 URL이 길어지니, 수가 적은 opt-out 쪽을 따로 조회한다.
   const { data: optedOutRows } = await supabaseAdmin.from("members").select("id").eq("push_opt_out", true);
   const optedOut = new Set((optedOutRows ?? []).map((m) => m.id));
 
+  // 매칭 규칙은 회원 홈(AlertInboxHome)과 공유 — src/lib/dealMatching.ts.
+  // catMemberIds는 이미 이 카테고리를 고른 회원이라 카테고리 목록은 [deal.category_id]로 충분.
   const memberIds = catMemberIds.filter(
-    (id) => (regionMatchIds.has(id) || !membersWithAnyRegion.has(id)) && !optedOut.has(id)
+    (id) =>
+      matchesConditions(
+        { category: deal.category_id, region: deal.region_id },
+        [deal.category_id],
+        regionsByMember.get(id) ?? []
+      ) && !optedOut.has(id)
   );
 
   if (memberIds.length === 0) {

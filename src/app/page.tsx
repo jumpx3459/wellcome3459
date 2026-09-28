@@ -17,6 +17,7 @@ import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 
 const TODAY_BADGE_THRESHOLD = 5; // 이보다 적으면 "오늘 N건" 배너를 아예 숨김 (빈약한 숫자 노출 방지)
 const BUSINESS_COUNT_THRESHOLD = 30; // 이보다 적으면 사업자 수 대신 무숫자 카피로 대체 (빈약한 숫자 노출 방지)
+const AVG_DISCOUNT_MIN_DEALS = 3; // 할인 매물이 이보다 적으면 평균 할인율을 표시하지 않음 (표본이 너무 적음)
 
 const EXAMPLE_DEALS = mockDeals.filter((d) => d.status !== "closed").slice(0, 3);
 
@@ -25,7 +26,13 @@ export default function Home() {
   const [businessCount, setBusinessCount] = useState(0);
   const [preview, setPreview] = useState<Deal[]>(EXAMPLE_DEALS);
   const [isExample, setIsExample] = useState(true);
-  const [isMember, setIsMember] = useState(false);
+  // "unknown" = 세션 확인 전. 비회원 홈 전용 조회는 "guest"로 확정된 뒤에만 실행한다
+  // (예전엔 회원도 오늘 건수·미리보기·public-stats를 매번 조회했음).
+  const [memberState, setMemberState] = useState<"unknown" | "member" | "guest">(
+    isSupabaseConfigured ? "unknown" : "guest"
+  );
+  const isMember = memberState === "member";
+  const [avgDiscount, setAvgDiscount] = useState<number | null>(null);
   const [signupPending, setSignupPending] = useState(false);
   const [installDismissed, setInstallDismissed] = useState(false);
   // 2026-09-27: 로고 바운스(animate-logo-jump)가 스플래시(1.8초)와 동시에
@@ -45,7 +52,7 @@ export default function Home() {
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
     supabase.auth.getSession().then(({ data }) => {
-      setIsMember(!!data.session?.user);
+      setMemberState(data.session?.user ? "member" : "guest");
     });
   }, []);
 
@@ -59,20 +66,23 @@ export default function Home() {
   // 2026-09-27: 신뢰 지표용 인증 사업자 수 — 개인정보 없이 숫자만 내려주는
   // 공개 API(/api/public-stats)에서 가져옴 (members 테이블 RLS는 본인만 조회 가능).
   useEffect(() => {
+    if (memberState !== "guest") return;
     fetch("/api/public-stats")
       .then((res) => res.json())
       .then((data) => setBusinessCount(data.businessCount ?? 0))
       .catch(() => {});
-  }, []);
+  }, [memberState]);
 
   useEffect(() => {
+    if (memberState !== "guest") return; // 회원 홈(AlertInboxHome)은 자체 조회
     if (!isSupabaseConfigured || !supabase) return; // 데모 모드: 예시 매물 그대로 노출
 
     (async () => {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
+      const nowIso = new Date().toISOString();
 
-      const [{ count }, { data: previewData }] = await Promise.all([
+      const [{ count }, { data: previewData }, { data: priceRows }] = await Promise.all([
         supabase
           .from("deals")
           .select("id", { count: "exact", head: true })
@@ -87,9 +97,23 @@ export default function Home() {
           .gt("closes_at", new Date().toISOString())
           .order("created_at", { ascending: false })
           .limit(3),
+        // 온보딩 "평균 할인율" — 진행 중 매물 중 정상가가 판매가보다 높은 것만 평균
+        supabase
+          .from("deals")
+          .select("original_price, deal_price")
+          .eq("status", "active")
+          .gt("closes_at", nowIso),
       ]);
 
       setTodayCount(count ?? 0);
+      const discounts = (priceRows ?? [])
+        .filter((d) => d.original_price && d.original_price > d.deal_price)
+        .map((d) => (d.original_price - d.deal_price) / d.original_price);
+      setAvgDiscount(
+        discounts.length >= AVG_DISCOUNT_MIN_DEALS
+          ? Math.round((discounts.reduce((a, b) => a + b, 0) / discounts.length) * 100)
+          : null
+      );
       if (previewData && previewData.length > 0) {
         setPreview(
           previewData.map((d) => ({
@@ -115,11 +139,19 @@ export default function Home() {
       // 실제 매물이 아직 없으면 예시(EXAMPLE_DEALS)를 그대로 보여줘서
       // "이런 특가 알림이 온다"는 감을 주고, 빈 화면으로 밋밋해지는 걸 막습니다.
     })();
-  }, []);
+  }, [memberState]);
+
+  // 온보딩 통계는 확인된 실제 값만 — 오늘 등록은 히어로 배지와 같은 기준(5건 이상), 평균 할인율은
+  // 할인 매물 3건 이상일 때만. "평균 알림 속도"는 측정 데이터가 없어 표시하지 않음.
+  const onboardingStats = [
+    todayCount >= TODAY_BADGE_THRESHOLD ? { value: `${todayCount}건`, label: "오늘 등록" } : null,
+    avgDiscount !== null && avgDiscount > 0 ? { value: `평균 ${avgDiscount}%`, label: "할인율" } : null,
+  ].filter((s): s is { value: string; label: string } => s !== null);
 
   return (
     <SplashScreen onFinish={() => setLogoAnimate(true)}>
-    <OnboardingIntro logoAnimate={logoAnimate} isMember={isMember} />
+    {/* 세션 확인 전(unknown)엔 회원일 수도 있어 온보딩을 띄우지 않음 */}
+    <OnboardingIntro logoAnimate={logoAnimate} isMember={memberState !== "guest"} stats={onboardingStats} />
     {signupPending && (
       <Link
         href="/signup"

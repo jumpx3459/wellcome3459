@@ -10,6 +10,8 @@ import InstallAppButton, { useInstallPrompt } from "@/components/InstallAppButto
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
+import { matchesConditions } from "@/lib/dealMatching";
+import { EXAMPLE_DEALS, shouldShowExamples } from "@/lib/exampleDeals";
 
 // 헤더(점핑매니저 안내줄)의 실측 높이 — 아래 콘텐츠의 paddingTop 보정에 사용.
 // 2026-09-26 로컬 Playwright 실측 77.3px(360/390/430px 폭 동일) → 78로 올림.
@@ -20,8 +22,9 @@ const INBOX_HEADER_HEIGHT = 83;
 const INBOX_HEADER_GAP = 14;
 
 const INSTALL_DISMISS_KEY = "dj_home_install_dismissed";
-const ALERT_EXAMPLE_THRESHOLD = 5; // 실제 매칭 매물이 이보다 적을 때만 예시 섹션 노출
-const EXAMPLE_DEALS = mockDeals.filter((d) => d.status !== "closed").slice(0, 4);
+// 2026-09-28: 회원 홈 = 내 조건에 맞는 진행 중 매물만 (전체는 /deals). 매칭 규칙은 푸시 발송과
+// 같은 matchesConditions (src/lib/dealMatching.ts). 한 번에 가져오는 최대 건수.
+const INBOX_LIMIT = 50;
 
 type FeedGroup = { label: string; items: Deal[] };
 
@@ -50,6 +53,8 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
   const [categories, setCategories] = useState<string[]>([]);
   const [regions, setRegions] = useState<string[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [outsideCount, setOutsideCount] = useState(0); // 내 조건 밖 진행 중 매물 수
   const [showInstall, setShowInstall] = useState(true);
   const { canInstall, promptInstall } = useInstallPrompt();
   const [, setTick] = useState(0);
@@ -68,26 +73,53 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) {
       setDeals(mockDeals.filter((d) => d.status !== "closed"));
+      setLoaded(true);
       return;
     }
     (async () => {
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData.user?.id;
-      if (!userId) return;
+      if (!userId) {
+        setLoaded(true);
+        return;
+      }
 
-      const [{ data: catRows }, { data: regRows }, { data: dealRows }] = await Promise.all([
-        supabase.from("member_categories").select("categories(name)").eq("member_id", userId),
-        supabase.from("member_regions").select("regions(name)").eq("member_id", userId),
-        supabase
-          .from("deals")
-          .select(
-            "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, closes_at, created_at, location, images, video_url, origin, min_order_qty, categories(name), regions(name)"
-          )
-          .eq("status", "active")
-          .gt("closes_at", new Date().toISOString())
-          .order("created_at", { ascending: false })
-          .limit(20),
+      const [{ data: catRows }, { data: regRows }] = await Promise.all([
+        supabase.from("member_categories").select("category_id, categories(name)").eq("member_id", userId),
+        supabase.from("member_regions").select("region_id, regions(name)").eq("member_id", userId),
       ]);
+      const catIds = (catRows ?? []).map((r) => r.category_id as number);
+      const regIds = (regRows ?? []).map((r) => r.region_id as number);
+      const nowIso = new Date().toISOString();
+
+      // 전체 진행 중 매물 수(내 조건 밖 개수 계산용)와, 조건 매칭 매물을 DB에서 바로 걸러 조회.
+      // 카테고리를 하나도 안 고른 회원은 매칭 매물이 없음(푸시도 안 감) — 조회 생략.
+      const totalQuery = supabase
+        .from("deals")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "active")
+        .gt("closes_at", nowIso);
+      let matchQuery = supabase
+        .from("deals")
+        .select(
+          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, closes_at, created_at, location, images, video_url, origin, min_order_qty, category_id, region_id, categories(name), regions(name)",
+          { count: "exact" }
+        )
+        .eq("status", "active")
+        .gt("closes_at", nowIso)
+        .in("category_id", catIds)
+        .order("created_at", { ascending: false })
+        .limit(INBOX_LIMIT);
+      if (regIds.length > 0) matchQuery = matchQuery.in("region_id", regIds);
+      const [{ count: totalCount }, matchRes] = await Promise.all([
+        totalQuery,
+        catIds.length > 0 ? matchQuery : Promise.resolve({ data: [], count: 0 }),
+      ]);
+      // DB 필터와 별개로 같은 규칙 함수로 한 번 더 확인 (푸시 발송 기준과 어긋나지 않게)
+      const dealRows = (matchRes.data ?? []).filter((d) =>
+        matchesConditions({ category: d.category_id as number, region: d.region_id as number }, catIds, regIds)
+      );
+      setOutsideCount(Math.max(0, (totalCount ?? 0) - (matchRes.count ?? dealRows.length)));
 
       setCategories(
         (catRows ?? [])
@@ -119,6 +151,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
           min_order_qty: d.min_order_qty ?? null,
         }))
       );
+      setLoaded(true);
     })();
   }, []);
 
@@ -132,10 +165,6 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
       ? "전 지역"
       : regions.slice(0, 2).join("·") + (regions.length > 2 ? ` 외 ${regions.length - 2}` : "");
   const myCondText = `${condCats} · ${condRegions}`;
-  const estAlertsWide = Math.max(2, categories.length * 4 + (regions.length === 0 ? 6 : regions.length * 2)) + 14;
-
-  const matches = (d: Deal) =>
-    categories.length > 0 && categories.includes(d.category) && (regions.length === 0 || regions.includes(d.region));
 
   const [viewer, setViewer] = useState<{ images: string[]; video: string | null; index: number } | null>(null);
 
@@ -213,7 +242,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                   생기는 걸 확인 — 제목 폭·바 높이를 그대로 지키기 위해 태그는
                   다시 둘째 줄로 되돌리되, 그 줄 안에서만 justify-end로 우측 정렬. */}
               <div className="font-display truncate" style={{ fontSize: 18, color: "#fff" }}>
-                {deals.length > 0 ? `오늘 긴급매물 ${deals.length}건 떴어요` : "오늘의 긴급매물"}
+                {deals.length > 0 ? `내 조건 긴급매물 ${deals.length}건` : "내 조건 긴급매물"}
               </div>
               <div className="flex justify-end">
                 <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
@@ -268,7 +297,6 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
             <span className="font-mono font-bold" style={{ fontSize: 11, color: "#6B7480" }}>{g.items.length}건</span>
           </div>
           {g.items.map((d) => {
-            const match = matches(d);
             const cd = formatCountdown(d.closes_at);
             const pct = d.original_price ? Math.round(((d.original_price - d.deal_price) / d.original_price) * 100) : 0;
             return (
@@ -276,15 +304,9 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                 key={d.id}
                 href={`/deals/${d.id}`}
                 className="block w-full text-left"
-                style={{ borderBottom: "1px solid #F1F3F5", padding: "14px 20px", background: match ? "#FFFCF8" : "#fff" }}
+                style={{ borderBottom: "1px solid #F1F3F5", padding: "14px 20px", background: "#fff" }}
               >
                 <div className="flex items-center gap-1.5" style={{ marginBottom: 8 }}>
-                  <span
-                    className="font-black rounded"
-                    style={{ fontSize: 11.5, padding: "3px 8px", background: match ? "#FDEEE8" : "#F1F3F5", color: match ? "#E25100" : "#6B7480" }}
-                  >
-                    {match ? "내 조건 매칭" : "추천"}
-                  </span>
                   <span style={{ fontSize: 12, color: "#6B7480" }}>{d.location}</span>
                   <span className="font-mono font-bold ml-auto" style={{ fontSize: 12, color: cd.urgent ? "var(--color-urgent)" : "#6B7480" }}>
                     ⏱ {cd.label}
@@ -355,13 +377,34 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
         </div>
       ))}
 
-      {groups.length === 0 && (
-        <div className="text-center" style={{ padding: "48px 20px", color: "#6B7480", fontSize: 14 }}>
-          아직 조건에 맞는 매물이 없어요. 매물이 뜨면 가장 먼저 알려드릴게요.
+      {loaded && groups.length === 0 && (
+        <div className="text-center" style={{ padding: "40px 20px 28px" }}>
+          <p className="font-bold" style={{ fontSize: 15, color: "#1A1F26" }}>
+            내 조건에 맞는 진행 중 매물이 없어요
+          </p>
+          <p className="mt-1" style={{ fontSize: 13, color: "#6B7480" }}>
+            조건에 맞는 매물이 올라오면 가장 먼저 알려드릴게요.
+          </p>
+          <div className="flex justify-center gap-2 mt-4">
+            <Link
+              href="/mypage#alerts"
+              className="font-bold rounded-full"
+              style={{ fontSize: 13, padding: "9px 16px", border: "1.5px solid #E25100", color: "#E25100" }}
+            >
+              조건 넓히기
+            </Link>
+            <Link
+              href="/deals"
+              className="font-bold rounded-full text-white"
+              style={{ fontSize: 13, padding: "9px 16px", background: "#0B2540" }}
+            >
+              전체 매물 보기
+            </Link>
+          </div>
         </div>
       )}
 
-      {isSupabaseConfigured && deals.length < ALERT_EXAMPLE_THRESHOLD && (
+      {loaded && shouldShowExamples(deals.length, isSupabaseConfigured) && (
         <div>
           <div className="flex items-center gap-2" style={{ padding: "18px 20px 9px" }}>
             <span className="font-black" style={{ fontSize: 13, color: "#0B2540", letterSpacing: "0.02em" }}>💡 이런 매물이 올라와요</span>
@@ -424,14 +467,16 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
         </div>
       )}
 
-      <div style={{ padding: "22px 20px 30px" }}>
-        <Link href="/mypage#alerts" className="flex items-center justify-between">
-          <span className="text-xs" style={{ color: "#9AA3AD" }}>
-            조건을 넓히면 주 {estAlertsWide}건까지 받을 수 있어요
-          </span>
-          <span className="text-xs font-bold flex-shrink-0" style={{ color: "#6B7480" }}>넓히기 →</span>
-        </Link>
-      </div>
+      {/* 예전엔 "조건을 넓히면 주 N건" 추정치(카테고리 수로 계산한 확인 안 된 숫자)를 보여줬음 —
+          실제 개수인 "내 조건 밖 진행 중 매물"로 교체, 0건이면 숨김. */}
+      {loaded && outsideCount > 0 && (
+        <div style={{ padding: "22px 20px 30px" }}>
+          <Link href="/deals" className="flex items-center justify-between gap-3">
+            <span style={{ fontSize: 13, color: "#6B7480" }}>내 조건 밖 진행 중 매물 {outsideCount}건</span>
+            <span className="font-bold flex-shrink-0" style={{ fontSize: 13, color: "#E25100" }}>전체 매물 보기 →</span>
+          </Link>
+        </div>
+      )}
 
       {viewer && (
         <div

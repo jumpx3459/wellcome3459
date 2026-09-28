@@ -8,18 +8,18 @@ const STORAGE_KEY = "dj_onboarded"; // "1" = 명시적 액션(가입 시작/로�
 const LAST_SHOWN_KEY = "dj_onboarding_last_shown"; // 버튼 없이 그냥 닫힌 경우 재노출 쿨다운 계산용
 const RESHOW_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000; // 3일
 
-const STATS = [
-  { value: "17건", label: "오늘 등록" },
-  { value: "평균 41%", label: "할인율" },
-  { value: "3분", label: "평균 알림 속도" },
-];
+// 2026-09-28: 예전엔 "17건 / 평균 41% / 3분" 고정값이었음 — 실제 값만 부모(page.tsx)에서 받아
+// 표시하고, 기준 미달이거나 측정할 수 없는 항목(알림 속도)은 빠진다. 하나도 없으면 줄 자체를 숨김.
+export type OnboardingStat = { value: string; label: string };
 
 export default function OnboardingIntro({
   logoAnimate = false,
   isMember = false,
+  stats = [],
 }: {
   logoAnimate?: boolean;
   isMember?: boolean;
+  stats?: OnboardingStat[];
 }) {
   const router = useRouter();
   const [visible, setVisible] = useState(false);
@@ -148,8 +148,9 @@ export default function OnboardingIntro({
       <div className="flex flex-col gap-3">
         {/* 2026-09-26 (9): 통계 카드가 CTA 버튼과 시각적 무게가 비슷해 캐릭터/CTA보다
             우선순위가 높아 보이던 문제 — 패딩·폰트를 줄여 보조 정보로 격하. */}
+        {stats.length > 0 && (
         <div className="flex gap-1.5">
-          {STATS.map((s) => (
+          {stats.map((s) => (
             <div
               key={s.label}
               className="flex-1 rounded-xl text-center"
@@ -164,6 +165,7 @@ export default function OnboardingIntro({
             </div>
           ))}
         </div>
+        )}
         <button
           onClick={startSignup}
           className="w-full font-bold rounded-2xl"

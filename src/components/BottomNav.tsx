@@ -23,34 +23,73 @@ const ALERT_TAB = { href: "/signup", label: "알림", icon: BellIcon, lib: "phos
 const SHARE_TAB = { href: "/mypage#referral", label: "공유", icon: HandshakeIcon, lib: "phosphor" as const };
 const MY_TAB = { href: "/mypage", label: "MY", icon: UserIcon, lib: "phosphor" as const };
 
+type Tab = typeof MY_TAB | (typeof BASE_TABS)[number];
+
 export default function BottomNav() {
   const pathname = usePathname();
-  const [isMember, setIsMember] = useState(false);
+  // 2026-09-28: 세션 확인 전엔 "unknown" — 예전엔 초기값 false라 회원도 잠깐 "알림" 탭이
+  // 보였다가 "공유"로 바뀌었음. 확인 전엔 4번째 칸을 중립 자리표시로 둔다.
+  const [auth, setAuth] = useState<"unknown" | "member" | "guest">(isSupabaseConfigured ? "unknown" : "guest");
+  // usePathname엔 #이 없어서 해시를 따로 추적 (/mypage#referral에서만 "공유" 활성)
+  const [hash, setHash] = useState("");
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
     supabase.auth.getSession().then(({ data }) => {
-      setIsMember(Boolean(data.session));
+      setAuth(data.session ? "member" : "guest");
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsMember(Boolean(session));
+      setAuth(session ? "member" : "guest");
     });
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  const TABS = [...BASE_TABS, isMember ? SHARE_TAB : ALERT_TAB, MY_TAB];
+  useEffect(() => {
+    const sync = () => setHash(window.location.hash);
+    // 경로가 바뀔 때마다 현재 해시 반영. Next Link의 같은 페이지 해시 이동은 hashchange가 안 날 수 있어
+    // 탭 클릭 시에도 직접 갱신한다(아래 onClick).
+    const t = setTimeout(sync, 0);
+    window.addEventListener("hashchange", sync);
+    window.addEventListener("popstate", sync);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("hashchange", sync);
+      window.removeEventListener("popstate", sync);
+    };
+  }, [pathname]);
+
+  const path = pathname ?? "";
+  const shareActive = path === "/mypage" && hash === "#referral";
+  const isActive = (tab: Tab) => {
+    if (tab.href === "/") return path === "/";
+    if (tab === SHARE_TAB) return shareActive;
+    if (tab === MY_TAB) return path.startsWith("/mypage") && !shareActive;
+    return path.startsWith(tab.href.split("#")[0]);
+  };
+
+  const fourth = auth === "member" ? SHARE_TAB : auth === "guest" ? ALERT_TAB : null;
+  const TABS: (Tab | null)[] = [...BASE_TABS, fourth, MY_TAB];
 
   return (
     <nav
       className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray200 flex z-40"
       style={{ height: `${NAV_HEIGHT}px` }}
     >
-      {TABS.map((tab) => {
-        const active = tab.href === "/" ? pathname === "/" : (pathname ?? "").startsWith(tab.href.split("#")[0]);
+      {TABS.map((tab, i) => {
+        if (!tab) {
+          return (
+            <div key={`placeholder-${i}`} className="flex-1 flex flex-col items-center justify-center gap-1" aria-hidden>
+              <span className="w-5 h-5 rounded-full bg-gray200" />
+              <span className="rounded bg-gray200" style={{ width: 22, height: 8 }} />
+            </div>
+          );
+        }
+        const active = isActive(tab);
         return (
           <Link
             key={tab.href}
             href={tab.href}
+            onClick={() => setHash(tab.href.includes("#") ? `#${tab.href.split("#")[1]}` : "")}
             className="flex-1 flex flex-col items-center justify-center gap-0.5"
           >
             {tab.lib === "phosphor" ? (

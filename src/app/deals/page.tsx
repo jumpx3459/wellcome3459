@@ -12,8 +12,7 @@ import { formatPrice } from "@/lib/format";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 
-const DEALS_EXAMPLE_THRESHOLD = 5;
-const EXAMPLE_DEALS = mockDeals.filter((d) => d.status !== "closed").slice(0, 4);
+import { EXAMPLE_DEALS, shouldShowExamples } from "@/lib/exampleDeals";
 
 // design-v2: 헤더 우측의 "정부지원금" 링크를 마이페이지로 옮기고, 그 자리를
 // 이 화면이 다루는 매물 성격을 보여주는 순수 카피 로테이션으로 채움 (클릭 동작 없음).
@@ -159,7 +158,7 @@ function DealsPageInner() {
     return discB - discA;
   });
 
-  const showExamples = isSupabaseConfigured && view === "active" && filtered.length < DEALS_EXAMPLE_THRESHOLD;
+  const showExamples = view === "active" && shouldShowExamples(filtered.length, isSupabaseConfigured);
 
   // 카테고리별 평균 할인율 — 특정 매물이 같은 카테고리 평균보다 눈에 띄게 저렴하면 배지로 알려줍니다.
   const avgDiscountByCategory: Record<string, number> = {};

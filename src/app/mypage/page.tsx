@@ -255,6 +255,7 @@ export default function MyPage() {
       .from("deals")
       .select("id, title, deal_price")
       .eq("status", "active")
+      .gt("closes_at", new Date().toISOString()) // 마감 지난 매물은 공유 목록에서 제외
       .order("created_at", { ascending: false })
       .limit(8)
       .then(({ data }) => {
