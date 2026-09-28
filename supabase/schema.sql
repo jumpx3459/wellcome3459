@@ -961,3 +961,11 @@ alter table public.buy_requests add column if not exists hope_price_unit text;
 -- set null, 연락처는 /api/unsubscribe가 마스킹. Supabase SQL Editor 실행 완료 (2026-09-29).
 alter table public.buy_requests add column if not exists member_id uuid references public.members(id) on delete set null;
 create index if not exists buy_requests_member_id_idx on public.buy_requests (member_id);
+
+-- 2026-09-29: buy_requests 공개 insert를 member_id 없는 행으로 제한 — 예전 with check (true)라
+-- 공개 anon 키로 남의 member_id를 넣은 구매 요청을 만들 수 있었음(그 회원의 "내 구매 요청"에 노출).
+-- 앱은 /api/buy-requests(service_role, 토큰에서 member_id)로만 저장해서 영향 없음.
+-- Supabase SQL Editor 실행 완료 (2026-09-29).
+drop policy if exists "buy_requests_public_insert" on public.buy_requests;
+create policy "buy_requests_public_insert" on public.buy_requests
+  for insert with check (member_id is null);
