@@ -76,6 +76,19 @@ type ActiveDeal = {
   quick_lead_count: number | null;
 };
 
+// 2026-09-28 (2): 목록/마감 UI 추가하며 함께 정의 — ActiveDeal과 달리 수량/가격
+// 개념이 없는 가벼운 공지 레코드.
+type NoticeItem = {
+  id: string;
+  category: string;
+  title: string;
+  body: string;
+  contact_name: string | null;
+  contact_phone: string | null;
+  created_at: string;
+  regions: { name: string } | null;
+};
+
 type CategoryKpi = {
   name: string;
   leads: number;
@@ -311,6 +324,7 @@ function AdminDashboard({
   const [partnersOverviewOpen, setPartnersOverviewOpen] = useState(true);
   const [buyRequests, setBuyRequests] = useState<BuyRequest[]>([]);
   const [activeDeals, setActiveDeals] = useState<ActiveDeal[]>([]);
+  const [notices, setNotices] = useState<NoticeItem[]>([]);
   const [interests, setInterests] = useState<Interest[]>([]);
   const [categoryKpis, setCategoryKpis] = useState<CategoryKpi[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -424,6 +438,9 @@ function AdminDashboard({
       fetch("/api/admin/category-kpis", { headers: { "x-admin-key": adminKey } })
         .then((r) => r.json())
         .then((d) => setCategoryKpis(d.items ?? [])),
+      fetch("/api/admin/notices", { headers: { "x-admin-key": adminKey } })
+        .then((r) => r.json())
+        .then((d) => setNotices(d.items ?? [])),
     ])
       .then(([reqData, dealData, interestData, buyData, memberData]) => {
         setRequests(reqData.items ?? []);
@@ -1346,7 +1363,18 @@ function AdminDashboard({
           {openFormFor === "notice" ? "닫기" : "+ 긴급 공지 등록 (부동산·설비)"}
         </button>
         {openFormFor === "notice" && (
-          <NoticeForm adminKey={adminKey} onDone={() => setOpenFormFor(null)} />
+          <NoticeForm adminKey={adminKey} onDone={() => { setOpenFormFor(null); load(); }} />
+        )}
+
+        {/* 2026-09-28 (2): 등록 폼만 있고 내릴 방법이 없다는 지적 반영 — 등록된
+            공지를 한 줄 요약 + [마감]으로 노출. deals의 "조기 마감" 패턴과 동일. */}
+        {notices.length > 0 && (
+          <div className="flex flex-col gap-2 mt-3">
+            <div className="text-xs font-bold text-gray500">등록된 긴급 공지 ({notices.length})</div>
+            {notices.map((n) => (
+              <NoticeAdminRow key={n.id} notice={n} adminKey={adminKey} onChanged={load} />
+            ))}
+          </div>
         )}
       </div>
 
@@ -2507,6 +2535,55 @@ const NOTICE_CATEGORIES = ["부동산", "설비", "기타"];
 // 헤더, ImageUploader)을 쓰지만, 재고 매물의 수량/가격/카테고리 스키마와는 완전히
 // 분리된 별도 폼. 지역은 "전국"(공백) 선택도 가능 — deals와 달리 특정 지역 없이도
 // 등록 가능해야 해서 select 맨 앞에 "전국" 옵션을 추가로 둠.
+// 2026-09-28 (2): 등록된 공지 한 줄 요약 + 마감 버튼. deals의 ActiveDealCard처럼
+// 수정 UI까지는 필요 없어 보여 조회/마감만 지원 (수정이 필요해지면 그때 확장).
+function NoticeAdminRow({
+  notice,
+  adminKey,
+  onChanged,
+}: {
+  notice: NoticeItem;
+  adminKey: string;
+  onChanged: () => void;
+}) {
+  const [closing, setClosing] = useState(false);
+
+  const close = async () => {
+    if (!confirm(`"${notice.title}" 공지를 마감할까요?`)) return;
+    setClosing(true);
+    try {
+      await fetch("/api/admin/notices", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({ id: notice.id, status: "closed" }),
+      });
+      onChanged();
+    } finally {
+      setClosing(false);
+    }
+  };
+
+  return (
+    <div className="bg-white border border-gray200 rounded-xl px-3.5 py-3 flex items-center justify-between gap-2">
+      <div className="min-w-0">
+        <div className="text-xs font-bold text-gray500">
+          {notice.category} · {notice.regions?.name ?? "전국"}
+        </div>
+        <div className="text-sm font-bold text-gray900 truncate">{notice.title}</div>
+      </div>
+      <button
+        type="button"
+        onClick={close}
+        disabled={closing}
+        className="flex-shrink-0 text-xs font-bold rounded-lg px-3 py-2 disabled:opacity-50"
+        style={{ color: "#C2410C", border: "2px solid #FDEEE8", background: "#FFF9F7" }}
+      >
+        {closing ? "마감 중..." : "마감"}
+      </button>
+    </div>
+  );
+}
+
 function NoticeForm({ adminKey, onDone }: { adminKey: string; onDone: () => void }) {
   const [category, setCategory] = useState(NOTICE_CATEGORIES[0]);
   const [title, setTitle] = useState("");

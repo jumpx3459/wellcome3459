@@ -54,9 +54,34 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, id: notice.id, push: pushResult });
 }
 
-// 목록/마감 처리는 관리자 화면에서 공개 select 정책(urgent_notices_public_select)을
-// 통해 anon 키로 직접 읽고, 마감만 이 라우트로 처리한다 (deals와 달리 목록이
-// 단순해서 별도 GET/manage 라우트를 만들 실익이 적음 — 필요해지면 분리).
+// 2026-09-28 (2): 등록 폼만 있고 목록/마감 UI가 없어 한 번 올린 공지를 내릴
+// 방법이 없다는 지적 — deals/manage와 동일하게 GET으로 활성 공지 목록을 반환.
+// (직전 코멘트의 "anon 키로 공개 조회" 계획은 이 파일 전체가 admin-key 인증 +
+// service_role 경로로 통일된 패턴과 맞지 않아 폐기하고 GET을 추가하는 쪽으로 정정.)
+export async function GET(req: NextRequest) {
+  const auth = checkAdminAuth(req);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return NextResponse.json({ items: [], demo: true });
+  }
+
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+
+  const { data, error } = await supabaseAdmin
+    .from("urgent_notices")
+    .select("*, regions(name)")
+    .eq("status", "active")
+    .order("created_at", { ascending: false });
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ items: data });
+}
+
+// 마감 처리(status → closed) — 등록은 POST, 목록은 GET, 마감은 이 PATCH.
 export async function PATCH(req: NextRequest) {
   const auth = checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
