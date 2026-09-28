@@ -44,6 +44,19 @@ function DealsPageInner() {
   // 목록이 이질적으로 튀어나오는 문제 — 버튼+커스텀 드롭다운 패널로 교체.
   const [catOpen, setCatOpen] = useState(false);
   const [regionOpen, setRegionOpen] = useState(false);
+  // 2026-09-28: 빈 결과 화면의 CTA가 로그인 여부와 상관없이 무조건 /signup(신규
+  // 가입 위저드)으로 보내던 문제 — 이미 가입된 회원도 다시 가입하라는 셈이라
+  // 회원이면 마이페이지 알림 조건으로 보내도록 분기하기 위해 필요.
+  const [isMember, setIsMember] = useState(false);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return;
+    supabase.auth.getSession().then(({ data }) => setIsMember(!!data.session?.user));
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsMember(!!session?.user);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return; // 데모 모드: mockDeals 사용
@@ -249,7 +262,7 @@ function DealsPageInner() {
                           setActiveCat(c);
                           setCatOpen(false);
                         }}
-                        className="flex items-center gap-1.5 text-left rounded-xl"
+                        className="text-left rounded-xl"
                         style={{
                           padding: "9px 10px",
                           fontSize: 12.5,
@@ -260,8 +273,7 @@ function DealsPageInner() {
                           color: "#1A1F26",
                         }}
                       >
-                        <span className="flex-shrink-0">{c === "전체" ? "🗃️" : categoryIcons[c]}</span>
-                        <span>{c}</span>
+                        {c}
                       </button>
                     );
                   })}
@@ -356,7 +368,7 @@ function DealsPageInner() {
         )}
         {filtered.length === 0 && (
           view === "active" ? (
-            <EmptyState category={activeCat} region={activeRegion} />
+            <EmptyState category={activeCat} region={activeRegion} isMember={isMember} />
           ) : (
             <div className="text-center text-gray500 text-base py-10">아직 마감된 매물이 없어요.</div>
           )
@@ -574,7 +586,15 @@ function DealsPageInner() {
 }
 
 // 매물이 없을 때 허전해 보이지 않도록, 점핑매니저 일러스트 + 선택된 카테고리에 맞춘 문구를 보여줍니다.
-function EmptyState({ category, region }: { category: string; region: string }) {
+function EmptyState({
+  category,
+  region,
+  isMember,
+}: {
+  category: string;
+  region: string;
+  isMember: boolean;
+}) {
   const isAll = category === "전체";
   // "전체"는 가장 흔한 기본 상태인데 categoryColors["기타"]의 회색(#8A8A82)을 그대로
   // 쓰면 정작 가장 많이 보이는 CTA가 제일 흐릿해짐 — 배경/뱃지는 기타 톤 유지하되
@@ -603,21 +623,41 @@ function EmptyState({ category, region }: { category: string; region: string }) 
       </div>
 
       <div className="font-bold text-navy text-base leading-relaxed">
-        {isAll
-          ? "지금은 조건에 맞는 덤핑 매물이 없어요."
-          : `아직 ${category} 카테고리엔 좋은 매물이 없어요.`}
+        {isAll ? (
+          <>
+            지금은 조건에 맞는
+            <br />
+            덤핑 매물이 없어요.
+          </>
+        ) : (
+          `아직 ${category} 카테고리엔 좋은 매물이 없어요.`
+        )}
       </div>
       <p className="text-sm text-gray500 mt-1.5 leading-relaxed">
         점핑매니저가 매물을 찾는 대로 가장 먼저 알림으로 알려드릴게요!
       </p>
 
-      <Link
-        href="/signup"
-        className="mt-4 text-sm font-bold text-white rounded-xl px-5 py-2.5"
-        style={{ background: ctaColor }}
-      >
-        {isAll ? "전체" : category} 알림 받기
-      </Link>
+      {/* 2026-09-28: 로그인 여부와 상관없이 무조건 /signup(신규 가입)으로 보내던
+          버그 — 이미 가입된 회원이면 다시 가입하라는 셈이라 혼란스러웠음. 회원은
+          마이페이지 "내 알림 조건"(#alerts)으로, 비회원만 지금처럼 강조된
+          가입 유도 버튼을 보게 분기. 회원용은 위계를 낮춘 톤(연한 배경)으로. */}
+      {isMember ? (
+        <Link
+          href="/mypage#alerts"
+          className="mt-4 text-sm font-bold rounded-xl px-5 py-2.5"
+          style={{ background: "#F5F6F8", color: "#6B7480" }}
+        >
+          내 조건 보기 ›
+        </Link>
+      ) : (
+        <Link
+          href="/signup"
+          className="mt-4 text-sm font-bold text-white rounded-xl px-5 py-2.5"
+          style={{ background: ctaColor }}
+        >
+          {isAll ? "전체" : category} 알림 받기
+        </Link>
+      )}
     </div>
   );
 }
