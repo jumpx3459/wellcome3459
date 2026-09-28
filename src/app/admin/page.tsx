@@ -964,7 +964,13 @@ function AdminDashboard({
         )}
         {filteredMembers.slice(0, memberShowCount).map((m) => (
           <div key={m.id} className="bg-white border border-gray200 rounded-2xl px-4 py-3.5">
-            <div className="flex items-center justify-between gap-2">
+            {/* 2026-09-28: 데스크톱 3열 레이아웃의 좁은 컬럼 폭에서 전화번호+뱃지가
+                줄바꿈 없이 한 줄로 강제돼 카드 자체가 옆으로 넘쳤음(overflow-y만
+                걸려 있으면 overflow-x가 자동으로 auto가 되는 CSS 규칙 때문에
+                가로 스크롤바까지 생김) — 그 결과 카드 하단 "관리자로 임명" 버튼도
+                스크롤해야만 보이는 문제로 이어짐. flex-wrap으로 뱃지가 필요하면
+                둘째 줄로 내려가게 해서 카드 폭 안에 항상 들어오도록 수정. */}
+            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
               <div className="text-base font-bold text-gray900">
                 {m.phone}
                 {m.member_no != null && (
@@ -972,7 +978,7 @@ function AdminDashboard({
                 )}
                 {m.nickname && <span className="text-sm font-medium text-gray500 ml-1.5">{m.nickname}</span>}
               </div>
-              <div className="flex items-center gap-1.5 flex-shrink-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span
                   className="text-xs font-bold px-2 py-1 rounded-full"
                   style={{
@@ -1004,7 +1010,7 @@ function AdminDashboard({
               <div className="text-sm font-bold text-navy mt-1">{m.company_name}</div>
             )}
             {m.has_business_license && !m.business_verified && (
-              <div className="flex items-center gap-1.5 mt-2">
+              <div className="flex flex-wrap items-center gap-1.5 mt-2">
                 <span
                   className="text-xs font-bold px-2 py-1 rounded-full flex-shrink-0"
                   style={{ background: "#FFF4E0", color: "#966B00" }}
