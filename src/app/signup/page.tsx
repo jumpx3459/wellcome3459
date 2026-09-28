@@ -13,6 +13,8 @@ import { fmtLeft } from "@/lib/format";
 import { NAV_HEIGHT } from "@/components/BottomNav";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import { SITE_URL, isCanonicalHost } from "@/lib/siteUrl";
+import { getPushBlocker, type PushBlocker } from "@/lib/browserEnv";
+import PushBlockerNotice from "@/components/PushBlockerNotice";
 import { rem } from "@/lib/rem";
 
 // "01012345678" -> "010****5678" 형태로 화면에만 일부 가려서 보여줍니다
@@ -84,8 +86,12 @@ function SignupPageInner() {
   // 전에 알림 토글 옆에 정식 주소 링크를 미리 보여준다 — 제출 후엔 곧바로 다른
   // 화면으로 넘어가서 그때 안내하면 거의 안 보임.
   const [nonCanonicalHost, setNonCanonicalHost] = useState(false);
+  // 2026-09-28: 카톡 등 인앱 브라우저·iPhone 미설치는 웹푸시 불가 — 알림 토글 아래에 미리 안내하고
+  // 제출 때 구독 시도도 하지 않음 (예전엔 결과가 "granted"로 잘못 표시될 수 있었음)
+  const [pushBlocker, setPushBlocker] = useState<PushBlocker | null>(null);
   useEffect(() => {
     setNonCanonicalHost(!isCanonicalHost(window.location.hostname));
+    setPushBlocker(getPushBlocker());
   }, []);
   const [error, setError] = useState<string | null>(null);
 
@@ -267,12 +273,12 @@ function SignupPageInner() {
     if (!isSupabaseConfigured || !supabase) {
       // 데모 모드: 실제 저장 없이 다음 화면으로 이동
       if (kakaoWindow) kakaoWindow.close();
-      if (push) {
+      if (push && !pushBlocker) {
         const pushResult = await subscribeToPush();
         if (pushResult.status === "denied") setPushStatus("denied");
         else if (pushResult.status === "unsupported") setPushStatus("unsupported");
         else if (pushResult.status === "noncanonical") setPushStatus("noncanonical");
-        else setPushStatus("granted");
+        else if (pushResult.status === "subscribed") setPushStatus("granted");
       }
       await new Promise((r) => setTimeout(r, 500));
       setSubmitting(false);
@@ -333,12 +339,12 @@ function SignupPageInner() {
       }
 
       let pushResult: Awaited<ReturnType<typeof subscribeToPush>> | null = null;
-      if (push) {
+      if (push && !pushBlocker) {
         pushResult = await subscribeToPush();
         if (pushResult.status === "denied") setPushStatus("denied");
         else if (pushResult.status === "unsupported") setPushStatus("unsupported");
         else if (pushResult.status === "noncanonical") setPushStatus("noncanonical");
-        else setPushStatus("granted");
+        else if (pushResult.status === "subscribed") setPushStatus("granted");
       }
 
       const { data: catRows } = await supabase
@@ -817,7 +823,13 @@ function SignupPageInner() {
                 </span>
               </button>
 
-              {push && nonCanonicalHost && (
+              {push && pushBlocker && (
+                <div className="mt-2">
+                  <PushBlockerNotice kind={pushBlocker} />
+                </div>
+              )}
+
+              {push && !pushBlocker && nonCanonicalHost && (
                 <div className="text-xs rounded-xl mt-2 leading-relaxed" style={{ color: "#6B7480", background: "#F5F6F8", padding: "10px 14px" }}>
                   이 주소에서는 알림을 켤 수 없어요. 정식 주소에서 알림을 켜주세요 →{" "}
                   <a href={`${SITE_URL}/signup`} className="font-bold underline" style={{ color: "#E25100" }}>

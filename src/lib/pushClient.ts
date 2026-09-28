@@ -3,6 +3,7 @@
 // 카카오톡 같은 중간 채널 없이 기기에 직접 알림을 보냅니다.
 
 import { isCanonicalHost } from "./siteUrl";
+import { getPushBlocker } from "./browserEnv";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -12,25 +13,27 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 export type SubscribeResult =
+  | { status: "inapp" }
+  | { status: "ios_needs_install" }
   | { status: "unsupported" }
   | { status: "noncanonical" }
   | { status: "denied" }
   | { status: "subscribed"; subscription: PushSubscriptionJSON };
 
 export async function subscribeToPush(): Promise<SubscribeResult> {
-  if (
-    typeof window === "undefined" ||
-    !("serviceWorker" in navigator) ||
-    !("PushManager" in window) ||
-    !("Notification" in window)
-  ) {
-    return { status: "unsupported" };
-  }
+  if (typeof window === "undefined") return { status: "unsupported" };
+  // 인앱 브라우저·iPhone 미설치는 권한 요청 자체가 실패하므로 먼저 걸러냄 (src/lib/browserEnv.ts)
+  const blocker = getPushBlocker();
+  if (blocker) return { status: blocker };
 
   // 비정식 주소(xxx.vercel.app 등)에서 구독하면 알림이 계속 그 주소로 열리므로
   // 권한 요청 자체를 하지 않는다 (src/lib/siteUrl.ts 참고).
   if (!isCanonicalHost(window.location.hostname)) {
     return { status: "noncanonical" };
+  }
+
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+    return { status: "unsupported" };
   }
 
   const permission = await Notification.requestPermission();
@@ -60,7 +63,10 @@ export async function subscribeToPush(): Promise<SubscribeResult> {
 
 // 권한 요청 없이 현재 상태만 조회합니다 (마이페이지 알림 카드 초기 표시용).
 // "subscribed"면 이 기기에 구독이 살아있다는 뜻 — 서버 저장 여부는 따로 확인 필요.
+// 판별 순서: inapp → ios_needs_install → noncanonical → unsupported → denied → off/subscribed
 export type PushState =
+  | { status: "inapp" }
+  | { status: "ios_needs_install" }
   | { status: "unsupported" }
   | { status: "noncanonical" }
   | { status: "denied" }
@@ -68,15 +74,13 @@ export type PushState =
   | { status: "subscribed"; subscription: PushSubscriptionJSON };
 
 export async function getPushState(): Promise<PushState> {
-  if (
-    typeof window === "undefined" ||
-    !("serviceWorker" in navigator) ||
-    !("PushManager" in window) ||
-    !("Notification" in window)
-  ) {
+  if (typeof window === "undefined") return { status: "unsupported" };
+  const blocker = getPushBlocker();
+  if (blocker) return { status: blocker };
+  if (!isCanonicalHost(window.location.hostname)) return { status: "noncanonical" };
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
     return { status: "unsupported" };
   }
-  if (!isCanonicalHost(window.location.hostname)) return { status: "noncanonical" };
   if (Notification.permission === "denied") return { status: "denied" };
   if (Notification.permission !== "granted") return { status: "off" };
 

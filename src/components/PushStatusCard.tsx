@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { getPushState, subscribeToPush, savePushSubscription } from "@/lib/pushClient";
 import { SITE_URL } from "@/lib/siteUrl";
 import { rem } from "@/lib/rem";
+import PushBlockerNotice from "@/components/PushBlockerNotice";
 
 // 2026-09-28: 마이페이지 알림 상태 카드. 예전엔 푸시 구독이 가입 화면에서만 가능해서
 // 기존 회원이 알림을 다시 켤 곳이 없었음(구독자 0명). 권한 요청은 반드시 버튼 클릭
 // 핸들러 안에서만 한다 — 마운트 시엔 getPushState()로 현재 상태만 조회.
-type CardState = "loading" | "unsupported" | "noncanonical" | "denied" | "off" | "on" | "optedOut" | "saveFailed";
+type CardState = "loading" | "inapp" | "ios_needs_install" | "unsupported" | "noncanonical" | "denied" | "off" | "on" | "optedOut" | "saveFailed";
 
 export default function PushStatusCard({ accessToken }: { accessToken: string | null }) {
   const [state, setState] = useState<CardState>("loading");
@@ -65,8 +66,6 @@ export default function PushStatusCard({ accessToken }: { accessToken: string | 
 
   if (state === "loading") return null;
 
-  const isIOS = typeof navigator !== "undefined" && /iPhone|iPad/.test(navigator.userAgent);
-
   return (
     <div className="rounded-2xl p-4" style={{ border: "1px solid #E4E7EB", background: "#fff" }}>
       <div className="flex items-center gap-3">
@@ -75,6 +74,7 @@ export default function PushStatusCard({ accessToken }: { accessToken: string | 
           <span className="block font-bold" style={{ fontSize: rem(14), color: "#0B2540" }}>이 기기 푸시 알림</span>
           <span className="block mt-0.5" style={{ fontSize: rem(12.5), color: "#6B7480" }}>
             {state === "on" && "조건에 맞는 매물이 뜨면 바로 알려드려요"}
+            {(state === "inapp" || state === "ios_needs_install") && "지금 이 화면에서는 알림을 켤 수 없어요"}
             {state === "off" && "지금은 꺼져 있어요 · 맞춤 특가 알림은 푸시로만 가요"}
             {state === "denied" && "브라우저에서 알림이 차단돼 있어요"}
             {state === "noncanonical" && "이 주소에서는 알림을 켤 수 없어요"}
@@ -114,10 +114,11 @@ export default function PushStatusCard({ accessToken }: { accessToken: string | 
           </a>
         </p>
       )}
-      {state === "unsupported" && isIOS && (
-        <p className="mt-3 rounded-lg leading-relaxed" style={{ fontSize: rem(12.5), color: "#6B7480", background: "#F5F6F8", padding: "10px 12px" }}>
-          아이폰은 <b style={{ color: "#1A1F26" }}>공유 버튼 → &quot;홈 화면에 추가&quot;</b>로 앱을 설치한 뒤 거기서 열면 알림을 켤 수 있어요.
-        </p>
+      {/* 인앱 브라우저·iPhone 미설치 — [알림 켜기] 버튼 없이 안내만 (눌러도 실패) */}
+      {(state === "inapp" || state === "ios_needs_install") && (
+        <div className="mt-3">
+          <PushBlockerNotice kind={state} />
+        </div>
       )}
     </div>
   );

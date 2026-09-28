@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import BottomNav, { NAV_HEIGHT } from "./BottomNav";
+import InAppBanner from "./InAppBanner";
 import DebugPanel from "./DebugPanel"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 import { markAppNavigation, markAppBack } from "@/lib/appNav";
 
@@ -44,6 +45,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // 앱 화면이 아니라 단일 랜딩 페이지라 하단 탭바가 어울리지 않음 — admin과
   // 동일하게 숨기되, 모바일 앱 미리보기 느낌은 유지하기 위해 폭 제한(max-w-md)은 유지.
   const isPartnerDemo = (pathname ?? "").startsWith("/p/");
+  // 인앱 브라우저 안내 배너는 유입이 몰리는 홈·매물 목록·매물 상세에만
+  const showInAppBanner = pathname === "/" || pathname === "/deals" || (pathname ?? "").startsWith("/deals/");
 
   // PWA 설치 배너(beforeinstallprompt)가 뜨려면 서비스워커가 등록돼 있어야 해서,
   // 회원가입(알림 신청) 완료를 기다리지 않고 첫 방문 때부터 바로 등록해둡니다.
@@ -64,6 +67,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           : "mx-auto max-w-md min-h-screen bg-white shadow-sm overflow-x-hidden"
       }
     >
+      {showInAppBanner && <InAppBanner />}
       <div style={{ paddingBottom: isAdmin || isPartnerDemo ? 0 : `${NAV_HEIGHT}px` }}>{children}</div>
       {!isAdmin && !isPartnerDemo && <BottomNav />}
       <DebugPanel />
