@@ -7,6 +7,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { sendOtp, verifyOtp, isValidKoreanPhone, toE164Phone } from "@/lib/auth";
 import { fmtLeft } from "@/lib/format";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
+import { NAV_HEIGHT } from "@/components/BottomNav";
 
 // 기존 회원 전용 경량 로그인 — 전화번호+OTP만 물어보고, 카테고리/지역/채널/약관
 // 같은 가입 전용 항목은 다시 안 물어봅니다. signup/page.tsx의 4단계(전화인증)와
@@ -369,12 +370,23 @@ function LoginPageInner() {
             </p>
           </div>
 
-          {/* 2026-09-28: 폼 아래 남는 여백이 휑하다는 피드백 — 매니저 캐릭터로 채움 */}
-          <div className="flex-1 flex items-end justify-center" style={{ minHeight: 24, paddingTop: 20 }}>
+          {/* 2026-09-28: 폼 아래 남는 여백이 휑하다는 피드백 — 매니저 캐릭터로 채움.
+              2026-09-28 (2): main이 min-h-screen(정확히 1화면) + items-end라
+              캐릭터가 뷰포트 맨 아래(100vh 지점)에 딱 붙는데, 그 지점이 바로
+              하단 고정 네비바(BottomNav, fixed, NAV_HEIGHT=64px)가 덮는 자리라
+              발이 잘려 보였음. AppShell의 paddingBottom:NAV_HEIGHT는 본문이
+              1화면보다 길어서 스크롤될 때만 효과가 있고, 정확히 1화면을 채우는
+              이 레이아웃(flex-end)에는 적용이 안 됨 — 이 블록에 직접 네비바
+              높이만큼 paddingBottom을 줘서 그 위에서 끝나도록 고정. 요청대로
+              사이즈도 키움. */}
+          <div
+            className="flex-1 flex items-end justify-center"
+            style={{ minHeight: 24, paddingTop: 20, paddingBottom: NAV_HEIGHT }}
+          >
             <img
               src="/images/manager-cut.png"
               alt="점핑매니저"
-              style={{ height: "clamp(90px, 18vh, 150px)", width: "auto", objectFit: "contain" }}
+              style={{ height: "clamp(110px, 24vh, 190px)", width: "auto", objectFit: "contain" }}
             />
           </div>
           </div>
