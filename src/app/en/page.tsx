@@ -76,9 +76,11 @@ const SCREENS = [
 
 const ROADMAP = [
   { stage: "Now", name: "DumpingJumping", body: "Lead discovery — surplus listings and instant buyer alerts." },
-  { stage: "Next", name: "JumpX Marketplace", body: "A B2B marketplace where discovered deals become orders." },
-  // 영문 표기(JumpingBid / JumpingBead)는 확정 전 — 확정되면 name만 바꿀 것
-  { stage: "Built", name: "JumpingBid", body: "Auction, reverse-auction and group-buy engine already built on the JumpX platform; opening to users next." },
+  {
+    stage: "Next",
+    name: "JumpX Marketplace",
+    body: "A B2B marketplace where discovered deals become orders — instant purchase, auctions, reverse auctions and group buying (engine already built on the JumpX platform).",
+  },
   { stage: "Planned", name: "Logistics / Data", body: "Freight booking and price data built on accumulated trade records." },
 ];
 
@@ -221,7 +223,7 @@ export default function EnglishPage() {
         {/* Roadmap */}
         <section style={{ padding: "56px 0 8px" }}>
           <SectionTitle eyebrow="Roadmap">From lead discovery to a full B2B surplus platform.</SectionTitle>
-          <ol className="grid gap-3 mt-6 md:grid-cols-4">
+          <ol className="grid gap-3 mt-6 md:grid-cols-3">
             {ROADMAP.map((r) => (
               <li
                 key={r.name}
@@ -233,8 +235,8 @@ export default function EnglishPage() {
                   style={{
                     fontSize: rem(14),
                     padding: "3px 10px",
-                    background: r.stage === "Now" ? ORANGE : r.stage === "Built" ? NAVY : "#EEF3FA",
-                    color: r.stage === "Now" || r.stage === "Built" ? "#fff" : NAVY,
+                    background: r.stage === "Now" ? ORANGE : "#EEF3FA",
+                    color: r.stage === "Now" ? "#fff" : NAVY,
                   }}
                 >
                   {r.stage}
@@ -253,7 +255,7 @@ export default function EnglishPage() {
             <dl className="mt-4 grid gap-2" style={{ fontSize: rem(17) }}>
               <div className="flex flex-wrap gap-x-3">
                 <dt style={{ color: "rgba(255,255,255,.7)" }}>Company</dt>
-                <dd className="font-bold m-0">JumpX</dd>
+                <dd className="font-bold m-0">JumpX Inc.</dd>
               </div>
               <div className="flex flex-wrap gap-x-3">
                 <dt style={{ color: "rgba(255,255,255,.7)" }}>Email</dt>

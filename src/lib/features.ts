@@ -12,4 +12,5 @@ export const QUOTES_ENABLED = false;
 // 예시 매물(mockData) 사진·영상 — 2026-09-29. 앞 4건은 저장소 사진(public/images/mock),
 // 나머지는 loremflickr 외부 무작위 이미지라 출처·사용권이 확인되지 않음. 공개 전 확인이 안 되면
 // false로 → 예시 카드·예시 상세가 전부 "사진 준비 중"(NoPhotoPlaceholder)으로 표시.
-export const EXAMPLE_MEDIA_ENABLED = true;
+// 2026-09-29: 출처 미확인이라 false로 공개. 대표 사진을 받으면 교체 후 true로.
+export const EXAMPLE_MEDIA_ENABLED = false;
