@@ -1,3 +1,5 @@
+import { EXAMPLE_MEDIA_ENABLED } from "./features";
+
 export type Deal = {
   id: string;
   title: string;
@@ -34,7 +36,7 @@ const now = Date.now();
 // UI 데모용 더미 이미지/영상(loremflickr.com 키워드 기반 사진, 자동차 소개영상 샘플 1건) —
 // 실제 매물 사진/영상 아님. Supabase 미설정(로컬 dev/일부 프리뷰) 상태에서만 쓰이는 fallback 데이터라
 // 운영 DB(deals 테이블)에는 영향 없음. mockCategories 18개 전부 1건씩 매핑.
-export const mockDeals: Deal[] = [
+const RAW_MOCK_DEALS: Deal[] = [
   {
     id: "1",
     title: "냉동 삼겹살 대패 10kg x 30박스",
@@ -47,7 +49,8 @@ export const mockDeals: Deal[] = [
     remaining_qty: 21,
     closes_at: new Date(now + 1000 * 60 * 60 * 4.2).toISOString(),
     images: ["/images/mock/pork-belly-1.jpg", "/images/mock/pork-belly-2.jpg"],
-    video_url: "/videos/mock/pork-belly.mp4",
+    // 2026-09-29: 영상 제거 — TikTok 워터마크·Costco 로고가 들어 있었음 (파일도 삭제)
+    video_url: null,
     description: "냉동 보관 · 박스당 10kg 균일 포장 · 소비기한 여유 3개월 이상",
     package_unit: "10kg 박스",
     origin: "국내산",
@@ -261,7 +264,7 @@ export const mockDeals: Deal[] = [
     remaining_qty: 610,
     closes_at: new Date(now + 1000 * 60 * 60 * 50).toISOString(),
     images: ["https://loremflickr.com/800/600/tire,car"],
-    video_url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
+    video_url: null, // 2026-09-29: 외부 샘플 영상(자동차 브랜드 광고) 제거
     description: "시즌 오프 재고 · 규격별 혼합 구성",
   },
   {
@@ -326,6 +329,12 @@ export const mockDeals: Deal[] = [
     description: "분류 미정 잡화 혼합 · 박스 단위 랜덤 구성",
   },
 ];
+
+// 2026-09-29: 예시 매물 미디어 스위치 — 출처 확인 전인 사진(loremflickr 외부 무작위 이미지 포함)·영상을
+// 한 번에 끌 수 있게. false면 모든 예시 카드가 사진 없이(NoPhotoPlaceholder) 표시된다.
+export const mockDeals: Deal[] = EXAMPLE_MEDIA_ENABLED
+  ? RAW_MOCK_DEALS
+  : RAW_MOCK_DEALS.map((d) => ({ ...d, images: [], video_url: null }));
 
 export const mockCategories = [
   "수산·축산물",
