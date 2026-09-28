@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 
-const STORAGE_KEY = "dj_onboarded";
+const STORAGE_KEY = "dj_onboarded"; // "1" = 명시적 액션(가입 시작/로그인 이동/둘러보기)으로 닫음 — 영구 억제
+const LAST_SHOWN_KEY = "dj_onboarding_last_shown"; // 버튼 없이 그냥 닫힌 경우 재노출 쿨다운 계산용
+const RESHOW_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000; // 3일
 
 const STATS = [
   { value: "17건", label: "오늘 등록" },
@@ -12,22 +14,37 @@ const STATS = [
   { value: "3분", label: "평균 알림 속도" },
 ];
 
-export default function OnboardingIntro({ logoAnimate = false }: { logoAnimate?: boolean }) {
+export default function OnboardingIntro({
+  logoAnimate = false,
+  isMember = false,
+}: {
+  logoAnimate?: boolean;
+  isMember?: boolean;
+}) {
   const router = useRouter();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    if (isMember) {
+      setVisible(false);
+      return;
+    }
     try {
-      if (!localStorage.getItem(STORAGE_KEY)) {
-        setVisible(true);
-        // 버튼 클릭(dismiss 등) 전에 창을 그냥 닫아도 "1회 노출"로 쳐야 하므로,
-        // 뜨는 시점에 바로 기록. 클릭 시 재기록은 중복이라 무해하게 그대로 둠.
-        localStorage.setItem(STORAGE_KEY, "1");
-      }
+      // 명시적 액션(가입 시작/로그인 이동/둘러보기)으로 닫은 적 있으면 영구 억제
+      if (localStorage.getItem(STORAGE_KEY) === "1") return;
+
+      // 2026-09-28: 버튼을 누르지 않고 그냥 닫아서(=결정을 못 내린 이탈) 위 영구
+      // 플래그가 안 남은 방문자는, 완전히 기회를 잃지 않도록 일정 기간(3일) 후
+      // 다시 한 번 보여줌. "둘러보기" 등 명시적으로 거절한 경우는 위에서 이미 걸러짐.
+      const lastShown = Number(localStorage.getItem(LAST_SHOWN_KEY) || 0);
+      if (lastShown && Date.now() - lastShown < RESHOW_COOLDOWN_MS) return;
+
+      setVisible(true);
+      localStorage.setItem(LAST_SHOWN_KEY, String(Date.now()));
     } catch {
       // localStorage 접근 불가 시 온보딩 생략
     }
-  }, []);
+  }, [isMember]);
 
   function dismiss() {
     try {

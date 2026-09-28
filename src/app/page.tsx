@@ -117,7 +117,7 @@ export default function Home() {
 
   return (
     <SplashScreen onFinish={() => setLogoAnimate(true)}>
-    <OnboardingIntro logoAnimate={logoAnimate} />
+    <OnboardingIntro logoAnimate={logoAnimate} isMember={isMember} />
     {signupPending && (
       <Link
         href="/signup"
