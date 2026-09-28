@@ -12,6 +12,7 @@ import BusinessLicenseUploader from "@/components/BusinessLicenseUploader";
 import EcosystemGrid from "@/components/EcosystemGrid";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import PushStatusCard from "@/components/PushStatusCard";
+import { SITE_URL } from "@/lib/siteUrl";
 import { resizeImageForUpload } from "@/lib/resizeImage";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 
@@ -387,12 +388,13 @@ export default function MyPage() {
 
   const shareDeal = shareDeals.find((d) => d.id === selectedShareDealId) ?? null;
 
-  const refUrl =
-    typeof window !== "undefined" && refCode
-      ? shareDeal
-        ? `${window.location.origin}/deals/${shareDeal.id}?ref=${refCode}`
-        : `${window.location.origin}/signup?ref=${refCode}`
-      : "";
+  // 공유·QR 링크는 항상 정식 주소 — 비정식 주소(xxx.vercel.app)로 들어온 사람이 공유해도
+  // 그 주소가 퍼지지 않게 (src/lib/siteUrl.ts)
+  const refUrl = refCode
+    ? shareDeal
+      ? `${SITE_URL}/deals/${shareDeal.id}?ref=${refCode}`
+      : `${SITE_URL}/signup?ref=${refCode}`
+    : "";
 
   const handleShareRefLink = async () => {
     if (typeof window === "undefined" || !refCode) return;

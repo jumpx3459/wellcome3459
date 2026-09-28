@@ -8,6 +8,7 @@ import { hasAppHistory } from "@/lib/appNav";
 import { mockDeals, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import CountdownBadge from "@/components/CountdownBadge";
 import { formatPrice, percentOff } from "@/lib/format";
+import { SITE_URL } from "@/lib/siteUrl";
 
 export default function DealDetailPage() {
   return (
@@ -65,11 +66,12 @@ function DealDetailPageInner() {
   };
 
   const handleShare = async () => {
+    // 정식 주소 기준으로 공유 (src/lib/siteUrl.ts)
     const url =
       typeof window !== "undefined"
         ? ownRefCode
-          ? `${window.location.origin}${window.location.pathname}?ref=${ownRefCode}`
-          : window.location.href
+          ? `${SITE_URL}${window.location.pathname}?ref=${ownRefCode}`
+          : `${SITE_URL}${window.location.pathname}${window.location.search}`
         : "";
     if (typeof navigator !== "undefined" && navigator.share) {
       try {

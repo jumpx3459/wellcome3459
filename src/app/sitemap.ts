@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { SITE_URL as BASE_URL } from "@/lib/siteUrl";
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://dumpingjumping.vercel.app";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [

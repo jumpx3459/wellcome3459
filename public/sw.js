@@ -41,8 +41,14 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   if (event.action === "dismiss") return;
 
-  const url = event.notification.data?.url || "/deals";
+  const path = event.notification.data?.url || "/deals";
   const logId = event.notification.data?.logId;
+
+  // 비정식 주소(xxx.vercel.app)에서 구독한 기기는 알림을 누르면 그 주소로 열렸음 —
+  // 그 경우에만 정식 주소 기준으로 연다. 정식 주소/localhost는 기존처럼 같은 origin 상대경로.
+  // (정적 파일이라 env를 못 읽어서 src/lib/siteUrl.ts의 SITE_URL과 같은 값을 직접 적음)
+  const SITE_URL = "https://www.dumpingjumping.com";
+  const url = self.location.hostname.endsWith(".vercel.app") ? new URL(path, SITE_URL).href : path;
 
   const openClient = clients.matchAll({ type: "window" }).then((clientList) => {
     for (const client of clientList) {

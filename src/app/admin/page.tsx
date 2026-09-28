@@ -10,6 +10,7 @@ import ManifestUploader from "@/components/ManifestUploader";
 import Toast, { useToast } from "@/components/Toast";
 import { formatPriceInput, parsePriceInput, formatMemberNo } from "@/lib/format";
 import type { ManifestRow } from "@/lib/parseCsv";
+import { SITE_URL } from "@/lib/siteUrl";
 
 type SellerRequest = {
   id: string;
@@ -590,7 +591,7 @@ function AdminDashboard({
 
   const handleShareTempPassword = async () => {
     if (!appointResult) return;
-    const adminUrl = `${window.location.origin}/admin`;
+    const adminUrl = `${SITE_URL}/admin`;
     const message = `🎉 ${appointResult.name}님, 덤핑점핑 관리자로 임명됐어요!\n\n관리자 페이지: ${adminUrl}\n임시 비밀번호: ${appointResult.tempPassword}\n\n로그인 후 꼭 "비밀번호 변경"으로 새 비밀번호로 바꿔주세요.`;
 
     if (typeof navigator !== "undefined" && navigator.share) {

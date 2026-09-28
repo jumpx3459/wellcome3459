@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
+import { SITE_URL as BASE_URL } from "@/lib/siteUrl";
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://dumpingjumping.vercel.app";
 
 export default function robots(): MetadataRoute.Robots {
   return {
