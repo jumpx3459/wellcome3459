@@ -878,3 +878,16 @@ alter table public.members add column if not exists notice_alerts_opt_in boolean
 -- true면 조용한 재저장(/api/push/subscribe, explicit 없음)은 건너뛰고, 사용자가 [알림 켜기]를
 -- 직접 누를 때(explicit=true)만 false로 되돌린다. sendDealPush/sendNoticePush도 이 회원을 제외.
 alter table public.members add column if not exists push_opt_out boolean not null default false;
+
+-- 2026-09-28: otp_request_log 30일 경과 행 자동 정리 (pg_cron, 매일 03:00 KST = UTC 18:00).
+-- 발송 제한 함수(check_and_log_otp_request)는 최근 1분/1시간만 보므로 영향 없음.
+-- Supabase SQL Editor에서 실행 완료 (2026-09-28): extension 생성 성공, jobid 1, cron.job active = true.
+-- 탈퇴 시 해당 번호 행은 /api/unsubscribe(withdraw)가 즉시 삭제한다.
+create extension if not exists pg_cron;
+select cron.schedule(
+  'purge-otp-request-log',
+  '0 18 * * *',
+  $$ delete from public.otp_request_log where created_at < now() - interval '30 days' $$
+);
+-- 확인: select jobname, schedule, active from cron.job;
+-- 해제: select cron.unschedule('purge-otp-request-log');
