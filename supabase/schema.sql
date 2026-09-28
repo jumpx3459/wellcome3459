@@ -969,3 +969,32 @@ create index if not exists buy_requests_member_id_idx on public.buy_requests (me
 drop policy if exists "buy_requests_public_insert" on public.buy_requests;
 create policy "buy_requests_public_insert" on public.buy_requests
   for insert with check (member_id is null);
+
+-- 2026-09-29: 보안 점검 후속 — Supabase SQL Editor 실행 완료 (anon insert 재시도 시 42501 확인).
+-- (1) 요청 테이블 공개 insert 제거: 앱은 /api/seller-requests·/api/quick-interest·/api/buy-requests가
+--     service_role로만 저장. 예전엔 공개 anon 키로 API 검증(연락처·MOQ 등)을 건너뛰고 직접 넣거나,
+--     seller_requests에 남의 seller_member_id를 넣을 수 있었음.
+drop policy if exists "seller_requests_public_insert" on public.seller_requests;
+drop policy if exists "quick_leads_public_insert" on public.quick_leads;
+drop policy if exists "buy_requests_public_insert" on public.buy_requests;
+
+-- (2) members 본인 수정 시 고정 칼럼: referred_by(추천 실적 조작), member_no, phone,
+--     business_license_path(남의 파일 경로 지정), ref_code(최초 발급만 허용). service_role은 제외.
+--     임시 계정으로 확인(2026-09-29): 가입 insert·재가입 upsert·프로필·알림 설정·아바타·ref_code 최초 발급 정상,
+--     보호 칼럼 변경 시도는 오류 없이 원래 값 유지.
+create or replace function public.protect_member_columns()
+returns trigger as $$
+begin
+  if auth.role() <> 'service_role' then
+    new.referred_by := old.referred_by;
+    new.member_no := old.member_no;
+    new.phone := old.phone;
+    new.business_license_path := old.business_license_path;
+    if old.ref_code is not null then new.ref_code := old.ref_code; end if;
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+drop trigger if exists members_protect_columns on public.members;
+create trigger members_protect_columns before update on public.members
+  for each row execute function public.protect_member_columns();

@@ -318,7 +318,10 @@ function SignupPageInner() {
         is_business: isBusiness,
         company_name: companyName ? companyName : null,
         ref_code: existingMember?.ref_code ?? generateRefCode(),
-        ...(referredById ? { referred_by: referredById } : {}),
+        // 2026-09-29: 이미 회원 행이 있으면(재가입) referred_by를 보내지 않음 — upsert라도 BEFORE INSERT
+        // 트리거(grant_referral_bonus)가 먼저 돌아 추천인에게 사진 슬롯 +2가 또 지급되던 문제.
+        // (referred_by 자체는 members_protect_columns 트리거가 가입 후 변경을 막음)
+        ...(referredById && !existingMember ? { referred_by: referredById } : {}),
       });
       if (memberError) {
         debugLog(`[signup] members upsert error code=${memberError.code} closing kakaoWindow=${!!kakaoWindow}`);
