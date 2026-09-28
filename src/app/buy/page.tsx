@@ -6,7 +6,7 @@ import Link from "next/link";
 import { hasAppHistory } from "@/lib/appNav";
 import { CheckCircle } from "lucide-react";
 import { mockCategories, mockRegions, categoryIcons, quantityUnits, guessCategory } from "@/lib/mockData";
-import { formatPriceInput, parsePriceInput } from "@/lib/format";
+import { formatPriceInput, parsePriceInput, PRICE_UNITS, formatPriceWithUnit } from "@/lib/format";
 import { isValidKoreanPhone, formatKoreanPhone } from "@/lib/auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { NAV_HEIGHT } from "@/components/BottomNav";
@@ -40,6 +40,9 @@ export default function BuyPage() {
   const [quantity, setQuantity] = useState("");
   const [quantityUnit, setQuantityUnit] = useState(quantityUnits[0]);
   const [hopePrice, setHopePrice] = useState("");
+  // 희망 단가 기준 단위 — 기본은 희망 수량 단위를 따라가고, 직접 고르면 그때부터 따로
+  const [priceUnit, setPriceUnit] = useState<string>(quantityUnits[0]);
+  const [priceUnitTouched, setPriceUnitTouched] = useState(false);
   const [contactPhone, setContactPhone] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -99,6 +102,7 @@ export default function BuyPage() {
           region: regions.length > 0 && !allRegionsOn ? regions.join(", ") : null,
           quantity: quantity ? `${quantity}${quantityUnit}` : null,
           hopePrice: parsePriceInput(hopePrice) ?? null,
+          hopePriceUnit: parsePriceInput(hopePrice) ? priceUnit : null,
           contactPhone,
           description,
         }),
@@ -117,7 +121,7 @@ export default function BuyPage() {
       category || "전체 카테고리",
       productName || "찾는 재고",
       quantity ? `${quantity}${quantityUnit} 이상` : null,
-      hopePrice ? `${formatPriceInput(hopePrice)}원 이하` : null,
+      hopePrice ? `${formatPriceWithUnit(parsePriceInput(hopePrice) ?? 0, priceUnit)} 이하` : null,
       allRegionsOn || regions.length === 0 ? "전 지역" : regions.join("·"),
     ]
       .filter(Boolean)
@@ -346,7 +350,10 @@ export default function BuyPage() {
                 className="flex-shrink-0 outline-none"
                 style={{ width: 74, border: "none", borderLeft: "1px solid #E4E7EB", padding: "14px 8px", fontSize: rem(13), fontWeight: 700, color: "#0B2540", background: "#FAFBFC", textAlign: "center" }}
                 value={quantityUnit}
-                onChange={(e) => setQuantityUnit(e.target.value)}
+                onChange={(e) => {
+                  setQuantityUnit(e.target.value);
+                  if (!priceUnitTouched) setPriceUnit(e.target.value);
+                }}
               >
                 {quantityUnits.map((u) => (
                   <option key={u} value={u}>{u}</option>
@@ -369,7 +376,23 @@ export default function BuyPage() {
                 onChange={(e) => setHopePrice(e.target.value)}
                 placeholder="30,000"
               />
-              <span className="flex-shrink-0 text-sm font-bold" style={{ color: "#6B7480", padding: "0 12px" }}>원</span>
+              {/* 2026-09-29: "원"만 있어 개당인지 kg당인지 총액인지 알 수 없었음 → "원 / kg" 형식 선택 */}
+              <select
+                aria-label="희망 단가 기준"
+                className="flex-shrink-0 outline-none"
+                style={{ width: 84, border: "none", borderLeft: "1px solid #E4E7EB", padding: "14px 6px", fontSize: rem(13), fontWeight: 700, color: "#0B2540", background: "#FAFBFC", textAlign: "center", borderRadius: "0 12px 12px 0" }}
+                value={priceUnit}
+                onChange={(e) => {
+                  setPriceUnit(e.target.value);
+                  setPriceUnitTouched(true);
+                }}
+              >
+                {PRICE_UNITS.map((u) => (
+                  <option key={u} value={u}>
+                    {u === "총액" ? "원 (총액)" : `원 / ${u}`}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>

@@ -8,7 +8,7 @@ import ImageUploader from "@/components/ImageUploader";
 import VideoUploader from "@/components/VideoUploader";
 import ManifestUploader from "@/components/ManifestUploader";
 import Toast, { useToast } from "@/components/Toast";
-import { formatPriceInput, parsePriceInput, formatMemberNo } from "@/lib/format";
+import { formatPriceInput, parsePriceInput, formatMemberNo, formatPriceWithUnit } from "@/lib/format";
 import type { ManifestRow } from "@/lib/parseCsv";
 import { SITE_URL } from "@/lib/siteUrl";
 import { rem } from "@/lib/rem";
@@ -282,6 +282,7 @@ type BuyRequest = {
   product_name: string;
   quantity: string | null;
   hope_price: number | null;
+  hope_price_unit: string | null; // 2026-09-29 "kg" 등 수량 단위 또는 "총액"
   contact_phone: string;
   description: string | null;
   contacted: boolean;
@@ -1773,7 +1774,7 @@ function AdminDashboard({
                 📞 {b.contact_phone}
               </a>
               {b.quantity ? ` · 희망수량 ${b.quantity}` : ""}
-              {b.hope_price ? ` · 희망가 ${b.hope_price.toLocaleString()}원 이하` : ""}
+              {b.hope_price ? ` · 희망가 ${formatPriceWithUnit(b.hope_price, b.hope_price_unit)} 이하` : ""}
             </div>
             {b.description && (
               <div className="text-sm text-gray500 mt-1 bg-gray100 rounded-lg px-3 py-2">

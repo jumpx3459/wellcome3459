@@ -72,3 +72,20 @@ export function formatRelativeTime(iso?: string | null): string | null {
   const day = Math.floor(hour / 24);
   return `${day}일 전`;
 }
+
+// 2026-09-29: 가격 기준 단위 — 구매 희망 단가(buy_requests.hope_price_unit) 등.
+// 값은 수량 단위 그대로("개"/"박스"/"kg"/"팔레트"/"톤"/"세트") 또는 "총액".
+export const PRICE_UNITS = ["개", "박스", "kg", "팔레트", "톤", "세트", "총액"] as const;
+export type PriceUnit = (typeof PRICE_UNITS)[number];
+
+// 선택지 라벨: "개당", "kg당" … / "총액"
+export function priceUnitLabel(unit: string): string {
+  return unit === "총액" ? "총액" : `${unit}당`;
+}
+
+// "30,000원/kg", "30,000원(총액)", 단위 없으면 "30,000원"
+export function formatPriceWithUnit(price: number, unit?: string | null): string {
+  const base = `${price.toLocaleString()}원`;
+  if (!unit) return base;
+  return unit === "총액" ? `${base}(총액)` : `${base}/${unit}`;
+}

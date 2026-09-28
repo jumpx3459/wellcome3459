@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isValidKoreanPhone } from "@/lib/auth";
 import { sendAdminPush } from "@/lib/sendPush";
+import { PRICE_UNITS } from "@/lib/format";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { productName, category, region, quantity, hopePrice, contactPhone, description } = body;
+  const { productName, category, region, quantity, hopePrice, hopePriceUnit, contactPhone, description } = body;
+  // 희망 단가 기준 단위(2026-09-29) — 정해진 값만 저장
+  const priceUnit = typeof hopePriceUnit === "string" && (PRICE_UNITS as readonly string[]).includes(hopePriceUnit) ? hopePriceUnit : null;
 
   if (!productName || !contactPhone) {
     return NextResponse.json({ error: "필수 항목이 누락되었습니다." }, { status: 400 });
@@ -37,6 +40,7 @@ export async function POST(req: NextRequest) {
     region_id: regRow?.id ?? null,
     quantity: quantity || null,
     hope_price: hopePrice || null,
+    hope_price_unit: hopePrice ? priceUnit : null,
     contact_phone: contactPhone,
     description: description || null,
   });

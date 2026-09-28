@@ -950,3 +950,7 @@ create policy "feature_waitlist_self_insert" on public.feature_waitlist
 drop policy if exists "feature_waitlist_self_select" on public.feature_waitlist;
 create policy "feature_waitlist_self_select" on public.feature_waitlist
   for select using (auth.uid() = member_id);
+
+-- 2026-09-29: 구매 희망 단가의 기준 단위 — 예전엔 "원"만 있어 개당/kg당/총액을 알 수 없었음.
+-- 값: 수량 단위("개"/"박스"/"kg"/"팔레트"/"톤"/"세트") 또는 "총액" (src/lib/format.ts PRICE_UNITS).
+alter table public.buy_requests add column if not exists hope_price_unit text;
