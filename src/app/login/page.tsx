@@ -176,9 +176,22 @@ function LoginPageInner() {
               <img src="/images/logo.png" alt="덤핑점핑" className="h-7 w-auto" />
             </Link>
           </div>
-          <div className="text-xs font-bold tracking-widest" style={{ color: "#FFD166" }}>로그인</div>
+          {/* 2026-09-28: 다른 헤더(buy/sell/signup/홈)와 통일감을 맞추기 위해 브랜드
+              표기(Powered by JumpX)를 추가. 로테이션 긴급성 문구는 비회원 전환
+              유도용이라, 이미 가입한 회원이 재접속하는 로그인 화면과는 맞지 않아
+              의도적으로 넣지 않음. */}
+          <div className="text-xs" style={{ color: "rgba(255,255,255,0.65)" }}>Powered by JumpX</div>
+          <div className="text-xs font-bold tracking-widest mt-2.5" style={{ color: "#FFD166" }}>로그인</div>
           <h1 className="font-display text-2xl mt-1.5 text-white">
-            {membership === "not_member" ? "아직 가입 안 된 번호예요" : "번호만 인증하면 바로 들어가요"}
+            {membership === "not_member" ? (
+              "아직 가입 안 된 번호예요"
+            ) : (
+              <>
+                번호만 인증하면
+                <br />
+                바로 들어가요
+              </>
+            )}
           </h1>
           {membership !== "not_member" && (
             <p className="mt-2" style={{ fontSize: 13.5, color: "rgba(255,255,255,0.65)", lineHeight: 1.6 }}>
@@ -188,7 +201,7 @@ function LoginPageInner() {
         </div>
       </div>
 
-      <div className="flex-1" style={{ padding: "24px 22px 20px" }}>
+      <div className="flex-1 flex flex-col" style={{ padding: "24px 22px 20px" }}>
         {membership === "not_member" ? (
           <div className="flex flex-col items-center text-center" style={{ padding: "12px 6px 0" }}>
             <div className="rounded-full flex items-center justify-center" style={{ width: 76, height: 76, background: "#FDEEE8", fontSize: 34 }}>
@@ -208,6 +221,7 @@ function LoginPageInner() {
             </Link>
           </div>
         ) : (
+          <div className="flex-1 flex flex-col">
           <div>
             {/* 2026-09-27: 비밀번호를 설정해둔 회원은 SMS 없이 바로 로그인할 수
                 있도록 탭 추가. 비밀번호를 잊으면 그냥 "인증번호로 로그인" 탭으로
@@ -221,7 +235,7 @@ function LoginPageInner() {
                   style={{
                     padding: "9px 0",
                     fontSize: 13.5,
-                    background: authMode === "otp" ? "#0B2540" : "#F5F6F8",
+                    background: authMode === "otp" ? "linear-gradient(135deg,#E25100,#FF6F0F)" : "#F5F6F8",
                     color: authMode === "otp" ? "#fff" : "#6B7480",
                   }}
                 >
@@ -234,7 +248,7 @@ function LoginPageInner() {
                   style={{
                     padding: "9px 0",
                     fontSize: 13.5,
-                    background: authMode === "password" ? "#0B2540" : "#F5F6F8",
+                    background: authMode === "password" ? "linear-gradient(135deg,#E25100,#FF6F0F)" : "#F5F6F8",
                     color: authMode === "password" ? "#fff" : "#6B7480",
                   }}
                 >
@@ -260,7 +274,14 @@ function LoginPageInner() {
                     onClick={handleSendOtp}
                     disabled={otpSending || Boolean(authUserId) || !isValidKoreanPhone(phone)}
                     className="flex-shrink-0 rounded-xl font-bold disabled:opacity-60"
-                    style={{ border: "1.5px solid #0B2540", background: "#fff", padding: "0 15px", fontSize: 13.5, color: "#0B2540", whiteSpace: "nowrap" }}
+                    style={{
+                      border: "none",
+                      background: "linear-gradient(135deg,#E25100,#FF6F0F)",
+                      padding: "0 15px",
+                      fontSize: 13.5,
+                      color: "#fff",
+                      whiteSpace: "nowrap",
+                    }}
                   >
                     {otpSending ? "발송 중..." : codeSent ? "다시 받기" : "인증번호 받기"}
                   </button>
@@ -346,6 +367,16 @@ function LoginPageInner() {
                 알림 신청하기
               </Link>
             </p>
+          </div>
+
+          {/* 2026-09-28: 폼 아래 남는 여백이 휑하다는 피드백 — 매니저 캐릭터로 채움 */}
+          <div className="flex-1 flex items-end justify-center" style={{ minHeight: 24, paddingTop: 20 }}>
+            <img
+              src="/images/manager-cut.png"
+              alt="점핑매니저"
+              style={{ height: "clamp(90px, 18vh, 150px)", width: "auto", objectFit: "contain" }}
+            />
+          </div>
           </div>
         )}
       </div>
