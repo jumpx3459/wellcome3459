@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import { matchesConditions } from "@/lib/dealMatching";
+import { formatDealPrice } from "@/lib/format";
 
 const vapidPublic = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 const vapidPrivate = process.env.VAPID_PRIVATE_KEY;
@@ -22,7 +23,7 @@ export async function sendDealPush(dealId: string) {
 
   const { data: deal, error: dealError } = await supabaseAdmin
     .from("deals")
-    .select("id, title, category_id, region_id, deal_price, original_price, images")
+    .select("id, title, category_id, region_id, deal_price, original_price, quantity_unit, images")
     .eq("id", dealId)
     .single();
 
@@ -97,7 +98,7 @@ export async function sendDealPush(dealId: string) {
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
           JSON.stringify({
             title: "🔥 덤핑점핑 · 마감 임박",
-            body: `${deal.title} · ${discountPrefix}${Number(deal.deal_price).toLocaleString()}원`,
+            body: `${deal.title} · ${discountPrefix}${formatDealPrice(Number(deal.deal_price), deal.quantity_unit)}`,
             url: `/deals/${deal.id}`,
             tag: `deal-${deal.id}`,
             image: deal.images?.[0] || undefined,

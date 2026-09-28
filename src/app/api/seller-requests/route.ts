@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { isValidKoreanPhone } from "@/lib/auth";
+import { isValidContactPhone } from "@/lib/auth";
 import { sanitizeManifest, sanitizePid } from "@/lib/parseCsv";
 
 export async function POST(req: NextRequest) {
@@ -33,8 +33,9 @@ export async function POST(req: NextRequest) {
   if (!contactPhone || !productName || !quantity) {
     return NextResponse.json({ error: "필수 항목이 누락되었습니다." }, { status: 400 });
   }
-  if (!isValidKoreanPhone(contactPhone)) {
-    return NextResponse.json({ error: "올바른 휴대폰 번호를 입력해주세요." }, { status: 400 });
+  // 2026-09-29: 사무실 번호도 허용 (휴대폰 전용 검증은 로그인 OTP에만)
+  if (!isValidContactPhone(contactPhone)) {
+    return NextResponse.json({ error: "휴대폰 또는 사무실 번호를 정확히 입력해주세요", field: "contactPhone" }, { status: 400 });
   }
   // 2026-09-28: 수량보다 큰 MOQ(예: 수량 100kg, MOQ 1000kg)가 그대로 저장된 사례 — 폼(sell)과 같은 규칙
   if (minOrderQty != null && minOrderQty !== "" && Number(minOrderQty) > Number(quantity)) {

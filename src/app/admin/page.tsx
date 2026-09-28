@@ -2541,7 +2541,7 @@ function DealForm({
       </p>
 
       <div className="grid grid-cols-2 gap-2">
-        <DealFormField label="정상가(원)" error={fieldErrors.originalPrice} htmlFor="deal-originalPrice">
+        <DealFormField label={`정상 단가(원 / ${quantityUnit})`} error={fieldErrors.originalPrice} htmlFor="deal-originalPrice">
           <div className="relative">
             <input
               id="deal-originalPrice"
@@ -2558,7 +2558,7 @@ function DealForm({
             <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray500">원</span>
           </div>
         </DealFormField>
-        <DealFormField label="판매가(원)" required error={fieldErrors.dealPrice} htmlFor="deal-dealPrice">
+        <DealFormField label={`판매 단가(원 / ${quantityUnit})`} required error={fieldErrors.dealPrice} htmlFor="deal-dealPrice">
           <div className="relative">
             <input
               id="deal-dealPrice"

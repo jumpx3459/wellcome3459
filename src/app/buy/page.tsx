@@ -7,7 +7,8 @@ import { hasAppHistory } from "@/lib/appNav";
 import { CheckCircle } from "lucide-react";
 import { mockCategories, mockRegions, categoryIcons, quantityUnits, guessCategory } from "@/lib/mockData";
 import { formatPriceInput, parsePriceInput, PRICE_UNITS, formatPriceWithUnit } from "@/lib/format";
-import { isValidKoreanPhone, formatKoreanPhone } from "@/lib/auth";
+import { isValidContactPhone, formatContactPhone } from "@/lib/auth";
+import ContactPhoneInput from "@/components/ContactPhoneInput";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { NAV_HEIGHT } from "@/components/BottomNav";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
@@ -44,6 +45,8 @@ export default function BuyPage() {
   const [priceUnit, setPriceUnit] = useState<string>(quantityUnits[0]);
   const [priceUnitTouched, setPriceUnitTouched] = useState(false);
   const [contactPhone, setContactPhone] = useState("");
+  const [autofilledPhone, setAutofilledPhone] = useState<string | null>(null);
+  const [contactError, setContactError] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -61,7 +64,11 @@ export default function BuyPage() {
         .select("phone")
         .eq("id", userData.user.id)
         .maybeSingle();
-      if (member?.phone) setContactPhone(formatKoreanPhone(member.phone));
+      if (member?.phone) {
+        const filled = formatContactPhone(member.phone);
+        setContactPhone(filled);
+        setAutofilledPhone(filled);
+      }
     })();
   }, []);
 
@@ -87,8 +94,10 @@ export default function BuyPage() {
       setError("찾는 품목과 연락처는 꼭 입력해주세요.");
       return;
     }
-    if (!isValidKoreanPhone(contactPhone)) {
-      setError("올바른 휴대폰 번호를 입력해주세요.");
+    // 2026-09-29: 사무실 번호(02-, 031-…, 대표번호 15xx 등)도 허용 — 서버도 같은 isValidContactPhone
+    if (!isValidContactPhone(contactPhone)) {
+      setContactError("휴대폰 또는 사무실 번호를 정확히 입력해주세요");
+      document.getElementById("contact-phone")?.focus();
       return;
     }
     setSubmitting(true);
@@ -103,11 +112,19 @@ export default function BuyPage() {
           quantity: quantity ? `${quantity}${quantityUnit}` : null,
           hopePrice: parsePriceInput(hopePrice) ?? null,
           hopePriceUnit: parsePriceInput(hopePrice) ? priceUnit : null,
-          contactPhone,
+          contactPhone: formatContactPhone(contactPhone),
           description,
         }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data.field === "contactPhone") {
+          setContactError(data.error ?? "연락처를 확인해주세요.");
+          document.getElementById("contact-phone")?.focus();
+          return;
+        }
+        throw new Error();
+      }
       setDone(true);
     } catch {
       setError("등록 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");
@@ -257,12 +274,14 @@ export default function BuyPage() {
             연락처
             <span className="text-xs font-bold" style={{ color: "#E25100" }}>(필수)</span>
           </div>
-          <input
-            className="w-full rounded-xl outline-none"
-            style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: rem(14.5) }}
+          <ContactPhoneInput
             value={contactPhone}
-            onChange={(e) => setContactPhone(e.target.value)}
-            placeholder="010-0000-0000"
+            onChange={(v) => {
+              setContactPhone(v);
+              setContactError(null);
+            }}
+            autofilledValue={autofilledPhone}
+            error={contactError}
           />
         </div>
 

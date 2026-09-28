@@ -12,7 +12,8 @@ import VideoUploader from "@/components/VideoUploader";
 import ManifestUploader from "@/components/ManifestUploader";
 import { NAV_HEIGHT } from "@/components/BottomNav";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
-import { formatKoreanPhone, isValidKoreanPhone } from "@/lib/auth";
+import { isValidContactPhone, formatContactPhone } from "@/lib/auth";
+import ContactPhoneInput from "@/components/ContactPhoneInput";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import type { ManifestRow } from "@/lib/parseCsv";
 import { rem } from "@/lib/rem";
@@ -36,6 +37,8 @@ export default function SellPage() {
   const [memberId, setMemberId] = useState<string | null>(null);
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
+  const [autofilledPhone, setAutofilledPhone] = useState<string | null>(null);
+  const [contactError, setContactError] = useState<string | null>(null);
   const [bonusPhotoSlots, setBonusPhotoSlots] = useState(0);
 
   // 로그인한 회원이면 인증된 번호를 미리 채워준다 — 대리 등록(다른 담당자
@@ -51,7 +54,11 @@ export default function SellPage() {
         .select("phone, bonus_photo_slots")
         .eq("id", userData.user.id)
         .maybeSingle();
-      if (member?.phone) setContactPhone(formatKoreanPhone(member.phone));
+      if (member?.phone) {
+        const filled = formatContactPhone(member.phone);
+        setContactPhone(filled);
+        setAutofilledPhone(filled);
+      }
       setBonusPhotoSlots(member?.bonus_photo_slots ?? 0);
     })();
   }, []);
@@ -108,8 +115,10 @@ export default function SellPage() {
       setError("매물명 · 수량 · 연락처는 꼭 입력해주세요.");
       return;
     }
-    if (!isValidKoreanPhone(contactPhone)) {
-      setError("올바른 휴대폰 번호를 입력해주세요.");
+    // 2026-09-29: 사무실 번호(02-, 031-…, 대표번호 15xx 등)도 허용 — 서버도 같은 isValidContactPhone
+    if (!isValidContactPhone(contactPhone)) {
+      setContactError("휴대폰 또는 사무실 번호를 정확히 입력해주세요");
+      document.getElementById("contact-phone")?.focus();
       return;
     }
     // 2026-09-28: 수량 100kg·MOQ 1000kg 같은 신청이 그대로 들어온 사례 — 서버(/api/seller-requests)도 같은 검증
@@ -127,7 +136,7 @@ export default function SellPage() {
           isAnonymous,
           memberId,
           contactName: contactName || null,
-          contactPhone,
+          contactPhone: formatContactPhone(contactPhone),
           category: category || null,
           region: region || null,
           productName,
@@ -149,6 +158,11 @@ export default function SellPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
+        if (data.field === "contactPhone") {
+          setContactError(data.error ?? "연락처를 확인해주세요.");
+          document.getElementById("contact-phone")?.focus();
+          return;
+        }
         if (data.field === "minOrderQty") {
           showMoqError(data.error ?? "최소주문량은 총수량보다 클 수 없어요.");
           return;
@@ -385,7 +399,7 @@ export default function SellPage() {
             </div>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-bold mb-2" style={{ color: "#0B2540" }}>희망 단가(원)</div>
+            <div className="text-sm font-bold mb-2" style={{ color: "#0B2540" }}>희망 단가(원 / {quantityUnit})</div>
             <div className="flex items-center rounded-xl" style={{ border: "1.5px solid var(--color-brandOrange)" }}>
               <input
                 type="text"
@@ -409,12 +423,14 @@ export default function SellPage() {
             연락처
             <span className="text-xs font-bold" style={{ color: "#E25100" }}>(필수)</span>
           </div>
-          <input
-            className="w-full rounded-xl outline-none"
-            style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: rem(14.5) }}
+          <ContactPhoneInput
             value={contactPhone}
-            onChange={(e) => setContactPhone(e.target.value)}
-            placeholder="010-0000-0000"
+            onChange={(v) => {
+              setContactPhone(v);
+              setContactError(null);
+            }}
+            autofilledValue={autofilledPhone}
+            error={contactError}
           />
         </div>
 

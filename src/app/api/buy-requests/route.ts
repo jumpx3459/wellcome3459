@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { isValidKoreanPhone } from "@/lib/auth";
+import { isValidContactPhone } from "@/lib/auth";
 import { sendAdminPush } from "@/lib/sendPush";
 import { PRICE_UNITS } from "@/lib/format";
 
@@ -13,8 +13,9 @@ export async function POST(req: NextRequest) {
   if (!productName || !contactPhone) {
     return NextResponse.json({ error: "필수 항목이 누락되었습니다." }, { status: 400 });
   }
-  if (!isValidKoreanPhone(contactPhone)) {
-    return NextResponse.json({ error: "올바른 휴대폰 번호를 입력해주세요." }, { status: 400 });
+  // 2026-09-29: 사무실 번호도 허용 (휴대폰 전용 검증은 로그인 OTP에만)
+  if (!isValidContactPhone(contactPhone)) {
+    return NextResponse.json({ error: "휴대폰 또는 사무실 번호를 정확히 입력해주세요", field: "contactPhone" }, { status: 400 });
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

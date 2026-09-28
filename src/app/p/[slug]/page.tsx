@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockDeals, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatDealPrice } from "@/lib/format";
 import { getPartner } from "@/lib/partners";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import { rem } from "@/lib/rem";
@@ -116,7 +116,7 @@ export default function PartnerDemoPage() {
                 <div className="flex-1 min-w-0 px-3.5 py-2.5">
                   <div className="text-sm font-bold truncate" style={{ color: "#0B2540" }}>{d.title}</div>
                   <div className="flex items-baseline gap-1.5 mt-1.5">
-                    <span className="text-base font-black" style={{ color: color.text }}>{formatPrice(d.deal_price)}</span>
+                    <span className="text-base font-black" style={{ color: color.text }}>{formatDealPrice(d.deal_price, d.quantity_unit)}</span>
                     {discountPct > 0 && (
                       <span className="text-xs font-bold rounded-full" style={{ color: partner.accentColor, background: "#fff", border: `1px solid ${partner.accentColor}`, padding: "1px 7px" }}>
                         -{Math.round(discountPct)}%

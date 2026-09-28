@@ -38,6 +38,30 @@ export function formatKoreanPhone(input: string | null | undefined): string {
   return d;
 }
 
+/** 연락처(매물 등록·구매 희망) 검증 — 휴대폰 + 사무실 번호 허용 (2026-09-29).
+ * 로그인/가입 OTP는 휴대폰만 되므로 계속 isValidKoreanPhone을 쓸 것.
+ *   휴대폰 01X + 7~8자리 / 서울 02 + 7~8자리 / 지역번호 031~064 + 7~8자리 /
+ *   인터넷전화 070 + 8자리 / 대표번호 15xx·16xx·18xx + 4자리 */
+export function isValidContactPhone(input: string | null | undefined): boolean {
+  const d = toLocalPhone(input);
+  return (
+    /^01[016789]\d{7,8}$/.test(d) ||
+    /^02\d{7,8}$/.test(d) ||
+    /^0(3[1-3]|4[1-4]|5[1-5]|6[1-4])\d{7,8}$/.test(d) ||
+    /^070\d{8}$/.test(d) ||
+    /^1[568]\d{6}$/.test(d)
+  );
+}
+
+/** 연락처 표시용: "010-1234-5678" / "02-1234-5678" / "031-123-4567" / "1588-1234" */
+export function formatContactPhone(input: string | null | undefined): string {
+  const d = toLocalPhone(input);
+  if (/^1[568]\d{6}$/.test(d)) return `${d.slice(0, 4)}-${d.slice(4)}`;
+  if (/^02\d{7,8}$/.test(d)) return `02-${d.slice(2, d.length - 4)}-${d.slice(-4)}`;
+  if (/^0\d{2}\d{7,8}$/.test(d)) return `${d.slice(0, 3)}-${d.slice(3, d.length - 4)}-${d.slice(-4)}`;
+  return d;
+}
+
 /** @deprecated toLocalPhone 사용. 기존 호출부 호환용. */
 export const fromE164Phone = toLocalPhone;
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { mockCategories, mockDeals, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { formatPrice, formatRelativeTime } from "@/lib/format";
+import { formatPrice, formatRelativeTime, formatDealPrice } from "@/lib/format";
 import SplashScreen from "@/components/SplashScreen";
 import OnboardingIntro from "@/components/OnboardingIntro";
 import InstallAppButton, { useInstallPrompt } from "@/components/InstallAppButton";
@@ -364,10 +364,10 @@ export default function Home() {
                     </div>
                     <div className="flex items-baseline gap-1.5 mt-1.5">
                       <span className="text-lg font-black" style={{ color: color.text }}>
-                        {formatPrice(d.deal_price)}
+                        {formatDealPrice(d.deal_price, d.quantity_unit)}
                       </span>
                       <span className="text-xs text-gray500 line-through">
-                        {formatPrice(d.original_price)}
+                        {formatDealPrice(d.original_price, d.quantity_unit)}
                       </span>
                     </div>
                   </div>

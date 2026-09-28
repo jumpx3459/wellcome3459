@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CheckCircle } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockCategories, mockRegions, categoryIcons, categoryColors } from "@/lib/mockData";
-import { formatPrice, formatMemberNo, formatRelativeTime, dealUrgencyState } from "@/lib/format";
+import { formatPrice, formatMemberNo, formatRelativeTime, dealUrgencyState, formatDealPrice } from "@/lib/format";
 import { generateRefCode } from "@/lib/refCode";
 import Toast, { useToast } from "@/components/Toast";
 import BusinessLicenseUploader from "@/components/BusinessLicenseUploader";
@@ -26,6 +26,7 @@ type InterestItem = {
     id: string;
     title: string;
     deal_price: number;
+    quantity_unit: string | null;
     status: string;
   } | null;
 };
@@ -77,7 +78,7 @@ export default function MyPage() {
   const [alertLog, setAlertLog] = useState<AlertLogItem[]>([]);
   const [alertLogCount, setAlertLogCount] = useState(0);
   const [referrals, setReferrals] = useState<ReferralItem[]>([]);
-  const [shareDeals, setShareDeals] = useState<{ id: string; title: string; deal_price: number }[]>([]);
+  const [shareDeals, setShareDeals] = useState<{ id: string; title: string; deal_price: number; quantity_unit: string | null }[]>([]);
   const [selectedShareDealId, setSelectedShareDealId] = useState<string>("");
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
@@ -193,7 +194,7 @@ export default function MyPage() {
 
       const { data: interestRows } = await supabase
         .from("interests")
-        .select("id, deals(id, title, deal_price, status)")
+        .select("id, deals(id, title, deal_price, quantity_unit, status)")
         .eq("member_id", userId)
         .order("created_at", { ascending: false });
       setInterests((interestRows as unknown as InterestItem[]) ?? []);
@@ -256,7 +257,7 @@ export default function MyPage() {
     // 공유 시 앱 홍보 문구 대신 실제 특가를 보여주는 게 더 잘 클릭됨
     supabase
       .from("deals")
-      .select("id, title, deal_price")
+      .select("id, title, deal_price, quantity_unit")
       .eq("status", "active")
       .gt("closes_at", new Date().toISOString()) // 마감 지난 매물은 공유 목록에서 제외
       .order("created_at", { ascending: false })
@@ -412,7 +413,7 @@ export default function MyPage() {
     if (typeof window === "undefined" || !refCode) return;
     const url = refUrl;
     const text = shareDeal
-      ? `[덤핑점핑] ${shareDeal.title} ${formatPrice(shareDeal.deal_price)} 특가! 이런 재고특가 알림 매일 받아보세요 → ${url}`
+      ? `[덤핑점핑] ${shareDeal.title} ${formatDealPrice(shareDeal.deal_price, shareDeal.quantity_unit)} 특가! 이런 재고특가 알림 매일 받아보세요 → ${url}`
       : `점프엑스 덤핑점핑 - 재고 특가 알림 받아보세요! ${url}`;
 
     if (typeof navigator !== "undefined" && navigator.share) {
@@ -1076,7 +1077,7 @@ export default function MyPage() {
             >
               {shareDeals.map((d) => (
                 <option key={d.id} value={d.id}>
-                  📦 {d.title} · {formatPrice(d.deal_price)}
+                  📦 {d.title} · {formatDealPrice(d.deal_price, d.quantity_unit)}
                 </option>
               ))}
               <option value="">🔗 매물 없이 가입 추천만 보내기</option>
@@ -1550,7 +1551,7 @@ export default function MyPage() {
                   <div className="min-w-0">
                     <div className="font-bold" style={{ fontSize: rem(16), color: "#1F2937" }}>{i.deals.title}</div>
                     <div className="font-bold mt-0.5" style={{ fontSize: rem(16), color: "#0B2540" }}>
-                      {formatPrice(i.deals.deal_price)}
+                      {formatDealPrice(i.deals.deal_price, i.deals.quantity_unit)}
                     </div>
                   </div>
                   <span

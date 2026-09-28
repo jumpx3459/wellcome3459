@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockDeals, mockRegions, type Deal } from "@/lib/mockData";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatDealPrice } from "@/lib/format";
 import { formatCountdown } from "@/lib/format";
 import InstallAppButton, { useInstallPrompt } from "@/components/InstallAppButton";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
@@ -369,8 +369,8 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                           -{pct}%
                         </span>
                       )}
-                      <span className="font-black" style={{ fontSize: rem(18), color: "#0B2540" }}>{formatPrice(d.deal_price)}</span>
-                      <span style={{ fontSize: rem(12.5), color: "#6B7480", textDecoration: "line-through" }}>{formatPrice(d.original_price)}</span>
+                      <span className="font-black" style={{ fontSize: rem(18), color: "#0B2540" }}>{formatDealPrice(d.deal_price, d.quantity_unit)}</span>
+                      <span style={{ fontSize: rem(12.5), color: "#6B7480", textDecoration: "line-through" }}>{formatDealPrice(d.original_price, d.quantity_unit)}</span>
                     </span>
                   </span>
                 </div>
@@ -456,8 +456,8 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                     )}
                     <span className="flex items-baseline gap-1.5 mt-1.5">
                       {pct > 0 && <span className="font-black text-white rounded" style={{ fontSize: rem(12), padding: "2px 7px", background: "#9AA3AD" }}>-{pct}%</span>}
-                      <span className="font-black" style={{ fontSize: rem(18), color: "#6B7480" }}>{formatPrice(d.deal_price)}</span>
-                      <span style={{ fontSize: rem(12.5), color: "#9AA3AD", textDecoration: "line-through" }}>{formatPrice(d.original_price)}</span>
+                      <span className="font-black" style={{ fontSize: rem(18), color: "#6B7480" }}>{formatDealPrice(d.deal_price, d.quantity_unit)}</span>
+                      <span style={{ fontSize: rem(12.5), color: "#9AA3AD", textDecoration: "line-through" }}>{formatDealPrice(d.original_price, d.quantity_unit)}</span>
                     </span>
                   </span>
                 </div>

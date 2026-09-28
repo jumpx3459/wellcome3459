@@ -89,3 +89,10 @@ export function formatPriceWithUnit(price: number, unit?: string | null): string
   if (!unit) return base;
   return unit === "총액" ? `${base}(총액)` : `${base}/${unit}`;
 }
+
+// 매물 가격(deal_price·original_price)은 단가 — 판매신청 "희망 단가"가 그대로 deal_price가 됨.
+// 기준 단위(quantity_unit)를 붙여 "2,000원/kg"으로 표시 (2026-09-29, 예전엔 "2,000원"만 보였음).
+// quantity_unit이 비어 있으면 등록 기본값("개").
+export function formatDealPrice(price: number, quantityUnit?: string | null): string {
+  return formatPriceWithUnit(price, quantityUnit || "개");
+}

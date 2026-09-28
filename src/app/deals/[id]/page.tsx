@@ -7,7 +7,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { hasAppHistory } from "@/lib/appNav";
 import { mockDeals, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import CountdownBadge from "@/components/CountdownBadge";
-import { formatPrice, percentOff } from "@/lib/format";
+import { formatPrice, percentOff, formatDealPrice } from "@/lib/format";
 import { SITE_URL } from "@/lib/siteUrl";
 import { MESSAGES_ENABLED } from "@/lib/features";
 import { formatDealLocation } from "@/lib/formatDealLocation";
@@ -83,7 +83,7 @@ function DealDetailPageInner() {
         : "";
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
-        await navigator.share({ title: deal.title, text: `${deal.title} · ${formatPrice(deal.deal_price)}`, url });
+        await navigator.share({ title: deal.title, text: `${deal.title} · ${formatDealPrice(deal.deal_price, deal.quantity_unit)}`, url });
       } catch {
         // 사용자가 공유를 취소한 경우 — 무시
       }
@@ -388,7 +388,7 @@ function DealDetailPageInner() {
               </span>
             )}
             <span className="text-3xl font-black" style={{ color: "#0B2540" }}>
-              {formatPrice(deal.deal_price)}
+              {formatDealPrice(deal.deal_price, deal.quantity_unit)}
             </span>
             {/* 2026-09-26: 카드 리스트와 동일한 threshold-gating(3건 미만 숨김) */}
             {(deal.interest_count ?? 0) >= 3 && (
@@ -403,7 +403,7 @@ function DealDetailPageInner() {
           <div className="flex items-center justify-between gap-2 mt-1">
             <span className="text-sm text-gray500">
               {deal.original_price > deal.deal_price && (
-                <span className="line-through">{formatPrice(deal.original_price)}</span>
+                <span className="line-through">{formatDealPrice(deal.original_price, deal.quantity_unit)}</span>
               )}
               {deal.min_order_qty ? `${deal.original_price > deal.deal_price ? " · " : ""}최소주문 ${deal.min_order_qty}${deal.quantity_unit || "개"}` : null}
             </span>

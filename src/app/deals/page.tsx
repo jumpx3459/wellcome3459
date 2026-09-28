@@ -8,7 +8,7 @@ import { mockDeals, mockCategories, mockRegions, categoryIcons, categoryColors, 
 import CountdownBadge from "@/components/CountdownBadge";
 import AdSlot from "@/components/AdSlot";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatDealPrice } from "@/lib/format";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 
@@ -469,10 +469,10 @@ function DealsPageInner() {
                 )}
                 <div className="flex items-baseline gap-1.5 mt-2">
                   <span className="text-lg font-black" style={{ color: isClosed ? "#6B7480" : color.text }}>
-                    {formatPrice(d.deal_price)}
+                    {formatDealPrice(d.deal_price, d.quantity_unit)}
                   </span>
                   <span className="text-sm text-gray500 font-normal line-through">
-                    {formatPrice(d.original_price)}
+                    {formatDealPrice(d.original_price, d.quantity_unit)}
                   </span>
                 </div>
                 {showHotBadge && (
@@ -560,8 +560,8 @@ function DealsPageInner() {
                         </div>
                       )}
                       <div className="flex items-baseline gap-1.5 mt-2">
-                        <span className="text-lg font-black" style={{ color: "#6B7480" }}>{formatPrice(d.deal_price)}</span>
-                        <span className="text-sm text-gray500 font-normal line-through">{formatPrice(d.original_price)}</span>
+                        <span className="text-lg font-black" style={{ color: "#6B7480" }}>{formatDealPrice(d.deal_price, d.quantity_unit)}</span>
+                        <span className="text-sm text-gray500 font-normal line-through">{formatDealPrice(d.original_price, d.quantity_unit)}</span>
                       </div>
                     </div>
                   </Link>
