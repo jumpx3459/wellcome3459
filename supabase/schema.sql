@@ -835,3 +835,40 @@ create index if not exists members_referred_by_idx on public.members (referred_b
 create index if not exists buy_requests_category_id_idx on public.buy_requests (category_id);
 create index if not exists seller_requests_category_id_idx on public.seller_requests (category_id);
 create index if not exists deals_category_id_idx on public.deals (category_id);
+
+-- ============================================================
+-- 2026-09-28: 긴급 공지 (부동산·설비 등 처분 매물)
+-- 재고 매물(deals)과 별개의 가벼운 공지판. 카카오 채널에서 자연 유입되는
+-- 부동산/설비 처분 소식을 구조화된 수량/가격 없이 텍스트+사진+연락처만으로
+-- 올린다. 구인/구직은 직업안정법상 구인·구직 정보 제공/중개 사업 신고 요건이
+-- 부동산보다 훨씬 엄격해서, 법률 검토 전까지 카테고리에서 의도적으로 제외
+-- (project memory: roadmap.md 참고). 알림도 기존 카테고리/지역 알림과 섞이지
+-- 않도록 회원이 별도로 동의(opt-in)해야만 받는다 — 무분별한 전체발송으로
+-- 알림 피로도가 올라가 정작 중요한 재고 알림 클릭률(North Star)이 깎이는 걸
+-- 막기 위함.
+create table if not exists public.urgent_notices (
+  id uuid primary key default gen_random_uuid(),
+  category text not null default '부동산', -- 부동산 | 설비 | 기타 (구인·구직 제외)
+  title text not null,
+  body text not null,
+  region_id int references public.regions(id), -- null = 전국(지역 무관 알림 대상)
+  contact_name text,
+  contact_phone text,
+  images text[] default '{}',
+  status text default 'active', -- active | closed
+  created_at timestamptz default now(),
+  closed_at timestamptz
+);
+
+alter table public.urgent_notices enable row level security;
+create policy "urgent_notices_public_select" on public.urgent_notices
+  for select using (true);
+-- 등록/수정은 관리자(service_role, /api/admin/notices)만 — deals와 동일하게
+-- 별도 insert/update 정책 없이 서비스 키 경로로만 씀.
+
+create index if not exists urgent_notices_status_idx on public.urgent_notices (status);
+create index if not exists urgent_notices_region_id_idx on public.urgent_notices (region_id);
+
+-- 긴급 공지 알림 opt-in — 기존 member_categories/member_regions(재고 매물 매칭)와는
+-- 완전히 별개. 기본값 false로, 회원이 마이페이지에서 직접 켜야만 대상이 된다.
+alter table public.members add column if not exists notice_alerts_opt_in boolean not null default false;

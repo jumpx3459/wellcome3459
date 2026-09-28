@@ -103,6 +103,84 @@ export async function sendDealPush(dealId: string) {
   return { sentCount, total: subs?.length ?? 0 };
 }
 
+// 2026-09-28: 긴급 공지(부동산·설비 처분 등) 알림 — 재고 매물 알림(sendDealPush)과
+// 달리 카테고리 매칭이 없고, notice_alerts_opt_in을 켠 회원만 대상. 공지에 지역이
+// 지정돼 있으면 그 지역을 선택한 회원 + 지역 미선택("전국") 회원만, 지역이 없으면
+// (전국 공지) opt-in 회원 전원에게 보낸다.
+export async function sendNoticePush(noticeId: string) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceKey) {
+    return { sentCount: 0, total: 0, demo: true };
+  }
+
+  const supabaseAdmin = createClient(supabaseUrl, serviceKey);
+
+  const { data: notice, error: noticeError } = await supabaseAdmin
+    .from("urgent_notices")
+    .select("id, title, category, region_id, images")
+    .eq("id", noticeId)
+    .single();
+
+  if (noticeError || !notice) {
+    return { error: "공지를 찾을 수 없습니다." };
+  }
+
+  const { data: optedIn } = await supabaseAdmin
+    .from("members")
+    .select("id")
+    .eq("notice_alerts_opt_in", true);
+
+  let memberIds = (optedIn ?? []).map((m) => m.id);
+
+  if (notice.region_id && memberIds.length > 0) {
+    const { data: regionRows } = await supabaseAdmin
+      .from("member_regions")
+      .select("member_id, region_id")
+      .in("member_id", memberIds);
+
+    const membersWithAnyRegion = new Set((regionRows ?? []).map((r) => r.member_id));
+    const regionMatchIds = new Set(
+      (regionRows ?? []).filter((r) => r.region_id === notice.region_id).map((r) => r.member_id)
+    );
+    memberIds = memberIds.filter((id) => regionMatchIds.has(id) || !membersWithAnyRegion.has(id));
+  }
+
+  if (memberIds.length === 0) {
+    return { sentCount: 0, total: 0 };
+  }
+
+  const { data: subs } = await supabaseAdmin
+    .from("push_subscriptions")
+    .select("member_id, endpoint, p256dh, auth_key")
+    .in("member_id", memberIds);
+
+  let sentCount = 0;
+
+  for (const sub of subs ?? []) {
+    try {
+      if (vapidPublic && vapidPrivate) {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
+          JSON.stringify({
+            title: `📋 긴급 공지 · ${notice.category}`,
+            body: notice.title,
+            url: `/notices`,
+            tag: `notice-${notice.id}`,
+            image: notice.images?.[0] || undefined,
+          })
+        );
+      }
+      sentCount++;
+    } catch {
+      // 구독 만료 등 — deals 알림과 달리 notification_logs에 남기지 않음(공지는
+      // North Star 클릭률 측정 대상이 아니라 별도 로그 테이블이 필요 없다고 판단)
+    }
+  }
+
+  return { sentCount, total: subs?.length ?? 0 };
+}
+
 export async function sendAdminPush(title: string, body: string, url: string) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

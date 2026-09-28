@@ -1334,6 +1334,20 @@ function AdminDashboard({
         {openFormFor === "new" && (
           <DealForm adminKey={adminKey} onDone={() => { setOpenFormFor(null); load(); }} />
         )}
+
+        {/* 2026-09-28: 긴급 공지(부동산·설비 처분) — 재고 매물과 별개 등록 경로.
+            방향성 확정 전까지는 메모만 해두기로 했던 부동산/설비 아이디어를
+            "긴급 공지"라는 가벼운 트랙으로 구현. 구인/구직은 법률 검토 전까지 제외. */}
+        <button
+          onClick={() => setOpenFormFor(openFormFor === "notice" ? null : "notice")}
+          className="w-full font-bold rounded-xl text-base mt-2"
+          style={{ background: "#0B2540", color: "#fff", padding: "12px 0" }}
+        >
+          {openFormFor === "notice" ? "닫기" : "+ 긴급 공지 등록 (부동산·설비)"}
+        </button>
+        {openFormFor === "notice" && (
+          <NoticeForm adminKey={adminKey} onDone={() => setOpenFormFor(null)} />
+        )}
       </div>
 
       <div
@@ -2482,6 +2496,125 @@ function DealForm({
         style={{ background: "#0B2540", padding: "12px 0" }}
       >
         {submitting ? "등록 중..." : "매물 등록 확정"}
+      </button>
+    </div>
+  );
+}
+
+const NOTICE_CATEGORIES = ["부동산", "설비", "기타"];
+
+// 2026-09-28: 긴급 공지(부동산·설비 처분 등) 등록 폼 — DealForm과 같은 패턴(adminKey
+// 헤더, ImageUploader)을 쓰지만, 재고 매물의 수량/가격/카테고리 스키마와는 완전히
+// 분리된 별도 폼. 지역은 "전국"(공백) 선택도 가능 — deals와 달리 특정 지역 없이도
+// 등록 가능해야 해서 select 맨 앞에 "전국" 옵션을 추가로 둠.
+function NoticeForm({ adminKey, onDone }: { adminKey: string; onDone: () => void }) {
+  const [category, setCategory] = useState(NOTICE_CATEGORIES[0]);
+  const [title, setTitle] = useState("");
+  const [noticeBody, setNoticeBody] = useState("");
+  const [region, setRegion] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [images, setImages] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async () => {
+    setError(null);
+    if (!title || !noticeBody) {
+      setError("제목·내용은 필수예요.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/admin/notices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({
+          category,
+          title,
+          noticeBody,
+          region: region || null,
+          contactName: contactName || null,
+          contactPhone: contactPhone || null,
+          images,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      const sent = data.push?.sentCount ?? 0;
+      alert(`공지가 등록됐어요. 긴급 공지 알림에 동의한 ${sent}명에게 발송했어요.`);
+      onDone();
+    } catch {
+      setError("등록에 실패했어요.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="mt-3 bg-gray100 rounded-xl p-3.5 flex flex-col gap-3">
+      <select
+        className="border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm"
+        value={category}
+        onChange={(e) => setCategory(e.target.value)}
+      >
+        {NOTICE_CATEGORIES.map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+      </select>
+      <input
+        className="border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-navy"
+        placeholder="제목 * (예: 하남 사세확장으로 인수하실분 찾습니다)"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+      />
+      <textarea
+        className="border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-navy"
+        rows={4}
+        placeholder="내용 * (평수, 시설, 가격 협의 여부 등)"
+        value={noticeBody}
+        onChange={(e) => setNoticeBody(e.target.value)}
+      />
+      <select
+        className="border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm"
+        value={region}
+        onChange={(e) => setRegion(e.target.value)}
+      >
+        <option value="">전국 (지역 무관)</option>
+        {mockRegions.map((r) => (
+          <option key={r} value={r}>
+            {r}
+          </option>
+        ))}
+      </select>
+      <div className="flex gap-2">
+        <input
+          className="flex-1 min-w-0 border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-navy"
+          placeholder="담당자명 (선택)"
+          value={contactName}
+          onChange={(e) => setContactName(e.target.value)}
+        />
+        <input
+          className="flex-1 min-w-0 border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-navy"
+          placeholder="연락처 (선택)"
+          value={contactPhone}
+          onChange={(e) => setContactPhone(e.target.value)}
+        />
+      </div>
+
+      {error && <div className="text-xs text-orange font-medium">{error}</div>}
+
+      <ImageUploader onChange={setImages} label="사진" hint="최대 6장 (선택)" />
+
+      <button
+        onClick={submit}
+        disabled={submitting}
+        className="text-white font-bold rounded-lg text-sm disabled:opacity-60"
+        style={{ background: "#0B2540", padding: "12px 0" }}
+      >
+        {submitting ? "등록 중..." : "공지 등록 확정"}
       </button>
     </div>
   );

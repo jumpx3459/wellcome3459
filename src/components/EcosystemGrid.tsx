@@ -7,7 +7,7 @@ import Link from "next/link";
 // 페이지라 특별히 분리 이점은 없음.
 export default function EcosystemGrid() {
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid grid-cols-2 gap-2">
       <Link
         href="/logistics"
         className="flex flex-col items-center text-center rounded-2xl bg-white border border-gray200"
@@ -56,6 +56,26 @@ export default function EcosystemGrid() {
         <div className="text-xs font-black text-navy mt-2">정부지원금</div>
         <div className="text-[10px] font-bold mt-0.5" style={{ color: "#1B3A5C" }}>
           지원사업 찾기
+        </div>
+      </Link>
+
+      {/* 2026-09-28: 긴급 공지(부동산·설비 처분) — 재고 매물과 톤이 달라 이 3개
+          "부가 서비스" 타일과 같은 자리에 둠 (매물 카드처럼 상단 히어로에 섞지 않음).
+          4개가 돼서 3열 → 2열(2x2)로 변경. */}
+      <Link
+        href="/notices"
+        className="flex flex-col items-center text-center rounded-2xl bg-white border border-gray200"
+        style={{ padding: "16px 8px" }}
+      >
+        <div
+          className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: "rgba(27,58,92,0.08)" }}
+        >
+          <span className="text-2xl leading-none">📋</span>
+        </div>
+        <div className="text-xs font-black text-navy mt-2">긴급 공지</div>
+        <div className="text-[10px] font-bold mt-0.5" style={{ color: "#1B3A5C" }}>
+          부동산·설비 처분
         </div>
       </Link>
     </div>

@@ -62,6 +62,11 @@ export default function MyPage() {
   const [categories, setCategories] = useState<string[]>([]);
   const [regions, setRegions] = useState<string[]>([]);
   const [alertsOpen, setAlertsOpen] = useState(false);
+  // 2026-09-28: 긴급 공지(부동산·설비 처분) 알림 — 기존 카테고리/지역 매칭 알림과
+  // 완전히 별개의 opt-in. 무분별한 전체발송으로 재고 알림 피로도가 올라가는 걸
+  // 막기 위해 기본 꺼짐, 회원이 직접 켜야만 받는다.
+  const [noticeAlertsOptIn, setNoticeAlertsOptIn] = useState(false);
+  const [noticeAlertsSaving, setNoticeAlertsSaving] = useState(false);
   const [interests, setInterests] = useState<InterestItem[]>([]);
   const [alertLog, setAlertLog] = useState<AlertLogItem[]>([]);
   const [alertLogCount, setAlertLogCount] = useState(0);
@@ -132,7 +137,7 @@ export default function MyPage() {
 
       const { data: member } = await supabase
         .from("members")
-        .select("phone, ref_code, member_no, company_name, name, email, business_verified, business_license_path, bonus_photo_slots, avatar_url")
+        .select("phone, ref_code, member_no, company_name, name, email, business_verified, business_license_path, bonus_photo_slots, avatar_url, notice_alerts_opt_in")
         .eq("id", userId)
         .single();
       if (member) {
@@ -145,6 +150,7 @@ export default function MyPage() {
         setHasBusinessLicense(Boolean(member.business_license_path));
         setBonusPhotoSlots(member.bonus_photo_slots ?? 0);
         setAvatarUrl(member.avatar_url ?? null);
+        setNoticeAlertsOptIn(Boolean(member.notice_alerts_opt_in));
       }
 
       if (member?.ref_code) {
@@ -476,6 +482,21 @@ export default function MyPage() {
     } finally {
       setProfileSaving(false);
     }
+  };
+
+  // 2026-09-28: 카테고리/지역 알림처럼 별도 "저장" 버튼 없이, 스위치를 누르는
+  // 즉시 반영 — 체크박스 하나짜리 설정이라 저장 단계를 더 두면 오히려 번거로움.
+  const toggleNoticeAlerts = async () => {
+    if (!supabase || !memberId) return;
+    const next = !noticeAlertsOptIn;
+    setNoticeAlertsOptIn(next);
+    setNoticeAlertsSaving(true);
+    const { error } = await supabase
+      .from("members")
+      .update({ notice_alerts_opt_in: next })
+      .eq("id", memberId);
+    setNoticeAlertsSaving(false);
+    if (error) setNoticeAlertsOptIn(!next); // 실패 시 되돌림
   };
 
   const profileComplete = companyName.trim().length > 0;
@@ -1389,6 +1410,47 @@ export default function MyPage() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* 2026-09-28: 긴급 공지(부동산·설비 처분) 알림 — "내 알림 조건"(카테고리/
+            지역 매칭)과 완전히 별개의 opt-in이라, 헷갈리지 않도록 별도 카드로
+            분리. 기본 꺼짐 — 무분별한 전체발송으로 재고 알림 피로도가 올라가는
+            걸 막기 위함. */}
+        <div className="rounded-2xl p-4" style={{ border: "1px solid #E4E7EB", background: "#fff" }}>
+          <button
+            type="button"
+            onClick={toggleNoticeAlerts}
+            disabled={noticeAlertsSaving}
+            className="w-full flex items-center justify-between disabled:opacity-60"
+          >
+            <span className="text-left">
+              <span className="block font-bold" style={{ fontSize: 14, color: "#0B2540" }}>긴급 공지 알림</span>
+              <span className="block mt-0.5" style={{ fontSize: 12.5, color: "#6B7480" }}>
+                폐업·정리 부동산·설비 소식 — 재고 매물 알림과 별개예요
+              </span>
+            </span>
+            <span
+              className="flex-shrink-0 rounded-full relative"
+              style={{
+                width: 42,
+                height: 24,
+                background: noticeAlertsOptIn ? "var(--color-brandOrange)" : "#E4E7EB",
+                transition: "background 0.15s",
+              }}
+            >
+              <span
+                className="absolute rounded-full bg-white"
+                style={{
+                  width: 18,
+                  height: 18,
+                  top: 3,
+                  left: noticeAlertsOptIn ? 21 : 3,
+                  transition: "left 0.15s",
+                  boxShadow: "0 1px 3px rgba(0,0,0,.25)",
+                }}
+              />
+            </span>
+          </button>
         </div>
 
         {alertLog.length > 0 && (
