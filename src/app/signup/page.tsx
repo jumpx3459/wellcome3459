@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { sendOtp, verifyOtp, isValidKoreanPhone } from "@/lib/auth";
+import { sendOtp, verifyOtp, isValidKoreanPhone, toLocalPhone } from "@/lib/auth";
 import { mockCategories, mockRegions, categoryIcons, categoryColors } from "@/lib/mockData";
 import { subscribeToPush, savePushSubscription } from "@/lib/pushClient";
 import { generateRefCode } from "@/lib/refCode";
@@ -107,7 +107,7 @@ function SignupPageInner() {
     }
     setAuthUserId(user?.id ?? null);
     if (user?.phone) {
-      setPhone(`0${user.phone.replace(/^\+?82/, "")}`);
+      setPhone(toLocalPhone(user.phone));
       try {
         localStorage.setItem("dj_signup_pending", "1");
       } catch {}

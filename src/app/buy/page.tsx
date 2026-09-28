@@ -7,7 +7,7 @@ import { hasAppHistory } from "@/lib/appNav";
 import { CheckCircle } from "lucide-react";
 import { mockCategories, mockRegions, categoryIcons, quantityUnits, guessCategory } from "@/lib/mockData";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
-import { isValidKoreanPhone, fromE164Phone } from "@/lib/auth";
+import { isValidKoreanPhone, formatKoreanPhone } from "@/lib/auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { NAV_HEIGHT } from "@/components/BottomNav";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
@@ -58,7 +58,7 @@ export default function BuyPage() {
         .select("phone")
         .eq("id", userData.user.id)
         .maybeSingle();
-      if (member?.phone) setContactPhone(fromE164Phone(member.phone));
+      if (member?.phone) setContactPhone(formatKoreanPhone(member.phone));
     })();
   }, []);
 

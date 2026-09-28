@@ -19,11 +19,27 @@ export function toE164Phone(input: string): string {
   return `+82${withoutLeadingZero}`;
 }
 
-/** toE164Phone()의 역변환 — DB에 정규화 저장된 "+821012345678"를 화면 표시/수정용
- * 로컬 형식 "01012345678"로 되돌린다. */
-export function fromE164Phone(e164: string): string {
-  return `0${e164.replace(/^\+?82/, "")}`;
+/** 어떤 형식이 와도 국내 형식 숫자("01012345678")로. members.phone은 가입 경로에 따라
+ * "01012345678"(signup 저장값)·"+821012345678"·"821012345678"이 섞여 있음.
+ * 2026-09-29 버그: 예전 fromE164Phone은 항상 앞에 0을 붙여서 이미 0으로 시작하는 값이
+ * "001034413459"가 됐음(buy/sell 연락처 자동 입력). */
+export function toLocalPhone(input: string | null | undefined): string {
+  const digits = (input ?? "").replace(/[^0-9]/g, "");
+  if (digits.startsWith("82")) return `0${digits.slice(2).replace(/^0+/, "")}`;
+  if (digits.startsWith("00")) return `0${digits.replace(/^0+/, "")}`; // 이미 잘못 저장된 "0010…" 방어
+  return digits;
 }
+
+/** 화면 표시용 "010-1234-5678" (10자리는 "011-123-4567"). 형식이 안 맞으면 숫자만 반환. */
+export function formatKoreanPhone(input: string | null | undefined): string {
+  const d = toLocalPhone(input);
+  if (/^01\d{9}$/.test(d)) return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
+  if (/^01\d{8}$/.test(d)) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
+  return d;
+}
+
+/** @deprecated toLocalPhone 사용. 기존 호출부 호환용. */
+export const fromE164Phone = toLocalPhone;
 
 /** 국내 휴대폰 번호 형식 검증 (01[0-9] + 8~9자리, 총 10~11자리). sendOtp()의 형식
  * 검증과 동일 규칙을 공유해서, 폼 입력 단계의 UI 검증과 실제 API 게이트가 어긋나지

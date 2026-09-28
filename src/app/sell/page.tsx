@@ -12,7 +12,7 @@ import VideoUploader from "@/components/VideoUploader";
 import ManifestUploader from "@/components/ManifestUploader";
 import { NAV_HEIGHT } from "@/components/BottomNav";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
-import { fromE164Phone, isValidKoreanPhone } from "@/lib/auth";
+import { formatKoreanPhone, isValidKoreanPhone } from "@/lib/auth";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import type { ManifestRow } from "@/lib/parseCsv";
 import { rem } from "@/lib/rem";
@@ -51,7 +51,7 @@ export default function SellPage() {
         .select("phone, bonus_photo_slots")
         .eq("id", userData.user.id)
         .maybeSingle();
-      if (member?.phone) setContactPhone(fromE164Phone(member.phone));
+      if (member?.phone) setContactPhone(formatKoreanPhone(member.phone));
       setBonusPhotoSlots(member?.bonus_photo_slots ?? 0);
     })();
   }, []);
