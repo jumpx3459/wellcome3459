@@ -137,8 +137,8 @@ export default function BuyPage() {
           <CheckCircle className="w-12 h-12 mb-4 text-verified" />
           <h1 className="font-display text-2xl text-navy mb-2">구매 희망 등록 완료!</h1>
           <p className="text-gray500 text-base leading-relaxed mb-6">
-            점핑매니저가 전국 재고를 뒤져서
-            <br />
+            점핑매니저가 전국 재고를 뒤져서{" "}
+            <br className="hidden sm:inline" />
             조건에 맞는 매물이 나오면 바로 알려드릴게요.
           </p>
           <div className="w-full text-left rounded-2xl" style={{ background: "#F5F6F8", padding: "14px 16px" }}>

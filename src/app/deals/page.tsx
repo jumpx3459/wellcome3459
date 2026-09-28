@@ -622,8 +622,8 @@ function EmptyState({
       <div className="font-bold text-navy text-base leading-relaxed">
         {isAll ? (
           <>
-            지금은 조건에 맞는
-            <br />
+            지금은 조건에 맞는{" "}
+            <br className="hidden sm:inline" />
             덤핑 매물이 없어요.
           </>
         ) : (

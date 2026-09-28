@@ -147,8 +147,8 @@ export default function UnsubscribePage() {
           className="w-40 h-40 rounded-2xl object-contain bg-white mb-4"
         />
         <p className="text-sm text-gray500 leading-relaxed">
-          떠나셔도 괜찮아요. 언제든 다시 오시면
-          <br />
+          떠나셔도 괜찮아요. 언제든 다시 오시면{" "}
+          <br className="hidden sm:inline" />
           점핑매니저가 반갑게 맞아드릴게요.
         </p>
       </div>

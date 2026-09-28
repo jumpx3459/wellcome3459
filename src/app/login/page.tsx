@@ -226,8 +226,8 @@ function LoginPageInner() {
               "아직 가입 안 된 번호예요"
             ) : (
               <>
-                번호만 인증하면
-                <br />
+                번호만 인증하면{" "}
+                <br className="hidden sm:inline" />
                 바로 들어가요
               </>
             )}

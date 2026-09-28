@@ -604,8 +604,8 @@ export default function MyPage() {
         <div className="text-4xl mb-4">🧪</div>
         <h1 className="font-display text-xl text-navy mb-2">데모 모드예요</h1>
         <p className="text-gray500 text-base leading-relaxed">
-          Supabase가 연결되면 여기서
-          <br />
+          Supabase가 연결되면 여기서{" "}
+          <br className="hidden sm:inline" />
           관심 매물과 알림 설정을 관리할 수 있어요.
         </p>
       </main>
@@ -1031,7 +1031,8 @@ export default function MyPage() {
             아래 링크로 가입하면 내가 추천한 회원으로 따로 관리돼요.
           </p>
           <p className="text-sm font-bold mb-3" style={{ color: "#966B00" }}>
-            🎁 추천 1명당 나도 친구도 사진 슬롯 +2장 (지금 내 사진 슬롯: {6 + bonusPhotoSlots}장)
+            🎁 추천 1명당 나도 친구도 사진 슬롯 +2장{" "}
+            <span className="whitespace-nowrap">(지금 내 사진 슬롯: {6 + bonusPhotoSlots}장)</span>
           </p>
 
           {bonusPhotoSlots > 0 && !bannerDismissed && (
@@ -1240,7 +1241,7 @@ export default function MyPage() {
             )}
           </div>
 
-          <div className="flex items-center justify-between mt-4 mb-2">
+          <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3 mt-4 mb-2">
             <p className="text-sm text-gray500 leading-relaxed">
               내가 추천한 회원은 여기서 확인할 수 있어요.
             </p>

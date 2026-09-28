@@ -589,8 +589,8 @@ function DealDetailPageInner() {
           <div className="rounded-2xl text-center" style={{ background: "#F5F6F8", padding: "24px 20px" }}>
             <div className="text-sm font-bold text-gray500 mb-1">이건 미리보기예요</div>
             <div className="text-base font-bold text-navy leading-relaxed">
-              실제 매물이 등록되면 이런 화면으로
-              <br />
+              실제 매물이 등록되면 이런 화면으로{" "}
+              <br className="hidden sm:inline" />
               바로 알림이 가요.
             </div>
             <Link

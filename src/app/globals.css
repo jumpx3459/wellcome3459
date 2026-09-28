@@ -55,6 +55,26 @@ body {
   text-wrap: pretty;
 }
 
+/* 2026-09-28: 한국어 줄바꿈 전역 규칙 — 기본 줄바꿈은 글자 단위라 "연락드립/니다."처럼
+   어절 중간에서 끊겼음. keep-all로 어절(띄어쓰기) 단위로만 끊고, 띄어쓰기 없이 긴
+   URL·영문 등은 anywhere로 넘치지 않게 끊는다. 제목은 줄 길이를 고르게(balance),
+   본문은 마지막 줄에 한 단어만 남지 않게(pretty). 이제 화면별 break-keep/<br>로
+   줄바꿈을 손보지 말 것 — 문장 중간 <br>은 모바일에서 숨김(hidden sm:inline). */
+body {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
 .timer-badge {
   background: #e8622c;
 }
