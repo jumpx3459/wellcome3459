@@ -14,6 +14,7 @@ import EcosystemGrid, { SECTION_TITLE_STYLE } from "@/components/EcosystemGrid";
 import AlertInboxHome from "@/components/AlertInboxHome";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
+import { SITE_URL } from "@/lib/siteUrl";
 import { rem } from "@/lib/rem";
 
 const TODAY_BADGE_THRESHOLD = 5; // 이보다 적으면 "오늘 N건" 배너를 아예 숨김 (빈약한 숫자 노출 방지)
@@ -151,6 +152,9 @@ export default function Home() {
 
   return (
     <SplashScreen onFinish={() => setLogoAnimate(true)}>
+    {/* hreflang — React 19가 <link>를 <head>로 올려줌. 짝은 /en의 metadata.alternates */}
+    <link rel="alternate" hrefLang="ko-KR" href={`${SITE_URL}/`} />
+    <link rel="alternate" hrefLang="en" href={`${SITE_URL}/en`} />
     {/* 세션 확인 전(unknown)엔 회원일 수도 있어 온보딩을 띄우지 않음 */}
     <OnboardingIntro logoAnimate={logoAnimate} isMember={memberState !== "guest"} stats={onboardingStats} />
     {signupPending && (
@@ -452,6 +456,12 @@ export default function Home() {
         <div className="mt-3 pt-4" style={{ borderTop: "1px solid #EEF0F2" }}>
           <div className="mb-2.5" style={SECTION_TITLE_STYLE}>점핑 서비스</div>
           <EcosystemGrid />
+        </div>
+        {/* 2026-09-29: 해외 투자자·파트너용 영문 소개(/en)로 가는 작은 링크 */}
+        <div className="text-center mt-6">
+          <Link href="/en" hrefLang="en" lang="en" className="underline underline-offset-4" style={{ fontSize: rem(14), color: "#6B7480" }}>
+            English
+          </Link>
         </div>
       </div>
 

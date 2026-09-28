@@ -481,6 +481,12 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
         </div>
       )}
 
+      <div className="text-center" style={{ padding: "0 20px 24px" }}>
+        <Link href="/en" hrefLang="en" lang="en" className="underline underline-offset-4" style={{ fontSize: rem(14), color: "#6B7480" }}>
+          English
+        </Link>
+      </div>
+
       {viewer && (
         <div
           className="fixed inset-0 z-50 flex flex-col items-center justify-center"

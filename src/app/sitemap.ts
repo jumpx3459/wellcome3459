@@ -6,6 +6,7 @@ import { SITE_URL as BASE_URL } from "@/lib/siteUrl";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${BASE_URL}/`, changeFrequency: "daily", priority: 1 },
+    { url: `${BASE_URL}/en`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${BASE_URL}/deals`, changeFrequency: "hourly", priority: 0.9 },
     { url: `${BASE_URL}/signup`, changeFrequency: "monthly", priority: 0.8 },
     { url: `${BASE_URL}/support`, changeFrequency: "daily", priority: 0.7 },

@@ -45,6 +45,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // 앱 화면이 아니라 단일 랜딩 페이지라 하단 탭바가 어울리지 않음 — admin과
   // 동일하게 숨기되, 모바일 앱 미리보기 느낌은 유지하기 위해 폭 제한(max-w-md)은 유지.
   const isPartnerDemo = (pathname ?? "").startsWith("/p/");
+  // 2026-09-29: 영문 소개 페이지(/en) — 앱 화면이 아닌 1페이지 소개라 하단 탭 없이 전체 폭
+  const isEnglish = pathname === "/en" || (pathname ?? "").startsWith("/en/");
   // 인앱 브라우저 안내 배너는 유입이 몰리는 홈·매물 목록·매물 상세에만
   const showInAppBanner = pathname === "/" || pathname === "/deals" || (pathname ?? "").startsWith("/deals/");
 
@@ -62,14 +64,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div
       className={
-        isAdmin
+        isAdmin || isEnglish
           ? "min-h-screen overflow-x-hidden"
           : "mx-auto max-w-md min-h-screen bg-white shadow-sm overflow-x-hidden"
       }
     >
       {showInAppBanner && <InAppBanner />}
-      <div style={{ paddingBottom: isAdmin || isPartnerDemo ? 0 : `${NAV_HEIGHT}px` }}>{children}</div>
-      {!isAdmin && !isPartnerDemo && <BottomNav />}
+      <div style={{ paddingBottom: isAdmin || isPartnerDemo || isEnglish ? 0 : `${NAV_HEIGHT}px` }}>{children}</div>
+      {!isAdmin && !isPartnerDemo && !isEnglish && <BottomNav />}
       <DebugPanel />
     </div>
   );
