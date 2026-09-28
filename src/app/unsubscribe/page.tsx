@@ -1,36 +1,58 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+
+// 2026-09-28 보안 수정: 예전엔 전화번호만 입력하면 그 번호의 회원을 바로 삭제했음.
+// 이제 로그인 필수 + "알림 끄기"(푸시 구독만 삭제)와 "회원 탈퇴"(확인 단계 필수)를 분리.
+
+// 이 기기의 브라우저 구독도 같이 해제 — 남겨두면 마이페이지 알림 카드가 다시 저장해버림
+async function unsubscribeThisDevice() {
+  try {
+    const registration = await navigator.serviceWorker?.getRegistration("/");
+    const subscription = await registration?.pushManager.getSubscription();
+    await subscription?.unsubscribe();
+  } catch {}
+}
 
 export default function UnsubscribePage() {
-  const [phone, setPhone] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
+  const [token, setToken] = useState<string | null | undefined>(undefined); // undefined = 확인 중
+  const [busy, setBusy] = useState<"push_off" | "withdraw" | null>(null);
+  const [done, setDone] = useState<"push_off" | "withdraw" | null>(null);
+  const [confirmWithdraw, setConfirmWithdraw] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const submit = async () => {
-    setError(null);
-    if (!/^01[0-9]{8,9}$/.test(phone.replace(/-/g, ""))) {
-      setError("가입 시 등록한 휴대폰 번호를 정확히 입력해주세요.");
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) {
+      setToken(null);
       return;
     }
-    setSubmitting(true);
+    supabase.auth.getSession().then(({ data }) => setToken(data.session?.access_token ?? null));
+  }, []);
+
+  const run = async (action: "push_off" | "withdraw") => {
+    if (!token || busy) return;
+    setError(null);
+    setBusy(action);
     try {
       const res = await fetch("/api/unsubscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ accessToken: token, action, confirm: action === "withdraw" ? true : undefined }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "처리 중 문제가 발생했어요.");
+        setError(data.error ?? "처리 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");
         return;
       }
-      setDone(true);
+      await unsubscribeThisDevice();
+      if (action === "withdraw") await supabase?.auth.signOut();
+      setDone(action);
     } catch {
       setError("처리 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");
     } finally {
-      setSubmitting(false);
+      setBusy(null);
     }
   };
 
@@ -38,12 +60,17 @@ export default function UnsubscribePage() {
     return (
       <main className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
         <div className="text-5xl mb-4">👋</div>
-        <h1 className="font-display text-2xl text-navy mb-2">알림이 해지됐어요</h1>
+        <h1 className="font-display text-2xl text-navy mb-2">
+          {done === "withdraw" ? "탈퇴가 완료됐어요" : "알림을 껐어요"}
+        </h1>
         <p className="text-gray500 text-base leading-relaxed">
-          더 이상 매물 알림이 발송되지 않아요.
-          <br />
-          언제든 다시 가입하실 수 있어요.
+          {done === "withdraw"
+            ? "등록된 개인정보를 삭제했어요. 언제든 다시 가입하실 수 있어요."
+            : "더 이상 푸시 알림이 발송되지 않아요. 마이페이지에서 언제든 다시 켤 수 있어요."}
         </p>
+        <Link href={done === "withdraw" ? "/" : "/mypage"} className="mt-6 text-orange font-bold underline">
+          {done === "withdraw" ? "홈으로" : "마이페이지로"}
+        </Link>
       </main>
     );
   }
@@ -51,29 +78,67 @@ export default function UnsubscribePage() {
   return (
     <main className="flex flex-col min-h-screen px-6 py-10">
       <h1 className="font-display text-2xl text-navy mb-2">알림 해지 · 탈퇴</h1>
-      <p className="text-gray500 text-base leading-relaxed mb-6">
-        가입하신 휴대폰 번호를 입력하시면, 알림 수신을 중단하고 등록된 개인정보를 삭제해드려요.
-      </p>
 
-      <label className="text-sm font-bold text-navy mb-2 block">휴대폰 번호</label>
-      <input
-        className="w-full border-2 border-gray200 rounded-xl px-4 text-base outline-none focus:border-orange"
-        style={{ height: "52px" }}
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
-        placeholder="010-0000-0000"
-      />
+      {token === undefined ? null : !token ? (
+        <div className="rounded-2xl p-5 mt-2" style={{ background: "#F5F6F8" }}>
+          <p className="text-base leading-relaxed" style={{ color: "#1A1F26" }}>
+            본인 확인을 위해 로그인한 뒤 이용할 수 있어요.
+          </p>
+          <Link
+            href="/login?returnTo=/unsubscribe"
+            className="block w-full mt-4 text-center text-white font-bold rounded-2xl"
+            style={{ background: "var(--color-brandOrange)", padding: "14px 0" }}
+          >
+            로그인하기
+          </Link>
+          <p className="text-sm mt-3 leading-relaxed" style={{ color: "#6B7480" }}>
+            로그인이 어려우면 고객센터(<Link href="/support" className="underline">문의하기</Link>)로 삭제를 요청해주세요.
+          </p>
+        </div>
+      ) : (
+        <>
+          <section className="rounded-2xl p-5 mt-2" style={{ border: "1px solid #E4E7EB" }}>
+            <h2 className="font-bold text-navy text-lg">알림만 끄기</h2>
+            <p className="text-base leading-relaxed mt-1" style={{ color: "#6B7480" }}>
+              모든 기기의 푸시 알림을 끕니다. 회원 정보와 알림 조건은 그대로 남아요.
+            </p>
+            <button
+              onClick={() => run("push_off")}
+              disabled={busy !== null}
+              className="w-full mt-4 text-white font-bold rounded-2xl disabled:opacity-60"
+              style={{ background: "#0B2540", padding: "14px 0" }}
+            >
+              {busy === "push_off" ? "처리 중..." : "알림 끄기"}
+            </button>
+          </section>
 
-      {error && <div className="text-sm text-orange font-medium mt-3">{error}</div>}
+          <section className="rounded-2xl p-5 mt-4" style={{ border: "1px solid #E4E7EB" }}>
+            <h2 className="font-bold text-navy text-lg">회원 탈퇴</h2>
+            <p className="text-base leading-relaxed mt-1" style={{ color: "#6B7480" }}>
+              회원 정보, 알림 조건, 관심 매물, 쪽지가 모두 삭제되고 되돌릴 수 없어요.
+            </p>
+            <label className="flex items-start gap-2 mt-4 text-base" style={{ color: "#1A1F26" }}>
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={confirmWithdraw}
+                onChange={(e) => setConfirmWithdraw(e.target.checked)}
+              />
+              위 내용을 확인했고, 탈퇴하겠습니다.
+            </label>
+            <button
+              onClick={() => run("withdraw")}
+              disabled={!confirmWithdraw || busy !== null}
+              className="w-full mt-4 text-white font-bold rounded-2xl disabled:opacity-40"
+              style={{ background: "#8A8A82", padding: "14px 0" }}
+            >
+              {busy === "withdraw" ? "처리 중..." : "회원 탈퇴하기"}
+            </button>
+          </section>
+        </>
+      )}
 
-      <button
-        onClick={submit}
-        disabled={submitting}
-        className="w-full mt-6 text-white font-bold rounded-2xl text-lg disabled:opacity-60"
-        style={{ background: "#8A8A82", padding: "18px 0" }}
-      >
-        {submitting ? "처리 중..." : "알림 해지 및 탈퇴하기"}
-      </button>
+      {error && <div className="text-base text-orange font-medium mt-4">{error}</div>}
 
       <div className="mt-auto pt-16 flex flex-col items-center text-center">
         <img
