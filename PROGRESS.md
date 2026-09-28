@@ -1,6 +1,6 @@
 # PROGRESS
 
-마지막 업데이트: 2026-09-27 (UI 패치 다수, 공개 통계 API, 점핑파트너 데모 스킨 + 내 추천 회원 대시보드)
+마지막 업데이트: 2026-09-28 (2차 세션: 푸시 알림 켜기·탈퇴 보안·정식 주소·회원 홈 역할 정리·가독성)
 
 새 세션을 시작할 때 이 파일을 먼저 읽고, 아래 "다음에 할 일"부터 확인하세요.
 
@@ -31,6 +31,32 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
   비공개 옵션 등) — 상세는 아래 "최근 작업 (2026-09-23)" 참고
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
+
+## 최근 작업 (2026-09-28, 2차 세션) — 푸시·보안·정식 주소·회원 홈·가독성 (전부 main 직접 커밋)
+
+- **푸시 알림 켜기**: 마이페이지 `PushStatusCard`(꺼짐/차단/비정식 주소/켜짐), 권한 요청은 버튼 클릭 안에서만.
+  기기에 구독이 있으면 조용히 1회 재저장. `/api/push/subscribe`는 Origin이 정식 주소/localhost일 때만,
+  회원 id는 access token에서(예전엔 body memberId를 믿었음). `explicit` 플래그 + `members.push_opt_out`
+  (SQL 실행 완료): "알림만 끄기"한 회원은 조용한 재저장 안 됨, sendDealPush/sendNoticePush에서도 제외.
+- **`/api/unsubscribe` 보안**: 로그인 필수(토큰), 알림 끄기(push_off)와 탈퇴(withdraw, confirm 필수) 분리.
+  탈퇴 시 FK(cascade 없음: referred_by, seller_member_id) 먼저 비우고, 판매신청·구매요청·비회원 리드 연락처
+  마스킹(`010-****-****`), OTP 로그 삭제, auth 계정 삭제. OTP 로그 30일 정리 pg_cron 잡(jobid 1) 실행 완료.
+- **정식 주소 통일**: `src/lib/siteUrl.ts`(SITE_URL). `src/proxy.ts`가 프로덕션 `*.vercel.app` 페이지 요청을
+  www로 308(/api, /_next, /sw.js 제외 — 운영 curl로 308 확인). sw.js는 vercel.app에서만 알림 클릭 시 정식 주소로.
+  공유·QR·OG·robots·sitemap 전부 SITE_URL. **SITE_URL 바꾸면 public/sw.js 상수도 같이 바꿀 것.**
+- **쪽지 기능 숨김**: `src/lib/features.ts` MESSAGES_ENABLED=false, messages insert 정책 전부 drop(실행 완료).
+  재오픈 절차는 schema.sql "[재오픈용]" 주석(insert 정책·read_at update 정책·새 쪽지 알림).
+- **매물 표시**: `formatDealLocation`("대구 · 가락동"/지역만/상세만/"전국"), `NoPhotoPlaceholder`, 상세 빈 섹션 숨김.
+- **줄바꿈**: globals.css `word-break: keep-all` 전역 + 문장 중간 `<br>`은 `hidden sm:inline`.
+- **관리자 매물 폼**: 라벨·필수(*)·칸별 검증·첫 누락 칸 포커스, `/api/admin/deals` 400 `{error, field}`,
+  판매신청 승인 시 카테고리/지역 기본값(첫 항목) 채우기 제거. MOQ > 총수량은 sell/관리자 폼·두 API 모두 400.
+- **회원 홈 = 내 조건 매물만**: 매칭 규칙 `src/lib/dealMatching.ts`(sendDealPush와 공유, 전후 발송 대상 동일 검증),
+  예시 카드 규칙 `src/lib/exampleDeals.ts`. 온보딩 고정 통계(17건/41%/3분)와 "조건 넓히면 주 N건" 추정치 제거 —
+  **확인 안 된 숫자는 표시 금지.** 하단 탭: 세션 확인 전 4번째 칸 자리표시, #referral일 때만 "공유" 활성.
+- **가독성**: `src/lib/rem.ts` rem(px) — 인라인 fontSize·text-[Npx] 전부 rem, 최소 13px.
+  **새 인라인 글씨 크기는 숫자 대신 rem(px)으로 쓸 것.** 큰 글씨 모드는 만들지 않기로 함.
+- **다음 할 일**: 카카오 인앱 브라우저/iPhone 미설치 구분 안내(inapp_browser, ios_needs_install),
+  국내산갈치(84b0b35c)는 카테고리·지역 기본값이 자동 입력된 테스트 매물 → 마감 처리.
 
 ## 최근 작업 (2026-09-28) — 긴급 공지(부동산·설비 처분) 신규
 
