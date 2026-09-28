@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Flame } from "lucide-react";
 import { HouseIcon, MagnifyingGlassIcon, BellIcon, HandshakeIcon, UserIcon } from "@phosphor-icons/react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { rem } from "@/lib/rem";
 
 export const NAV_HEIGHT = 64;
 
@@ -105,8 +106,8 @@ export default function BottomNav() {
               />
             )}
             <span
-              className="text-[0.7222rem] font-bold"
-              style={{ color: active ? "#0B2540" : "#6B7480" }}
+              className="font-bold"
+              style={{ fontSize: rem(14), color: active ? "#0B2540" : "#4B5563" }}
             >
               {tab.label}
             </span>

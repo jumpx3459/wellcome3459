@@ -10,7 +10,7 @@ import OnboardingIntro from "@/components/OnboardingIntro";
 import InstallAppButton, { useInstallPrompt } from "@/components/InstallAppButton";
 import KakaoChannelButton from "@/components/KakaoChannelButton";
 import CategoryScroller from "@/components/CategoryScroller";
-import EcosystemGrid from "@/components/EcosystemGrid";
+import EcosystemGrid, { SECTION_TITLE_STYLE } from "@/components/EcosystemGrid";
 import AlertInboxHome from "@/components/AlertInboxHome";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
@@ -450,7 +450,7 @@ export default function Home() {
             겹쳐서 <EcosystemGrid />로 추출함 (2026-09-26) — 여기선 라벨/구분선만
             홈 전용으로 유지. */}
         <div className="mt-3 pt-4" style={{ borderTop: "1px solid #EEF0F2" }}>
-          <div className="text-xs font-bold text-gray500 mb-2">점핑 서비스</div>
+          <div className="mb-2.5" style={SECTION_TITLE_STYLE}>점핑 서비스</div>
           <EcosystemGrid />
         </div>
       </div>

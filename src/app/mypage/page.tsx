@@ -9,7 +9,7 @@ import { formatPrice, formatMemberNo, formatRelativeTime, dealUrgencyState } fro
 import { generateRefCode } from "@/lib/refCode";
 import Toast, { useToast } from "@/components/Toast";
 import BusinessLicenseUploader from "@/components/BusinessLicenseUploader";
-import EcosystemGrid from "@/components/EcosystemGrid";
+import EcosystemGrid, { SECTION_TITLE_STYLE } from "@/components/EcosystemGrid";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import PushStatusCard from "@/components/PushStatusCard";
 import { MESSAGES_ENABLED } from "@/lib/features";
@@ -1334,8 +1334,8 @@ export default function MyPage() {
           >
             <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 38, height: 38, background: "#FDEEE8", fontSize: rem(17) }}>🔔</span>
             <span className="flex-1 min-w-0">
-              <span className="block font-bold" style={{ fontSize: rem(14), color: "#0B2540" }}>내 알림 조건</span>
-              <span className="block truncate mt-0.5" style={{ fontSize: rem(12.5), color: "#6B7480" }}>
+              <span className="block font-bold" style={{ fontSize: rem(16), color: "#1F2937" }}>내 알림 조건</span>
+              <span className="block truncate mt-0.5" style={{ fontSize: rem(14), color: "#4B5563" }}>
                 {categories.length > 0 ? categories.slice(0, 2).join("·") + (categories.length > 2 ? ` 외 ${categories.length - 2}` : "") : "전체 카테고리"}
                 {" · "}
                 {regions.length === 0 ? "전 지역" : regions.slice(0, 2).join("·") + (regions.length > 2 ? ` 외 ${regions.length - 2}` : "")}
@@ -1441,8 +1441,8 @@ export default function MyPage() {
             className="w-full flex items-center justify-between disabled:opacity-60"
           >
             <span className="text-left">
-              <span className="block font-bold" style={{ fontSize: rem(14), color: "#0B2540" }}>긴급 공지 알림</span>
-              <span className="block mt-0.5" style={{ fontSize: rem(12.5), color: "#6B7480" }}>
+              <span className="block font-bold" style={{ fontSize: rem(16), color: "#1F2937" }}>긴급 공지 알림</span>
+              <span className="block mt-0.5" style={{ fontSize: rem(14), color: "#4B5563" }}>
                 폐업·정리 부동산·설비 소식 — 재고 매물 알림과 별개예요
               </span>
             </span>
@@ -1529,11 +1529,11 @@ export default function MyPage() {
         {saveError && <div className="text-sm text-orange font-medium">{saveError}</div>}
 
         <div id="interests-section" className="border-t border-gray200 pt-5">
-          <div className="text-base font-bold text-navy mb-3">
+          <div className="mb-3" style={SECTION_TITLE_STYLE}>
             관심 표시한 매물 ({interests.length})
           </div>
           {interests.length === 0 && (
-            <div className="text-center text-gray500 text-sm py-6">
+            <div className="text-center py-6" style={{ fontSize: rem(14), color: "#4B5563" }}>
               아직 관심 표시한 매물이 없어요.
             </div>
           )}
@@ -1545,9 +1545,9 @@ export default function MyPage() {
                   href={`/deals/${i.deals.id}`}
                   className="bg-white border border-gray200 rounded-xl px-4 py-3 flex items-center justify-between"
                 >
-                  <div>
-                    <div className="text-base font-bold text-gray900">{i.deals.title}</div>
-                    <div className="text-base text-navy font-bold mt-0.5">
+                  <div className="min-w-0">
+                    <div className="font-bold" style={{ fontSize: rem(16), color: "#1F2937" }}>{i.deals.title}</div>
+                    <div className="font-bold mt-0.5" style={{ fontSize: rem(16), color: "#0B2540" }}>
                       {formatPrice(i.deals.deal_price)}
                     </div>
                   </div>
@@ -1626,11 +1626,11 @@ export default function MyPage() {
             style={{ background: "#fff", border: "2px solid #FF6F0F", padding: "16px 20px" }}
           >
             <div>
-              <div className="text-base font-black text-navy">
+              <div className="font-black" style={{ fontSize: rem(16), color: "#1F2937" }}>
                 <span className="inline-block" style={{ width: 24 }}>📦</span>
                 긴급 매물 등록하기
               </div>
-              <div className="text-sm font-bold mt-0.5" style={{ color: "#E25100", marginLeft: 24 }}>
+              <div className="font-bold mt-0.5" style={{ fontSize: rem(14), color: "#C2410C", marginLeft: 24 }}>
                 남는 재고 있으세요? 무료로 바로 등록
               </div>
             </div>
@@ -1648,7 +1648,7 @@ export default function MyPage() {
             같은 타일 그룹인데도 소속감이 없어 보인다는 피드백 — 홈과 동일하게
             라벨 추가. */}
         <div className="border-t border-gray200 pt-5">
-          <div className="text-xs font-bold text-gray500 mb-2">점핑 서비스</div>
+          <div className="mb-2.5" style={SECTION_TITLE_STYLE}>점핑 서비스</div>
           <EcosystemGrid />
 
           <button
