@@ -955,3 +955,9 @@ create policy "feature_waitlist_self_select" on public.feature_waitlist
 -- 2026-09-29: 구매 희망 단가의 기준 단위 — 예전엔 "원"만 있어 개당/kg당/총액을 알 수 없었음.
 -- 값: 수량 단위("개"/"박스"/"kg"/"팔레트"/"톤"/"세트") 또는 "총액" (src/lib/format.ts PRICE_UNITS).
 alter table public.buy_requests add column if not exists hope_price_unit text;
+
+-- 2026-09-29: 구매 희망 요청 회원 연결 — 로그인 회원이 등록하면 /api/buy-requests가 access token에서
+-- member_id를 넣는다(body 값은 신뢰 안 함). 연락처를 다른 번호로 바꿔도 연결 유지. 탈퇴 시 연결은
+-- set null, 연락처는 /api/unsubscribe가 마스킹. Supabase SQL Editor 실행 완료 (2026-09-29).
+alter table public.buy_requests add column if not exists member_id uuid references public.members(id) on delete set null;
+create index if not exists buy_requests_member_id_idx on public.buy_requests (member_id);

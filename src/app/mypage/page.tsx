@@ -14,6 +14,7 @@ import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import PushStatusCard from "@/components/PushStatusCard";
 import { MESSAGES_ENABLED, QUOTES_ENABLED } from "@/lib/features";
 import QuotesTeaserCard from "@/components/QuotesTeaserCard";
+import MyBuyRequests from "@/components/MyBuyRequests";
 import { SITE_URL } from "@/lib/siteUrl";
 import { resizeImageForUpload } from "@/lib/resizeImage";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
@@ -1619,6 +1620,8 @@ export default function MyPage() {
           </div>
         </div>
         )}
+
+        <MyBuyRequests accessToken={accessToken} />
 
         {/* design-v2: 홈 화면 "잠든 재고" 카드와 동일 스타일로 일괄 정리 —
             배경 화이트 + 서브텍스트를 이모지 폭(24px)만큼 들여씀. */}

@@ -6,7 +6,7 @@ import { PRICE_UNITS } from "@/lib/format";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { productName, category, region, quantity, hopePrice, hopePriceUnit, contactPhone, description } = body;
+  const { productName, category, region, quantity, hopePrice, hopePriceUnit, contactPhone, description, accessToken } = body;
   // 희망 단가 기준 단위(2026-09-29) — 정해진 값만 저장
   const priceUnit = typeof hopePriceUnit === "string" && (PRICE_UNITS as readonly string[]).includes(hopePriceUnit) ? hopePriceUnit : null;
 
@@ -28,6 +28,14 @@ export async function POST(req: NextRequest) {
 
   const supabaseAdmin = createClient(supabaseUrl, serviceKey);
 
+  // 로그인 회원이면 access token에서 회원 id를 꺼내 연결 (body의 memberId 같은 값은 받지 않음).
+  // 토큰이 없거나 만료됐으면 비회원 요청으로 저장 — 등록 자체는 막지 않는다.
+  let memberId: string | null = null;
+  if (typeof accessToken === "string" && accessToken) {
+    const { data: userData } = await supabaseAdmin.auth.getUser(accessToken);
+    memberId = userData.user?.id ?? null;
+  }
+
   const { data: catRow } = category
     ? await supabaseAdmin.from("categories").select("id").eq("name", category).single()
     : { data: null };
@@ -42,6 +50,7 @@ export async function POST(req: NextRequest) {
     quantity: quantity || null,
     hope_price: hopePrice || null,
     hope_price_unit: hopePrice ? priceUnit : null,
+    member_id: memberId,
     contact_phone: contactPhone,
     description: description || null,
   });

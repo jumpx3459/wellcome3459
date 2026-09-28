@@ -129,6 +129,8 @@ export async function POST(req: NextRequest) {
       .update({ seller_member_id: null, contact_phone: MASKED_PHONE, contact_name: "탈퇴회원" })
       .eq("seller_member_id", memberId),
     supabaseAdmin.from("deals").update({ seller_member_id: null }).eq("seller_member_id", memberId),
+    // 구매 요청: 연락처를 다른 번호로 등록했어도 member_id로 연결된 건은 마스킹 (연결은 FK on delete set null)
+    supabaseAdmin.from("buy_requests").update({ contact_phone: MASKED_PHONE }).eq("member_id", memberId),
   ]);
   if (detach.some((r) => r.error)) {
     return NextResponse.json({ error: "탈퇴 처리 중 오류가 발생했어요." }, { status: 500 });

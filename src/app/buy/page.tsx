@@ -102,6 +102,8 @@ export default function BuyPage() {
     }
     setSubmitting(true);
     try {
+      // 로그인 회원이면 토큰을 함께 보내 서버가 회원 연결(member_id) — 연락처를 바꿔도 연결 유지
+      const accessToken = supabase ? (await supabase.auth.getSession()).data.session?.access_token ?? null : null;
       const res = await fetch("/api/buy-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -112,6 +114,7 @@ export default function BuyPage() {
           quantity: quantity ? `${quantity}${quantityUnit}` : null,
           hopePrice: parsePriceInput(hopePrice) ?? null,
           hopePriceUnit: parsePriceInput(hopePrice) ? priceUnit : null,
+          accessToken,
           contactPhone: formatContactPhone(contactPhone),
           description,
         }),
