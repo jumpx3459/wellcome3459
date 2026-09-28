@@ -346,6 +346,7 @@ function AdminDashboard({
   const [appointError, setAppointError] = useState("");
   const [appointResult, setAppointResult] = useState<{ name: string; tempPassword: string } | null>(null);
   const [removingAdminId, setRemovingAdminId] = useState<string | null>(null);
+  const [roleChangingId, setRoleChangingId] = useState<string | null>(null);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -625,6 +626,29 @@ function AdminDashboard({
       setAdmins((prev) => prev.filter((a) => a.id !== admin.id));
     } finally {
       setRemovingAdminId(null);
+    }
+  };
+
+  // 2026-09-28: 해제→재임명 없이 role만 바꿈 — 비밀번호·로그인 이력 유지.
+  // 역할이 두 가지뿐이라 버튼 하나로 토글(관리자 ↔ 최고관리자).
+  const changeAdminRole = async (admin: AdminUser) => {
+    const nextRole = admin.role === "최고관리자" ? "관리자" : "최고관리자";
+    if (!confirm(`${admin.name}님을 "${nextRole}"(으)로 변경할까요?`)) return;
+    setRoleChangingId(admin.id);
+    try {
+      const res = await fetch("/api/admin/admins", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({ id: admin.id, role: nextRole }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error ?? "역할 변경에 실패했어요.");
+        return;
+      }
+      setAdmins((prev) => prev.map((a) => (a.id === admin.id ? { ...a, role: nextRole } : a)));
+    } finally {
+      setRoleChangingId(null);
     }
   };
 
@@ -1838,13 +1862,22 @@ function AdminDashboard({
                     : "아직 로그인 기록 없음"}
                 </div>
               </div>
-              <button
-                onClick={() => removeAdmin(a)}
-                disabled={removingAdminId === a.id}
-                className="flex-shrink-0 text-xs font-bold rounded-lg px-3 py-1.5 border border-gray200 text-orange disabled:opacity-60"
-              >
-                {removingAdminId === a.id ? "처리 중..." : "해제"}
-              </button>
+              <div className="flex-shrink-0 flex flex-col gap-1.5">
+                <button
+                  onClick={() => changeAdminRole(a)}
+                  disabled={roleChangingId === a.id}
+                  className="text-xs font-bold rounded-lg px-3 py-1.5 border border-gray200 text-navy disabled:opacity-60"
+                >
+                  {roleChangingId === a.id ? "변경 중..." : "역할 변경"}
+                </button>
+                <button
+                  onClick={() => removeAdmin(a)}
+                  disabled={removingAdminId === a.id}
+                  className="text-xs font-bold rounded-lg px-3 py-1.5 border border-gray200 text-orange disabled:opacity-60"
+                >
+                  {removingAdminId === a.id ? "처리 중..." : "해제"}
+                </button>
+              </div>
             </div>
           ))}
           </>

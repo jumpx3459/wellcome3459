@@ -94,6 +94,17 @@ export async function POST(req: NextRequest) {
   });
 }
 
+// 2026-09-28: 최고관리자끼리는 완전히 동등한 권한이라, 최고관리자가 2명 이상이면
+// 누구든 다른 최고관리자를(본인 포함 아무나) 해제할 수 있었음 — "새로 임명한
+// 최고관리자가 원래 계정을 해제할 수 있냐"는 지적. FOUNDER_ADMIN_PHONE(Vercel
+// 환경변수, 코드에 실제 번호를 남기지 않음)으로 지정한 계정만 "본인 스스로만
+// 자신을 해제/강등 가능"하도록 예외 처리. 변수 미설정 시 이 보호는 그냥 꺼짐.
+const FOUNDER_ADMIN_PHONE = process.env.FOUNDER_ADMIN_PHONE || null;
+
+function isFounderProtected(targetPhone: string | null, requesterId: string, targetId: string) {
+  return Boolean(FOUNDER_ADMIN_PHONE) && targetPhone === FOUNDER_ADMIN_PHONE && requesterId !== targetId;
+}
+
 // 관리자 해제 — 최고관리자만 가능, 마지막 남은 최고관리자는 해제 불가
 export async function DELETE(req: NextRequest) {
   const auth = checkAdminAuth(req);
@@ -109,11 +120,15 @@ export async function DELETE(req: NextRequest) {
 
   const { data: target, error: targetError } = await supabaseAdmin
     .from("admin_users")
-    .select("id, role")
+    .select("id, role, phone")
     .eq("id", id)
     .single();
   if (targetError || !target) {
     return NextResponse.json({ error: "관리자를 찾을 수 없습니다." }, { status: 404 });
+  }
+
+  if (isFounderProtected(target.phone, auth.admin.id, target.id)) {
+    return NextResponse.json({ error: "이 계정은 본인만 해제할 수 있어요." }, { status: 403 });
   }
 
   if (target.role === "최고관리자") {
@@ -127,6 +142,57 @@ export async function DELETE(req: NextRequest) {
   }
 
   const { error } = await supabaseAdmin.from("admin_users").delete().eq("id", id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({ ok: true });
+}
+
+// 2026-09-28: "이미 관리자인 사람을 최고관리자로 올리려면?" 질문에 지금까지는
+// 해제→재임명(임시 비밀번호 재발급, 로그인 이력 초기화)밖에 방법이 없었음 —
+// role만 바꾸는 PATCH를 추가해 비밀번호·이력을 그대로 유지. DELETE와 동일하게
+// 최고관리자만 가능, founder 보호, 마지막 최고관리자 강등 방지 적용.
+export async function PATCH(req: NextRequest) {
+  const auth = checkAdminAuth(req);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  if (auth.admin.role !== "최고관리자") {
+    return NextResponse.json({ error: "최고관리자만 역할을 변경할 수 있습니다." }, { status: 403 });
+  }
+
+  const { id, role } = await req.json();
+  if (!id || !ROLES.includes(role)) {
+    return NextResponse.json({ error: "id·역할이 필요합니다." }, { status: 400 });
+  }
+
+  const supabaseAdmin = getAdminClient();
+
+  const { data: target, error: targetError } = await supabaseAdmin
+    .from("admin_users")
+    .select("id, role, phone")
+    .eq("id", id)
+    .single();
+  if (targetError || !target) {
+    return NextResponse.json({ error: "관리자를 찾을 수 없습니다." }, { status: 404 });
+  }
+
+  if (isFounderProtected(target.phone, auth.admin.id, target.id)) {
+    return NextResponse.json({ error: "이 계정은 본인만 역할을 바꿀 수 있어요." }, { status: 403 });
+  }
+
+  if (target.role === role) {
+    return NextResponse.json({ ok: true }); // 이미 같은 역할이면 그냥 성공 처리
+  }
+
+  if (target.role === "최고관리자" && role !== "최고관리자") {
+    const { count } = await supabaseAdmin
+      .from("admin_users")
+      .select("id", { count: "exact", head: true })
+      .eq("role", "최고관리자");
+    if ((count ?? 0) <= 1) {
+      return NextResponse.json({ error: "마지막 남은 최고관리자는 강등할 수 없습니다." }, { status: 400 });
+    }
+  }
+
+  const { error } = await supabaseAdmin.from("admin_users").update({ role }).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json({ ok: true });
