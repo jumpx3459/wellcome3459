@@ -32,6 +32,18 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
+## 최근 작업 (2026-09-28) — 긴급 공지(부동산·설비 처분) 신규
+
+- **🆕 긴급 공지** (`0429ee3`, `c87e3ff`): 재고 매물(deals)과 완전히 분리된 공지판. `urgent_notices` 테이블(공개 조회 RLS)
+  + `members.notice_alerts_opt_in`(기본 꺼짐, 마이페이지 토글). 관리자 화면에서 등록(등록 즉시 opt-in 회원에게 푸시)·목록·마감.
+  공개 목록 `/notices`, "점핑 서비스" 타일(홈·마이페이지, 3열→2x2). SQL은 Supabase 실행 확인 후 push.
+  구인/구직은 직업안정법상 신고 요건 때문에 의도적으로 제외. **부동산 공지의 중개행위 해당 여부는 별도 법률 검토 필요.**
+- 기타 (2026-09-28): 비밀번호 로그인 PR #17 병합(`6465faa`), 뒤로가기 `src/lib/appNav.ts`, 온보딩 미결정 이탈자 3일 후 재노출,
+  매물 사진 6장 + 브라우저 리사이즈·장당 업로드(`src/lib/resizeImage.ts`), 관리자 관심 수 회원/비회원 구분(`quick_lead_count`).
+- **남은 이슈**: 영상 업로드는 15초 길이 제한만 있고 크기 축소가 없어 Vercel 4.5MB 본문 한도에 대부분 걸릴 가능성 —
+  Supabase Storage 서명 업로드 URL로 직접 올리는 방식으로 바꿔야 함. 푸시 대상 id를 `.in()` URL로 넘기는 구조라 대상이
+  수백 명을 넘으면 URL 길이 초과 가능(sendDealPush/sendNoticePush 공통).
+
 ## 최근 작업 (2026-09-27) — 패치 연속 적용 (전부 main 직접 커밋)
 
 다른 세션에서 만든 `.patch`를 `git am`으로 연속 적용. 패치 내용 오류는 별도 fix 커밋으로 보정.
