@@ -5,6 +5,7 @@ import { getPushState, subscribeToPush, savePushSubscription, fetchPushStatus } 
 import { SITE_URL } from "@/lib/siteUrl";
 import { rem } from "@/lib/rem";
 import PushBlockerNotice from "@/components/PushBlockerNotice";
+import { UI_CARD_TITLE, UI_DESC, UI_LINK } from "@/lib/uiText";
 
 // 2026-09-28: 마이페이지 알림 상태 카드. 예전엔 푸시 구독이 가입 화면에서만 가능해서
 // 기존 회원이 알림을 다시 켤 곳이 없었음(구독자 0명). 권한 요청은 반드시 버튼 클릭
@@ -83,8 +84,16 @@ export default function PushStatusCard() {
       <div className="flex items-center gap-3">
         <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 38, height: 38, background: "#FDEEE8", fontSize: rem(17) }}>📲</span>
         <span className="flex-1 min-w-0">
-          <span className="block font-bold" style={{ fontSize: rem(16), color: "#1F2937" }}>이 기기 푸시 알림</span>
-          <span className="block mt-0.5" style={{ fontSize: rem(14), color: "#4B5563" }}>
+          {/* 2026-09-29: 배지를 제목 옆으로 — 오른쪽에 두면 설명이 3줄로 꺾였음. 설명은 최대 2줄 */}
+          <span className="flex items-center gap-1.5 flex-wrap">
+            <span style={UI_CARD_TITLE}>이 기기 푸시 알림</span>
+            {state === "on" && (
+              <span className="rounded-full font-bold whitespace-nowrap" style={{ fontSize: rem(14), padding: "2px 9px", background: "#E8F8EC", color: "#1D8A44" }}>
+                알림 받는 중
+              </span>
+            )}
+          </span>
+          <span className="block mt-0.5" style={{ ...UI_DESC, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
             {state === "on" && "조건에 맞는 매물이 뜨면 바로 알려드려요"}
             {(state === "inapp" || state === "ios_needs_install") && "지금 이 화면에서는 알림을 켤 수 없어요"}
             {state === "off" && "지금은 꺼져 있어요 · 맞춤 특가 알림은 푸시로만 가요"}
@@ -95,18 +104,13 @@ export default function PushStatusCard() {
             {state === "saveFailed" && "알림 등록에 실패했어요. 다시 시도해주세요"}
           </span>
         </span>
-        {state === "on" && (
-          <span className="flex-shrink-0 rounded-full font-bold" style={{ fontSize: rem(13), padding: "4px 10px", background: "#E8F8EC", color: "#1D8A44" }}>
-            알림 받는 중
-          </span>
-        )}
         {(state === "off" || state === "optedOut" || state === "saveFailed") && (
           <button
             type="button"
             onClick={enable}
             disabled={busy}
-            className="flex-shrink-0 rounded-full font-bold text-white disabled:opacity-60"
-            style={{ fontSize: rem(14), padding: "8px 14px", background: "var(--color-brandOrangeDeep)" }}
+            className="flex-shrink-0 rounded-full text-white disabled:opacity-60 whitespace-nowrap"
+            style={{ ...UI_LINK, padding: "8px 14px", background: "var(--color-brandOrangeDeep)" }}
           >
             {busy ? "켜는 중…" : state === "saveFailed" ? "다시 시도" : state === "optedOut" ? "다시 켜기" : "알림 켜기"}
           </button>

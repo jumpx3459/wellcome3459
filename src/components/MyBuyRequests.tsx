@@ -6,6 +6,7 @@ import { rem } from "@/lib/rem";
 import { formatPriceWithUnit } from "@/lib/format";
 import { SECTION_TITLE_STYLE } from "@/components/EcosystemGrid";
 import { authFetch } from "@/lib/authFetch";
+import { UI_CARD_TITLE, UI_META, UI_LINK } from "@/lib/uiText";
 
 // 마이페이지 "내 구매 요청" (2026-09-29) — 로그인 상태로 /buy에서 등록한 요청(buy_requests.member_id) 최근 10건.
 type Item = {
@@ -55,7 +56,7 @@ export default function MyBuyRequests() {
           <Link
             href="/buy"
             className="inline-block mt-3 font-bold rounded-full text-white"
-            style={{ fontSize: rem(15), padding: "10px 20px", background: "var(--color-brandOrangeDeep)" }}
+            style={{ ...UI_LINK, padding: "10px 20px", background: "var(--color-brandOrangeDeep)" }}
           >
             구매 요청하기
           </Link>
@@ -74,10 +75,10 @@ export default function MyBuyRequests() {
             return (
               <div key={i.id} className="bg-white border border-gray200 rounded-xl flex items-center gap-3" style={{ padding: "12px 14px" }}>
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold truncate" style={{ fontSize: rem(16), color: "#1F2937" }}>{i.product_name}</div>
-                  <div className="mt-0.5" style={{ fontSize: rem(14), color: "#4B5563" }}>{detail}</div>
+                  <div className="truncate" style={UI_CARD_TITLE}>{i.product_name}</div>
+                  <div className="mt-0.5" style={UI_META}>{detail}</div>
                 </div>
-                <span className="flex-shrink-0 rounded-full font-bold" style={{ fontSize: rem(13), padding: "4px 10px", background: st.bg, color: st.color }}>
+                <span className="flex-shrink-0 rounded-full font-bold" style={{ fontSize: rem(14), padding: "4px 10px", background: st.bg, color: st.color }}>
                   {st.label}
                 </span>
               </div>

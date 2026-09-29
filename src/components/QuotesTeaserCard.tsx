@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { rem } from "@/lib/rem";
+import { UI_CARD_TITLE, UI_DESC } from "@/lib/uiText";
 
 // 2026-09-29: "견적함 · 준비중" 자리를 "곧 오픈" 예고 카드로. 실제 견적함은 아직 없음
 // (features.ts QUOTES_ENABLED = false). 오픈 알림 신청은 feature_waitlist에 기록
@@ -72,12 +73,12 @@ export default function QuotesTeaserCard({ memberId }: { memberId: string | null
           📋
         </span>
         <span className="flex-1 min-w-0">
-          <span className="block font-bold" style={{ fontSize: rem(16), color: "#1F2937" }}>내 견적함</span>
-          <span className="block mt-0.5" style={{ fontSize: rem(14), color: "#4B5563" }}>받은·보낸 견적서, 가격 변동까지 한눈에</span>
+          <span className="block" style={UI_CARD_TITLE}>내 견적함</span>
+          <span className="block mt-0.5" style={UI_DESC}>받은·보낸 견적서, 가격 변동까지 한눈에</span>
         </span>
         <span
           className="flex-shrink-0 rounded-full font-bold"
-          style={{ fontSize: rem(13), padding: "4px 10px", background: "#FDEEE8", color: "#C2410C" }}
+          style={{ fontSize: rem(14), padding: "4px 10px", background: "#FDEEE8", color: "#C2410C" }}
         >
           {joined ? "✓ 신청함" : "곧 오픈"}
         </span>
