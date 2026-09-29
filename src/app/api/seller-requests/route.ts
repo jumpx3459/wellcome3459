@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
   if (!isValidContactPhone(contactPhone)) {
     return NextResponse.json({ error: "휴대폰 또는 사무실 번호를 정확히 입력해주세요", field: "contactPhone" }, { status: 400 });
   }
-  // 2026-09-29: 재고 유형 — 7개 값만 (DB check와 같음), 안 보내면 general
+  // 2026-09-29: 재고 유형 — 10개 값만 (DB check와 같음), 안 보내면 general
   if (stockType != null && !isStockType(stockType)) {
     return NextResponse.json({ error: "재고 유형이 올바르지 않아요.", field: "stockType" }, { status: 400 });
   }

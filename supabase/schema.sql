@@ -1009,3 +1009,11 @@ alter table public.seller_requests add column if not exists stock_type text not 
   check (stock_type in ('general','near_expiry','overstock','closure','season_end','returned','discontinued'));
 alter table public.deals add column if not exists stock_type text not null default 'general'
   check (stock_type in ('general','near_expiry','overstock','closure','season_end','returned','discontinued'));
+-- 2026-09-29: 유형 3개 추가(order_cancel 주문 취소·납품 잔량 / b_grade B급·외관 하자 / other 기타) — 두 테이블 모두
+-- check 제약 교체. Supabase SQL Editor 실행 완료 (2026-09-29, 사용자 확인).
+alter table public.seller_requests drop constraint if exists seller_requests_stock_type_check;
+alter table public.seller_requests add constraint seller_requests_stock_type_check
+  check (stock_type in ('general','near_expiry','overstock','order_cancel','closure','season_end','returned','b_grade','discontinued','other'));
+alter table public.deals drop constraint if exists deals_stock_type_check;
+alter table public.deals add constraint deals_stock_type_check
+  check (stock_type in ('general','near_expiry','overstock','order_cancel','closure','season_end','returned','b_grade','discontinued','other'));
