@@ -298,14 +298,14 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
         </div>
       )}
 
-      {groups.map((g) => (
+      {groups.map((g, gi) => (
         <div key={g.label}>
           <div className="flex items-center gap-2" style={{ padding: "18px 20px 9px" }}>
             <span className="font-black" style={{ fontSize: rem(12), color: "#0B2540", letterSpacing: "0.02em" }}>{g.label}</span>
             <span className="flex-1" style={{ height: 1, background: "#EEF0F2" }} />
             <span className="font-mono font-bold" style={{ fontSize: rem(11), color: "#6B7480" }}>{g.items.length}건</span>
           </div>
-          {g.items.map((d) => {
+          {g.items.map((d, di) => {
             const cd = formatCountdown(d.closes_at);
             const pct = d.original_price ? Math.round(((d.original_price - d.deal_price) / d.original_price) * 100) : 0;
             return (
@@ -335,6 +335,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                       videoUrl={d.video_url ?? null}
                       imageCount={d.images?.length ?? 0}
                       onMediaClick={d.images && d.images.length > 0 ? (e) => openViewer(e, d.images!, d.video_url ?? null) : undefined}
+                      eager={gi === 0 && di === 0}
                       className="rounded-xl"
                     />
                   ) : d.images && d.images.length > 0 ? (

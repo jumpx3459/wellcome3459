@@ -402,6 +402,7 @@ function DealsPageInner() {
               deal={d}
               closed={isClosed}
               hotGapPct={isClosed ? null : hotGapPct(d, avgDiscount)}
+              eager={idx === 0}
             />
           );
 

@@ -12,11 +12,13 @@ export default function DealListCard({
   closed = false,
   example = false,
   hotGapPct = null,
+  eager = false,
 }: {
   deal: Deal;
   closed?: boolean;
   example?: boolean;
   hotGapPct?: number | null; // 같은 카테고리 평균보다 몇 %p 더 저렴한지 — 표시 조건은 src/lib/categoryAvg.ts
+  eager?: boolean; // 첫 카드만 사진 바로 불러오기
 }) {
   const color = categoryColors[d.category] ?? categoryColors["기타"];
   const gray = closed || example;
@@ -44,6 +46,7 @@ export default function DealListCard({
         closesAt={d.closes_at}
         closed={closed}
         example={example}
+        eager={eager}
       />
 
       <div className="px-4 py-3.5">

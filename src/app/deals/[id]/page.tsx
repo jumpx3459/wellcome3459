@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -18,6 +18,8 @@ import { getFreshAccessToken } from "@/lib/authFetch";
 import { SECTION_TITLE_STYLE, SERVICES_ANCHOR_ID, ServiceTilesCompact } from "@/components/EcosystemGrid";
 import StockTypeBadge from "@/components/StockTypeBadge";
 import { isLumpSum } from "@/lib/priceUnit";
+import PhotoCarousel, { type PhotoCarouselHandle } from "@/components/PhotoCarousel";
+import PhotoViewer from "@/components/PhotoViewer";
 
 // 값이 없거나 공백뿐이면 섹션/행 자체를 그리지 않는다 (빈 공간 방지)
 function hasText(v: string | null | undefined): boolean {
@@ -46,8 +48,10 @@ function DealDetailPageInner() {
   const [quickPhone, setQuickPhone] = useState("");
   const [quickSubmitting, setQuickSubmitting] = useState(false);
   const [quickError, setQuickError] = useState<string | null>(null);
-  const [activeImage, setActiveImage] = useState<string | null>(null);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
+  // 2026-09-29: 히어로 사진 넘기기(PhotoCarousel) + 전체 화면(PhotoViewer)
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const carouselRef = useRef<PhotoCarouselHandle>(null);
   const [shareCopied, setShareCopied] = useState(false);
   const [interestError, setInterestError] = useState<string | null>(null);
   const [interestNeedsReauth, setInterestNeedsReauth] = useState(false);
@@ -170,7 +174,7 @@ function DealDetailPageInner() {
   }, [params.id, isExampleId]);
 
   const images = deal.images ?? [];
-  const heroImage = activeImage ?? images[0];
+  const hasPhotos = images.length > 0;
   const hasManifest = Boolean(deal.manifest_items?.length && Object.keys(deal.manifest_items[0] ?? {}).length > 0);
 
   const remainPct = Math.round((deal.remaining_qty / deal.total_qty) * 100);
@@ -317,50 +321,65 @@ function DealDetailPageInner() {
         )}
       </div>
 
-      <div className="px-5 pt-4">
-        {/* 2026-09-29: 사진이 없으면 220px 대신 3:1로 낮춤 (빈 자리표시가 가격·정보를 밀어내지 않게) */}
-        <div className={`relative rounded-2xl overflow-hidden ${heroImage ? "h-[220px]" : ""}`} style={heroImage ? undefined : { aspectRatio: "3/1" }}>
-          {!heroImage && <NoPhotoPlaceholder category={deal.category} muted={deal.status === "closed"} />}
-          {heroImage && (
-            <button
-              onClick={() => setLightboxOpen(true)}
-              className="absolute inset-0 w-full h-full"
-              aria-label="사진 크게 보기"
-            >
-              <img src={heroImage} alt={deal.title} className="absolute inset-0 w-full h-full object-cover" />
-            </button>
-          )}
-          <div className="absolute top-2.5 right-2.5">
-            {deal.status === "closed" ? (
-              <span className="font-bold text-white bg-gray500 rounded-full shadow" style={{ fontSize: rem(16), padding: "2px 10px" }}>마감됨</span>
-            ) : (
-              <div className="rounded-full shadow" style={{ background: "rgba(255,255,255,0.94)" }}>
-                <CountdownBadge closesAt={deal.closes_at} tone={isExampleId ? "muted" : "urgent"} />
+      {/* 2026-09-29: 사진이 있으면 화면 폭 전체 1:1 + 옆으로 넘기기 + "1/N", 누르면 전체 화면(핀치 확대).
+          사진이 없으면 예전처럼 3:1 자리표시 */}
+      {hasPhotos ? (
+        <div className="pt-3">
+          <PhotoCarousel
+            ref={carouselRef}
+            images={images}
+            alt={deal.title}
+            index={photoIndex}
+            onIndexChange={setPhotoIndex}
+            onOpen={(i) => setViewerIndex(i)}
+            overlay={
+              <div className="absolute top-2.5 right-2.5 pointer-events-none">
+                {deal.status === "closed" ? (
+                  <span className="font-bold text-white bg-gray500 rounded-full shadow" style={{ fontSize: rem(16), padding: "2px 10px" }}>마감됨</span>
+                ) : (
+                  <div className="rounded-full shadow" style={{ background: "rgba(255,255,255,0.94)" }}>
+                    <CountdownBadge closesAt={deal.closes_at} tone={isExampleId ? "muted" : "urgent"} />
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          {heroImage && (
-            <div className="absolute bottom-3 right-3 inline-flex items-center gap-1 text-xs font-bold text-white bg-black/45 px-2.5 py-1 rounded-full pointer-events-none">
-              🔍 확대
-            </div>
-          )}
+            }
+          />
         </div>
-      </div>
+      ) : (
+        <div className="px-5 pt-4">
+          <div className="relative rounded-2xl overflow-hidden" style={{ aspectRatio: "3/1" }}>
+            <NoPhotoPlaceholder category={deal.category} muted={deal.status === "closed"} />
+            <div className="absolute top-2.5 right-2.5">
+              {deal.status === "closed" ? (
+                <span className="font-bold text-white bg-gray500 rounded-full shadow" style={{ fontSize: rem(16), padding: "2px 10px" }}>마감됨</span>
+              ) : (
+                <div className="rounded-full shadow" style={{ background: "rgba(255,255,255,0.94)" }}>
+                  <CountdownBadge closesAt={deal.closes_at} tone={isExampleId ? "muted" : "urgent"} />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {images.length > 1 && (
         <div className="flex gap-2 px-5 pt-3 overflow-x-auto">
           {images.map((url, i) => (
             <button
               key={i}
-              onClick={() => setActiveImage(url)}
+              onClick={() => {
+                setPhotoIndex(i);
+                carouselRef.current?.scrollToIndex(i);
+              }}
+              aria-label={`사진 ${i + 1} 보기`}
               className="rounded-lg overflow-hidden flex-shrink-0"
               style={{
                 width: "56px",
                 height: "56px",
-                border: (activeImage ?? images[0]) === url ? `2px solid ${color.solid}` : "2px solid transparent",
+                border: photoIndex === i ? `2px solid ${color.solid}` : "2px solid transparent",
               }}
             >
-              <img src={url} alt={`사진 ${i + 1}`} className="w-full h-full object-cover" />
+              <img src={url} alt={`사진 ${i + 1}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
             </button>
           ))}
         </div>
@@ -817,45 +836,17 @@ function DealDetailPageInner() {
         </>
       )}
 
-      {lightboxOpen && heroImage && (
-        <div
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center"
-          style={{ background: "rgba(0,0,0,0.92)" }}
-          onClick={() => setLightboxOpen(false)}
-        >
-          <button
-            onClick={() => setLightboxOpen(false)}
-            className="absolute top-5 right-5 text-white text-2xl w-10 h-10 flex items-center justify-center"
-            aria-label="닫기"
-          >
-            ×
-          </button>
-          <img
-            src={heroImage}
-            alt={deal.title}
-            className="max-w-full max-h-[70vh] object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
-          {images.length > 1 && (
-            <div className="flex gap-2 mt-5 overflow-x-auto px-5" onClick={(e) => e.stopPropagation()}>
-              {images.map((url, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveImage(url)}
-                  className="rounded-lg overflow-hidden flex-shrink-0"
-                  style={{
-                    width: "48px",
-                    height: "48px",
-                    border: (activeImage ?? images[0]) === url ? "2px solid #FF6F0F" : "2px solid transparent",
-                    opacity: (activeImage ?? images[0]) === url ? 1 : 0.5,
-                  }}
-                >
-                  <img src={url} alt={`사진 ${i + 1}`} className="w-full h-full object-cover" />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+      {viewerIndex !== null && hasPhotos && (
+        <PhotoViewer
+          images={images}
+          alt={deal.title}
+          startIndex={viewerIndex}
+          onClose={() => setViewerIndex(null)}
+          onIndexChange={(i) => {
+            setPhotoIndex(i);
+            carouselRef.current?.scrollToIndex(i);
+          }}
+        />
       )}
     </main>
   );

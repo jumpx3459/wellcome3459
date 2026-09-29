@@ -6,7 +6,7 @@ import { rem } from "@/lib/rem";
 // 매물 카드 이미지 영역 — /deals 목록·회원 홈(넓은 카드)의 실매물·예시 카드 공용 (2026-09-29).
 // 배지 위치 고정: 할인율 왼쪽 위, 남은 시간(또는 "마감됨") 오른쪽 위.
 // 예시 카드는 레이아웃은 같고 회색 톤으로만 구분 ("예시" 라벨은 카드 본문 쪽).
-// 사진이 없으면 16:9 대신 3:1로 낮춰서 빈 자리표시가 가격보다 커 보이지 않게.
+// 사진이 있으면 4:3(2026-09-29, 예전 16:9), 없으면 3:1로 낮춰서 빈 자리표시가 가격보다 커 보이지 않게.
 export default function DealCardMedia({
   image,
   alt,
@@ -19,6 +19,7 @@ export default function DealCardMedia({
   imageCount = 0,
   onMediaClick,
   className = "",
+  eager = false,
 }: {
   image?: string | null;
   alt: string;
@@ -31,12 +32,13 @@ export default function DealCardMedia({
   imageCount?: number;
   onMediaClick?: (e: MouseEvent) => void; // 회원 홈: 사진 눌러 크게 보기
   className?: string;
+  eager?: boolean; // 첫 화면에 보이는 카드만 바로 불러오기 — 나머지는 스크롤할 때(lazy)
 }) {
   const clickable = !!image && !!onMediaClick;
   return (
     <div
       className={`relative w-full overflow-hidden ${className}`}
-      style={{ aspectRatio: image ? "16/9" : "3/1" }}
+      style={{ aspectRatio: image ? "4/3" : "3/1" }}
       {...(clickable
         ? {
             role: "button",
@@ -52,6 +54,8 @@ export default function DealCardMedia({
         <img
           src={image}
           alt={alt}
+          loading={eager ? "eager" : "lazy"}
+          decoding="async"
           className="w-full h-full object-cover"
           style={{ filter: closed ? "grayscale(40%)" : example ? "grayscale(30%)" : "none" }}
         />
