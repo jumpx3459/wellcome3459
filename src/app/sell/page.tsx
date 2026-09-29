@@ -20,6 +20,7 @@ import { rem } from "@/lib/rem";
 import { STOCK_TYPES, type StockType } from "@/lib/stockType";
 import { getPhotoLimit, isPhotoLimitMaxed, MAX_PHOTO_SLOTS } from "@/lib/photoLimit";
 import { getFreshAccessToken } from "@/lib/authFetch";
+import { FieldLabel, FieldTag, FORM_INPUT_FONT_SIZE, FORM_HINT_STYLE, FORM_CHIP_FONT_SIZE } from "@/components/FormField";
 
 export default function SellPage() {
   const router = useRouter();
@@ -312,10 +313,7 @@ export default function SellPage() {
 
         {/* 2026-09-29: 재고 유형(선택) — 매물 카드·상세·푸시 앞에 배지로 표시 (일반 재고는 배지 없음) */}
         <div>
-          <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
-            재고 유형
-            <span className="text-xs font-bold" style={{ color: "#6B7480" }}>(선택)</span>
-          </div>
+          <FieldLabel need="optional">재고 유형</FieldLabel>
           <div className="flex flex-wrap gap-1.5">
             {STOCK_TYPES.map((t) => {
               const picked = stockType === t.value;
@@ -327,7 +325,7 @@ export default function SellPage() {
                   className="rounded-full whitespace-nowrap"
                   style={{
                     padding: "9px 13px",
-                    fontSize: rem(14),
+                    fontSize: FORM_CHIP_FONT_SIZE,
                     fontWeight: 700,
                     background: "#fff",
                     border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
@@ -343,13 +341,10 @@ export default function SellPage() {
         </div>
 
         <div>
-          <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
-            매물 상품명
-            <span className="text-xs font-bold" style={{ color: "#E25100" }}>(필수)</span>
-          </div>
+          <FieldLabel need="required">매물 상품명</FieldLabel>
           <input
             className="w-full rounded-xl outline-none"
-            style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: rem(14.5) }}
+            style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: FORM_INPUT_FONT_SIZE }}
             value={productName}
             onChange={(e) => setProductName(e.target.value)}
             onBlur={() => logUnmatchedProductName("sell", productName)}
@@ -358,21 +353,18 @@ export default function SellPage() {
         </div>
 
         <div>
-          <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
-            카테고리
-            <span className="text-xs font-bold" style={{ color: "#6B7480" }}>(선택)</span>
-          </div>
+          <FieldLabel need="optional">카테고리</FieldLabel>
           {stockType === "closure" && (
-            <p className="mb-2" style={{ fontSize: rem(14), color: "#4B5563" }}>
+            <p className="mb-2" style={FORM_HINT_STYLE}>
               여러 품목이 섞였으면 &apos;혼합재고&apos;를 골라주세요
             </p>
           )}
           {categoryEditing ? (
             <>
             {!category && !categoryTouched && (
-              <p className="mb-2" style={{ fontSize: rem(14), color: "#4B5563" }}>💡 상품명을 입력하면 카테고리를 자동으로 골라드려요</p>
+              <p className="mb-2" style={FORM_HINT_STYLE}>💡 상품명을 입력하면 카테고리를 자동으로 골라드려요</p>
             )}
-            <div className="flex gap-1.5 overflow-x-auto pb-1">
+            <div className="flex flex-wrap gap-1.5">
               {mockCategories.map((c) => {
                 const picked = category === c;
                 return (
@@ -384,10 +376,10 @@ export default function SellPage() {
                       setCategory(picked ? "" : c);
                       setCategoryEditing(false);
                     }}
-                    className="flex items-center gap-1 rounded-full whitespace-nowrap flex-shrink-0"
+                    className="flex items-center gap-1 rounded-full whitespace-nowrap"
                     style={{
                       padding: "9px 13px",
-                      fontSize: rem(13),
+                      fontSize: FORM_CHIP_FONT_SIZE,
                       fontWeight: 700,
                       background: "#fff",
                       border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
@@ -436,22 +428,19 @@ export default function SellPage() {
         {/* 2026-09-29: "원 / 팔레트"처럼 단위가 길면 나란히 두면 단가 칸이 70px대로 좁아져 큰 금액이 잘림 → 모바일은 위아래 */}
         <div className="flex flex-col gap-3 sm:flex-row sm:gap-2.5">
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
-              수량
-              <span className="text-xs font-bold" style={{ color: "#E25100" }}>(필수)</span>
-            </div>
+            <FieldLabel need="required">수량</FieldLabel>
             <div className="flex rounded-xl overflow-hidden" style={{ border: "1.5px solid #E4E7EB" }}>
               <input
                 type="number"
                 className="flex-1 min-w-0 outline-none"
-                style={{ border: "none", padding: "14px 10px", fontSize: rem(14.5) }}
+                style={{ border: "none", padding: "14px 10px", fontSize: FORM_INPUT_FONT_SIZE }}
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
                 placeholder="55"
               />
               <select
                 className="flex-shrink-0 outline-none"
-                style={{ width: 74, border: "none", borderLeft: "1px solid #E4E7EB", padding: "14px 8px", fontSize: rem(13), fontWeight: 700, color: "#0B2540", background: "#FAFBFC", textAlign: "center" }}
+                style={{ width: 74, border: "none", borderLeft: "1px solid #E4E7EB", padding: "14px 6px", fontSize: FORM_INPUT_FONT_SIZE, fontWeight: 700, color: "#0B2540", background: "#FAFBFC", textAlign: "center" }}
                 value={quantityUnit}
                 onChange={(e) => setQuantityUnit(e.target.value)}
               >
@@ -462,31 +451,28 @@ export default function SellPage() {
             </div>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-bold mb-2" style={{ color: "#0B2540" }}>희망 단가 (1{quantityUnit}당)</div>
+            <FieldLabel need="optional">희망 단가 (1{quantityUnit}당)</FieldLabel>
             <div className="flex items-center rounded-xl" style={{ border: "1.5px solid var(--color-brandOrange)" }}>
               <input
                 type="text"
                 inputMode="numeric"
                 className="flex-1 min-w-0 outline-none"
-                style={{ border: "none", padding: "14px 0 14px 10px", fontSize: rem(14.5) }}
+                style={{ border: "none", padding: "14px 0 14px 10px", fontSize: FORM_INPUT_FONT_SIZE }}
                 value={formatPriceInput(hopePrice)}
                 onChange={(e) => setHopePrice(e.target.value)}
                 placeholder="219,000"
               />
               {/* 2026-09-29: 매물 가격은 단가("2,000원/kg")로 표시되므로 총액을 넣지 않게 단위를 칸 안에 표시 */}
-              <span className="flex-shrink-0 text-sm font-bold whitespace-nowrap" style={{ color: "#0B2540", padding: "0 12px" }}>원 / {quantityUnit}</span>
+              <span className="flex-shrink-0 font-bold whitespace-nowrap" style={{ color: "#0B2540", padding: "0 12px", fontSize: FORM_INPUT_FONT_SIZE }}>원 / {quantityUnit}</span>
             </div>
           </div>
         </div>
-        <p className="-mt-3" style={{ fontSize: rem(14), color: "#4B5563" }}>
+        <p className="-mt-3" style={FORM_HINT_STYLE}>
           <b style={{ color: "#C2410C" }}>총액이 아니라 1{quantityUnit} 가격</b>을 입력해주세요 · 창고에서 직접 가져가는 가격 기준 (배송비 별도)
         </p>
 
         <div>
-          <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
-            연락처
-            <span className="text-xs font-bold" style={{ color: "#E25100" }}>(필수)</span>
-          </div>
+          <FieldLabel need="required">연락처</FieldLabel>
           <ContactPhoneInput
             value={contactPhone}
             onChange={(v) => {
@@ -499,16 +485,13 @@ export default function SellPage() {
         </div>
 
         <div>
-          <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
-            최소주문수량(MOQ)
-            <span className="text-xs font-bold" style={{ color: "#6B7480" }}>(선택)</span>
-          </div>
+          <FieldLabel need="optional">최소주문수량(MOQ)</FieldLabel>
           <div className="flex items-center rounded-xl" style={{ border: moqError ? "1.5px solid var(--color-orange)" : "1.5px solid #E4E7EB" }}>
             <input
               id="sell-minOrderQty"
               type="number"
               className="flex-1 min-w-0 outline-none"
-              style={{ border: "none", padding: "14px 0 14px 14px", fontSize: rem(14.5) }}
+              style={{ border: "none", padding: "14px 0 14px 14px", fontSize: FORM_INPUT_FONT_SIZE }}
               value={minOrderQty}
               onChange={(e) => {
                 setMinOrderQty(e.target.value);
@@ -516,13 +499,13 @@ export default function SellPage() {
               }}
               placeholder="예: 5"
             />
-            <span className="flex-shrink-0 text-sm font-medium" style={{ color: "#6B7480", padding: "0 14px" }}>{quantityUnit} 이상</span>
+            <span className="flex-shrink-0 font-medium" style={{ color: "#6B7480", padding: "0 14px", fontSize: FORM_INPUT_FONT_SIZE }}>{quantityUnit} 이상</span>
           </div>
-          {moqError && <p className="text-sm font-medium mt-1.5" style={{ color: "var(--color-orange)" }}>{moqError}</p>}
+          {moqError && <p className="font-medium mt-1.5" style={{ fontSize: rem(15), color: "var(--color-orange)" }}>{moqError}</p>}
         </div>
 
         <div>
-          <div className="text-sm font-bold mb-2" style={{ color: "#0B2540" }}>마감까지</div>
+          <FieldLabel need="optional">마감까지</FieldLabel>
           <div className="flex flex-wrap gap-1.5">
             {[
               { v: "3", l: "3시간" },
@@ -540,7 +523,7 @@ export default function SellPage() {
                   className="font-bold rounded-xl"
                   style={{
                     padding: "12px 14px",
-                    fontSize: rem(13),
+                    fontSize: FORM_CHIP_FONT_SIZE,
                     background: "#fff",
                     border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
                     color: "#1A1F26",
@@ -551,14 +534,14 @@ export default function SellPage() {
               );
             })}
           </div>
-          <p className="text-xs mt-2" style={{ color: "#6B7480" }}>
+          <p className="mt-2" style={FORM_HINT_STYLE}>
             여기서 정한 시간이 구매자에게 보이는 마감 카운트다운 기준이 돼요.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 rounded-2xl" style={{ background: "#F5F6F8", padding: "14px 16px" }}>
           <span style={{ fontSize: rem(18) }}>🔔</span>
-          <span className="flex-1" style={{ fontSize: rem(12.5), color: "#0B2540", lineHeight: 1.5, fontWeight: 500 }}>
+          <span className="flex-1" style={{ ...FORM_HINT_STYLE, color: "#0B2540", fontWeight: 500 }}>
             점핑매니저 검토 후, 이 조건 알림을 받는 회원들에게 바로 발송돼요.
           </span>
         </div>
@@ -566,14 +549,14 @@ export default function SellPage() {
         <button
           type="button"
           onClick={() => setShowDetails((v) => !v)}
-          className="flex items-center justify-between border-2 border-gray200 rounded-xl px-4 text-sm font-bold text-navy"
-          style={{ height: "52px" }}
+          className="flex items-center justify-between border-2 border-gray200 rounded-xl px-4 font-bold text-navy"
+          style={{ height: "52px", fontSize: rem(17) }}
         >
-          상세 정보 추가 (선택)
+          <span className="flex items-center gap-1.5">상세 정보 추가 <FieldTag need="optional" /></span>
           <span className="text-gray500">{showDetails ? "접기 ▴" : "펼치기 ▾"}</span>
         </button>
         {!showDetails && (
-          <p className="text-xs text-gray500 -mt-3">
+          <p className="-mt-3" style={FORM_HINT_STYLE}>
             없어도 등록돼요, 매니저가 통화로 확인해요.
           </p>
         )}
@@ -585,10 +568,10 @@ export default function SellPage() {
             <VideoUploader onChange={setVideoUrl} />
 
             <div>
-              <label className="text-sm font-bold text-navy mb-2 block">업체명</label>
+              <FieldLabel need="optional">업체명</FieldLabel>
               <input
-                className="w-full border-2 border-gray200 rounded-xl px-4 text-base outline-none focus:border-orange"
-                style={{ height: "52px" }}
+                className="w-full border-2 border-gray200 rounded-xl px-4 outline-none focus:border-orange"
+                style={{ height: "52px", fontSize: FORM_INPUT_FONT_SIZE }}
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 placeholder="예: 웰컴코리아(주)"
@@ -609,10 +592,10 @@ export default function SellPage() {
             </div>
 
             <div>
-              <label className="text-sm font-bold text-navy mb-2 block">담당자명</label>
+              <FieldLabel need="optional">담당자명</FieldLabel>
               <input
-                className="w-full border-2 border-gray200 rounded-xl px-4 text-base outline-none focus:border-orange"
-                style={{ height: "52px" }}
+                className="w-full border-2 border-gray200 rounded-xl px-4 outline-none focus:border-orange"
+                style={{ height: "52px", fontSize: FORM_INPUT_FONT_SIZE }}
                 value={contactName}
                 onChange={(e) => setContactName(e.target.value)}
                 placeholder="홍길동"
@@ -620,8 +603,8 @@ export default function SellPage() {
             </div>
 
             <div>
-              <label className="text-sm font-bold text-navy mb-1 block">재고 위치(지역)</label>
-              <p className="text-xs text-gray500 mb-2">
+              <FieldLabel need="optional" className="mb-1">재고 위치(지역)</FieldLabel>
+              <p className="mb-2" style={FORM_HINT_STYLE}>
                 물건이 실제로 있는 지역이에요 — 이 지역 알림을 신청한 회원에게 알림이 가요.
               </p>
               <div className="grid grid-cols-4 gap-2">
@@ -629,7 +612,8 @@ export default function SellPage() {
                   <button
                     key={r}
                     onClick={() => setRegion(region === r ? "" : r)}
-                    className={`text-sm py-2.5 rounded-full border-2 font-bold text-center ${
+                    style={{ fontSize: FORM_CHIP_FONT_SIZE }}
+                    className={`py-2.5 rounded-full border-2 font-bold text-center ${
                       region === r ? "bg-[#FF6F0F] text-white border-[#FF6F0F]" : "border-gray200 text-gray500"
                     }`}
                   >
@@ -640,43 +624,43 @@ export default function SellPage() {
             </div>
 
             <div>
-              <label className="text-base font-bold text-navy mb-2 block">상품 상세 스펙</label>
+              <FieldLabel need="optional">상품 상세 스펙</FieldLabel>
               <div className="flex flex-col gap-3">
                 <div>
-                  <label className="text-xs text-gray500 mb-1 block">포장 단위 (예: 20kg 박스)</label>
+                  <label className="mb-1 block" style={FORM_HINT_STYLE}>포장 단위 (예: 20kg 박스)</label>
                   <input
-                    className="w-full border-2 border-gray200 rounded-xl px-4 text-base outline-none focus:border-orange"
-                    style={{ height: "52px" }}
+                    className="w-full border-2 border-gray200 rounded-xl px-4 outline-none focus:border-orange"
+                    style={{ height: "52px", fontSize: FORM_INPUT_FONT_SIZE }}
                     value={packageUnit}
                     onChange={(e) => setPackageUnit(e.target.value)}
                     placeholder="20kg 박스"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-gray500 mb-1 block">규격/사이즈 (예: 500ml)</label>
+                  <label className="mb-1 block" style={FORM_HINT_STYLE}>규격/사이즈 (예: 500ml)</label>
                   <input
-                    className="w-full border-2 border-gray200 rounded-xl px-4 text-base outline-none focus:border-orange"
-                    style={{ height: "52px" }}
+                    className="w-full border-2 border-gray200 rounded-xl px-4 outline-none focus:border-orange"
+                    style={{ height: "52px", fontSize: FORM_INPUT_FONT_SIZE }}
                     value={spec}
                     onChange={(e) => setSpec(e.target.value)}
                     placeholder="500ml, S~L 혼합"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-gray500 mb-1 block">원산지</label>
+                  <label className="mb-1 block" style={FORM_HINT_STYLE}>원산지</label>
                   <input
-                    className="w-full border-2 border-gray200 rounded-xl px-4 text-base outline-none focus:border-orange"
-                    style={{ height: "52px" }}
+                    className="w-full border-2 border-gray200 rounded-xl px-4 outline-none focus:border-orange"
+                    style={{ height: "52px", fontSize: FORM_INPUT_FONT_SIZE }}
                     value={origin}
                     onChange={(e) => setOrigin(e.target.value)}
                     placeholder="국내산, 중국산 등"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-gray500 mb-1 block">보관조건 · 유통기한</label>
+                  <label className="mb-1 block" style={FORM_HINT_STYLE}>보관조건 · 유통기한</label>
                   <input
-                    className="w-full border-2 border-gray200 rounded-xl px-4 text-base outline-none focus:border-orange"
-                    style={{ height: "52px" }}
+                    className="w-full border-2 border-gray200 rounded-xl px-4 outline-none focus:border-orange"
+                    style={{ height: "52px", fontSize: FORM_INPUT_FONT_SIZE }}
                     value={storageCondition}
                     onChange={(e) => setStorageCondition(e.target.value)}
                     placeholder="냉동보관, 소비기한 5일"
@@ -686,9 +670,10 @@ export default function SellPage() {
             </div>
 
             <div>
-              <label className="text-sm font-bold text-navy mb-2 block">추가 설명</label>
+              <FieldLabel need="optional">추가 설명</FieldLabel>
               <textarea
-                className="w-full border-2 border-gray200 rounded-xl px-4 py-3 text-base outline-none focus:border-orange"
+                className="w-full border-2 border-gray200 rounded-xl px-4 py-3 outline-none focus:border-orange"
+                style={{ fontSize: FORM_INPUT_FONT_SIZE }}
                 rows={3}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -699,9 +684,10 @@ export default function SellPage() {
             {/* 2026-09-26: 폐업 정리 등으로 여러 품목이 한 팔레트에 섞인 "혼합매물" 대응 —
                 개별 사진 없이 PID/매니페스트 번호 + CSV 목록만으로도 등록할 수 있게. */}
             <div>
-              <label className="text-sm font-bold text-navy mb-2 block">PID / 매니페스트 번호 (선택)</label>
+              <FieldLabel need="optional">PID / 매니페스트 번호</FieldLabel>
               <input
-                className="w-full border-2 border-gray200 rounded-xl px-4 py-3 text-base outline-none focus:border-orange"
+                className="w-full border-2 border-gray200 rounded-xl px-4 py-3 outline-none focus:border-orange"
+                style={{ fontSize: FORM_INPUT_FONT_SIZE }}
                 value={pid}
                 onChange={(e) => setPid(e.target.value)}
                 placeholder="예: P809200159651 (리퀴데이션 팔레트라면 적어주세요)"

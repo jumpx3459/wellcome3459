@@ -29,7 +29,7 @@ export default function ContactPhoneInput({
           inputMode="tel"
           autoComplete="tel"
           className="flex-1 min-w-0 outline-none bg-transparent"
-          style={{ border: "none", padding: 14, fontSize: rem(14.5) }}
+          style={{ border: "none", padding: 14, fontSize: rem(17) }}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="010-0000-0000 또는 02-000-0000"
@@ -50,7 +50,7 @@ export default function ContactPhoneInput({
         )}
       </div>
       {error ? (
-        <p className="mt-1.5 font-medium" style={{ fontSize: rem(14), color: "var(--color-orange)" }}>
+        <p className="mt-1.5 font-medium" style={{ fontSize: rem(15), color: "var(--color-orange)" }}>
           {error}
           {/* 예시 번호는 하이픈에서 줄이 끊기지 않게 덩어리로 */}
           <span className="block font-normal" style={{ color: "#4B5563" }}>
@@ -58,7 +58,7 @@ export default function ContactPhoneInput({
           </span>
         </p>
       ) : showAutofillNote ? (
-        <p className="mt-1.5" style={{ fontSize: rem(14), color: "#4B5563" }}>
+        <p className="mt-1.5" style={{ fontSize: rem(15), color: "#4B5563" }}>
           가입한 번호가 들어가 있어요. 다른 번호로 바꿔도 돼요
         </p>
       ) : null}

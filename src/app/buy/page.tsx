@@ -14,6 +14,7 @@ import { NAV_BOTTOM } from "@/components/BottomNav";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import { rem } from "@/lib/rem";
 import { getFreshAccessToken } from "@/lib/authFetch";
+import { FieldLabel, FieldTag, FORM_INPUT_FONT_SIZE, FORM_HINT_STYLE, FORM_CHIP_FONT_SIZE, FORM_LABEL_STYLE } from "@/components/FormField";
 
 export default function BuyPage() {
   const router = useRouter();
@@ -266,13 +267,10 @@ export default function BuyPage() {
 
       <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: 148 }}>
         <div>
-          <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
-            무엇을 찾으세요?
-            <span className="text-xs font-bold" style={{ color: "#E25100" }}>(필수)</span>
-          </div>
+          <FieldLabel need="required">무엇을 찾으세요?</FieldLabel>
           <input
             className="w-full rounded-xl outline-none"
-            style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: rem(14.5) }}
+            style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: FORM_INPUT_FONT_SIZE }}
             value={productName}
             onChange={(e) => setProductName(e.target.value)}
             onBlur={() => logUnmatchedProductName("buy", productName)}
@@ -281,10 +279,7 @@ export default function BuyPage() {
         </div>
 
         <div>
-          <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
-            연락처
-            <span className="text-xs font-bold" style={{ color: "#E25100" }}>(필수)</span>
-          </div>
+          <FieldLabel need="required">연락처</FieldLabel>
           <ContactPhoneInput
             value={contactPhone}
             onChange={(v) => {
@@ -297,16 +292,13 @@ export default function BuyPage() {
         </div>
 
         <div>
-          <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
-            카테고리
-            <span className="text-xs font-bold" style={{ color: "#6B7480" }}>(선택)</span>
-          </div>
+          <FieldLabel need="optional">카테고리</FieldLabel>
           {categoryEditing ? (
             <>
             {!category && !categoryTouched && (
-              <p className="mb-2" style={{ fontSize: rem(14), color: "#4B5563" }}>💡 상품명을 입력하면 카테고리를 자동으로 골라드려요</p>
+              <p className="mb-2" style={FORM_HINT_STYLE}>💡 상품명을 입력하면 카테고리를 자동으로 골라드려요</p>
             )}
-            <div className="flex gap-1.5 overflow-x-auto pb-1">
+            <div className="flex flex-wrap gap-1.5">
               {mockCategories.map((c) => {
                 const picked = category === c;
                 return (
@@ -318,10 +310,10 @@ export default function BuyPage() {
                       setCategory(picked ? "" : c);
                       setCategoryEditing(false);
                     }}
-                    className="flex items-center gap-1 rounded-full whitespace-nowrap flex-shrink-0"
+                    className="flex items-center gap-1 rounded-full whitespace-nowrap"
                     style={{
                       padding: "9px 13px",
-                      fontSize: rem(13),
+                      fontSize: FORM_CHIP_FONT_SIZE,
                       fontWeight: 700,
                       background: "#fff",
                       border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
@@ -369,21 +361,18 @@ export default function BuyPage() {
 
         <div className="flex gap-2.5">
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
-              희망 수량
-              <span className="text-xs font-bold" style={{ color: "#6B7480" }}>(선택)</span>
-            </div>
+            <FieldLabel need="optional">희망 수량</FieldLabel>
             <div className="flex rounded-xl overflow-hidden" style={{ border: "1.5px solid #E4E7EB" }}>
               <input
                 className="flex-1 min-w-0 outline-none"
-                style={{ border: "none", padding: "14px 10px", fontSize: rem(14.5) }}
+                style={{ border: "none", padding: "14px 10px", fontSize: FORM_INPUT_FONT_SIZE }}
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
                 placeholder="500"
               />
               <select
                 className="flex-shrink-0 outline-none"
-                style={{ width: 74, border: "none", borderLeft: "1px solid #E4E7EB", padding: "14px 8px", fontSize: rem(13), fontWeight: 700, color: "#0B2540", background: "#FAFBFC", textAlign: "center" }}
+                style={{ width: 74, border: "none", borderLeft: "1px solid #E4E7EB", padding: "14px 6px", fontSize: FORM_INPUT_FONT_SIZE, fontWeight: 700, color: "#0B2540", background: "#FAFBFC", textAlign: "center" }}
                 value={quantityUnit}
                 onChange={(e) => {
                   setQuantityUnit(e.target.value);
@@ -397,16 +386,13 @@ export default function BuyPage() {
             </div>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
-              희망 단가(이하)
-              <span className="text-xs font-bold" style={{ color: "#6B7480" }}>(선택)</span>
-            </div>
+            <FieldLabel need="optional">희망 단가(이하)</FieldLabel>
             <div className="flex items-center rounded-xl" style={{ border: "1.5px solid #E4E7EB" }}>
               <input
                 type="text"
                 inputMode="numeric"
                 className="flex-1 min-w-0 outline-none"
-                style={{ border: "none", padding: "14px 0 14px 10px", fontSize: rem(14.5) }}
+                style={{ border: "none", padding: "14px 0 14px 10px", fontSize: FORM_INPUT_FONT_SIZE }}
                 value={formatPriceInput(hopePrice)}
                 onChange={(e) => setHopePrice(e.target.value)}
                 placeholder="30,000"
@@ -415,7 +401,7 @@ export default function BuyPage() {
               <select
                 aria-label="희망 단가 기준"
                 className="flex-shrink-0 outline-none"
-                style={{ width: 84, border: "none", borderLeft: "1px solid #E4E7EB", padding: "14px 6px", fontSize: rem(13), fontWeight: 700, color: "#0B2540", background: "#FAFBFC", textAlign: "center", borderRadius: "0 12px 12px 0" }}
+                style={{ width: 84, border: "none", borderLeft: "1px solid #E4E7EB", padding: "14px 4px", fontSize: FORM_INPUT_FONT_SIZE, fontWeight: 700, color: "#0B2540", background: "#FAFBFC", textAlign: "center", borderRadius: "0 12px 12px 0" }}
                 value={priceUnit}
                 onChange={(e) => {
                   setPriceUnit(e.target.value);
@@ -434,15 +420,15 @@ export default function BuyPage() {
 
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-bold flex items-center gap-1.5" style={{ color: "#0B2540" }}>
+            <span className="flex items-center gap-1.5" style={FORM_LABEL_STYLE}>
               인수 가능 지역
-              <span className="text-xs font-bold" style={{ color: "#6B7480" }}>(선택)</span>
+              <FieldTag need="optional" />
             </span>
             <button
               type="button"
               onClick={() => setRegions(allRegionsOn ? [] : [...mockRegions])}
               className="font-bold"
-              style={{ fontSize: rem(12), color: "#E25100" }}
+              style={{ fontSize: rem(15), color: "#E25100", minHeight: 44 }}
             >
               {allRegionsOn ? "선택 해제" : "전 지역 선택"}
             </button>
@@ -458,7 +444,7 @@ export default function BuyPage() {
                   className="rounded-full font-bold"
                   style={{
                     padding: "8px 13px",
-                    fontSize: rem(12.5),
+                    fontSize: FORM_CHIP_FONT_SIZE,
                     background: "#fff",
                     border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
                     color: "#1A1F26",
@@ -475,13 +461,10 @@ export default function BuyPage() {
         </div>
 
         <div>
-          <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
-            추가 요청
-            <span className="text-xs font-bold" style={{ color: "#6B7480" }}>(선택)</span>
-          </div>
+          <FieldLabel need="optional">추가 요청</FieldLabel>
           <textarea
             className="w-full rounded-xl outline-none resize-none"
-            style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: rem(14), lineHeight: 1.55, height: 88 }}
+            style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: FORM_INPUT_FONT_SIZE, lineHeight: 1.55, height: 96 }}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="보관 조건, 인수 가능 시기, 결제 조건 등"

@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { FieldTag, FORM_LABEL_STYLE, FORM_HINT_STYLE } from "@/components/FormField";
+import { rem } from "@/lib/rem";
 
 const MAX_SECONDS = 15;
 
@@ -173,13 +175,14 @@ export default function VideoUploader({
 
   return (
     <div>
-      <label className="text-sm font-bold text-navy mb-2 flex items-center gap-1.5">
+      <label className="mb-2 flex items-center gap-1.5 flex-wrap" style={FORM_LABEL_STYLE}>
         {label}
-        <span className="text-xs font-medium text-gray500 bg-gray100 px-2 py-0.5 rounded-full">
-          선택 · 최대 15초
+        <FieldTag need="optional" />
+        <span className="font-medium text-gray500 bg-gray100 px-2 py-0.5 rounded-full" style={{ fontSize: rem(15) }}>
+          최대 15초
         </span>
       </label>
-      <p className="text-xs text-gray500 mb-2">{hint}</p>
+      <p className="mb-2" style={FORM_HINT_STYLE}>{hint}</p>
 
       {phase === "idle" && (
         <label

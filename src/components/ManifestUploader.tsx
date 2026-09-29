@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { parseCsv, type ManifestRow } from "@/lib/parseCsv";
+import { FORM_HINT_STYLE } from "@/components/FormField";
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024; // 2MB — 500행 제한과 함께 과도한 붙여넣기/손상파일 방지
 
@@ -75,7 +76,7 @@ export default function ManifestUploader({
           }}
         />
       </label>
-      <p className="text-xs text-gray500 mt-1">
+      <p className="mt-1" style={FORM_HINT_STYLE}>
         개별 사진 없이 여러 품목이 한 팔레트에 섞인 경우, 엑셀/구글시트에서 &quot;CSV로 다운로드&quot;한
         목록을 올리면 상세 페이지에 표로 보여줘요.
       </p>

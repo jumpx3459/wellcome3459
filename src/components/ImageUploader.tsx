@@ -4,6 +4,7 @@ import { useState } from "react";
 import { resizeImageForUpload } from "@/lib/resizeImage";
 import { rem } from "@/lib/rem";
 import { getFreshAccessToken } from "@/lib/authFetch";
+import { FieldTag, FORM_LABEL_STYLE, FORM_HINT_STYLE } from "@/components/FormField";
 
 type Item = { preview: string; url?: string; uploading: boolean };
 
@@ -90,13 +91,14 @@ export default function ImageUploader({
 
   return (
     <div>
-      <label className="text-sm font-bold text-navy mb-2 flex items-center gap-1.5">
+      <label className="mb-2 flex items-center gap-1.5 flex-wrap" style={FORM_LABEL_STYLE}>
         {label}
-        <span className="text-xs font-medium text-gray500 bg-gray100 px-2 py-0.5 rounded-full">
-          선택 · {items.length}/{max}
+        <FieldTag need="optional" />
+        <span className="font-medium text-gray500 bg-gray100 px-2 py-0.5 rounded-full" style={{ fontSize: rem(15) }}>
+          {items.length}/{max}
         </span>
       </label>
-      <p className="text-xs text-gray500 mb-2">{displayHint}</p>
+      <p className="mb-2" style={FORM_HINT_STYLE}>{displayHint}</p>
 
       {items.length < max && (
         <label
