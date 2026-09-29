@@ -175,7 +175,7 @@ export default function BuyPage() {
           <p className="text-gray500 text-base leading-relaxed mb-6">
             점핑매니저가 전국 재고를 뒤져서{" "}
             <br className="hidden sm:inline" />
-            조건에 맞는 매물이 나오면 바로 알려드릴게요.
+            조건에 맞는 매물이 나오면 빠르게 알려드릴게요.
           </p>
           <div className="w-full text-left rounded-2xl" style={{ background: "#F5F6F8", padding: "14px 16px" }}>
             <div className="text-xs font-bold" style={{ color: "#6B7480" }}>등록한 조건</div>

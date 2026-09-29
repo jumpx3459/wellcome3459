@@ -544,7 +544,7 @@ function SignupPageInner() {
               어떤 상품을 찾고 계세요?
             </h2>
             <p className="mt-2" style={{ fontSize: rem(14.5), lineHeight: 1.6 }}>
-              <span className="font-bold" style={{ color: "#fff" }}>🔔 고른 카테고리에 매물이 뜨면 즉시 알려드려요.</span>{" "}
+              <span className="font-bold" style={{ color: "#fff" }}>🔔 고른 카테고리에 매물이 뜨면 빠르게 알려드려요.</span>{" "}
               <span style={{ color: "rgba(255,255,255,.7)" }}>여러 개 고를 수 있어요.</span>
             </p>
           </div>
@@ -821,7 +821,7 @@ function SignupPageInner() {
                     <span className="text-sm font-bold" style={{ color: "#0B2540" }}>앱 푸시 알림</span>
                     <span className="text-xs font-bold" style={{ color: "#E25100" }}>[기본]</span>
                   </span>
-                  <span className="block text-xs mt-0.5" style={{ color: "#6B7480" }}>조건에 맞는 매물이 뜨는 즉시</span>
+                  <span className="block text-xs mt-0.5" style={{ color: "#6B7480" }}>조건에 맞는 매물을 빠르게 알려드려요</span>
                 </span>
                 <span className="rounded-full flex-shrink-0 relative" style={{ width: 42, height: 25, background: push ? "var(--color-toggleOn)" : "#D5D9DE", transition: "background .2s" }}>
                   <span className="absolute rounded-full bg-white" style={{ top: 2, width: 19, height: 19, left: push ? 20 : 2, transition: "left .2s", boxShadow: "0 1px 3px rgba(0,0,0,.25)" }} />

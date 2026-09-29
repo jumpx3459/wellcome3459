@@ -384,6 +384,15 @@ curl로 확인. 단, 이 세션엔 브라우저 접근이 없어 육안 확인�
 - [ ] **썸네일 목록 카드 배지 위치** (10/7 공개 후 작업, 2026-09-29 백로그): 비회원 홈 미리보기(56px)·회원 홈 5건 이상(64px) 썸네일 목록은 할인율·남은 시간이 글줄 안/오른쪽 위 그대로 — 넓은 카드(`DealCardMedia`: 할인율 왼쪽 위·남은 시간 오른쪽 위)와 맞출지 검토
 - [ ] **PR 프리뷰 배포 워크플로** (10/7 공개 후 작업, 2026-09-29 백로그): 지금 GitHub Actions는 main push 시 프로덕션 배포만 하고
   Vercel Git 연동 프리뷰도 꺼져 있음(마지막 기록 2026-09-15) → PR 브랜치에 `vercel deploy`(--prod 없이) 워크플로 추가해 폰으로 먼저 확인할 수 있게
+- [ ] **푸시 발송 중 실패 시 남은 구독자 누락** (10/7 공개 후 재시도 설계 검토, 2026-09-30 백로그): sendDealPush/sendNoticePush는
+  push_sent_at을 먼저 선점한 뒤 보내는 중복 방지 우선 구조 — 발송 도중 함수가 죽거나 시간 초과되면 남은 구독자는 다시 받지 못함
+  (예: notification_logs 기준 미발송 구독자만 재시도)
+- [ ] **할인율 근거 검수** (2026-09-30 백로그): 푸시·카드의 할인율(예: 36%↓)은 판매자가 입력한 정상가(original_price) 기준 —
+  관리자 검수(매물 등록 확정) 때 정상가 근거(견적서·납품가 등)를 확인하는 절차/체크 항목 추가
+- [ ] **admin/page.tsx:306 린트 에러 (기존)** (2026-09-30 백로그): `SessionCountdown`의 `useState(expiresAt - Date.now())`가
+  `react-hooks/purity` 에러(렌더 중 Date.now 호출). 빌드는 통과, eslint만 실패 — 초기값을 useEffect에서 계산하는 식으로 정리
+- [ ] **deploy.yml `paths-ignore` (`*.md`, `docs/**`)** (2026-09-30 백로그): 지금은 PROGRESS.md 같은 문서만 바뀐 push도
+  운영 배포가 한 번 더 돎 → 문서만 바뀐 push는 배포 생략
 - [ ] **`.gitattributes` 줄바꿈 통일 (`* text=auto eol=lf`)** (보류, 2026-09-30 백로그): 저장소는 LF인데 이 PC는
   `core.autocrlf=true`라 작업 폴더가 CRLF — 작업 폴더를 그대로 비교하는 도구에서 파일 전체가 바뀐 것처럼 보일 수 있음(PR #19 확인 때 실제 변경은 2줄뿐이었음)
 - [x] **컨택 메모 `referral_notes` 테이블 분리** (2026-09-27, `81a60c4`): `members.referral_note`

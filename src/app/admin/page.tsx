@@ -2463,7 +2463,11 @@ function DealForm({
         return;
       }
       const sent = data.push?.sentCount ?? 0;
-      alert(`매물이 등록됐어요. 구독자 ${sent}명에게 알림을 발송했어요.`);
+      alert(
+        data.push?.held
+          ? "매물이 등록됐어요. 밤 9시~아침 8시라 알림은 아침 8시에 발송돼요."
+          : `매물이 등록됐어요. 구독자 ${sent}명에게 알림을 발송했어요.`
+      );
       onDone();
     } catch {
       setError("등록에 실패했어요.");
@@ -2768,6 +2772,10 @@ function DealForm({
         <span className="text-orange font-bold">*</span> 매물명·카테고리·지역·판매가·수량은 필수예요.
       </p>
 
+      <p className="text-gray500" style={{ fontSize: rem(14) }}>
+        🌙 밤 9시~아침 8시 등록 매물은 아침 8시에 발송돼요.
+      </p>
+
       <button
         onClick={submit}
         disabled={submitting}
@@ -2899,7 +2907,11 @@ function NoticeForm({ adminKey, onDone }: { adminKey: string; onDone: () => void
       if (!res.ok) throw new Error();
       const data = await res.json();
       const sent = data.push?.sentCount ?? 0;
-      alert(`공지가 등록됐어요. 긴급 공지 알림에 동의한 ${sent}명에게 발송했어요.`);
+      alert(
+        data.push?.held
+          ? "공지가 등록됐어요. 밤 9시~아침 8시라 알림은 아침 8시에 발송돼요."
+          : `공지가 등록됐어요. 긴급 공지 알림에 동의한 ${sent}명에게 발송했어요.`
+      );
       onDone();
     } catch {
       setError("등록에 실패했어요.");
@@ -2961,6 +2973,10 @@ function NoticeForm({ adminKey, onDone }: { adminKey: string; onDone: () => void
       <ImageUploader onChange={setImages} label="사진" hint="부동산·설비 현장 사진" />
 
       {error && <div className="text-orange font-medium" style={{ fontSize: rem(15) }}>{error}</div>}
+
+      <p className="text-gray500" style={{ fontSize: rem(14) }}>
+        🌙 밤 9시~아침 8시 등록 공지는 아침 8시에 발송돼요.
+      </p>
 
       <button onClick={submit} disabled={submitting} className={`w-full ${BTN_CLASS}`} style={btnStyle("primary")}>
         {submitting ? "등록 중..." : "공지 등록 확정"}
