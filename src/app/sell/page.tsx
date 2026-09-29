@@ -6,7 +6,7 @@ import Link from "next/link";
 import { hasAppHistory } from "@/lib/appNav";
 import { CheckCircle } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { mockCategories, mockRegions, categoryIcons, quantityUnits, guessCategory } from "@/lib/mockData";
+import { mockCategories, mockRegions, categoryIcons, quantityUnits, guessCategory, logUnmatchedProductName } from "@/lib/mockData";
 import ImageUploader from "@/components/ImageUploader";
 import VideoUploader from "@/components/VideoUploader";
 import ManifestUploader from "@/components/ManifestUploader";
@@ -342,11 +342,9 @@ export default function SellPage() {
             style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: rem(14.5) }}
             value={productName}
             onChange={(e) => setProductName(e.target.value)}
+            onBlur={() => logUnmatchedProductName("sell", productName)}
             placeholder={stockType === "closure" ? "예: 사무집기 일괄 (책상·의자·캐비닛)" : "예: 국내산 갈치 20kg 박스"}
           />
-          <p className="mt-1.5" style={{ fontSize: rem(14), color: "#4B5563" }}>
-            💡 상품명을 입력하면 카테고리를 자동으로 골라드려요
-          </p>
         </div>
 
         <div>
@@ -362,7 +360,7 @@ export default function SellPage() {
           {categoryEditing ? (
             <>
             {!category && !categoryTouched && (
-              <p className="mb-2" style={{ fontSize: rem(14), color: "#6B7480" }}>상품명을 입력하면 자동으로 골라드려요</p>
+              <p className="mb-2" style={{ fontSize: rem(14), color: "#4B5563" }}>💡 상품명을 입력하면 카테고리를 자동으로 골라드려요</p>
             )}
             <div className="flex gap-1.5 overflow-x-auto pb-1">
               {mockCategories.map((c) => {

@@ -14,6 +14,8 @@ import { matchesConditions } from "@/lib/dealMatching";
 import { EXAMPLE_DEALS, shouldShowExamples } from "@/lib/exampleDeals";
 import { rem } from "@/lib/rem";
 import StockTypeBadge from "@/components/StockTypeBadge";
+import DealCardMedia from "@/components/DealCardMedia";
+import { SECTION_TITLE_STYLE } from "@/components/EcosystemGrid";
 
 // 헤더(점핑매니저 안내줄)의 실측 높이 — 아래 콘텐츠의 paddingTop 보정에 사용.
 // 2026-09-26 로컬 Playwright 실측 77.3px(360/390/430px 폭 동일) → 78로 올림.
@@ -313,12 +315,27 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
               >
                 <div className="flex items-center gap-1.5" style={{ marginBottom: 8 }}>
                   <span style={{ fontSize: rem(12), color: "#6B7480" }}>{d.location}</span>
-                  <span className="font-mono font-bold ml-auto" style={{ fontSize: rem(12), color: cd.urgent ? "var(--color-urgent)" : "#6B7480" }}>
-                    ⏱ {cd.label}
-                  </span>
+                  {/* 넓은 카드는 남은 시간이 사진 오른쪽 위(DealCardMedia), 좁은 썸네일 카드만 여기 */}
+                  {!wideLayout && (
+                    <span className="font-mono font-bold ml-auto" style={{ fontSize: rem(12), color: cd.urgent ? "var(--color-urgent)" : "#6B7480" }}>
+                      ⏱ {cd.label}
+                    </span>
+                  )}
                 </div>
                 <div className={wideLayout ? "flex flex-col gap-2.5" : "flex items-start gap-2.5"}>
-                  {d.images && d.images.length > 0 ? (
+                  {wideLayout ? (
+                    <DealCardMedia
+                      image={d.images?.[0]}
+                      alt={d.title}
+                      category={d.category}
+                      discountPct={pct}
+                      closesAt={d.closes_at}
+                      videoUrl={d.video_url ?? null}
+                      imageCount={d.images?.length ?? 0}
+                      onMediaClick={d.images && d.images.length > 0 ? (e) => openViewer(e, d.images!, d.video_url ?? null) : undefined}
+                      className="rounded-xl"
+                    />
+                  ) : d.images && d.images.length > 0 ? (
                     <div
                       role="button"
                       tabIndex={0}
@@ -327,11 +344,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                         if (e.key === "Enter" || e.key === " ") openViewer(e as unknown as React.MouseEvent, d.images!, d.video_url ?? null);
                       }}
                       className="relative rounded-xl overflow-hidden flex-shrink-0"
-                      style={
-                        wideLayout
-                          ? { width: "100%", aspectRatio: "16/9" }
-                          : { width: 64, height: 64 }
-                      }
+                      style={{ width: 64, height: 64 }}
                     >
                       <img src={d.images[0]} alt={d.title} className="w-full h-full object-cover" />
                       {d.video_url && (
@@ -348,9 +361,9 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                   ) : (
                     <span
                       className="rounded-xl overflow-hidden flex-shrink-0 block"
-                      style={wideLayout ? { width: "100%", aspectRatio: "16/9" } : { width: 64, height: 64 }}
+                      style={{ width: 64, height: 64 }}
                     >
-                      <NoPhotoPlaceholder category={d.category} size={wideLayout ? "lg" : "sm"} />
+                      <NoPhotoPlaceholder category={d.category} size="sm" />
                     </span>
                   )}
                   <span className="flex-1 min-w-0">
@@ -367,7 +380,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                       </span>
                     )}
                     <span className="flex items-baseline gap-1.5 mt-1.5">
-                      {pct > 0 && (
+                      {!wideLayout && pct > 0 && (
                         <span className="font-black text-white rounded" style={{ fontSize: rem(12), padding: "2px 7px", background: "#E25100" }}>
                           -{pct}%
                         </span>
@@ -413,7 +426,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
       {loaded && shouldShowExamples(deals.length, isSupabaseConfigured) && (
         <div>
           <div className="flex items-center gap-2" style={{ padding: "18px 20px 9px" }}>
-            <span className="font-black" style={{ fontSize: rem(13), color: "#0B2540", letterSpacing: "0.02em" }}>💡 이런 매물이 올라와요</span>
+            <span style={SECTION_TITLE_STYLE}>💡 이런 매물이 올라와요</span>
             <span className="flex-1" style={{ height: 1, background: "#EEF0F2" }} />
             <span className="text-xs font-bold rounded-full" style={{ padding: "2px 8px", background: "#E9ECEF", color: "#495057" }}>예시</span>
           </div>
@@ -426,25 +439,17 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                   <span style={{ fontSize: rem(12), color: "#6B7480" }}>{d.location}</span>
                 </div>
                 <div className="flex flex-col gap-2.5">
-                  {d.images && d.images.length > 0 ? (
-                    <div className="relative rounded-xl overflow-hidden" style={{ width: "100%", aspectRatio: "16/9" }}>
-                      <img src={d.images[0]} alt={d.title} className="w-full h-full object-cover" />
-                      {d.video_url && (
-                        <span className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,.25)" }}>
-                          <span style={{ fontSize: rem(30), color: "#fff" }}>▶</span>
-                        </span>
-                      )}
-                      {d.images.length > 1 && (
-                        <span className="absolute bottom-1.5 right-1.5 rounded font-bold text-white" style={{ fontSize: rem(10), padding: "1px 5px", background: "rgba(0,0,0,.5)" }}>
-                          1/{d.images.length}
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="rounded-xl overflow-hidden block" style={{ width: "100%", aspectRatio: "16/9" }}>
-                      <NoPhotoPlaceholder category={d.category} />
-                    </span>
-                  )}
+                  <DealCardMedia
+                    image={d.images?.[0]}
+                    alt={d.title}
+                    category={d.category}
+                    discountPct={pct}
+                    closesAt={d.closes_at}
+                    videoUrl={d.video_url ?? null}
+                    imageCount={d.images?.length ?? 0}
+                    example
+                    className="rounded-xl"
+                  />
                   <span className="flex-1 min-w-0">
                     <span className="block font-bold leading-snug" style={{ fontSize: rem(16), color: "#1A1F26" }}>{d.title}</span>
                     <span className="block mt-0.5" style={{ fontSize: rem(12.5), color: "#6B7480" }}>
@@ -458,7 +463,6 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                       </span>
                     )}
                     <span className="flex items-baseline gap-1.5 mt-1.5">
-                      {pct > 0 && <span className="font-black text-white rounded" style={{ fontSize: rem(12), padding: "2px 7px", background: "#9AA3AD" }}>-{pct}%</span>}
                       <span className="font-black" style={{ fontSize: rem(18), color: "#6B7480" }}>{formatDealPrice(d.deal_price, d.quantity_unit)}</span>
                       <span style={{ fontSize: rem(12.5), color: "#9AA3AD", textDecoration: "line-through" }}>{formatDealPrice(d.original_price, d.quantity_unit)}</span>
                     </span>

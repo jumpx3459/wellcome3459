@@ -5,16 +5,15 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockDeals, mockCategories, mockRegions, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
-import CountdownBadge from "@/components/CountdownBadge";
 import AdSlot from "@/components/AdSlot";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
-import { formatPrice, formatDealPrice } from "@/lib/format";
 import { formatDealLocation } from "@/lib/formatDealLocation";
-import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
+import DealListCard from "@/components/DealListCard";
+import { avgDiscountByCategory, hotGapPct, type AvgSampleRow } from "@/lib/categoryAvg";
 
 import { EXAMPLE_DEALS, shouldShowExamples } from "@/lib/exampleDeals";
 import { rem } from "@/lib/rem";
-import StockTypeBadge from "@/components/StockTypeBadge";
+import { SECTION_TITLE_STYLE } from "@/components/EcosystemGrid";
 
 // design-v2: 헤더 우측의 "정부지원금" 링크를 마이페이지로 옮기고, 그 자리를
 // 이 화면이 다루는 매물 성격을 보여주는 순수 카피 로테이션으로 채움 (클릭 동작 없음).
@@ -141,6 +140,34 @@ function DealsPageInner() {
     })();
   }, [view, closedLoaded]);
 
+  // "평균보다 더 저렴" 배지 표본 — 진행 중 + 최근 30일 등록 매물 (기준은 src/lib/categoryAvg.ts)
+  const [avgSamples, setAvgSamples] = useState<AvgSampleRow[]>([]);
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return; // 데모 모드: 표본 없음 → 배지 안 뜸
+    (async () => {
+      const nowIso = new Date().toISOString();
+      const since = new Date(Date.now() - 30 * 24 * 3600e3).toISOString();
+      const { data, error } = await supabase
+        .from("deals")
+        .select("title, original_price, deal_price, status, closes_at, created_at, categories(name)")
+        .or(`created_at.gte.${since},and(status.eq.active,closes_at.gt.${nowIso})`)
+        .limit(1000);
+      if (!error && data) {
+        setAvgSamples(
+          data.map((d) => ({
+            category: (d.categories as unknown as { name: string } | null)?.name ?? "기타",
+            title: d.title,
+            original_price: d.original_price,
+            deal_price: d.deal_price,
+            status: d.status,
+            closes_at: d.closes_at,
+            created_at: d.created_at,
+          }))
+        );
+      }
+    })();
+  }, []);
+
   // 서버와 클라이언트의 렌더링 시각 차이로 하이드레이션이 어긋나지 않도록,
   // 처음에는 0으로 시작해 아무 매물도 필터링되지 않게 하고 마운트 이후 실제 시각을 채웁니다.
   const [now, setNow] = useState(0);
@@ -164,21 +191,8 @@ function DealsPageInner() {
 
   const showExamples = view === "active" && shouldShowExamples(filtered.length, isSupabaseConfigured);
 
-  // 카테고리별 평균 할인율 — 특정 매물이 같은 카테고리 평균보다 눈에 띄게 저렴하면 배지로 알려줍니다.
-  const avgDiscountByCategory: Record<string, number> = {};
-  {
-    const sums: Record<string, { total: number; count: number }> = {};
-    notExpired.forEach((d) => {
-      if (!d.original_price) return;
-      const disc = ((d.original_price - d.deal_price) / d.original_price) * 100;
-      sums[d.category] ??= { total: 0, count: 0 };
-      sums[d.category].total += disc;
-      sums[d.category].count += 1;
-    });
-    Object.entries(sums).forEach(([cat, { total, count }]) => {
-      if (count >= 2) avgDiscountByCategory[cat] = total / count; // 표본 2개 이상일 때만 의미있는 비교
-    });
-  }
+  // 카테고리 평균 할인율 — 표본 10건 이상인 카테고리만 (미달이면 배지 숨김)
+  const avgDiscount = now ? avgDiscountByCategory(avgSamples, now) : {};
 
   return (
     <main className="flex flex-col min-h-screen">
@@ -379,134 +393,14 @@ function DealsPageInner() {
           )
         )}
         {filtered.flatMap((d, idx) => {
-          const remainPct = Math.round((d.remaining_qty / d.total_qty) * 100);
-          const color = categoryColors[d.category] ?? categoryColors["기타"];
           const isClosed = view === "closed";
-
-          const discountPct = d.original_price
-            ? ((d.original_price - d.deal_price) / d.original_price) * 100
-            : 0;
-          const avgDiscount = avgDiscountByCategory[d.category];
-          const gapVsAvg = avgDiscount !== undefined ? discountPct - avgDiscount : 0;
-          const showHotBadge = !isClosed && avgDiscount !== undefined && gapVsAvg >= 8;
-
           const card = (
-            <Link
+            <DealListCard
               key={d.id}
-              href={`/deals/${d.id}`}
-              className="bg-white border border-gray200 rounded-2xl overflow-hidden flex flex-col relative"
-              style={{
-                borderLeft: `5px solid ${isClosed ? "#C7CBD1" : color.solid}`,
-                opacity: isClosed ? 0.85 : 1,
-                boxShadow: isClosed ? "none" : "0 2px 8px rgba(11,37,64,0.08), 0 1px 2px rgba(11,37,64,0.04)",
-              }}
-            >
-              <div className="relative w-full" style={{ aspectRatio: "16/9" }}>
-                {d.images && d.images.length > 0 ? (
-                  <img
-                    src={d.images[0]}
-                    alt={d.title}
-                    className="w-full h-full object-cover"
-                    style={{ filter: isClosed ? "grayscale(40%)" : "none" }}
-                  />
-                ) : (
-                  <NoPhotoPlaceholder category={d.category} muted={isClosed} />
-                )}
-                <div className="absolute top-2.5 right-2.5">
-                  {isClosed ? (
-                    <span className="text-xs font-bold text-white bg-gray500 px-2.5 py-1.5 rounded-full shadow">마감됨</span>
-                  ) : (
-                    <div className="rounded-full shadow" style={{ background: "rgba(255,255,255,0.94)" }}>
-                      <CountdownBadge closesAt={d.closes_at} />
-                    </div>
-                  )}
-                </div>
-                {/* 2026-09-27: 홈 미리보기 카드와 가격/할인율 표시를 통일 — 할인율을
-                    가격 옆 각진 배지 대신 썸네일 위 반투명 필 배지로 이동(홈과 동일
-                    스타일). 우상단은 마감 카운트다운이 이미 차지하고 있어 좌상단에 배치.
-                    2026-09-27 (재검토): 풀와이드 카드 규모에 비해 배지 글자(12px)가
-                    작다는 피드백 — 24px로 확대, 배지 비율 유지 위해 패딩도 비례 확대. */}
-                {!isClosed && discountPct > 0 && (
-                  <div
-                    className="absolute top-2.5 left-2.5 font-black text-white rounded-full"
-                    style={{ background: "rgba(226,81,0,0.72)", fontSize: rem(24), padding: "4px 12px" }}
-                  >
-                    -{Math.round(discountPct)}%
-                  </div>
-                )}
-              </div>
-
-              <div className="px-4 py-3.5">
-                <div className="flex items-center justify-between gap-2">
-                  <div
-                    className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full min-w-0"
-                    style={{ background: isClosed ? "#F1F1EF" : color.bg, color: isClosed ? "#6B7480" : color.text }}
-                  >
-                    <span className="text-sm flex-shrink-0">{categoryIcons[d.category] ?? "🗂️"}</span>
-                    <span className="truncate">{d.category}</span>
-                  </div>
-                  <StockTypeBadge value={d.stock_type} className="mr-auto" />
-                  {/* 2026-09-26: 관심표시 3건 미만은 숨김(threshold-gating) — 초기 트래픽
-                      단계에서 "관심 0~2명"이 그대로 보이면 오히려 인기 없어 보이는 역효과 방지. */}
-                  {(d.interest_count ?? 0) >= 3 && (
-                    <div className="inline-flex items-center gap-1 text-xs font-bold flex-shrink-0" style={{ color: "#C2410C" }}>
-                      ❤️ {d.interest_count}명 관심
-                    </div>
-                  )}
-                </div>
-                {/* 2026-09-27 (재검토): text-base(18px)가 풀와이드 이미지 대비 작다는
-                    피드백 — text-lg로 확대. 가격 옆 할인 배지는 위 썸네일 필 배지와
-                    중복 노출이라 제거(빠뜨렸던 부분), 가격 색도 홈처럼 카테고리
-                    강조색(color.text)으로 통일. */}
-                <div className="text-lg font-bold text-gray900 mt-2">{d.title}</div>
-                <div className="text-sm font-medium mt-1" style={{ color: "#495057" }}>
-                  {isClosed
-                    ? d.location
-                    : `잔여 ${d.remaining_qty}${d.quantity_unit || "개"} · ${d.location}`}
-                </div>
-                {(d.origin || d.min_order_qty) && (
-                  <div className="text-xs font-medium mt-1 flex items-center gap-1.5 flex-wrap" style={{ color: "#495057" }}>
-                    {d.origin && <span>🌍 {d.origin}</span>}
-                    {d.origin && d.min_order_qty ? <span style={{ color: "#C7CBD1" }}>·</span> : null}
-                    {d.min_order_qty && <span>MOQ {d.min_order_qty}{d.quantity_unit || "개"}</span>}
-                  </div>
-                )}
-                <div className="flex items-baseline gap-1.5 mt-2">
-                  <span className="text-lg font-black" style={{ color: isClosed ? "#6B7480" : color.text }}>
-                    {formatDealPrice(d.deal_price, d.quantity_unit)}
-                  </span>
-                  <span className="text-sm text-gray500 font-normal line-through">
-                    {formatDealPrice(d.original_price, d.quantity_unit)}
-                  </span>
-                </div>
-                {showHotBadge && (
-                  <div
-                    className="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full mt-1.5"
-                    style={{ background: "#FDEEE8", color: "#C2410C" }}
-                  >
-                    🔥 {d.category} 평균보다 {Math.round(gapVsAvg)}%p 더 저렴
-                  </div>
-                )}
-                {!isClosed && (
-                  <div className="mt-2.5">
-                    <div className="h-[7px] bg-gray200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full"
-                        style={{ width: `${remainPct}%`, background: color.solid }}
-                      />
-                    </div>
-                    <div className="text-sm font-bold mt-1.5" style={{ color: color.text }}>
-                      재고 {remainPct}% 남음{remainPct < 30 ? " · 서두르세요" : ""}
-                    </div>
-                  </div>
-                )}
-                {isClosed && (
-                  <div className="text-sm text-gray500 mt-2">
-                    {new Date(d.closes_at).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })} 마감
-                  </div>
-                )}
-              </div>
-            </Link>
+              deal={d}
+              closed={isClosed}
+              hotGapPct={isClosed ? null : hotGapPct(d, avgDiscount)}
+            />
           );
 
           return (idx + 1) % 6 === 0
@@ -517,60 +411,14 @@ function DealsPageInner() {
         {showExamples && (
           <div className="mt-2">
             <div className="flex items-center gap-2 mb-2">
-              <span className="font-black" style={{ fontSize: rem(13), color: "#0B2540" }}>💡 이런 매물이 올라와요</span>
+              <span style={SECTION_TITLE_STYLE}>💡 이런 매물이 올라와요</span>
               <span className="flex-1" style={{ height: 1, background: "#E4E7EB" }} />
               <span className="text-xs font-bold rounded-full" style={{ padding: "2px 8px", background: "#E9ECEF", color: "#495057" }}>예시</span>
             </div>
             <div className="flex flex-col gap-3">
-              {EXAMPLE_DEALS.map((d) => {
-                const pct = d.original_price
-                  ? Math.round(((d.original_price - d.deal_price) / d.original_price) * 100)
-                  : 0;
-                return (
-                  <Link key={`example-${d.id}`} href={`/deals/example-${d.id}`} className="bg-white border border-dashed border-gray200 rounded-2xl overflow-hidden flex flex-col" style={{ opacity: 0.85 }}>
-                    <div className="relative w-full" style={{ aspectRatio: "16/9" }}>
-                      {d.images && d.images.length > 0 ? (
-                        <img src={d.images[0]} alt={d.title} className="w-full h-full object-cover" />
-                      ) : (
-                        <NoPhotoPlaceholder category={d.category} />
-                      )}
-                      {/* 2026-09-27: 실제 매물 카드/홈 미리보기와 동일하게 할인율을
-                          썸네일 위 필 배지로 — 예시 카드는 경합하는 오버레이가 없어
-                          홈과 같은 우상단에 배치, 톤만 회색으로 낮춰 "예시" 느낌 유지.
-                          2026-09-27 (재검토): 실제 카드와 동일하게 24px로 확대. 단
-                          가격 색은 무채색 그대로 둬서 "예시"라는 구분감은 유지. */}
-                      {pct > 0 && (
-                        <div
-                          className="absolute top-2.5 right-2.5 font-black text-white rounded-full"
-                          style={{ background: "rgba(107,116,128,0.72)", fontSize: rem(24), padding: "4px 12px" }}
-                        >
-                          -{pct}%
-                        </div>
-                      )}
-                    </div>
-                    <div className="px-4 py-3.5">
-                      <div className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#E9ECEF", color: "#495057" }}>
-                        예시 · {d.category}
-                      </div>
-                      <div className="text-lg font-bold text-gray900 mt-2">{d.title}</div>
-                      <div className="text-sm text-gray500 mt-1">
-                        잔여 {d.remaining_qty}{d.quantity_unit || "개"} · {d.location}
-                      </div>
-                      {(d.origin || d.min_order_qty) && (
-                        <div className="text-xs text-gray500 mt-1 flex items-center gap-1.5 flex-wrap">
-                          {d.origin && <span>🌍 {d.origin}</span>}
-                          {d.origin && d.min_order_qty ? <span style={{ color: "#C7CBD1" }}>·</span> : null}
-                          {d.min_order_qty && <span>MOQ {d.min_order_qty}{d.quantity_unit || "개"}</span>}
-                        </div>
-                      )}
-                      <div className="flex items-baseline gap-1.5 mt-2">
-                        <span className="text-lg font-black" style={{ color: "#6B7480" }}>{formatDealPrice(d.deal_price, d.quantity_unit)}</span>
-                        <span className="text-sm text-gray500 font-normal line-through">{formatDealPrice(d.original_price, d.quantity_unit)}</span>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
+              {EXAMPLE_DEALS.map((d) => (
+                <DealListCard key={`example-${d.id}`} deal={d} example />
+              ))}
             </div>
             <p className="text-center text-xs mt-2" style={{ color: "#9AA3AD" }}>
               실제 매물이 아닌 예시예요 · 매물이 계속 등록되고 있어요

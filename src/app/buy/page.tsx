@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { hasAppHistory } from "@/lib/appNav";
 import { CheckCircle } from "lucide-react";
-import { mockCategories, mockRegions, categoryIcons, quantityUnits, guessCategory } from "@/lib/mockData";
+import { mockCategories, mockRegions, categoryIcons, quantityUnits, guessCategory, logUnmatchedProductName } from "@/lib/mockData";
 import { formatPriceInput, parsePriceInput, PRICE_UNITS, formatPriceWithUnit } from "@/lib/format";
 import { isValidContactPhone, formatContactPhone } from "@/lib/auth";
 import ContactPhoneInput from "@/components/ContactPhoneInput";
@@ -275,11 +275,9 @@ export default function BuyPage() {
             style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: rem(14.5) }}
             value={productName}
             onChange={(e) => setProductName(e.target.value)}
+            onBlur={() => logUnmatchedProductName("buy", productName)}
             placeholder="예: 냉동 삼겹살 500kg 이상"
           />
-          <p className="mt-1.5" style={{ fontSize: rem(14), color: "#4B5563" }}>
-            💡 상품명을 입력하면 카테고리를 자동으로 골라드려요
-          </p>
         </div>
 
         <div>
@@ -306,7 +304,7 @@ export default function BuyPage() {
           {categoryEditing ? (
             <>
             {!category && !categoryTouched && (
-              <p className="mb-2" style={{ fontSize: rem(14), color: "#6B7480" }}>상품명을 입력하면 자동으로 골라드려요</p>
+              <p className="mb-2" style={{ fontSize: rem(14), color: "#4B5563" }}>💡 상품명을 입력하면 카테고리를 자동으로 골라드려요</p>
             )}
             <div className="flex gap-1.5 overflow-x-auto pb-1">
               {mockCategories.map((c) => {
@@ -496,10 +494,11 @@ export default function BuyPage() {
             테두리를 쓰다 보니 이 정적 안내 카드가 버튼처럼 보여 헷갈린다는
             피드백 — 테두리를 다른 정적 카드들과 같은 중립 회색으로 교체. */}
         <div className="flex items-center gap-3 rounded-2xl" style={{ background: "#fff", border: "1.5px solid #E4E7EB", padding: "15px 16px" }}>
-          <img src="/images/manager.png" alt="점핑매니저" className="flex-shrink-0 rounded-xl bg-white" style={{ width: 46, height: 46, objectFit: "contain" }} />
+          {/* 2026-09-29: 실기기 피드백 — 캐릭터 46→72px, 제목 18px, 설명 16px */}
+          <img src="/images/manager.png" alt="점핑매니저" className="flex-shrink-0 rounded-xl bg-white" style={{ width: 72, height: 72, objectFit: "contain" }} />
           <span className="flex-1 min-w-0">
-            <span className="block font-black" style={{ fontSize: rem(15), color: "#0B2540" }}>등록은 완전 무료</span>
-            <span className="block font-bold mt-0.5 leading-relaxed" style={{ fontSize: rem(12.5), color: "#E25100" }}>
+            <span className="block font-black" style={{ fontSize: rem(18), color: "#0B2540" }}>등록은 완전 무료</span>
+            <span className="block font-bold mt-1 leading-relaxed" style={{ fontSize: rem(16), color: "#E25100" }}>
               매칭되면 점핑매니저가 먼저 연락드립니다
             </span>
           </span>

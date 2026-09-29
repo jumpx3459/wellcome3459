@@ -12,6 +12,7 @@ import { SITE_URL } from "@/lib/siteUrl";
 import { MESSAGES_ENABLED, JUMPX_BRIDGE_ENABLED } from "@/lib/features";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
+import { rem } from "@/lib/rem";
 import StockTypeBadge from "@/components/StockTypeBadge";
 
 // 값이 없거나 공백뿐이면 섹션/행 자체를 그리지 않는다 (빈 공간 방지)
@@ -309,7 +310,8 @@ function DealDetailPageInner() {
       </div>
 
       <div className="px-5 pt-4">
-        <div className="h-[220px] relative rounded-2xl overflow-hidden">
+        {/* 2026-09-29: 사진이 없으면 220px 대신 3:1로 낮춤 (빈 자리표시가 가격·정보를 밀어내지 않게) */}
+        <div className={`relative rounded-2xl overflow-hidden ${heroImage ? "h-[220px]" : ""}`} style={heroImage ? undefined : { aspectRatio: "3/1" }}>
           {!heroImage && <NoPhotoPlaceholder category={deal.category} muted={deal.status === "closed"} />}
           {heroImage && (
             <button
@@ -322,10 +324,10 @@ function DealDetailPageInner() {
           )}
           <div className="absolute top-2.5 right-2.5">
             {deal.status === "closed" ? (
-              <span className="text-xs font-bold text-white bg-gray500 px-2.5 py-1.5 rounded-full shadow">마감됨</span>
+              <span className="font-bold text-white bg-gray500 rounded-full shadow" style={{ fontSize: rem(16), padding: "2px 10px" }}>마감됨</span>
             ) : (
               <div className="rounded-full shadow" style={{ background: "rgba(255,255,255,0.94)" }}>
-                <CountdownBadge closesAt={deal.closes_at} />
+                <CountdownBadge closesAt={deal.closes_at} tone={isExampleId ? "muted" : "urgent"} />
               </div>
             )}
           </div>
