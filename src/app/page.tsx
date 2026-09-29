@@ -43,7 +43,7 @@ export default function Home() {
   // 실제로 사라지는 시점(onFinish)에야 애니메이션 클래스를 붙이도록 지연.
   // OnboardingIntro(첫 방문자 화면)의 자체 로고도 같은 문제라 이 값을 그대로 전달.
   const [logoAnimate, setLogoAnimate] = useState(false);
-  const { canInstall, promptInstall } = useInstallPrompt();
+  const { canInstall, promptInstall, hasNativePrompt } = useInstallPrompt();
 
   const dismissInstallBanner = () => {
     try {
@@ -288,7 +288,7 @@ export default function Home() {
               ✕
             </button>
             <div className="pr-4">
-              <InstallAppButton canInstall={canInstall} promptInstall={promptInstall} />
+              <InstallAppButton canInstall={canInstall} promptInstall={promptInstall} hasNativePrompt={hasNativePrompt} />
             </div>
           </div>
         </div>

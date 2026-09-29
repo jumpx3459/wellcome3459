@@ -2,13 +2,34 @@
 
 import { useEffect, useState } from "react";
 import { rem } from "@/lib/rem";
-import { isInAppBrowser, isIOS as detectIOS, isStandalone as detectStandalone } from "@/lib/browserEnv";
+import { isInAppBrowser, isIOS as detectIOS, isStandalone as detectStandalone, getManualInstallBrowser, type ManualInstallBrowser } from "@/lib/browserEnv";
 import IosInstallSteps, { IOS_INSTALL_TITLE } from "@/components/IosInstallSteps";
 
 // 표준 타입에 없는 크로미움 전용 PWA 설치 이벤트.
 type InstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+};
+
+export type InstallResult = "accepted" | "ios-guide" | "manual-guide";
+
+// 수동 설치 안내 (2026-09-29, 삼성인터넷 실기기 확인). iOS·카카오 인앱은 별도 흐름(IosInstallSteps·InAppBanner).
+const MANUAL_STEPS: Record<ManualInstallBrowser, React.ReactNode[]> = {
+  samsung: [
+    <>화면 아래 오른쪽 <b>메뉴(⋮)</b>를 눌러주세요</>,
+    <><b>&quot;현재 페이지 추가&quot;</b>를 눌러주세요</>,
+    <><b>&quot;홈 화면&quot;</b>을 선택하면 완료!</>,
+  ],
+  chrome: [
+    <>오른쪽 위 <b>메뉴(⋮)</b>를 눌러주세요</>,
+    <><b>&quot;앱 설치&quot;</b> 또는 <b>&quot;홈 화면에 추가&quot;</b>를 눌러주세요</>,
+    <><b>&quot;설치&quot;</b>를 누르면 완료!</>,
+  ],
+  other: [
+    <>브라우저 <b>메뉴(⋮ 또는 ≡)</b>를 눌러주세요</>,
+    <><b>&quot;홈 화면에 추가&quot;</b> 또는 <b>&quot;앱 설치&quot;</b>를 눌러주세요</>,
+    <>안내에 따라 완료해주세요</>,
+  ],
 };
 
 // 홈/알림함 등에서 "설치 배너 자체를 보여줄지"를 미리 판단할 때 씁니다.
@@ -30,6 +51,7 @@ export function useInstallPrompt() {
   const [isIOS, setIsIOS] = useState(false);
   // 판별 전엔 배너를 띄우지 않음(인앱에서 잠깐 보였다 사라지는 깜빡임 방지)
   const [eligible, setEligible] = useState(false);
+  const [installed, setInstalled] = useState(false); // 네이티브 설치를 수락했거나 appinstalled가 오면 카드 숨김
 
   useEffect(() => {
     // 2026-09-29: 상황별로 안내는 하나만 — 설치 앱(standalone)이면 숨김, 인앱 브라우저는 설치가
@@ -41,39 +63,65 @@ export function useInstallPrompt() {
       e.preventDefault();
       setInstallEvent(e as InstallPromptEvent);
     };
+    const onInstalled = () => {
+      setInstalled(true);
+      setInstallEvent(null);
+    };
     window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
   }, []);
 
   // 설치 안 된 상태면 항상 배너를 보여준다. 네이티브 프롬프트가 아직
   // 안 쏘여도(브라우저 쿨다운 등) 최소한 수동 설치 경로는 열어둔다.
-  const canInstall = eligible;
+  const canInstall = eligible && !installed;
+  // 2026-09-29: 네이티브 설치 창을 띄울 수 있으면 카드에 "지금 설치" CTA
+  const hasNativePrompt = !!installEvent;
 
-  const promptInstall = async (): Promise<"prompted" | "ios-guide" | "manual-guide"> => {
+  // accepted → 카드 숨김 / dismissed → 수동 안내로 폴백 (prompt()는 이벤트당 한 번만 쓸 수 있어 버림)
+  const promptInstall = async (): Promise<InstallResult> => {
     if (installEvent) {
-      await installEvent.prompt();
-      const { outcome } = await installEvent.userChoice;
-      if (outcome === "accepted") setInstallEvent(null);
-      return "prompted";
+      const ev = installEvent;
+      setInstallEvent(null);
+      try {
+        await ev.prompt();
+        const { outcome } = await ev.userChoice;
+        if (outcome === "accepted") {
+          setInstalled(true);
+          return "accepted";
+        }
+      } catch {
+        // prompt 실패 시에도 수동 안내로
+      }
+      return isIOS ? "ios-guide" : "manual-guide";
     }
     if (isIOS) return "ios-guide";
     return "manual-guide";
   };
 
-  return { canInstall, promptInstall };
+  return { canInstall, promptInstall, hasNativePrompt };
 }
 
 export default function InstallAppButton({
   canInstall,
   promptInstall,
+  hasNativePrompt = false,
 }: {
   canInstall: boolean;
-  promptInstall: () => Promise<"prompted" | "ios-guide" | "manual-guide">;
+  promptInstall: () => Promise<InstallResult>;
+  hasNativePrompt?: boolean;
 }) {
   const [showIOSGuide, setShowIOSGuide] = useState(false);
   const [showManualGuide, setShowManualGuide] = useState(false);
   const [isIOSDevice, setIsIOSDevice] = useState(false);
-  useEffect(() => setIsIOSDevice(detectIOS()), []);
+  const [browser, setBrowser] = useState<ManualInstallBrowser>("other");
+  useEffect(() => {
+    setIsIOSDevice(detectIOS());
+    setBrowser(getManualInstallBrowser());
+  }, []);
 
   if (!canInstall) return null;
 
@@ -87,11 +135,12 @@ export default function InstallAppButton({
     <>
       <button
         onClick={handleClick}
-        className="w-full flex items-center gap-2.5 text-left"
+        // 비회원 홈 카드는 폭이 좁아서(58%) "지금 설치"가 들어갈 자리가 없으면 다음 줄로 내려감
+        className="w-full flex flex-wrap items-center gap-2.5 text-left"
         style={{ background: "none", border: "none", padding: 0 }}
       >
         <span className="flex-shrink-0" style={{ fontSize: rem(22) }}>📲</span>
-        <span className="flex-1 min-w-0">
+        <span className="flex-1" style={{ minWidth: 100 }}>
           {/* 2026-09-27: "앱처럼 열 수 있다"는 기능 설명보다, 실제 혜택(마감 임박
               매물을 더 빨리 받는다)을 앞세우는 카피로 변경. 구체적 쿠폰/금액은
               실제 지급 로직이 없어 표기하지 않음. */}
@@ -100,6 +149,11 @@ export default function InstallAppButton({
             {isIOSDevice ? IOS_INSTALL_TITLE : "설치하면 마감 임박 알림을 가장 먼저 받아요"}
           </span>
         </span>
+        {hasNativePrompt && (
+          <span className="flex-shrink-0 font-bold text-white rounded-full whitespace-nowrap" style={{ fontSize: rem(14), padding: "7px 14px", background: "#E25100" }}>
+            지금 설치
+          </span>
+        )}
       </button>
 
       {showIOSGuide && (
@@ -140,34 +194,20 @@ export default function InstallAppButton({
           >
             <div className="font-display text-xl text-navy mb-5">홈 화면에 설치하는 방법</div>
             <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-3">
-                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-navy text-white text-sm font-bold flex-shrink-0">
-                  1
-                </span>
-                <div className="text-sm text-gray900">
-                  브라우저 오른쪽 위 <b>메뉴(⋮)</b> 를 눌러주세요
+              {MANUAL_STEPS[browser].map((step, idx) => (
+                <div key={idx} className="flex items-center gap-3">
+                  <span className="flex items-center justify-center w-8 h-8 rounded-full bg-navy text-white text-sm font-bold flex-shrink-0">
+                    {idx + 1}
+                  </span>
+                  <div className="text-sm text-gray900">{step}</div>
                 </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-navy text-white text-sm font-bold flex-shrink-0">
-                  2
-                </span>
-                <div className="text-sm text-gray900">
-                  <b>&quot;앱 설치&quot;</b> 또는 <b>&quot;홈 화면에 추가&quot;</b>를 찾아 눌러주세요
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-navy text-white text-sm font-bold flex-shrink-0">
-                  3
-                </span>
-                <div className="text-sm text-gray900">
-                  안내에 따라 <b>&quot;설치&quot;</b> 또는 <b>&quot;추가&quot;</b>를 누르면 완료!
-                </div>
-              </div>
+              ))}
             </div>
-            <p className="text-xs text-gray500 mt-4 leading-relaxed">
-              메뉴 이름은 브라우저마다 조금씩 다를 수 있어요 (예: Chrome은 &quot;앱 설치&quot;, 삼성인터넷은 &quot;홈 화면에 추가&quot;)
-            </p>
+            {browser === "other" && (
+              <p className="text-xs text-gray500 mt-4 leading-relaxed">
+                메뉴 이름은 브라우저마다 조금씩 다를 수 있어요 (예: Chrome은 &quot;앱 설치&quot;, 삼성인터넷은 &quot;현재 페이지 추가&quot;)
+              </p>
+            )}
             <button
               onClick={() => setShowManualGuide(false)}
               className="mt-6 w-full text-center font-bold rounded-xl py-3 bg-gray100 text-gray500"

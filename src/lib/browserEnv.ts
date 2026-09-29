@@ -25,6 +25,24 @@ export function isAndroid(): boolean {
   return typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
 }
 
+// 2026-09-29: 홈 화면 설치 수동 안내를 브라우저별로 나누기 위한 판별 (삼성인터넷 실기기 확인)
+export function isSamsungInternet(ua: string = typeof navigator !== "undefined" ? navigator.userAgent : ""): boolean {
+  return /SamsungBrowser/i.test(ua);
+}
+
+// 안드로이드 Chrome — 크로미움 기반 다른 브라우저(엣지·오페라·웨일·삼성 등)와 웹뷰(; wv)는 제외
+export function isAndroidChrome(ua: string = typeof navigator !== "undefined" ? navigator.userAgent : ""): boolean {
+  return /Android/i.test(ua) && /Chrome\/\d+/.test(ua) && !/SamsungBrowser|EdgA|OPR|Whale|YaBrowser|UCBrowser|MiuiBrowser|HuaweiBrowser|DuckDuckGo|; wv\)/i.test(ua);
+}
+
+export type ManualInstallBrowser = "samsung" | "chrome" | "other";
+
+export function getManualInstallBrowser(ua: string = typeof navigator !== "undefined" ? navigator.userAgent : ""): ManualInstallBrowser {
+  if (isSamsungInternet(ua)) return "samsung";
+  if (isAndroidChrome(ua)) return "chrome";
+  return "other";
+}
+
 // 홈 화면에 추가된 앱(standalone)으로 실행 중인지
 export function isStandalone(): boolean {
   if (typeof window === "undefined") return false;

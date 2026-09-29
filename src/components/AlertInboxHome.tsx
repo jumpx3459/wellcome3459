@@ -60,7 +60,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
   const [loaded, setLoaded] = useState(false);
   const [outsideCount, setOutsideCount] = useState(0); // 내 조건 밖 진행 중 매물 수
   const [showInstall, setShowInstall] = useState(true);
-  const { canInstall, promptInstall } = useInstallPrompt();
+  const { canInstall, promptInstall, hasNativePrompt } = useInstallPrompt();
   const [, setTick] = useState(0);
   useEffect(() => {
     try {
@@ -288,7 +288,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
       {showInstall && canInstall && (
         <div className="flex items-center gap-2.5" style={{ borderBottom: "1px solid #F1F3F5", padding: "12px 20px", background: "#FAFBFC" }}>
           <div className="flex-1 min-w-0">
-            <InstallAppButton canInstall={canInstall} promptInstall={promptInstall} />
+            <InstallAppButton canInstall={canInstall} promptInstall={promptInstall} hasNativePrompt={hasNativePrompt} />
           </div>
           <button onClick={dismissInstall} className="flex-shrink-0" style={{ border: "none", background: "none", color: "#9AA3AD", fontSize: rem(16), width: 28, height: 28 }}>
             ×

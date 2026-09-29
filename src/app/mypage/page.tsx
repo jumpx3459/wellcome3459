@@ -21,6 +21,7 @@ import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버�
 import { rem } from "@/lib/rem";
 import { formatKoreanPhone } from "@/lib/auth";
 import { authFetch } from "@/lib/authFetch";
+import { isTestTitle } from "@/lib/categoryAvg";
 
 type InterestItem = {
   id: string;
@@ -254,10 +255,12 @@ export default function MyPage() {
       .eq("status", "active")
       .gt("closes_at", new Date().toISOString()) // 마감 지난 매물은 공유 목록에서 제외
       .order("created_at", { ascending: false })
-      .limit(8)
+      .limit(20)
       .then(({ data }) => {
-        setShareDeals(data ?? []);
-        if (data && data.length > 0) setSelectedShareDealId(data[0].id); // 기본값: 최신 매물
+        // 2026-09-29: 제목에 [테스트]가 들어간 매물은 공유 목록에서 제외 (기본 선택도 실매물 중 최신)
+        const real = (data ?? []).filter((d) => !isTestTitle(d.title)).slice(0, 8);
+        setShareDeals(real);
+        setSelectedShareDealId(real[0]?.id ?? "");
       });
   }, []);
 
@@ -1060,8 +1063,10 @@ export default function MyPage() {
             </div>
           )}
 
-          {shareDeals.length > 0 && (
+          {shareDeals.length > 0 ? (
             <label className="text-sm font-bold text-gray500 mb-1.5 block text-right">공유할 매물 선택</label>
+          ) : (
+            <p className="text-sm text-gray500 mb-2 text-right">공유할 매물이 아직 없어요</p>
           )}
           {shareDeals.length > 0 && (
             <select
