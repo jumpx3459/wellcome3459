@@ -1029,7 +1029,7 @@ alter table public.deals add column if not exists price_unit text
 
 -- 2026-09-30: 매물 상태 값 제한 — 코드가 쓰는 값은 active(진행)·closed(마감) 둘뿐이고 sold_out은 사용처 없음.
 -- /api/admin/deals/manage PATCH도 같은 두 값만 허용(그 외 400 field: "status").
--- 2026-09-30 대표 운영 DB 실행 완료 (① 결과 closed 5건, ②③ 성공, validate 통과)
+-- 2026-09-30 대표 운영 DB 실행 완료 (closed 5건 확인, not null·check validate 성공)
 -- ① 기존 값 확인 (null도 한 줄로 나옴). active·closed 외 값이나 null이 있으면 ②·③이 실패하니 먼저 정리.
 --   select status, count(*) from public.deals group by status;
 -- ② null 금지 (컬럼 기본값 'active'는 그대로).

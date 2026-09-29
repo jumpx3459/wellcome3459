@@ -384,6 +384,8 @@ curl로 확인. 단, 이 세션엔 브라우저 접근이 없어 육안 확인�
 - [ ] **썸네일 목록 카드 배지 위치** (10/7 공개 후 작업, 2026-09-29 백로그): 비회원 홈 미리보기(56px)·회원 홈 5건 이상(64px) 썸네일 목록은 할인율·남은 시간이 글줄 안/오른쪽 위 그대로 — 넓은 카드(`DealCardMedia`: 할인율 왼쪽 위·남은 시간 오른쪽 위)와 맞출지 검토
 - [ ] **PR 프리뷰 배포 워크플로** (10/7 공개 후 작업, 2026-09-29 백로그): 지금 GitHub Actions는 main push 시 프로덕션 배포만 하고
   Vercel Git 연동 프리뷰도 꺼져 있음(마지막 기록 2026-09-15) → PR 브랜치에 `vercel deploy`(--prod 없이) 워크플로 추가해 폰으로 먼저 확인할 수 있게
+- [ ] **`.gitattributes` 줄바꿈 통일 (`* text=auto eol=lf`)** (보류, 2026-09-30 백로그): 저장소는 LF인데 이 PC는
+  `core.autocrlf=true`라 작업 폴더가 CRLF — 작업 폴더를 그대로 비교하는 도구에서 파일 전체가 바뀐 것처럼 보일 수 있음(PR #19 확인 때 실제 변경은 2줄뿐이었음)
 - [x] **컨택 메모 `referral_notes` 테이블 분리** (2026-09-27, `81a60c4`): `members.referral_note`
   노출 문제(추천받은 회원 본인이 자기 메모를 읽고 수정 가능)를 정책 없는 RLS 테이블 +
   service_role API 전용으로 해결. `schema.sql` 맨 끝 `referral_notes` 블록 Supabase SQL Editor
