@@ -7,7 +7,7 @@ const vapidPublic = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 const vapidPrivate = process.env.VAPID_PRIVATE_KEY;
 
 if (vapidPublic && vapidPrivate) {
-  webpush.setVapidDetails("mailto:contact@jumpingbid.co.kr", vapidPublic, vapidPrivate);
+  webpush.setVapidDetails("mailto:admin@jumpx.co.kr", vapidPublic, vapidPrivate);
 }
 
 // 카테고리·지역을 구독한 회원의 기기에 직접 웹 푸시를 발송합니다.

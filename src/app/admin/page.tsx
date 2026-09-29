@@ -2541,13 +2541,13 @@ function DealForm({
       </p>
 
       <div className="grid grid-cols-2 gap-2">
-        <DealFormField label={`정상 단가(원 / ${quantityUnit})`} error={fieldErrors.originalPrice} htmlFor="deal-originalPrice">
+        <DealFormField label={`정상 단가 (1${quantityUnit}당)`} error={fieldErrors.originalPrice} htmlFor="deal-originalPrice">
           <div className="relative">
             <input
               id="deal-originalPrice"
               type="text"
               inputMode="numeric"
-              className={`${inputCls("originalPrice")} pr-8`}
+              className={`${inputCls("originalPrice")} pr-16`}
               placeholder="예: 50,000"
               value={formatPriceInput(originalPrice)}
               onChange={(e) => {
@@ -2555,16 +2555,16 @@ function DealForm({
                 clearErr("originalPrice");
               }}
             />
-            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray500">원</span>
+            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold whitespace-nowrap" style={{ color: "#0B2540" }}>원 / {quantityUnit}</span>
           </div>
         </DealFormField>
-        <DealFormField label={`판매 단가(원 / ${quantityUnit})`} required error={fieldErrors.dealPrice} htmlFor="deal-dealPrice">
+        <DealFormField label={`판매 단가 (1${quantityUnit}당)`} required error={fieldErrors.dealPrice} htmlFor="deal-dealPrice">
           <div className="relative">
             <input
               id="deal-dealPrice"
               type="text"
               inputMode="numeric"
-              className={`${inputCls("dealPrice")} pr-8`}
+              className={`${inputCls("dealPrice")} pr-16`}
               placeholder="예: 30,000"
               value={formatPriceInput(dealPrice)}
               onChange={(e) => {
@@ -2572,12 +2572,12 @@ function DealForm({
                 clearErr("dealPrice");
               }}
             />
-            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray500">원</span>
+            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold whitespace-nowrap" style={{ color: "#0B2540" }}>원 / {quantityUnit}</span>
           </div>
         </DealFormField>
       </div>
       <p className="text-xs text-gray500 -mt-1.5">
-        창고 출고가 기준이에요 (배송비 별도). 정상가를 비우면 할인율 없이 표시돼요.
+        <b style={{ color: "#C2410C" }}>총액이 아니라 1{quantityUnit} 가격</b>을 입력해주세요 (목록에 &quot;원/{quantityUnit}&quot;로 표시). 창고 출고가 기준(배송비 별도), 정상가를 비우면 할인율 없이 표시돼요.
       </p>
 
       <div className="grid grid-cols-[1fr_88px] gap-2">

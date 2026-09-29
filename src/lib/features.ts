@@ -9,8 +9,7 @@ export const MESSAGES_ENABLED = false;
 // (QuotesTeaserCard)만 보이고, 오픈 알림 신청은 feature_waitlist(feature = "quotes")에 쌓인다.
 export const QUOTES_ENABLED = false;
 
-// 예시 매물(mockData) 사진·영상 — 2026-09-29. 앞 4건은 저장소 사진(public/images/mock),
-// 나머지는 loremflickr 외부 무작위 이미지라 출처·사용권이 확인되지 않음. 공개 전 확인이 안 되면
-// false로 → 예시 카드·예시 상세가 전부 "사진 준비 중"(NoPhotoPlaceholder)으로 표시.
-// 2026-09-29: 출처 미확인이라 false로 공개. 대표 사진을 받으면 교체 후 true로.
+// 예시 매물(mockData) 사진·영상 스위치 — 2026-09-29. 출처 미확인 미디어(저장소 예시 사진·영상,
+// loremflickr 외부 무작위 이미지)는 파일과 경로를 모두 삭제했고, 대표 사진을 받으면 새로 넣은 뒤 true로.
+// false인 동안 예시 카드·예시 상세는 전부 "사진 준비 중"(NoPhotoPlaceholder).
 export const EXAMPLE_MEDIA_ENABLED = false;

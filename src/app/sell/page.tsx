@@ -385,7 +385,8 @@ export default function SellPage() {
           )}
         </div>
 
-        <div className="flex gap-2.5">
+        {/* 2026-09-29: "원 / 팔레트"처럼 단위가 길면 나란히 두면 단가 칸이 70px대로 좁아져 큰 금액이 잘림 → 모바일은 위아래 */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:gap-2.5">
           <div className="flex-1 min-w-0">
             <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
               수량
@@ -413,7 +414,7 @@ export default function SellPage() {
             </div>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-bold mb-2" style={{ color: "#0B2540" }}>희망 단가(원 / {quantityUnit})</div>
+            <div className="text-sm font-bold mb-2" style={{ color: "#0B2540" }}>희망 단가 (1{quantityUnit}당)</div>
             <div className="flex items-center rounded-xl" style={{ border: "1.5px solid var(--color-brandOrange)" }}>
               <input
                 type="text"
@@ -424,12 +425,13 @@ export default function SellPage() {
                 onChange={(e) => setHopePrice(e.target.value)}
                 placeholder="219,000"
               />
-              <span className="flex-shrink-0 text-sm font-bold" style={{ color: "#6B7480", padding: "0 12px" }}>원</span>
+              {/* 2026-09-29: 매물 가격은 단가("2,000원/kg")로 표시되므로 총액을 넣지 않게 단위를 칸 안에 표시 */}
+              <span className="flex-shrink-0 text-sm font-bold whitespace-nowrap" style={{ color: "#0B2540", padding: "0 12px" }}>원 / {quantityUnit}</span>
             </div>
           </div>
         </div>
-        <p className="text-xs -mt-3" style={{ color: "#6B7480" }}>
-          창고에서 직접 가져가는 가격 기준이에요 (배송비 별도).
+        <p className="-mt-3" style={{ fontSize: rem(14), color: "#4B5563" }}>
+          <b style={{ color: "#C2410C" }}>총액이 아니라 1{quantityUnit} 가격</b>을 입력해주세요 · 창고에서 직접 가져가는 가격 기준 (배송비 별도)
         </p>
 
         <div>
