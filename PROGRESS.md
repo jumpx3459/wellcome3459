@@ -19,7 +19,7 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 ## 현재 상태
 
 - 기본 브랜치: `main` (로컬/GitHub 모두 일치, `origin/HEAD -> origin/main`)
-- 열려 있는 PR: 없음 (**PR #17 선택적 비밀번호 로그인은 2026-09-28 병합 완료 · 머지 커밋 `6465faa`** —
+- 열려 있는 PR: 없음 (**PR #18 로그인 비밀번호 유도 후속은 2026-09-29 병합 · `b7be300`** · **PR #17 선택적 비밀번호 로그인은 2026-09-28 병합 완료 · 머지 커밋 `6465faa`** —
   사용자가 Supabase "Secure password change" 설정 후 병합 승인. 실제 설정→로그아웃→비밀번호 로그인 흐름은
   프로덕션에서 한 번 직접 확인 권장. PR #16 회원가입 3단계→2단계 통합은 2026-09-25 병합 · `5fb0375`)
 - 병합 완료 (기본 브랜치에 모두 반영됨): PR #1~#14 (견적함 메뉴+Toast, 회원가입 개선,
@@ -32,7 +32,7 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
-## 최근 작업 (2026-09-29) — 인앱 안내·가독성 2차·요청 연결·보안·/en·토큰·safe-area·재고 유형·로그인 (전부 main 직접 커밋)
+## 최근 작업 (2026-09-29) — 인앱 안내·가독성 2차·요청 연결·보안·/en·토큰·safe-area·재고 유형 (main 직접 커밋) + 로그인 후속은 PR #18
 
 - **인앱 브라우저·iPhone 미설치 안내**(68b54fd, 6827b76): 카카오톡 등 인앱이면 첫 진입 하단 시트 + 주황 띠 +
   "크롬/사파리로 열기", iPhone 미설치면 홈 화면 추가 안내. 설치 배너와 역할 분리.
@@ -55,7 +55,7 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
   JUMP X 브릿지 섹션 숨김(JUMPX_BRIDGE_ENABLED=false).
 - **재고 유형 `stock_type`**(a676112): `src/lib/stockType.ts` 7종, sell 칩·관리자 폼 선택(승인 시 이어받기),
   두 API 400 `field: "stockType"`, 카드·상세·홈 배지(`StockTypeBadge`), 푸시 본문 앞에 유형.
-- **로그인 개선**(b936f0e, 98ad01a): 마지막 로그인 방식 기억(`dj_login_method`), 탭별 14px 안내, 비밀번호 탭
+- **로그인 개선**(b936f0e main 직접 · 후속 98ad01a는 **PR #18**, 2026-09-29 병합 · 머지 커밋 `b7be300`): 마지막 로그인 방식 기억(`dj_login_method`), 탭별 14px 안내, 비밀번호 탭
   [인증번호로 로그인](번호 유지), 비밀번호 로그인 실패 시 한 문구로 안내(번호별 "비밀번호 없음"을 알려주면 회원 여부가
   드러나서 구분 안 함), 인증번호 로그인 직후 비밀번호 없으면 권유 시트 1회(`dj_pw_prompt_dismissed`, returnTo 유지).
   보유 여부는 서버 `app_metadata.has_password`(`/api/auth/password-status`, `/api/auth/mark-password`) —
@@ -348,6 +348,8 @@ curl로 확인. 단, 이 세션엔 브라우저 접근이 없어 육안 확인�
 
 ## 다음에 할 일
 
+- [ ] **PR 프리뷰 배포 워크플로** (10/1 공개 후 작업, 2026-09-29 백로그): 지금 GitHub Actions는 main push 시 프로덕션 배포만 하고
+  Vercel Git 연동 프리뷰도 꺼져 있음(마지막 기록 2026-09-15) → PR 브랜치에 `vercel deploy`(--prod 없이) 워크플로 추가해 폰으로 먼저 확인할 수 있게
 - [x] **컨택 메모 `referral_notes` 테이블 분리** (2026-09-27, `81a60c4`): `members.referral_note`
   노출 문제(추천받은 회원 본인이 자기 메모를 읽고 수정 가능)를 정책 없는 RLS 테이블 +
   service_role API 전용으로 해결. `schema.sql` 맨 끝 `referral_notes` 블록 Supabase SQL Editor
