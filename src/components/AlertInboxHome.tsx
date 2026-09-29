@@ -16,6 +16,7 @@ import { rem } from "@/lib/rem";
 import StockTypeBadge from "@/components/StockTypeBadge";
 import DealCardMedia from "@/components/DealCardMedia";
 import { SECTION_TITLE_STYLE } from "@/components/EcosystemGrid";
+import { isLumpSum } from "@/lib/priceUnit";
 
 // 헤더(점핑매니저 안내줄)의 실측 높이 — 아래 콘텐츠의 paddingTop 보정에 사용.
 // 2026-09-26 로컬 Playwright 실측 77.3px(360/390/430px 폭 동일) → 78로 올림.
@@ -106,7 +107,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
       let matchQuery = supabase
         .from("deals")
         .select(
-          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, closes_at, created_at, location, images, video_url, origin, min_order_qty, category_id, region_id, stock_type, categories(name), regions(name)",
+          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, price_unit, closes_at, created_at, location, images, video_url, origin, min_order_qty, category_id, region_id, stock_type, categories(name), regions(name)",
           { count: "exact" }
         )
         .eq("status", "active")
@@ -148,6 +149,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
           total_qty: d.total_qty,
           remaining_qty: d.remaining_qty,
           quantity_unit: d.quantity_unit ?? "개",
+          price_unit: d.price_unit ?? null,
           closes_at: d.closes_at,
           created_at: d.created_at,
           images: d.images ?? [],
@@ -372,11 +374,11 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                     <span className="block mt-0.5" style={{ fontSize: rem(12.5), color: "#6B7480" }}>
                       {d.category} · {d.location} · 잔여 {d.remaining_qty}{d.quantity_unit || "개"}
                     </span>
-                    {(d.origin || d.min_order_qty) && (
+                    {(d.origin || (d.min_order_qty && !isLumpSum(d.price_unit))) && (
                       <span className="block mt-0.5" style={{ fontSize: rem(11.5), color: "#9AA3AD" }}>
                         {d.origin && `🌍 ${d.origin}`}
-                        {d.origin && d.min_order_qty ? " · " : ""}
-                        {d.min_order_qty && `MOQ ${d.min_order_qty}${d.quantity_unit || "개"}`}
+                        {d.origin && d.min_order_qty && !isLumpSum(d.price_unit) ? " · " : ""}
+                        {d.min_order_qty && !isLumpSum(d.price_unit) && `MOQ ${d.min_order_qty}${d.quantity_unit || "개"}`}
                       </span>
                     )}
                     <span className="flex items-baseline gap-1.5 mt-1.5">
@@ -385,8 +387,8 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                           -{pct}%
                         </span>
                       )}
-                      <span className="font-black" style={{ fontSize: rem(18), color: "#0B2540" }}>{formatDealPrice(d.deal_price, d.quantity_unit)}</span>
-                      <span style={{ fontSize: rem(12.5), color: "#6B7480", textDecoration: "line-through" }}>{formatDealPrice(d.original_price, d.quantity_unit)}</span>
+                      <span className="font-black" style={{ fontSize: rem(18), color: "#0B2540" }}>{formatDealPrice(d.deal_price, d.quantity_unit, d.price_unit)}</span>
+                      <span style={{ fontSize: rem(12.5), color: "#6B7480", textDecoration: "line-through" }}>{formatDealPrice(d.original_price, d.quantity_unit, d.price_unit)}</span>
                     </span>
                   </span>
                 </div>
@@ -455,16 +457,16 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                     <span className="block mt-0.5" style={{ fontSize: rem(12.5), color: "#6B7480" }}>
                       {d.category} · {d.location} · 잔여 {d.remaining_qty}{d.quantity_unit || "개"}
                     </span>
-                    {(d.origin || d.min_order_qty) && (
+                    {(d.origin || (d.min_order_qty && !isLumpSum(d.price_unit))) && (
                       <span className="block mt-0.5" style={{ fontSize: rem(11.5), color: "#9AA3AD" }}>
                         {d.origin && `🌍 ${d.origin}`}
-                        {d.origin && d.min_order_qty ? " · " : ""}
-                        {d.min_order_qty && `MOQ ${d.min_order_qty}${d.quantity_unit || "개"}`}
+                        {d.origin && d.min_order_qty && !isLumpSum(d.price_unit) ? " · " : ""}
+                        {d.min_order_qty && !isLumpSum(d.price_unit) && `MOQ ${d.min_order_qty}${d.quantity_unit || "개"}`}
                       </span>
                     )}
                     <span className="flex items-baseline gap-1.5 mt-1.5">
-                      <span className="font-black" style={{ fontSize: rem(18), color: "#6B7480" }}>{formatDealPrice(d.deal_price, d.quantity_unit)}</span>
-                      <span style={{ fontSize: rem(12.5), color: "#9AA3AD", textDecoration: "line-through" }}>{formatDealPrice(d.original_price, d.quantity_unit)}</span>
+                      <span className="font-black" style={{ fontSize: rem(18), color: "#6B7480" }}>{formatDealPrice(d.deal_price, d.quantity_unit, d.price_unit)}</span>
+                      <span style={{ fontSize: rem(12.5), color: "#9AA3AD", textDecoration: "line-through" }}>{formatDealPrice(d.original_price, d.quantity_unit, d.price_unit)}</span>
                     </span>
                   </span>
                 </div>

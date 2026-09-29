@@ -22,6 +22,7 @@ import StockTypePicker from "@/components/StockTypePicker";
 import { getPhotoLimit, isPhotoLimitMaxed, MAX_PHOTO_SLOTS } from "@/lib/photoLimit";
 import { getFreshAccessToken } from "@/lib/authFetch";
 import { FieldLabel, FieldTag, FORM_INPUT_FONT_SIZE, FORM_HINT_STYLE, FORM_CHIP_FONT_SIZE } from "@/components/FormField";
+import { DEAL_PRICE_UNITS, LUMP_SUM, isDealPriceUnit, isLumpSum, priceUnitSuffix, type DealPriceUnit } from "@/lib/priceUnit";
 
 export default function SellPage() {
   const router = useRouter();
@@ -105,13 +106,18 @@ export default function SellPage() {
     el?.focus({ preventScroll: true });
   };
   const [hopePrice, setHopePrice] = useState("");
+  // 2026-09-29: 단가 단위 — 수량 단위와 따로. 기본은 수량 단위를 따라가고, 직접 고르면 그 값 유지
+  const [priceUnit, setPriceUnit] = useState<DealPriceUnit>(quantityUnits[0] as DealPriceUnit);
+  const [priceUnitTouched, setPriceUnitTouched] = useState(false);
+  const [priceError, setPriceError] = useState<string | null>(null);
+  const lumpSum = isLumpSum(priceUnit);
   const [hopeDurationHours, setHopeDurationHours] = useState("24");
   const [description, setDescription] = useState("");
   const [packageUnit, setPackageUnit] = useState("");
   const [origin, setOrigin] = useState("");
   const [spec, setSpec] = useState("");
   const [storageCondition, setStorageCondition] = useState("");
-  const [pid, setPid] = useState(""); // 2026-09-26: 리퀴데이션 팔레트 등의 매니페스트/PID 번호 (선택)
+  const [pid, setPid] = useState(""); // 2026-09-26: 리퀴데이션 파렛트 등의 매니페스트/PID 번호 (선택)
   const [manifestItems, setManifestItems] = useState<ManifestRow[]>([]);
   const [images, setImages] = useState<string[]>([]);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -123,8 +129,16 @@ export default function SellPage() {
   const submit = async () => {
     setError(null);
     setMoqError(null);
+    setPriceError(null);
     if (!productName || !quantity || !contactPhone) {
-      setError("매물명 · 수량 · 연락처는 꼭 입력해주세요.");
+      setError("매물명 · 수량 · 희망 단가 · 연락처는 꼭 입력해주세요.");
+      return;
+    }
+    // 2026-09-29: 희망 단가 필수 — 서버(/api/seller-requests)도 같은 검증
+    const price = parsePriceInput(hopePrice);
+    if (!price || price <= 0) {
+      setPriceError("희망 단가를 입력해주세요");
+      document.getElementById("sell-hopePrice")?.focus();
       return;
     }
     // 2026-09-29: 사무실 번호(02-, 031-…, 대표번호 15xx 등)도 허용 — 서버도 같은 isValidContactPhone
@@ -134,7 +148,7 @@ export default function SellPage() {
       return;
     }
     // 2026-09-28: 수량 100kg·MOQ 1000kg 같은 신청이 그대로 들어온 사례 — 서버(/api/seller-requests)도 같은 검증
-    if (minOrderQty && quantity && Number(minOrderQty) > Number(quantity)) {
+    if (!lumpSum && minOrderQty && quantity && Number(minOrderQty) > Number(quantity)) {
       showMoqError("최소주문량은 총수량보다 클 수 없어요.");
       return;
     }
@@ -157,7 +171,8 @@ export default function SellPage() {
           productName,
           quantity: Number(quantity),
           quantityUnit,
-          minOrderQty: minOrderQty ? Number(minOrderQty) : null,
+          minOrderQty: !lumpSum && minOrderQty ? Number(minOrderQty) : null, // 일괄 판매면 최소주문 없음
+          priceUnit,
           hopePrice: parsePriceInput(hopePrice) ?? null,
           hopeDurationHours: hopeDurationHours ? Number(hopeDurationHours) : null,
           description,
@@ -177,6 +192,11 @@ export default function SellPage() {
         if (data.field === "contactPhone") {
           setContactError(data.error ?? "연락처를 확인해주세요.");
           document.getElementById("contact-phone")?.focus();
+          return;
+        }
+        if (data.field === "hopePrice") {
+          setPriceError(data.error ?? "희망 단가를 입력해주세요");
+          document.getElementById("sell-hopePrice")?.focus();
           return;
         }
         if (data.field === "minOrderQty") {
@@ -403,7 +423,7 @@ export default function SellPage() {
           )}
         </div>
 
-        {/* 2026-09-29: "원 / 팔레트"처럼 단위가 길면 나란히 두면 단가 칸이 70px대로 좁아져 큰 금액이 잘림 → 모바일은 위아래 */}
+        {/* 2026-09-29: "원 / 파렛트"처럼 단위가 길면 나란히 두면 단가 칸이 70px대로 좁아져 큰 금액이 잘림 → 모바일은 위아래 */}
         <div className="flex flex-col gap-3 sm:flex-row sm:gap-2.5">
           <div className="flex-1 min-w-0">
             <FieldLabel need="required">수량</FieldLabel>
@@ -420,7 +440,10 @@ export default function SellPage() {
                 className="flex-shrink-0 outline-none"
                 style={{ width: 74, border: "none", borderLeft: "1px solid #E4E7EB", padding: "14px 6px", fontSize: FORM_INPUT_FONT_SIZE, fontWeight: 700, color: "#0B2540", background: "#FAFBFC", textAlign: "center" }}
                 value={quantityUnit}
-                onChange={(e) => setQuantityUnit(e.target.value)}
+                onChange={(e) => {
+                  setQuantityUnit(e.target.value);
+                  if (!priceUnitTouched && isDealPriceUnit(e.target.value)) setPriceUnit(e.target.value);
+                }}
               >
                 {quantityUnits.map((u) => (
                   <option key={u} value={u}>{u}</option>
@@ -429,25 +452,44 @@ export default function SellPage() {
             </div>
           </div>
           <div className="flex-1 min-w-0">
-            <FieldLabel need="optional">희망 단가 (1{quantityUnit}당)</FieldLabel>
-            <div className="flex items-center rounded-xl" style={{ border: "1.5px solid var(--color-brandOrange)" }}>
+            <FieldLabel need="required">희망 단가</FieldLabel>
+            <div className="flex items-center rounded-xl overflow-hidden" style={{ border: priceError ? "1.5px solid var(--color-orange)" : "1.5px solid var(--color-brandOrange)" }}>
               <input
+                id="sell-hopePrice"
                 type="text"
                 inputMode="numeric"
                 className="flex-1 min-w-0 outline-none"
                 style={{ border: "none", padding: "14px 0 14px 10px", fontSize: FORM_INPUT_FONT_SIZE }}
                 value={formatPriceInput(hopePrice)}
-                onChange={(e) => setHopePrice(e.target.value)}
-                placeholder="219,000"
+                onChange={(e) => {
+                  setHopePrice(e.target.value);
+                  setPriceError(null);
+                }}
+                placeholder={lumpSum ? "5,000,000" : "219,000"}
               />
-              {/* 2026-09-29: 매물 가격은 단가("2,000원/kg")로 표시되므로 총액을 넣지 않게 단위를 칸 안에 표시 */}
-              <span className="flex-shrink-0 font-bold whitespace-nowrap" style={{ color: "#0B2540", padding: "0 12px", fontSize: FORM_INPUT_FONT_SIZE }}>원 / {quantityUnit}</span>
+              {/* 2026-09-29: 단가 단위 — 수량 단위와 따로 (예: 수량은 박스, 가격은 kg당 / 일괄=전체 가격) */}
+              <select
+                aria-label="희망 단가 기준"
+                className="flex-shrink-0 outline-none"
+                style={{ width: 128, border: "none", borderLeft: "1px solid #E4E7EB", padding: "14px 4px", fontSize: FORM_INPUT_FONT_SIZE, fontWeight: 700, color: "#0B2540", background: "#FAFBFC", textAlign: "center" }}
+                value={priceUnit}
+                onChange={(e) => {
+                  if (!isDealPriceUnit(e.target.value)) return;
+                  setPriceUnit(e.target.value);
+                  setPriceUnitTouched(true);
+                  if (e.target.value === LUMP_SUM) setMinOrderQty("");
+                }}
+              >
+                {DEAL_PRICE_UNITS.map((u) => (
+                  <option key={u} value={u}>
+                    {priceUnitSuffix(u)}
+                  </option>
+                ))}
+              </select>
             </div>
+            {priceError && <p className="font-medium mt-1.5" style={{ fontSize: rem(15), color: "var(--color-orange)" }}>{priceError}</p>}
           </div>
         </div>
-        <p className="-mt-3" style={FORM_HINT_STYLE}>
-          <b style={{ color: "#C2410C" }}>총액이 아니라 1{quantityUnit} 가격</b>을 입력해주세요 · 창고에서 직접 가져가는 가격 기준 (배송비 별도)
-        </p>
 
         <div>
           <FieldLabel need="required">연락처</FieldLabel>
@@ -462,6 +504,8 @@ export default function SellPage() {
           />
         </div>
 
+        {/* 2026-09-29: 일괄(전체 가격) 판매면 최소주문 의미 없음 → 숨김 */}
+        {!lumpSum && (
         <div>
           <FieldLabel need="optional">최소주문수량(MOQ)</FieldLabel>
           <div className="flex items-center rounded-xl" style={{ border: moqError ? "1.5px solid var(--color-orange)" : "1.5px solid #E4E7EB" }}>
@@ -481,6 +525,7 @@ export default function SellPage() {
           </div>
           {moqError && <p className="font-medium mt-1.5" style={{ fontSize: rem(15), color: "var(--color-orange)" }}>{moqError}</p>}
         </div>
+        )}
 
         <div>
           <FieldLabel need="optional">마감까지</FieldLabel>
@@ -659,7 +704,7 @@ export default function SellPage() {
               />
             </div>
 
-            {/* 2026-09-26: 폐업 정리 등으로 여러 품목이 한 팔레트에 섞인 "혼합매물" 대응 —
+            {/* 2026-09-26: 폐업 정리 등으로 여러 품목이 한 파렛트에 섞인 "혼합매물" 대응 —
                 개별 사진 없이 PID/매니페스트 번호 + CSV 목록만으로도 등록할 수 있게. */}
             <div>
               <FieldLabel need="optional">PID / 매니페스트 번호</FieldLabel>
@@ -668,7 +713,7 @@ export default function SellPage() {
                 style={{ fontSize: FORM_INPUT_FONT_SIZE }}
                 value={pid}
                 onChange={(e) => setPid(e.target.value)}
-                placeholder="예: P809200159651 (리퀴데이션 팔레트라면 적어주세요)"
+                placeholder="예: P809200159651 (리퀴데이션 파렛트라면 적어주세요)"
               />
             </div>
             <ManifestUploader onChange={setManifestItems} />

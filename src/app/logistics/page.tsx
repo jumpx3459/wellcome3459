@@ -57,7 +57,7 @@ function weatherInfo(code: number): { icon: string; label: string } {
 
 const TABS = [
   { key: "shipping", label: "🚚 운송 매칭" },
-  { key: "pallet", label: "📐 팔레트 적재" },
+  { key: "pallet", label: "📐 파렛트 적재" },
   { key: "weather", label: "🌤 물류 날씨" },
   { key: "fx", label: "💱 환율" },
   { key: "tariff", label: "📦 관부가세" },
@@ -487,7 +487,7 @@ function WeatherWidget() {
   );
 }
 
-// ── 팔레트 적재 계산기 ─────────────────────────────────────────
+// ── 파렛트 적재 계산기 ─────────────────────────────────────────
 const PALLET_PRESETS = [
   { label: "표준 파렛트 (1100×1100)", l: 1100, w: 1100 },
   { label: "유로 파렛트 (1200×800)", l: 1200, w: 800 },

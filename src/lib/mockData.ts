@@ -22,15 +22,16 @@ export type Deal = {
   origin?: string | null; // 원산지
   spec?: string | null; // 규격/사이즈
   storage_condition?: string | null; // 보관조건 · 소비기한
-  quantity_unit?: string | null; // 수량 단위 (박스/개/kg/톤/팔레트 등) — 없으면 "개"로 표시
+  quantity_unit?: string | null; // 수량 단위 (박스/개/kg/톤/파렛트 등) — 없으면 "개"로 표시
   min_order_qty?: number | null; // 최소주문수량(MOQ)
+  price_unit?: string | null; // 2026-09-29 단가 단위 (src/lib/priceUnit.ts) — 없으면 수량 단위 기준
   created_at?: string; // ISO — mock 데이터엔 없음
   interest_count?: number; // 2026-09-26: 관심표시(interests+quick_leads) 합산 카운트, deals.interest_count 비정규화 컬럼
-  pid?: string | null; // 2026-09-26: 리퀴데이션 팔레트 등의 매니페스트/PID 번호 (선택)
+  pid?: string | null; // 2026-09-26: 리퀴데이션 파렛트 등의 매니페스트/PID 번호 (선택)
   manifest_items?: Record<string, string>[] | null; // 혼합매물 구성품 CSV 목록 (헤더 그대로)
 };
 
-export const quantityUnits = ["개", "박스", "kg", "톤", "팔레트", "세트"];
+export const quantityUnits = ["개", "박스", "kg", "톤", "파렛트", "세트"];
 
 const now = Date.now();
 
@@ -301,7 +302,7 @@ const RAW_MOCK_DEALS: Deal[] = [
   },
   {
     id: "17",
-    title: "창고 정리 혼합재고 팔레트 20개",
+    title: "창고 정리 혼합재고 파렛트 20개",
     category: "혼합재고",
     region: "경기",
     location: "경기 안성",
@@ -312,7 +313,7 @@ const RAW_MOCK_DEALS: Deal[] = [
     closes_at: new Date(now + 1000 * 60 * 60 * 60).toISOString(),
     images: [],
     video_url: null,
-    description: "품목 혼합(생활용품·잡화 등) · 팔레트 단위 일괄 판매 · 직접 실사 권장",
+    description: "품목 혼합(생활용품·잡화 등) · 파렛트 단위 일괄 판매 · 직접 실사 권장",
   },
   {
     id: "18",

@@ -6,7 +6,7 @@ import { FORM_HINT_STYLE } from "@/components/FormField";
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024; // 2MB — 500행 제한과 함께 과도한 붙여넣기/손상파일 방지
 
-// 2026-09-26: 혼합매물(리퀴데이션 팔레트 등) 구성품 목록을 CSV로 업로드해서 그대로
+// 2026-09-26: 혼합매물(리퀴데이션 파렛트 등) 구성품 목록을 CSV로 업로드해서 그대로
 // 테이블로 미리보기하는 컴포넌트. ImageUploader/VideoUploader와 같은 자리(sell 폼,
 // admin DealForm)에서 씀. 파싱은 전부 브라우저에서 일어나고 서버엔 결과 JSON만 전달됨.
 export default function ManifestUploader({
@@ -53,7 +53,7 @@ export default function ManifestUploader({
   return (
     <div>
       <label className="text-xs font-bold text-gray500 mb-1 block">
-        구성품 목록 CSV (선택 — 여러 품목이 섞인 혼합매물/리퀴데이션 팔레트용)
+        구성품 목록 CSV (선택 — 여러 품목이 섞인 혼합매물/리퀴데이션 파렛트용)
       </label>
       {/* 2026-09-26 (11): 네이티브 <input type="file">이 브라우저 기본 스타일(작은
           회색 버튼+"선택된 파일 없음")로 떠서 폼에서 눈에 잘 안 띈다는 피드백 —
@@ -77,7 +77,7 @@ export default function ManifestUploader({
         />
       </label>
       <p className="mt-1" style={FORM_HINT_STYLE}>
-        개별 사진 없이 여러 품목이 한 팔레트에 섞인 경우, 엑셀/구글시트에서 &quot;CSV로 다운로드&quot;한
+        개별 사진 없이 여러 품목이 한 파렛트에 섞인 경우, 엑셀/구글시트에서 &quot;CSV로 다운로드&quot;한
         목록을 올리면 상세 페이지에 표로 보여줘요.
       </p>
       {error && <div className="text-xs text-orange font-medium mt-1.5">{error}</div>}

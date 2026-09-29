@@ -8,7 +8,7 @@ import ImageUploader from "@/components/ImageUploader";
 import VideoUploader from "@/components/VideoUploader";
 import ManifestUploader from "@/components/ManifestUploader";
 import Toast, { useToast } from "@/components/Toast";
-import { formatPriceInput, parsePriceInput, formatMemberNo, formatPriceWithUnit } from "@/lib/format";
+import { formatPriceInput, parsePriceInput, formatMemberNo, formatPriceWithUnit, formatDealPrice } from "@/lib/format";
 import type { ManifestRow } from "@/lib/parseCsv";
 import { SITE_URL } from "@/lib/siteUrl";
 import { rem } from "@/lib/rem";
@@ -16,6 +16,7 @@ import { isStockType, type StockType } from "@/lib/stockType";
 import StockTypePicker from "@/components/StockTypePicker";
 import StockTypeBadge from "@/components/StockTypeBadge";
 import { MAX_PHOTO_SLOTS } from "@/lib/photoLimit";
+import { DEAL_PRICE_UNITS, LUMP_SUM, isDealPriceUnit, isLumpSum, priceUnitSuffix } from "@/lib/priceUnit";
 
 type SellerRequest = {
   stock_type?: string | null; // 2026-09-29 재고 유형
@@ -28,6 +29,7 @@ type SellerRequest = {
   quantity_unit: string | null;
   min_order_qty: number | null;
   hope_price: number | null;
+  price_unit?: string | null; // 2026-09-29 단가 단위 (없으면 수량 단위 기준)
   hope_duration_hours: number | null;
   description: string | null;
   package_unit: string | null;
@@ -1498,7 +1500,7 @@ function AdminDashboard({
             <div className="text-sm text-gray500 mt-1">
               수량 {r.quantity}{r.quantity_unit || "개"}
               {r.min_order_qty ? ` (MOQ ${r.min_order_qty}${r.quantity_unit || "개"})` : ""}
-              {r.hope_price ? ` · 희망단가 ${r.hope_price.toLocaleString()}원` : ""}
+              {r.hope_price ? ` · 희망단가 ${formatDealPrice(r.hope_price, r.quantity_unit, r.price_unit)}` : ""}
               {r.hope_duration_hours
                 ? ` · 희망 마감 ${
                     r.hope_duration_hours >= 24
@@ -1578,6 +1580,7 @@ function AdminDashboard({
                   dealPrice: r.hope_price ?? undefined,
                   totalQty: r.quantity,
                   quantityUnit: r.quantity_unit ?? undefined,
+                  priceUnit: r.price_unit ?? undefined,
                   minOrderQty: r.min_order_qty ?? undefined,
                   images: r.images ?? [],
                   videoUrl: r.video_url ?? undefined,
@@ -2336,6 +2339,7 @@ function DealForm({
     dealPrice?: number;
     totalQty?: number;
     quantityUnit?: string;
+    priceUnit?: string;
     minOrderQty?: number;
     images?: string[];
     videoUrl?: string;
@@ -2363,6 +2367,12 @@ function DealForm({
   const [dealPrice, setDealPrice] = useState(prefill?.dealPrice ? String(prefill.dealPrice) : "");
   const [totalQty, setTotalQty] = useState(prefill?.totalQty ? String(prefill.totalQty) : "");
   const [quantityUnit, setQuantityUnit] = useState(prefill?.quantityUnit || quantityUnits[0]);
+  // 2026-09-29: 단가 단위 — 신청서 값 이어받기, 없으면 수량 단위를 따라감(직접 고르면 유지). 정상가·판매가 공통
+  const [priceUnit, setPriceUnit] = useState<string>(
+    isDealPriceUnit(prefill?.priceUnit) ? prefill!.priceUnit! : prefill?.quantityUnit || quantityUnits[0]
+  );
+  const [priceUnitTouched, setPriceUnitTouched] = useState(isDealPriceUnit(prefill?.priceUnit));
+  const lumpSum = isLumpSum(priceUnit);
   const [minOrderQty, setMinOrderQty] = useState(
     prefill?.minOrderQty ? String(prefill.minOrderQty) : ""
   );
@@ -2404,8 +2414,8 @@ function DealForm({
     if (originalPrice.trim() && (!orig || orig <= 0)) errs.originalPrice = "정상가는 0보다 커야 해요.";
     if (!totalQty.trim()) errs.totalQty = "수량을 입력해주세요.";
     else if (!Number.isFinite(qty) || qty <= 0) errs.totalQty = "수량은 0보다 커야 해요.";
-    if (minOrderQty.trim() && !(Number(minOrderQty) > 0)) errs.minOrderQty = "최소 주문량은 0보다 커야 해요.";
-    else if (minOrderQty.trim() && qty > 0 && Number(minOrderQty) > qty) errs.minOrderQty = "최소주문량은 총수량보다 클 수 없어요.";
+    if (!lumpSum && minOrderQty.trim() && !(Number(minOrderQty) > 0)) errs.minOrderQty = "최소 주문량은 0보다 커야 해요.";
+    else if (!lumpSum && minOrderQty.trim() && qty > 0 && Number(minOrderQty) > qty) errs.minOrderQty = "최소주문량은 총수량보다 클 수 없어요.";
     return errs;
   };
 
@@ -2443,7 +2453,8 @@ function DealForm({
           dealPrice: deal,
           totalQty: Number(totalQty),
           quantityUnit,
-          minOrderQty: minOrderQty ? Number(minOrderQty) : null,
+          priceUnit,
+          minOrderQty: !lumpSum && minOrderQty ? Number(minOrderQty) : null,
           location,
           closesAt,
           requestId,
@@ -2558,7 +2569,7 @@ function DealForm({
       </p>
 
       <div className="grid grid-cols-2 gap-2">
-        <DealFormField label={`정상 단가 (1${quantityUnit}당)`} error={fieldErrors.originalPrice} htmlFor="deal-originalPrice">
+        <DealFormField label="정상 단가" error={fieldErrors.originalPrice} htmlFor="deal-originalPrice">
           <div className="relative">
             <input
               id="deal-originalPrice"
@@ -2572,10 +2583,10 @@ function DealForm({
                 clearErr("originalPrice");
               }}
             />
-            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold whitespace-nowrap" style={{ color: "#0B2540" }}>원 / {quantityUnit}</span>
+            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold whitespace-nowrap" style={{ color: "#0B2540" }}>{priceUnitSuffix(priceUnit)}</span>
           </div>
         </DealFormField>
-        <DealFormField label={`판매 단가 (1${quantityUnit}당)`} required error={fieldErrors.dealPrice} htmlFor="deal-dealPrice">
+        <DealFormField label="판매 단가" required error={fieldErrors.dealPrice} htmlFor="deal-dealPrice">
           <div className="relative">
             <input
               id="deal-dealPrice"
@@ -2589,12 +2600,30 @@ function DealForm({
                 clearErr("dealPrice");
               }}
             />
-            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold whitespace-nowrap" style={{ color: "#0B2540" }}>원 / {quantityUnit}</span>
+            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold whitespace-nowrap" style={{ color: "#0B2540" }}>{priceUnitSuffix(priceUnit)}</span>
           </div>
         </DealFormField>
       </div>
+      <DealFormField label="단가 기준 (정상가·판매가 공통)" htmlFor="deal-priceUnit">
+        <select
+          id="deal-priceUnit"
+          className={inputCls()}
+          value={priceUnit}
+          onChange={(e) => {
+            setPriceUnit(e.target.value);
+            setPriceUnitTouched(true);
+            if (e.target.value === LUMP_SUM) setMinOrderQty("");
+          }}
+        >
+          {DEAL_PRICE_UNITS.map((u) => (
+            <option key={u} value={u}>
+              {priceUnitSuffix(u)}
+            </option>
+          ))}
+        </select>
+      </DealFormField>
       <p className="text-xs text-gray500 -mt-1.5">
-        <b style={{ color: "#C2410C" }}>총액이 아니라 1{quantityUnit} 가격</b>을 입력해주세요 (목록에 &quot;원/{quantityUnit}&quot;로 표시). 창고 출고가 기준(배송비 별도), 정상가를 비우면 할인율 없이 표시돼요.
+        목록에 &quot;{formatDealPrice(30000, quantityUnit, priceUnit)}&quot;처럼 표시돼요. 창고 출고가 기준(배송비 별도), 정상가를 비우면 할인율 없이 표시돼요.
       </p>
 
       <div className="grid grid-cols-[1fr_88px] gap-2">
@@ -2618,7 +2647,10 @@ function DealForm({
             id="deal-quantityUnit"
             className={`${inputCls()} px-2`}
             value={quantityUnit}
-            onChange={(e) => setQuantityUnit(e.target.value)}
+            onChange={(e) => {
+              setQuantityUnit(e.target.value);
+              if (!priceUnitTouched && isDealPriceUnit(e.target.value)) setPriceUnit(e.target.value);
+            }}
           >
             {quantityUnits.map((u) => (
               <option key={u} value={u}>
@@ -2628,6 +2660,8 @@ function DealForm({
           </select>
         </DealFormField>
       </div>
+      {/* 2026-09-29: 일괄(전체 가격)이면 최소주문 없음 */}
+      {!lumpSum && (
       <DealFormField label="최소 주문량(MOQ)" error={fieldErrors.minOrderQty} htmlFor="deal-minOrderQty">
         <input
           id="deal-minOrderQty"
@@ -2643,6 +2677,7 @@ function DealForm({
           }}
         />
       </DealFormField>
+      )}
 
       <DealFormField label="지역 상세" htmlFor="deal-location">
         <input
@@ -2721,7 +2756,7 @@ function DealForm({
         />
       </DealFormField>
 
-      {/* 2026-09-26: 혼합매물(리퀴데이션 팔레트 등) — 신청서에서 이미 첨부됐으면 prefill로
+      {/* 2026-09-26: 혼합매물(리퀴데이션 파렛트 등) — 신청서에서 이미 첨부됐으면 prefill로
           채워지고, 여기서도 직접 추가/수정 가능 (전화 접수 등 신청서 없이 등록하는 경우 대비). */}
       <DealFormField label="PID / 매니페스트 번호" htmlFor="deal-pid">
         <input

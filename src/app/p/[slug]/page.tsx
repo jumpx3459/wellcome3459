@@ -28,7 +28,7 @@ export default function PartnerDemoPage() {
       const { data, error } = await supabase
         .from("deals")
         .select(
-          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, closes_at, location, images, stock_type, categories(name), regions(name)"
+          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, price_unit, closes_at, location, images, stock_type, categories(name), regions(name)"
         )
         .eq("status", "active")
         .gt("closes_at", new Date().toISOString())
@@ -116,7 +116,7 @@ export default function PartnerDemoPage() {
                 <div className="flex-1 min-w-0 px-3.5 py-2.5">
                   <div className="text-sm font-bold truncate" style={{ color: "#0B2540" }}>{d.title}</div>
                   <div className="flex items-baseline gap-1.5 mt-1.5">
-                    <span className="text-base font-black" style={{ color: color.text }}>{formatDealPrice(d.deal_price, d.quantity_unit)}</span>
+                    <span className="text-base font-black" style={{ color: color.text }}>{formatDealPrice(d.deal_price, d.quantity_unit, d.price_unit)}</span>
                     {discountPct > 0 && (
                       <span className="text-xs font-bold rounded-full" style={{ color: partner.accentColor, background: "#fff", border: `1px solid ${partner.accentColor}`, padding: "1px 7px" }}>
                         -{Math.round(discountPct)}%

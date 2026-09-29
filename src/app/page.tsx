@@ -19,6 +19,7 @@ import { rem } from "@/lib/rem";
 import StockTypeBadge from "@/components/StockTypeBadge";
 import ReturningMemberIntro from "@/components/ReturningMemberIntro";
 import { getRememberedLoginMethod, hasActivePushSubscription, hasLoginHistory, type LoginMethod } from "@/lib/returningMember";
+import { isLumpSum } from "@/lib/priceUnit";
 
 const TODAY_BADGE_THRESHOLD = 5; // 이보다 적으면 "오늘 N건" 배너를 아예 숨김 (빈약한 숫자 노출 방지)
 const BUSINESS_COUNT_THRESHOLD = 30; // 이보다 적으면 사업자 수 대신 무숫자 카피로 대체 (빈약한 숫자 노출 방지)
@@ -128,7 +129,7 @@ export default function Home() {
         supabase
           .from("deals")
           .select(
-            "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, created_at, location, images, package_unit, min_order_qty, quantity_unit, stock_type, categories(name), regions(name)"
+            "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, created_at, location, images, package_unit, min_order_qty, quantity_unit, price_unit, stock_type, categories(name), regions(name)"
           )
           .eq("status", "active")
           .gt("closes_at", new Date().toISOString())
@@ -170,6 +171,7 @@ export default function Home() {
             package_unit: d.package_unit ?? null,
             min_order_qty: d.min_order_qty ?? null,
             quantity_unit: d.quantity_unit ?? null,
+            price_unit: d.price_unit ?? null,
           }))
         );
         setIsExample(false);
@@ -393,7 +395,7 @@ export default function Home() {
                         수량을 미리보기 카드에도 노출해 구매 결정에 필요한 정보 밀도를 높임. */}
                     <div className="text-[0.7222rem] text-gray500 mt-0.5 flex items-center gap-1.5">
                       <span>{d.remaining_qty}/{d.total_qty} 남음</span>
-                      {d.min_order_qty && (
+                      {d.min_order_qty && !isLumpSum(d.price_unit) && (
                         <>
                           <span>·</span>
                           <span>최소 {d.min_order_qty}{d.quantity_unit || "개"}</span>
@@ -408,10 +410,10 @@ export default function Home() {
                     </div>
                     <div className="flex items-baseline gap-1.5 mt-1.5">
                       <span className="text-lg font-black" style={{ color: color.text }}>
-                        {formatDealPrice(d.deal_price, d.quantity_unit)}
+                        {formatDealPrice(d.deal_price, d.quantity_unit, d.price_unit)}
                       </span>
                       <span className="text-xs text-gray500 line-through">
-                        {formatDealPrice(d.original_price, d.quantity_unit)}
+                        {formatDealPrice(d.original_price, d.quantity_unit, d.price_unit)}
                       </span>
                     </div>
                   </div>

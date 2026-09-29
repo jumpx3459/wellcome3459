@@ -1017,3 +1017,12 @@ alter table public.seller_requests add constraint seller_requests_stock_type_che
 alter table public.deals drop constraint if exists deals_stock_type_check;
 alter table public.deals add constraint deals_stock_type_check
   check (stock_type in ('general','near_expiry','overstock','order_cancel','closure','season_end','returned','b_grade','discontinued','other'));
+
+-- 2026-09-29: 단가 단위 — 수량 단위와 따로 고름(예: 수량 박스, 가격 kg당 / 일괄 = 전체 가격, 최소주문 없음).
+-- 값 목록은 src/lib/priceUnit.ts DEAL_PRICE_UNITS와 같아야 함. 기존 행 null = 수량 단위(quantity_unit) 기준으로 해석.
+-- 단위 표기는 "파렛트"로 통일(팔레트·팰릿 사용 안 함) — 저장된 "팔레트" 데이터 0건 확인.
+-- Supabase SQL Editor 실행 완료 (2026-09-29, 사용자 확인).
+alter table public.seller_requests add column if not exists price_unit text
+  check (price_unit is null or price_unit in ('개','박스','kg','톤','파렛트','세트','L','일괄'));
+alter table public.deals add column if not exists price_unit text
+  check (price_unit is null or price_unit in ('개','박스','kg','톤','파렛트','세트','L','일괄'));

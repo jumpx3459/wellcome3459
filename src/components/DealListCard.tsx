@@ -3,6 +3,7 @@ import { categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import { formatDealPrice } from "@/lib/format";
 import DealCardMedia from "@/components/DealCardMedia";
 import StockTypeBadge from "@/components/StockTypeBadge";
+import { isLumpSum } from "@/lib/priceUnit";
 
 // /deals 목록 카드 — 실매물·예시 공용 (2026-09-29, 예전엔 예시 카드가 따로 있어서 배지 위치가 달랐음).
 // 예시는 레이아웃 동일, 회색 톤 + "예시" 라벨로만 구분.
@@ -23,6 +24,7 @@ export default function DealListCard({
   const remainPct = d.total_qty ? Math.round((d.remaining_qty / d.total_qty) * 100) : 0;
   const discountPct = d.original_price ? Math.round(((d.original_price - d.deal_price) / d.original_price) * 100) : 0;
   const unit = d.quantity_unit || "개";
+  const lump = isLumpSum(d.price_unit); // 일괄 판매면 MOQ 의미 없음
 
   return (
     <Link
@@ -65,19 +67,19 @@ export default function DealListCard({
         <div className="text-sm font-medium mt-1" style={{ color: "#495057" }}>
           {closed ? d.location : `잔여 ${d.remaining_qty}${unit} · ${d.location}`}
         </div>
-        {(d.origin || d.min_order_qty) && (
+        {(d.origin || (d.min_order_qty && !lump)) && (
           <div className="text-xs font-medium mt-1 flex items-center gap-1.5 flex-wrap" style={{ color: "#495057" }}>
             {d.origin && <span>🌍 {d.origin}</span>}
-            {d.origin && d.min_order_qty ? <span style={{ color: "#C7CBD1" }}>·</span> : null}
-            {d.min_order_qty && <span>MOQ {d.min_order_qty}{unit}</span>}
+            {d.origin && d.min_order_qty && !lump ? <span style={{ color: "#C7CBD1" }}>·</span> : null}
+            {d.min_order_qty && !lump && <span>MOQ {d.min_order_qty}{unit}</span>}
           </div>
         )}
         <div className="flex items-baseline gap-1.5 mt-2">
           <span className="text-lg font-black" style={{ color: accent }}>
-            {formatDealPrice(d.deal_price, d.quantity_unit)}
+            {formatDealPrice(d.deal_price, d.quantity_unit, d.price_unit)}
           </span>
           <span className="text-sm text-gray500 font-normal line-through">
-            {formatDealPrice(d.original_price, d.quantity_unit)}
+            {formatDealPrice(d.original_price, d.quantity_unit, d.price_unit)}
           </span>
         </div>
         {!gray && hotGapPct !== null && (

@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { isValidContactPhone } from "@/lib/auth";
 import { sanitizeManifest, sanitizePid } from "@/lib/parseCsv";
 import { isStockType } from "@/lib/stockType";
+import { isDealPriceUnit, isLumpSum } from "@/lib/priceUnit";
 import { getPhotoLimit, photoLimitError } from "@/lib/photoLimit";
 import { getMemberFromToken } from "@/lib/photoLimitServer";
 
@@ -32,12 +33,22 @@ export async function POST(req: NextRequest) {
     images,
     videoUrl,
     stockType,
+    priceUnit,
     accessToken,
   } = body;
 
   if (!contactPhone || !productName || !quantity) {
     return NextResponse.json({ error: "필수 항목이 누락되었습니다." }, { status: 400 });
   }
+  // 2026-09-29: 희망 단가 필수 (sell 폼과 같은 규칙)
+  if (typeof hopePrice !== "number" || !Number.isFinite(hopePrice) || hopePrice <= 0) {
+    return NextResponse.json({ error: "희망 단가를 입력해주세요", field: "hopePrice" }, { status: 400 });
+  }
+  // 단가 단위 — DB check와 같은 값만, 안 보내면 null(= 수량 단위 기준)
+  if (priceUnit != null && !isDealPriceUnit(priceUnit)) {
+    return NextResponse.json({ error: "단가 단위가 올바르지 않아요.", field: "priceUnit" }, { status: 400 });
+  }
+  const lumpSum = isLumpSum(priceUnit);
   // 2026-09-29: 사무실 번호도 허용 (휴대폰 전용 검증은 로그인 OTP에만)
   if (!isValidContactPhone(contactPhone)) {
     return NextResponse.json({ error: "휴대폰 또는 사무실 번호를 정확히 입력해주세요", field: "contactPhone" }, { status: 400 });
@@ -47,7 +58,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "재고 유형이 올바르지 않아요.", field: "stockType" }, { status: 400 });
   }
   // 2026-09-28: 수량보다 큰 MOQ(예: 수량 100kg, MOQ 1000kg)가 그대로 저장된 사례 — 폼(sell)과 같은 규칙
-  if (minOrderQty != null && minOrderQty !== "" && Number(minOrderQty) > Number(quantity)) {
+  if (!lumpSum && minOrderQty != null && minOrderQty !== "" && Number(minOrderQty) > Number(quantity)) {
     return NextResponse.json({ error: "최소주문량은 총수량보다 클 수 없어요.", field: "minOrderQty" }, { status: 400 });
   }
 
@@ -96,7 +107,8 @@ export async function POST(req: NextRequest) {
     product_name: productName,
     quantity,
     quantity_unit: quantityUnit || "개",
-    min_order_qty: minOrderQty || null,
+    min_order_qty: lumpSum ? null : minOrderQty || null, // 일괄 판매면 최소주문 없음
+    price_unit: priceUnit ?? null,
     hope_price: hopePrice,
     hope_duration_hours: hopeDurationHours ?? null,
     description,

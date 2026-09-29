@@ -67,7 +67,7 @@ function DealsPageInner() {
       const { data, error } = await supabase
         .from("deals")
         .select(
-          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, closes_at, location, images, video_url, origin, min_order_qty, interest_count, stock_type, categories(name), regions(name)"
+          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, price_unit, closes_at, location, images, video_url, origin, min_order_qty, interest_count, stock_type, categories(name), regions(name)"
         )
         .eq("status", "active")
         .gt("closes_at", new Date().toISOString()) // 마감 지난 매물은 애초에 가져오지 않음
@@ -87,6 +87,7 @@ function DealsPageInner() {
             total_qty: d.total_qty,
             remaining_qty: d.remaining_qty,
             quantity_unit: d.quantity_unit ?? "개",
+            price_unit: d.price_unit ?? null,
             closes_at: d.closes_at,
             images: d.images ?? [],
             video_url: d.video_url ?? null,
@@ -107,7 +108,7 @@ function DealsPageInner() {
       const { data, error } = await supabase
         .from("deals")
         .select(
-          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, closes_at, location, images, video_url, origin, min_order_qty, interest_count, stock_type, categories(name), regions(name)"
+          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, price_unit, closes_at, location, images, video_url, origin, min_order_qty, interest_count, stock_type, categories(name), regions(name)"
         )
         .or(`status.eq.closed,closes_at.lte.${new Date().toISOString()}`)
         .order("closes_at", { ascending: false })
@@ -127,6 +128,7 @@ function DealsPageInner() {
             total_qty: d.total_qty,
             remaining_qty: d.remaining_qty,
             quantity_unit: d.quantity_unit ?? "개",
+            price_unit: d.price_unit ?? null,
             closes_at: d.closes_at,
             images: d.images ?? [],
             video_url: d.video_url ?? null,

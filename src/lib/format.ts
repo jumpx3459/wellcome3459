@@ -74,8 +74,8 @@ export function formatRelativeTime(iso?: string | null): string | null {
 }
 
 // 2026-09-29: 가격 기준 단위 — 구매 희망 단가(buy_requests.hope_price_unit) 등.
-// 값은 수량 단위 그대로("개"/"박스"/"kg"/"팔레트"/"톤"/"세트") 또는 "총액".
-export const PRICE_UNITS = ["개", "박스", "kg", "팔레트", "톤", "세트", "총액"] as const;
+// 값은 수량 단위 그대로("개"/"박스"/"kg"/"파렛트"/"톤"/"세트") 또는 "총액".
+export const PRICE_UNITS = ["개", "박스", "kg", "파렛트", "톤", "세트", "총액"] as const;
 export type PriceUnit = (typeof PRICE_UNITS)[number];
 
 // 선택지 라벨: "개당", "kg당" … / "총액"
@@ -83,16 +83,17 @@ export function priceUnitLabel(unit: string): string {
   return unit === "총액" ? "총액" : `${unit}당`;
 }
 
-// "30,000원/kg", "30,000원(총액)", 단위 없으면 "30,000원"
+// "30,000원/kg", "30,000원(총액)", "5,000,000원(일괄)", 단위 없으면 "30,000원"
 export function formatPriceWithUnit(price: number, unit?: string | null): string {
   const base = `${price.toLocaleString()}원`;
   if (!unit) return base;
-  return unit === "총액" ? `${base}(총액)` : `${base}/${unit}`;
+  return unit === "총액" || unit === "일괄" ? `${base}(${unit})` : `${base}/${unit}`;
 }
 
 // 매물 가격(deal_price·original_price)은 단가 — 판매신청 "희망 단가"가 그대로 deal_price가 됨.
 // 기준 단위(quantity_unit)를 붙여 "2,000원/kg"으로 표시 (2026-09-29, 예전엔 "2,000원"만 보였음).
 // quantity_unit이 비어 있으면 등록 기본값("개").
-export function formatDealPrice(price: number, quantityUnit?: string | null): string {
-  return formatPriceWithUnit(price, quantityUnit || "개");
+// 2026-09-29: 단가 단위(price_unit)를 따로 고를 수 있게 됨 — 있으면 그 단위, 없으면(기존 행) 수량 단위.
+export function formatDealPrice(price: number, quantityUnit?: string | null, priceUnit?: string | null): string {
+  return formatPriceWithUnit(price, priceUnit || quantityUnit || "개");
 }

@@ -17,6 +17,7 @@ import { rem } from "@/lib/rem";
 import { getFreshAccessToken } from "@/lib/authFetch";
 import { SECTION_TITLE_STYLE, SERVICES_ANCHOR_ID, ServiceTilesCompact } from "@/components/EcosystemGrid";
 import StockTypeBadge from "@/components/StockTypeBadge";
+import { isLumpSum } from "@/lib/priceUnit";
 
 // 값이 없거나 공백뿐이면 섹션/행 자체를 그리지 않는다 (빈 공간 방지)
 function hasText(v: string | null | undefined): boolean {
@@ -89,7 +90,7 @@ function DealDetailPageInner() {
         : "";
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
-        await navigator.share({ title: deal.title, text: `${deal.title} · ${formatDealPrice(deal.deal_price, deal.quantity_unit)}`, url });
+        await navigator.share({ title: deal.title, text: `${deal.title} · ${formatDealPrice(deal.deal_price, deal.quantity_unit, deal.price_unit)}`, url });
       } catch {
         // 사용자가 공유를 취소한 경우 — 무시
       }
@@ -129,7 +130,7 @@ function DealDetailPageInner() {
       const { data } = await supabase
         .from("deals")
         .select(
-          "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, location, images, video_url, description, status, package_unit, origin, spec, storage_condition, quantity_unit, min_order_qty, interest_count, pid, manifest_items, seller_member_id, seller_display_name, stock_type, categories(name), regions(name)"
+          "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, location, images, video_url, description, status, package_unit, origin, spec, storage_condition, quantity_unit, price_unit, min_order_qty, interest_count, pid, manifest_items, seller_member_id, seller_display_name, stock_type, categories(name), regions(name)"
         )
         .eq("id", params.id)
         .single();
@@ -156,6 +157,7 @@ function DealDetailPageInner() {
           spec: data.spec ?? null,
           storage_condition: data.storage_condition ?? null,
           quantity_unit: data.quantity_unit ?? "개",
+          price_unit: data.price_unit ?? null,
           min_order_qty: data.min_order_qty ?? null,
           interest_count: data.interest_count ?? 0,
           pid: data.pid ?? null,
@@ -399,7 +401,7 @@ function DealDetailPageInner() {
               </span>
             )}
             <span className="text-3xl font-black" style={{ color: "#0B2540" }}>
-              {formatDealPrice(deal.deal_price, deal.quantity_unit)}
+              {formatDealPrice(deal.deal_price, deal.quantity_unit, deal.price_unit)}
             </span>
             {/* 2026-09-26: 카드 리스트와 동일한 threshold-gating(3건 미만 숨김) */}
             {(deal.interest_count ?? 0) >= 3 && (
@@ -414,9 +416,13 @@ function DealDetailPageInner() {
           <div className="flex items-center justify-between gap-2 mt-1">
             <span className="text-sm text-gray500">
               {deal.original_price > deal.deal_price && (
-                <span className="line-through">{formatDealPrice(deal.original_price, deal.quantity_unit)}</span>
+                <span className="line-through">{formatDealPrice(deal.original_price, deal.quantity_unit, deal.price_unit)}</span>
               )}
-              {deal.min_order_qty ? `${deal.original_price > deal.deal_price ? " · " : ""}최소주문 ${deal.min_order_qty}${deal.quantity_unit || "개"}` : null}
+              {isLumpSum(deal.price_unit)
+                ? `${deal.original_price > deal.deal_price ? " · " : ""}전체 일괄 판매`
+                : deal.min_order_qty
+                  ? `${deal.original_price > deal.deal_price ? " · " : ""}최소주문 ${deal.min_order_qty}${deal.quantity_unit || "개"}`
+                  : null}
             </span>
             <button
               type="button"
@@ -526,7 +532,7 @@ function DealDetailPageInner() {
           </div>
         )}
 
-        {/* 2026-09-26: 혼합매물(리퀴데이션 팔레트) — 개별 사진 대신 PID#/구성품 목록으로
+        {/* 2026-09-26: 혼합매물(리퀴데이션 파렛트) — 개별 사진 대신 PID#/구성품 목록으로
             신뢰도를 보완. 목록은 품목이 많을 수 있어 기본은 접어두고 펼쳐보게 함. */}
         {(hasText(deal.pid) || hasManifest) && (
           <div className="border-t border-gray200 pt-4">
