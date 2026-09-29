@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { hasAppHistory } from "@/lib/appNav";
 import { CheckCircle } from "lucide-react";
-import { mockCategories, mockRegions, categoryIcons, quantityUnits, guessCategory, logUnmatchedProductName } from "@/lib/mockData";
+import { mockRegions, categoryIcons, quantityUnits, guessCategory, logUnmatchedProductName } from "@/lib/mockData";
 import { formatPriceInput, parsePriceInput, PRICE_UNITS, formatPriceWithUnit } from "@/lib/format";
 import { isValidContactPhone, formatContactPhone } from "@/lib/auth";
 import ContactPhoneInput from "@/components/ContactPhoneInput";
@@ -15,6 +15,7 @@ import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import { rem } from "@/lib/rem";
 import { getFreshAccessToken } from "@/lib/authFetch";
 import { FieldLabel, FieldTag, FORM_INPUT_FONT_SIZE, FORM_HINT_STYLE, FORM_CHIP_FONT_SIZE, FORM_LABEL_STYLE } from "@/components/FormField";
+import CategoryChips from "@/components/CategoryChips";
 
 export default function BuyPage() {
   const router = useRouter();
@@ -298,34 +299,15 @@ export default function BuyPage() {
             {!category && !categoryTouched && (
               <p className="mb-2" style={FORM_HINT_STYLE}>💡 상품명을 입력하면 카테고리를 자동으로 골라드려요</p>
             )}
-            <div className="flex flex-wrap gap-1.5">
-              {mockCategories.map((c) => {
-                const picked = category === c;
-                return (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => {
-                      setCategoryTouched(true);
-                      setCategory(picked ? "" : c);
-                      setCategoryEditing(false);
-                    }}
-                    className="flex items-center gap-1 rounded-full whitespace-nowrap"
-                    style={{
-                      padding: "9px 13px",
-                      fontSize: FORM_CHIP_FONT_SIZE,
-                      fontWeight: 700,
-                      background: "#fff",
-                      border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
-                      color: "#1A1F26",
-                    }}
-                  >
-                    <span>{categoryIcons[c]}</span>
-                    {c}
-                  </button>
-                );
-              })}
-            </div>
+            {/* 2026-09-29: 기본 2줄 + "더보기" (CategoryChips) */}
+            <CategoryChips
+              value={category}
+              onPick={(c) => {
+                setCategoryTouched(true);
+                setCategory(c);
+                setCategoryEditing(false);
+              }}
+            />
             </>
           ) : (
             <div className="flex items-center justify-between rounded-xl" style={{ border: "1.5px solid #E4E7EB", padding: "10px 13px" }}>

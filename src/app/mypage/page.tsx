@@ -23,6 +23,7 @@ import { formatKoreanPhone } from "@/lib/auth";
 import { authFetch } from "@/lib/authFetch";
 import { isTestTitle } from "@/lib/categoryAvg";
 import { getPhotoLimit, isPhotoLimitMaxed, MAX_PHOTO_SLOTS } from "@/lib/photoLimit";
+import { clearReturningMember } from "@/lib/returningMember";
 
 type InterestItem = {
   id: string;
@@ -396,6 +397,15 @@ export default function MyPage() {
 
   const toggle = (list: string[], set: (v: string[]) => void, value: string) => {
     set(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
+  };
+
+  const [loggingOut, setLoggingOut] = useState(false);
+  const logout = async () => {
+    if (!supabase || loggingOut) return;
+    setLoggingOut(true);
+    clearReturningMember();
+    await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+    window.location.replace("/"); // 전체 새로고침 — 남은 회원 상태 없이 홈으로
   };
 
   const shareDeal = shareDeals.find((d) => d.id === selectedShareDealId) ?? null;
@@ -1676,6 +1686,17 @@ export default function MyPage() {
           )}
         </div>
 
+        {/* 2026-09-29: 회원 로그아웃 — 이 기기에서만(scope local, 다른 기기·설치 앱 세션은 유지).
+            명시적 로그아웃이라 재방문 화면 신호(로그인 기록·방식)도 지움 */}
+        <button
+          type="button"
+          onClick={logout}
+          disabled={loggingOut}
+          className="w-full font-bold rounded-2xl bg-white border border-gray200 disabled:opacity-60"
+          style={{ minHeight: 52, fontSize: rem(16), color: "#374151" }}
+        >
+          {loggingOut ? "로그아웃 중…" : "로그아웃"}
+        </button>
         <Link href="/unsubscribe" className="text-center text-sm text-gray500 underline py-2">
           알림이 필요 없으신가요? 알림 해지 · 탈퇴
         </Link>
