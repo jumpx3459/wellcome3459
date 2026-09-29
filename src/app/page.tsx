@@ -20,6 +20,7 @@ import StockTypeBadge from "@/components/StockTypeBadge";
 import ReturningMemberIntro from "@/components/ReturningMemberIntro";
 import { getRememberedLoginMethod, hasActivePushSubscription, hasLoginHistory, type LoginMethod } from "@/lib/returningMember";
 import { isLumpSum } from "@/lib/priceUnit";
+import FloatingCTA, { FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
 
 const TODAY_BADGE_THRESHOLD = 5; // 이보다 적으면 "오늘 N건" 배너를 아예 숨김 (빈약한 숫자 노출 방지)
 const BUSINESS_COUNT_THRESHOLD = 30; // 이보다 적으면 사업자 수 대신 무숫자 카피로 대체 (빈약한 숫자 노출 방지)
@@ -440,7 +441,7 @@ export default function Home() {
           — 판매 등록(공급 유입)이 플랫폼 성립의 병목이라 시각적으로 가장 강조.
           정보성 pill을 맨 아래 두면 하단 고정 CTA(무료 알림받기, 총 높이 약 160px)에
           가려질 수 있어 액션 카드보다 위로 옮기고, 안전 여백도 108→132px로 늘림. */}
-      <div className="mt-9 px-5 flex flex-col gap-3" style={{ paddingBottom: "156px" }}>
+      <div className="mt-9 px-5 flex flex-col gap-3" style={{ paddingBottom: FLOATING_CTA_SPACE }}>
         <Link
           href="/deals"
           className="text-center text-sm font-bold text-gray500 underline underline-offset-4"
@@ -512,42 +513,16 @@ export default function Home() {
           보조 액션이 아님) FAB로 축소하진 않되, 패딩/그림자를 줄여 무게감만 낮춤.
           완전 불투명 흰 배경 대신 옅은 반투명+블러로 바꾸고, 바로 위에 페이드를 얹어
           스크롤 중인 매물 리스트가 CTA 아래로 자연스럽게 이어지도록 함. */}
-      <div
-        className="fixed left-1/2 -translate-x-1/2 w-full max-w-md px-5 pb-5 pt-5"
-        style={{ bottom: "var(--nav-bottom)" }}
-      >
-        <div
-          className="pointer-events-none absolute left-0 right-0"
-          style={{
-            bottom: "100%",
-            height: 28,
-            background: "linear-gradient(to bottom, rgba(245,246,248,0), rgba(255,255,255,.85))",
-          }}
-        />
-        <div
-          className="rounded-2xl"
-          style={{
-            background: "rgba(255,255,255,.9)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-            boxShadow: "0 -6px 16px rgba(11,37,64,.07)",
-            padding: 8,
-          }}
-        >
+      {/* 2026-09-29: 공용 하단 고정 버튼 — 판·블러 없이 버튼만 띄움 */}
+      <FloatingCTA>
           <Link
             href="/signup"
-            className="block text-white text-center font-bold rounded-2xl"
-            style={{
-              background: "linear-gradient(135deg, #E25100, #FF6F0F)",
-              padding: "15px 0",
-              fontSize: rem(17),
-              boxShadow: "0 4px 14px rgba(226,81,0,0.28)",
-            }}
+            className={FLOATING_CTA_BUTTON_CLASS}
+            style={floatingCtaButtonStyle()}
           >
             🔔 덤핑매물 무료 알림받기
           </Link>
-        </div>
-      </div>
+              </FloatingCTA>
     </main>
     )}
     </SplashScreen>

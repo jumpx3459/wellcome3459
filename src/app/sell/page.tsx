@@ -10,7 +10,6 @@ import { mockRegions, categoryIcons, quantityUnits, guessCategory, logUnmatchedP
 import ImageUploader from "@/components/ImageUploader";
 import VideoUploader from "@/components/VideoUploader";
 import ManifestUploader from "@/components/ManifestUploader";
-import { NAV_BOTTOM } from "@/components/BottomNav";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
 import { isValidContactPhone, formatContactPhone } from "@/lib/auth";
 import ContactPhoneInput from "@/components/ContactPhoneInput";
@@ -24,6 +23,7 @@ import { getFreshAccessToken } from "@/lib/authFetch";
 import { FieldLabel, FieldTag, FORM_INPUT_FONT_SIZE, FORM_HINT_STYLE, FORM_CHIP_FONT_SIZE } from "@/components/FormField";
 import { DEAL_PRICE_UNITS, LUMP_SUM, isDealPriceUnit, isLumpSum, priceUnitSuffix, type DealPriceUnit } from "@/lib/priceUnit";
 import CategoryChips from "@/components/CategoryChips";
+import FloatingCTA, { FloatingCTANote, FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
 
 export default function SellPage() {
   const router = useRouter();
@@ -321,7 +321,7 @@ export default function SellPage() {
 
       </div>
 
-      <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: 168 }}>
+      <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: FLOATING_CTA_SPACE }}>
         {/* 2026-09-29: 헤더 안 캐릭터 소개(76px/13px) 대신 buy와 같은 "완전 무료" 카드 (판매자용 문구) */}
         <div className="flex items-center gap-3 rounded-2xl" style={{ background: "#fff", border: "1.5px solid #E4E7EB", padding: "15px 16px" }}>
           <img src="/images/manager.png" alt="점핑매니저" className="flex-shrink-0 rounded-xl bg-white" style={{ width: 72, height: 72, objectFit: "contain" }} />
@@ -719,41 +719,18 @@ export default function SellPage() {
       {/* 2026-09-27: 홈 하단 CTA와 동일한 톤으로 통일 — 불투명 흰 바+실선 테두리
           대신 반투명+블러 카드 + 상단 페이드로, 스크롤 중인 폼 내용이 자연스럽게
           이어지도록 함. */}
-      <div
-        className="fixed z-10 left-1/2 -translate-x-1/2 w-full max-w-md px-5 pb-5 pt-5"
-        style={{ bottom: NAV_BOTTOM }}
-      >
-        <div
-          className="pointer-events-none absolute left-0 right-0"
-          style={{
-            bottom: "100%",
-            height: 28,
-            background: "linear-gradient(to bottom, rgba(245,246,248,0), rgba(255,255,255,.85))",
-          }}
-        />
-        <div
-          className="rounded-2xl"
-          style={{
-            background: "rgba(255,255,255,.9)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-            boxShadow: "0 -6px 16px rgba(11,37,64,.07)",
-            padding: 8,
-          }}
-        >
-          {error && (
-            <div className="text-sm text-orange font-medium mb-2 text-center">{error}</div>
-          )}
+      {/* 2026-09-29: 공용 하단 고정 버튼 — 판·블러 없이 버튼만 띄움 */}
+      <FloatingCTA>
+          {error && <FloatingCTANote>{error}</FloatingCTANote>}
           <button
             onClick={submit}
             disabled={submitting}
-            className="w-full font-black rounded-2xl text-white disabled:opacity-60"
-            style={{ background: "linear-gradient(135deg,#E25100,#FF6F0F)", padding: "17px 0", fontSize: rem(16.5), boxShadow: "0 8px 20px rgba(226,81,0,.3)" }}
+            className={FLOATING_CTA_BUTTON_CLASS}
+            style={floatingCtaButtonStyle()}
           >
             {submitting ? "처리 중..." : "무료로 매물 등록하기"}
           </button>
-        </div>
-      </div>
+              </FloatingCTA>
     </main>
   );
 }

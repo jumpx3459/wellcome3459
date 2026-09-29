@@ -10,13 +10,13 @@ import { generateRefCode } from "@/lib/refCode";
 import Toast, { useToast } from "@/components/Toast";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 import { fmtLeft } from "@/lib/format";
-import { NAV_BOTTOM } from "@/components/BottomNav";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import { SITE_URL, isCanonicalHost } from "@/lib/siteUrl";
 import { getPushBlocker, type PushBlocker } from "@/lib/browserEnv";
 import PushBlockerNotice from "@/components/PushBlockerNotice";
 import { rem } from "@/lib/rem";
 import { clearReturningMember } from "@/lib/returningMember";
+import FloatingCTA, { FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
 
 // "01012345678" -> "010****5678" 형태로 화면에만 일부 가려서 보여줍니다
 function maskPhone(phone: string): string {
@@ -561,7 +561,7 @@ function SignupPageInner() {
         )}
       </div>
 
-      <div className="flex-1" style={{ padding: alreadyMember ? "24px 22px 20px" : "24px 22px 168px" }}>
+      <div className="flex-1" style={{ padding: alreadyMember ? "24px 22px 20px" : `24px 22px ${FLOATING_CTA_SPACE}px` }}>
         {alreadyMember ? (
           <div className="flex flex-col items-center text-center" style={{ padding: "32px 6px 0" }}>
             <div
@@ -993,28 +993,8 @@ function SignupPageInner() {
         // 2026-09-27: 홈 하단 CTA와 동일한 톤으로 통일 — 불투명 흰 바+실선 테두리
         // 대신 반투명+블러 카드 + 상단 페이드로, 스크롤 중인 폼 내용이 자연스럽게
         // 이어지도록 함.
-        <div
-          className="fixed z-10 left-1/2 -translate-x-1/2 w-full max-w-md"
-          style={{ bottom: NAV_BOTTOM, padding: "20px 22px 24px" }}
-        >
-          <div
-            className="pointer-events-none absolute left-0 right-0"
-            style={{
-              bottom: "100%",
-              height: 28,
-              background: "linear-gradient(to bottom, rgba(245,246,248,0), rgba(255,255,255,.85))",
-            }}
-          />
-          <div
-            className="rounded-2xl"
-            style={{
-              background: "rgba(255,255,255,.9)",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-              boxShadow: "0 -6px 16px rgba(11,37,64,.07)",
-              padding: 8,
-            }}
-          >
+        // 2026-09-29: 공용 하단 고정 버튼(FloatingCTA) — 판·블러 없이 버튼만 띄움
+        <FloatingCTA>
             {/* 2026-09-27: 비활성 상태에서 흰 텍스트+#C9CFD6 배경 조합이 명도 대비
                 약 1.5:1(WCAG 최소 4.5:1)이라 "카테고리를 골라주세요" 문구가 거의
                 안 보인다는 피드백 — 비활성일 때만 텍스트를 앱 표준 보조색
@@ -1022,20 +1002,12 @@ function SignupPageInner() {
             <button
               onClick={goNext}
               disabled={submitting}
-              className="w-full font-black rounded-2xl disabled:opacity-60"
-              style={{
-                padding: "18px 0",
-                fontSize: rem(17),
-                transition: "all .2s",
-                color: obCtaDisabled ? "#6B7480" : "#fff",
-                background: obCtaDisabled ? "#C9CFD6" : "linear-gradient(135deg,#E25100,#FF6F0F)",
-                boxShadow: obCtaDisabled ? "none" : "0 8px 20px rgba(226,81,0,.3)",
-              }}
+              className={FLOATING_CTA_BUTTON_CLASS}
+              style={floatingCtaButtonStyle(obCtaDisabled)}
             >
               {submitting ? "처리 중..." : obCtaLabel}
             </button>
-          </div>
-        </div>
+        </FloatingCTA>
       )}
 
       <Toast message={toastMessage} />

@@ -1,0 +1,47 @@
+import type { CSSProperties, ReactNode } from "react";
+import { rem } from "@/lib/rem";
+
+// 하단 고정 버튼 공용 (2026-09-29, 결정 변경: 예전 "흰 반투명 판 + 블러 + 위 그라데이션" 취소).
+// 판 없이 주황 버튼만 그림자로 띄운다. 하단 탭(--nav-bottom, safe-area 포함) 위로 GAP만큼 띄움.
+// 사용처: sell·buy·매물 상세(관심있어요)·비회원 홈·가입. 페이지 본문엔 paddingBottom: FLOATING_CTA_SPACE.
+export const FLOATING_CTA_GAP = 12; // 하단 탭과 버튼 사이
+export const FLOATING_CTA_HEIGHT = 56;
+// 페이지 하단 여백 = 버튼 높이 + 간격 + 여유 — 마지막 입력칸·안내 카드가 버튼에 가리지 않게
+export const FLOATING_CTA_SPACE = FLOATING_CTA_HEIGHT + FLOATING_CTA_GAP + 24;
+
+export function floatingCtaButtonStyle(inactive = false): CSSProperties {
+  return {
+    minHeight: FLOATING_CTA_HEIGHT,
+    fontSize: rem(17),
+    fontWeight: 800,
+    color: inactive ? "#4B5563" : "#fff",
+    background: inactive ? "#C9CFD6" : "linear-gradient(135deg,#E25100,#FF6F0F)",
+    boxShadow: inactive ? "0 6px 16px rgba(11,37,64,.18)" : "0 10px 24px rgba(226,81,0,.35), 0 2px 6px rgba(11,37,64,.15)",
+    transition: "background .2s, box-shadow .2s",
+  };
+}
+// 버튼·링크에 같이 붙일 클래스 (둥근 모서리, 가운데 정렬)
+export const FLOATING_CTA_BUTTON_CLASS = "w-full flex items-center justify-center text-center rounded-2xl disabled:opacity-60";
+
+// 버튼 위 짧은 안내·오류 (판이 없어서 글자만 두면 뒤 내용과 섞여 안 읽힘 → 작은 흰 알약)
+export function FloatingCTANote({ children, tone = "error" }: { children: ReactNode; tone?: "error" | "info" }) {
+  return (
+    <div
+      className="mx-auto mb-2 w-fit max-w-full rounded-full bg-white text-center font-medium"
+      style={{ fontSize: rem(14), padding: "6px 12px", color: tone === "error" ? "var(--color-orange)" : "#4B5563", boxShadow: "0 4px 12px rgba(11,37,64,.15)" }}
+    >
+      {children}
+    </div>
+  );
+}
+
+export default function FloatingCTA({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return (
+    <div
+      className={`fixed z-10 left-1/2 -translate-x-1/2 w-full max-w-md px-5 pointer-events-none ${className}`}
+      style={{ bottom: `calc(var(--nav-bottom) + ${FLOATING_CTA_GAP}px)` }}
+    >
+      <div className="pointer-events-auto">{children}</div>
+    </div>
+  );
+}

@@ -20,6 +20,7 @@ import StockTypeBadge from "@/components/StockTypeBadge";
 import { isLumpSum } from "@/lib/priceUnit";
 import PhotoCarousel, { type PhotoCarouselHandle } from "@/components/PhotoCarousel";
 import PhotoViewer from "@/components/PhotoViewer";
+import FloatingCTA, { FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
 
 // 값이 없거나 공백뿐이면 섹션/행 자체를 그리지 않는다 (빈 공간 방지)
 function hasText(v: string | null | undefined): boolean {
@@ -640,7 +641,7 @@ function DealDetailPageInner() {
         </div>
       ) : (
         <>
-          <div className="px-5 pt-1" style={{ paddingBottom: "148px" }} /* 고정 CTA(약 101px) + 위 페이드 28px + 여유 16px — 하단 탭·안전영역은 AppShell이 더함 */>
+          <div className="px-5 pt-1" style={{ paddingBottom: FLOATING_CTA_SPACE }} /* 고정 CTA(약 101px) + 위 페이드 28px + 여유 16px — 하단 탭·안전영역은 AppShell이 더함 */>
             <div className="bg-gray100 rounded-2xl p-3 flex items-center gap-3.5">
               <img
                 src="/images/manager.png"
@@ -744,30 +745,10 @@ function DealDetailPageInner() {
           {/* 2026-09-27: 홈 하단 CTA와 동일한 톤으로 통일 — 불투명 흰 배경 대신
               반투명+블러 카드 + 상단 페이드로, 스크롤 중인 상세 콘텐츠가 자연스럽게
               이어지도록 함. */}
-          <div
-            className="fixed left-1/2 -translate-x-1/2 w-full max-w-md px-5 pb-5 pt-5"
-            style={{ bottom: "var(--nav-bottom)" }}
-          >
-            <div
-              className="pointer-events-none absolute left-0 right-0"
-              style={{
-                bottom: "100%",
-                height: 28,
-                background: "linear-gradient(to bottom, rgba(245,246,248,0), rgba(255,255,255,.85))",
-              }}
-            />
-            <div
-              className="rounded-2xl"
-              style={{
-                background: "rgba(255,255,255,.9)",
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
-                boxShadow: "0 -6px 16px rgba(11,37,64,.07)",
-                padding: 8,
-              }}
-            >
+          {/* 2026-09-29: 공용 하단 고정 버튼 — 판·블러 없이 버튼만 띄움 */}
+          <FloatingCTA>
             {showQuickForm && !interested ? (
-              <div className="border-2 border-gray200 rounded-2xl p-4">
+              <div className="border border-gray200 rounded-2xl p-4 bg-white" style={{ boxShadow: "0 10px 28px rgba(11,37,64,.18)" }}>
                 <div className="text-sm font-bold text-navy mb-1">번호만 남기면 바로 연락드려요</div>
                 <p className="text-xs text-gray500 mb-3">
                   회원가입 없이도 점핑매니저가 확인 후 연락드립니다. 알림을 계속 받고 싶으시면 나중에
@@ -805,16 +786,13 @@ function DealDetailPageInner() {
                 <button
                   onClick={handleInterest}
                   disabled={interested}
-                  className="w-full text-white text-center font-bold rounded-2xl text-base disabled:opacity-60"
-                  style={{
-                    background: interested ? "#8A8A82" : "linear-gradient(135deg, #E25100, #FF6F0F)",
-                    padding: "14px 0",
-                  }}
+                  className={FLOATING_CTA_BUTTON_CLASS}
+                  style={floatingCtaButtonStyle(interested)}
                 >
                   {interested ? "점핑매니저에게 전달됐어요" : "관심있어요 · 점핑매니저 연결"}
                 </button>
                 {interestError && (
-                  <div className="text-xs text-orange text-center mt-2">
+                  <div className="mx-auto mt-2 w-fit max-w-full rounded-full bg-white text-center text-orange" style={{ fontSize: rem(14), padding: "6px 12px", boxShadow: "0 4px 12px rgba(11,37,64,.15)" }}>
                     {interestError}
                     {interestNeedsReauth && (
                       <>
@@ -831,8 +809,7 @@ function DealDetailPageInner() {
                 )}
               </>
             )}
-            </div>
-          </div>
+                      </FloatingCTA>
         </>
       )}
 

@@ -10,13 +10,13 @@ import { formatPriceInput, parsePriceInput, PRICE_UNITS, formatPriceWithUnit } f
 import { isValidContactPhone, formatContactPhone } from "@/lib/auth";
 import ContactPhoneInput from "@/components/ContactPhoneInput";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { NAV_BOTTOM } from "@/components/BottomNav";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import { rem } from "@/lib/rem";
 import { getFreshAccessToken } from "@/lib/authFetch";
 import { FieldLabel, FieldTag, FORM_INPUT_FONT_SIZE, FORM_HINT_STYLE, FORM_CHIP_FONT_SIZE, FORM_LABEL_STYLE } from "@/components/FormField";
 import CategoryChips from "@/components/CategoryChips";
 import { priceUnitSuffix } from "@/lib/priceUnit";
+import FloatingCTA, { FloatingCTANote, FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
 
 export default function BuyPage() {
   const router = useRouter();
@@ -267,7 +267,7 @@ export default function BuyPage() {
         </div>
       </div>
 
-      <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: 148 }}>
+      <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: FLOATING_CTA_SPACE }}>
         <div>
           <FieldLabel need="required">무엇을 찾으세요?</FieldLabel>
           <input
@@ -342,7 +342,8 @@ export default function BuyPage() {
           )}
         </div>
 
-        <div className="flex gap-2.5">
+        {/* 2026-09-29: sell과 같은 배치 — 모바일은 수량·단가 위아래(각 칸 전체 폭), 넓은 화면만 나란히 */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:gap-2.5">
           <div className="flex-1 min-w-0">
             <FieldLabel need="optional">희망 수량</FieldLabel>
             <div className="flex rounded-xl overflow-hidden" style={{ border: "1.5px solid #E4E7EB" }}>
@@ -384,7 +385,7 @@ export default function BuyPage() {
               <select
                 aria-label="희망 단가 기준"
                 className="flex-shrink-0 outline-none"
-                style={{ width: 84, border: "none", borderLeft: "1px solid #E4E7EB", padding: "14px 4px", fontSize: FORM_INPUT_FONT_SIZE, fontWeight: 700, color: "#0B2540", background: "#FAFBFC", textAlign: "center", borderRadius: "0 12px 12px 0" }}
+                style={{ width: 128, border: "none", borderLeft: "1px solid #E4E7EB", padding: "14px 4px", fontSize: FORM_INPUT_FONT_SIZE, fontWeight: 700, color: "#0B2540", background: "#FAFBFC", textAlign: "center", borderRadius: "0 12px 12px 0" }}
                 value={priceUnit}
                 onChange={(e) => {
                   setPriceUnit(e.target.value);
@@ -491,41 +492,18 @@ export default function BuyPage() {
       {/* 2026-09-27: 홈 하단 CTA와 동일한 톤으로 통일 — 불투명 흰 바+실선 테두리
           대신 반투명+블러 카드 + 상단 페이드로, 스크롤 중인 폼 내용이 자연스럽게
           이어지도록 함. */}
-      <div
-        className="fixed z-10 left-1/2 -translate-x-1/2 w-full max-w-md px-5 pb-5 pt-5"
-        style={{ bottom: NAV_BOTTOM }}
-      >
-        <div
-          className="pointer-events-none absolute left-0 right-0"
-          style={{
-            bottom: "100%",
-            height: 28,
-            background: "linear-gradient(to bottom, rgba(245,246,248,0), rgba(255,255,255,.85))",
-          }}
-        />
-        <div
-          className="rounded-2xl"
-          style={{
-            background: "rgba(255,255,255,.9)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-            boxShadow: "0 -6px 16px rgba(11,37,64,.07)",
-            padding: 8,
-          }}
-        >
-          {error && (
-            <div className="text-sm text-orange font-medium mb-2 text-center">{error}</div>
-          )}
+      {/* 2026-09-29: 공용 하단 고정 버튼 — 판·블러 없이 버튼만 띄움 */}
+      <FloatingCTA>
+          {error && <FloatingCTANote>{error}</FloatingCTANote>}
           <button
             onClick={submit}
             disabled={submitting}
-            className="w-full font-black rounded-2xl text-white disabled:opacity-60"
-            style={{ background: "linear-gradient(135deg,#E25100,#FF6F0F)", padding: "17px 0", fontSize: rem(16.5), boxShadow: "0 8px 20px rgba(226,81,0,.3)" }}
+            className={FLOATING_CTA_BUTTON_CLASS}
+            style={floatingCtaButtonStyle()}
           >
             {submitting ? "등록 중..." : "구매 희망 등록하기"}
           </button>
-        </div>
-      </div>
+              </FloatingCTA>
     </main>
   );
 }
