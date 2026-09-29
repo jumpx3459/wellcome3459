@@ -67,12 +67,17 @@ export async function sendDealPush(dealId: string) {
   }
 
   // 먼저 차지한 쪽만 발송 (push_sent_at is null 조건부 update)
-  const { data: claimed } = await supabaseAdmin
+  const { data: claimed, error: claimError } = await supabaseAdmin
     .from("deals")
     .update({ push_sent_at: new Date().toISOString() })
     .eq("id", deal.id)
     .is("push_sent_at", null)
     .select("id");
+  if (claimError) {
+    // DB 오류는 "이미 발송됨"(0행)과 구분 — 발송하지 않고 로그만 남김
+    console.error(`[sendDealPush] claim_error deal=${deal.id}`, claimError);
+    return { sentCount: 0, total: 0, skipped: "claim_error" };
+  }
   if (!claimed?.length) {
     return { sentCount: 0, total: 0, skipped: "이미 발송됨" };
   }
@@ -201,12 +206,16 @@ export async function sendNoticePush(noticeId: string) {
     console.info(`[sendNoticePush] hold notice=${notice.id} — 야간(21~08시), 아침 8시 발송 대기`);
     return { sentCount: 0, total: 0, held: true };
   }
-  const { data: claimed } = await supabaseAdmin
+  const { data: claimed, error: claimError } = await supabaseAdmin
     .from("urgent_notices")
     .update({ push_sent_at: new Date().toISOString() })
     .eq("id", notice.id)
     .is("push_sent_at", null)
     .select("id");
+  if (claimError) {
+    console.error(`[sendNoticePush] claim_error notice=${notice.id}`, claimError);
+    return { sentCount: 0, total: 0, skipped: "claim_error" };
+  }
   if (!claimed?.length) {
     return { sentCount: 0, total: 0, skipped: "이미 발송됨" };
   }
