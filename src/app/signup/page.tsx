@@ -103,7 +103,8 @@ function SignupPageInner() {
       // 카카오 로그인 시절 만들어진, 전화번호가 없는 낡은 세션 — 로그아웃시켜
       // 정상적인 문자 인증 흐름으로 다시 시작하게 합니다.
       debugLog(`[signup] ⚠️ signOut 발동! user.id=${user.id.slice(0, 8)} user.phone=${JSON.stringify(user.phone)}`);
-      supabase?.auth.signOut();
+      // 2026-09-29: scope local — 기본값(global)은 이 회원의 다른 기기·설치 앱 세션까지 전부 끊음
+      supabase?.auth.signOut({ scope: "local" });
       return;
     }
     setAuthUserId(user?.id ?? null);
@@ -229,7 +230,7 @@ function SignupPageInner() {
 
   const tryDifferentNumber = async () => {
     clearReturningMember(); // 명시적 로그아웃 — 재방문 화면 신호도 지움
-    await supabase?.auth.signOut();
+    await supabase?.auth.signOut({ scope: "local" }); // 이 기기만 (다른 기기 세션 유지)
     setAlreadyMember(false);
     setAuthUserId(null);
     setPhone("");

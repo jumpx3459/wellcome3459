@@ -48,7 +48,8 @@ export default function UnsubscribePage() {
       await unsubscribeThisDevice();
       if (action === "withdraw") {
         clearReturningMember(); // 재방문 화면 신호(로그인 기록·방식)도 지움
-        await supabase?.auth.signOut();
+        // 탈퇴는 서버(/api/unsubscribe)가 auth 계정을 이미 지워 모든 기기 세션이 무효 — 여기선 이 기기 저장소만 비움
+        await supabase?.auth.signOut({ scope: "local" });
       }
       setDone(action);
     } catch {
