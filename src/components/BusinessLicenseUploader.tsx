@@ -1,15 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { authFetch } from "@/lib/authFetch";
 
 type Status = "none" | "pending" | "verified";
 
 export default function BusinessLicenseUploader({
-  accessToken,
   status,
   onUploaded,
 }: {
-  accessToken: string | null;
   status: Status;
   onUploaded: () => void;
 }) {
@@ -19,18 +18,18 @@ export default function BusinessLicenseUploader({
 
   const handleFile = async (file: File | undefined) => {
     if (!file) return;
-    if (!accessToken) {
-      setError("로그인이 필요해요.");
-      return;
-    }
     setError(null);
     setPreview(URL.createObjectURL(file));
     setUploading(true);
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("accessToken", accessToken);
-      const res = await fetch("/api/business-license/upload", { method: "POST", body: formData });
+      // 토큰은 authFetch가 호출 직전에 최신으로 넣음 (만료 시 갱신·1회 재시도)
+      const res = await authFetch("/api/business-license/upload", { formData });
+      if (res.status === 401) {
+        setError("로그인이 필요해요.");
+        return;
+      }
       const data = await res.json();
       if (!res.ok || data.error) {
         setError(data.error || "업로드에 실패했어요.");

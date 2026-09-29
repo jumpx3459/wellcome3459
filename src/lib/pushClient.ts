@@ -4,6 +4,7 @@
 
 import { isCanonicalHost } from "./siteUrl";
 import { getPushBlocker } from "./browserEnv";
+import { authFetch } from "./authFetch";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -101,19 +102,30 @@ export type SaveResult = "saved" | "opted_out" | "failed";
 
 export async function savePushSubscription(
   subscription: PushSubscriptionJSON,
-  accessToken: string,
   options: { explicit?: boolean } = {}
 ): Promise<SaveResult> {
   try {
-    const res = await fetch("/api/push/subscribe", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, subscription, explicit: options.explicit === true ? true : undefined }),
+    // 토큰은 호출할 때마다 authFetch가 최신으로 받음 (만료 시 갱신·1회 재시도)
+    const res = await authFetch("/api/push/subscribe", {
+      json: { subscription, explicit: options.explicit === true ? true : undefined },
     });
     if (!res.ok) return "failed";
     const data = await res.json().catch(() => ({}));
     return data.skipped === "opted_out" ? "opted_out" : "saved";
   } catch {
     return "failed";
+  }
+}
+
+// 내 구독 현황 — 다른 기기에서 받는 중인지 표시용. 실패하면 null.
+export async function fetchPushStatus(
+  endpoint?: string | null
+): Promise<{ count: number; thisDeviceSaved: boolean; optedOut: boolean } | null> {
+  try {
+    const res = await authFetch("/api/push/status", { json: { endpoint: endpoint ?? undefined } });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
   }
 }

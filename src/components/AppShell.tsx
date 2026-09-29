@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import BottomNav, { NAV_HEIGHT } from "./BottomNav";
 import InAppBanner from "./InAppBanner";
+import AuthExpiredNotice from "./AuthExpiredNotice";
 import DebugPanel from "./DebugPanel"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 import { markAppNavigation, markAppBack } from "@/lib/appNav";
 
@@ -72,6 +73,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {showInAppBanner && <InAppBanner />}
       <div style={{ paddingBottom: isAdmin || isPartnerDemo || isEnglish ? 0 : `${NAV_HEIGHT}px` }}>{children}</div>
       {!isAdmin && !isPartnerDemo && !isEnglish && <BottomNav />}
+      {/* 2026-09-29: 토큰 갱신 후에도 401이면 "다시 로그인해주세요" (authFetch가 이벤트 발생) */}
+      <AuthExpiredNotice />
       <DebugPanel />
     </div>
   );

@@ -20,6 +20,7 @@ import { resizeImageForUpload } from "@/lib/resizeImage";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 import { rem } from "@/lib/rem";
 import { formatKoreanPhone } from "@/lib/auth";
+import { authFetch } from "@/lib/authFetch";
 
 type InterestItem = {
   id: string;
@@ -88,7 +89,6 @@ export default function MyPage() {
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [notLoggedIn, setNotLoggedIn] = useState(false);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState("");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -209,30 +209,18 @@ export default function MyPage() {
       setAlertLog((alertLogRows as unknown as AlertLogItem[]) ?? []);
       setAlertLogCount(alertLogTotal ?? 0);
 
-      const { data: sessionData } = await supabase.auth.getSession();
-      const sessionToken = sessionData.session?.access_token ?? null;
-      setAccessToken(sessionToken);
-      if (sessionToken) {
-        fetch("/api/my-referrals", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ accessToken: sessionToken }),
-        })
-          .then((res) => res.json())
-          .then((data) => setReferrals(data.items ?? []))
-          .catch(() => {});
+      // 2026-09-29: 토큰을 state에 저장해 재사용하지 않음 — authFetch가 호출할 때마다 최신 토큰(만료 시 갱신)
+      authFetch("/api/my-referrals")
+        .then((res) => (res.ok ? res.json() : { items: [] }))
+        .then((data) => setReferrals(data.items ?? []))
+        .catch(() => {});
 
-        fetch("/api/is-admin", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ accessToken: sessionToken }),
+      authFetch("/api/is-admin")
+        .then((res): Promise<{ isAdmin?: boolean; name?: string; role?: string }> => (res.ok ? res.json() : Promise.resolve({})))
+        .then((data) => {
+          if (data.isAdmin) setAdminInfo({ name: data.name ?? "", role: data.role ?? "" });
         })
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.isAdmin) setAdminInfo({ name: data.name, role: data.role });
-          })
-          .catch(() => {});
-      }
+        .catch(() => {});
 
       setLoading(false);
     })();
@@ -986,7 +974,6 @@ export default function MyPage() {
               </div>
 
               <BusinessLicenseUploader
-                accessToken={accessToken}
                 status={businessVerified ? "verified" : hasBusinessLicense ? "pending" : "none"}
                 onUploaded={() => {
                   setHasBusinessLicense(true);
@@ -1328,7 +1315,7 @@ export default function MyPage() {
         </div>
 
         <div id="alerts" className="border-t border-gray200 pt-5 flex flex-col gap-3">
-          <PushStatusCard accessToken={accessToken} />
+          <PushStatusCard />
           <div>
           <button
             type="button"
@@ -1621,7 +1608,7 @@ export default function MyPage() {
         </div>
         )}
 
-        <MyBuyRequests accessToken={accessToken} />
+        <MyBuyRequests />
 
         {/* design-v2: 홈 화면 "잠든 재고" 카드와 동일 스타일로 일괄 정리 —
             배경 화이트 + 서브텍스트를 이모지 폭(24px)만큼 들여씀. */}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getPushState, subscribeToPush, savePushSubscription } from "@/lib/pushClient";
+import { getPushState, subscribeToPush, savePushSubscription, fetchPushStatus } from "@/lib/pushClient";
 import { SITE_URL } from "@/lib/siteUrl";
 import { rem } from "@/lib/rem";
 import PushBlockerNotice from "@/components/PushBlockerNotice";
@@ -9,40 +9,51 @@ import PushBlockerNotice from "@/components/PushBlockerNotice";
 // 2026-09-28: 마이페이지 알림 상태 카드. 예전엔 푸시 구독이 가입 화면에서만 가능해서
 // 기존 회원이 알림을 다시 켤 곳이 없었음(구독자 0명). 권한 요청은 반드시 버튼 클릭
 // 핸들러 안에서만 한다 — 마운트 시엔 getPushState()로 현재 상태만 조회.
+// 2026-09-29: 토큰은 authFetch가 호출할 때마다 최신으로 받음(오래 켜 둔 PWA에서 만료 토큰 401 버그).
+// 조용한 재저장 실패는 화면에 띄우지 않고(콘솔만), 실패 문구는 [알림 켜기]를 눌렀을 때만.
 type CardState = "loading" | "inapp" | "ios_needs_install" | "unsupported" | "noncanonical" | "denied" | "off" | "on" | "optedOut" | "saveFailed";
 
-export default function PushStatusCard({ accessToken }: { accessToken: string | null }) {
+export default function PushStatusCard() {
   const [state, setState] = useState<CardState>("loading");
   const [busy, setBusy] = useState(false);
+  const [otherDevices, setOtherDevices] = useState(0); // 이 기기 말고 알림 받는 내 기기 수
   const resynced = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
-    getPushState().then(async (s) => {
+    (async () => {
+      const s = await getPushState();
       if (cancelled) return;
-      if (s.status !== "subscribed") {
-        setState(s.status);
-        return;
-      }
-      // 기기엔 구독이 있는데 DB엔 없는 경우(가입 때 저장 실패 등) 복구용으로 조용히 1회 재저장.
-      // API가 endpoint 기준 upsert라 이미 있으면 그대로 덮어쓸 뿐이다. 단 /unsubscribe에서
-      // "알림만 끄기"를 한 회원이면 서버가 저장을 건너뛰고 opted_out을 준다(다른 기기에서 끈 경우).
-      if (!accessToken) {
+      const endpoint = s.status === "subscribed" ? s.subscription.endpoint ?? null : null;
+
+      if (s.status === "subscribed") {
+        // 브라우저 구독이 살아 있으면 기본 표시는 "알림 받는 중"
         setState("on");
-        return;
+        // 기기엔 구독이 있는데 DB엔 없는 경우(가입 때 저장 실패 등) 복구용으로 조용히 1회 재저장.
+        // API가 endpoint 기준 upsert라 이미 있으면 그대로 덮어쓸 뿐. "알림만 끄기"한 회원이면
+        // 서버가 저장을 건너뛰고 opted_out → 그건 사용자가 끈 상태라 그대로 보여줌.
+        if (!resynced.current) {
+          resynced.current = true;
+          const saved = await savePushSubscription(s.subscription);
+          if (cancelled) return;
+          if (saved === "opted_out") setState("optedOut");
+          else if (saved === "failed") console.warn("[push] 조용한 재저장 실패 — 표시는 유지");
+        }
+      } else {
+        setState(s.status);
       }
-      if (resynced.current) return;
-      resynced.current = true;
-      const saved = await savePushSubscription(s.subscription, accessToken);
-      if (!cancelled) setState(saved === "saved" ? "on" : saved === "opted_out" ? "optedOut" : "saveFailed");
-    });
+
+      const st = await fetchPushStatus(endpoint);
+      if (cancelled || !st) return;
+      setOtherDevices(Math.max(0, st.count - (st.thisDeviceSaved ? 1 : 0)));
+    })();
     return () => {
       cancelled = true;
     };
-  }, [accessToken]);
+  }, []);
 
   const enable = async () => {
-    if (!accessToken || busy) return;
+    if (busy) return;
     setBusy(true);
     try {
       const r = await subscribeToPush();
@@ -55,7 +66,7 @@ export default function PushStatusCard({ accessToken }: { accessToken: string | 
         setState("on");
         return;
       }
-      const saved = await savePushSubscription(r.subscription, accessToken, { explicit: true });
+      const saved = await savePushSubscription(r.subscription, { explicit: true });
       setState(saved === "failed" ? "saveFailed" : "on");
     } catch {
       setState("saveFailed");
@@ -65,14 +76,15 @@ export default function PushStatusCard({ accessToken }: { accessToken: string | 
   };
 
   if (state === "loading") return null;
+  const thisDeviceOff = state !== "on";
 
   return (
     <div className="rounded-2xl p-4" style={{ border: "1px solid #E4E7EB", background: "#fff" }}>
       <div className="flex items-center gap-3">
         <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 38, height: 38, background: "#FDEEE8", fontSize: rem(17) }}>📲</span>
         <span className="flex-1 min-w-0">
-          <span className="block font-bold" style={{ fontSize: rem(14), color: "#0B2540" }}>이 기기 푸시 알림</span>
-          <span className="block mt-0.5" style={{ fontSize: rem(12.5), color: "#6B7480" }}>
+          <span className="block font-bold" style={{ fontSize: rem(16), color: "#1F2937" }}>이 기기 푸시 알림</span>
+          <span className="block mt-0.5" style={{ fontSize: rem(14), color: "#4B5563" }}>
             {state === "on" && "조건에 맞는 매물이 뜨면 바로 알려드려요"}
             {(state === "inapp" || state === "ios_needs_install") && "지금 이 화면에서는 알림을 켤 수 없어요"}
             {state === "off" && "지금은 꺼져 있어요 · 맞춤 특가 알림은 푸시로만 가요"}
@@ -80,11 +92,11 @@ export default function PushStatusCard({ accessToken }: { accessToken: string | 
             {state === "noncanonical" && "이 주소에서는 알림을 켤 수 없어요"}
             {state === "unsupported" && "이 브라우저는 기기 알림을 지원하지 않아요"}
             {state === "optedOut" && "알림을 끈 상태예요"}
-            {state === "saveFailed" && "알림 등록에 실패했어요"}
+            {state === "saveFailed" && "알림 등록에 실패했어요. 다시 시도해주세요"}
           </span>
         </span>
         {state === "on" && (
-          <span className="flex-shrink-0 rounded-full font-bold" style={{ fontSize: rem(12), padding: "4px 10px", background: "#E8F8EC", color: "#1D8A44" }}>
+          <span className="flex-shrink-0 rounded-full font-bold" style={{ fontSize: rem(13), padding: "4px 10px", background: "#E8F8EC", color: "#1D8A44" }}>
             알림 받는 중
           </span>
         )}
@@ -92,22 +104,29 @@ export default function PushStatusCard({ accessToken }: { accessToken: string | 
           <button
             type="button"
             onClick={enable}
-            disabled={busy || !accessToken}
+            disabled={busy}
             className="flex-shrink-0 rounded-full font-bold text-white disabled:opacity-60"
-            style={{ fontSize: rem(13), padding: "8px 14px", background: "var(--color-brandOrange)" }}
+            style={{ fontSize: rem(14), padding: "8px 14px", background: "var(--color-brandOrangeDeep)" }}
           >
             {busy ? "켜는 중…" : state === "saveFailed" ? "다시 시도" : state === "optedOut" ? "다시 켜기" : "알림 켜기"}
           </button>
         )}
       </div>
 
+      {/* 이 기기는 꺼져 있어도 다른 기기(폰·PC 등)로는 받고 있을 수 있음 */}
+      {thisDeviceOff && state !== "optedOut" && otherDevices > 0 && (
+        <p className="mt-3 rounded-lg" style={{ fontSize: rem(14), color: "#1D8A44", background: "#E8F8EC", padding: "8px 12px" }}>
+          ✓ 다른 기기 {otherDevices}대에서 알림 받는 중이에요
+        </p>
+      )}
+
       {state === "denied" && (
-        <p className="mt-3 rounded-lg leading-relaxed" style={{ fontSize: rem(12.5), color: "#6B7480", background: "#F5F6F8", padding: "10px 12px" }}>
+        <p className="mt-3 rounded-lg leading-relaxed" style={{ fontSize: rem(14), color: "#4B5563", background: "#F5F6F8", padding: "10px 12px" }}>
           주소창 왼쪽 자물쇠(또는 ⋮ 메뉴 → 사이트 설정)에서 <b style={{ color: "#1A1F26" }}>알림 → 허용</b>으로 바꾼 뒤 이 페이지를 새로고침해주세요.
         </p>
       )}
       {state === "noncanonical" && (
-        <p className="mt-3 rounded-lg leading-relaxed" style={{ fontSize: rem(12.5), color: "#6B7480", background: "#F5F6F8", padding: "10px 12px" }}>
+        <p className="mt-3 rounded-lg leading-relaxed" style={{ fontSize: rem(14), color: "#4B5563", background: "#F5F6F8", padding: "10px 12px" }}>
           정식 주소에서 알림을 켜주세요 →{" "}
           <a href={`${SITE_URL}/mypage`} className="font-bold underline" style={{ color: "#E25100" }}>
             {SITE_URL.replace(/^https?:\/\//, "")}

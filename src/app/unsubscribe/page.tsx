@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { authFetch } from "@/lib/authFetch";
 
 // 2026-09-28 보안 수정: 예전엔 전화번호만 입력하면 그 번호의 회원을 바로 삭제했음.
 // 이제 로그인 필수 + "알림 끄기"(푸시 구독만 삭제)와 "회원 탈퇴"(확인 단계 필수)를 분리.
@@ -28,6 +29,7 @@ export default function UnsubscribePage() {
       setToken(null);
       return;
     }
+    // 로그인 여부 판단용으로만 씀 — 실제 요청 토큰은 authFetch가 호출 직전에 최신으로 받음
     supabase.auth.getSession().then(({ data }) => setToken(data.session?.access_token ?? null));
   }, []);
 
@@ -36,11 +38,7 @@ export default function UnsubscribePage() {
     setError(null);
     setBusy(action);
     try {
-      const res = await fetch("/api/unsubscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accessToken: token, action, confirm: action === "withdraw" ? true : undefined }),
-      });
+      const res = await authFetch("/api/unsubscribe", { json: { action, confirm: action === "withdraw" ? true : undefined } });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(data.error ?? "처리 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");

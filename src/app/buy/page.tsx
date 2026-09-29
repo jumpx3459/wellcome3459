@@ -13,6 +13,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { NAV_HEIGHT } from "@/components/BottomNav";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import { rem } from "@/lib/rem";
+import { getFreshAccessToken } from "@/lib/authFetch";
 
 export default function BuyPage() {
   const router = useRouter();
@@ -109,7 +110,7 @@ export default function BuyPage() {
     setSubmitting(true);
     try {
       // 로그인 회원이면 토큰을 함께 보내 서버가 회원 연결(member_id) — 연락처를 바꿔도 연결 유지
-      const accessToken = supabase ? (await supabase.auth.getSession()).data.session?.access_token ?? null : null;
+      const accessToken = await getFreshAccessToken(); // 비회원이면 null (buy API는 비회원도 허용)
       const res = await fetch("/api/buy-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

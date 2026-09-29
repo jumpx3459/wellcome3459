@@ -373,11 +373,9 @@ function SignupPageInner() {
       if (pushResult?.status === "subscribed" && pushResult.subscription.endpoint) {
         // 저장 실패해도 가입 자체는 진행 — 기기엔 구독이 남아 있어서 마이페이지 알림 카드가
         // 열릴 때 조용히 다시 저장한다(PushStatusCard).
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData.session?.access_token;
-        // 가입 화면에서 앱 푸시를 켜고 제출한 것 자체가 명시적 동의라 explicit
-        const saved = token ? await savePushSubscription(pushResult.subscription, token, { explicit: true }) : "failed";
-        if (saved !== "saved") debugLog(`[signup] push subscription save failed token=${!!token}`);
+        // 가입 화면에서 앱 푸시를 켜고 제출한 것 자체가 명시적 동의라 explicit (토큰은 authFetch가 처리)
+        const saved = await savePushSubscription(pushResult.subscription, { explicit: true });
+        if (saved !== "saved") debugLog(`[signup] push subscription save failed result=${saved}`);
       }
 
       try {

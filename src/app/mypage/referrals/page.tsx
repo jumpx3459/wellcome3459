@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { formatMemberNo } from "@/lib/format";
 import { rem } from "@/lib/rem";
+import { authFetch } from "@/lib/authFetch";
 
 type ReferralItem = {
   id: string;
@@ -32,7 +33,6 @@ const FILTERS = [
 export default function PartnerReferralsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [items, setItems] = useState<ReferralItem[]>([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["key"]>("all");
@@ -52,18 +52,12 @@ export default function PartnerReferralsPage() {
         router.replace("/login?returnTo=/mypage/referrals");
         return;
       }
-      const { data: sessionData } = await supabase!.auth.getSession();
-      const token = sessionData.session?.access_token ?? null;
-      setAccessToken(token);
-      if (!token) {
+      // 토큰은 authFetch가 호출할 때마다 최신으로 받음 (저장해 둔 토큰 재사용 금지 — 만료 401 버그)
+      const res = await authFetch("/api/my-referrals");
+      if (!res.ok) {
         setLoading(false);
         return;
       }
-      const res = await fetch("/api/my-referrals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accessToken: token }),
-      });
       const data = await res.json();
       const rows: ReferralItem[] = data.items ?? [];
       setItems(rows);
@@ -94,15 +88,10 @@ export default function PartnerReferralsPage() {
   }, [items, filter, search]);
 
   async function saveNote(memberId: string) {
-    if (!accessToken) return;
     setSavingId(memberId);
     setErrorId((cur) => (cur === memberId ? null : cur));
     try {
-      const res = await fetch("/api/my-referrals", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accessToken, memberId, note: notes[memberId] ?? "" }),
-      });
+      const res = await authFetch("/api/my-referrals", { method: "PATCH", json: { memberId, note: notes[memberId] ?? "" } });
       if (res.ok) {
         setSavedId(memberId);
         setTimeout(() => setSavedId((cur) => (cur === memberId ? null : cur)), 1800);

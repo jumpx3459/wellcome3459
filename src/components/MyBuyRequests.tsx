@@ -5,6 +5,7 @@ import Link from "next/link";
 import { rem } from "@/lib/rem";
 import { formatPriceWithUnit } from "@/lib/format";
 import { SECTION_TITLE_STYLE } from "@/components/EcosystemGrid";
+import { authFetch } from "@/lib/authFetch";
 
 // 마이페이지 "내 구매 요청" (2026-09-29) — 로그인 상태로 /buy에서 등록한 요청(buy_requests.member_id) 최근 10건.
 type Item = {
@@ -31,20 +32,15 @@ const fmtDate = (iso: string) => {
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
 };
 
-export default function MyBuyRequests({ accessToken }: { accessToken: string | null }) {
+export default function MyBuyRequests() {
   const [items, setItems] = useState<Item[] | null>(null);
 
   useEffect(() => {
-    if (!accessToken) return;
-    fetch("/api/my-buy-requests", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken }),
-    })
+    authFetch("/api/my-buy-requests")
       .then((r) => (r.ok ? r.json() : { items: [] }))
       .then((d) => setItems(d.items ?? []))
       .catch(() => setItems([]));
-  }, [accessToken]);
+  }, []);
 
   if (items === null) return null;
 
