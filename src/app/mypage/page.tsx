@@ -1213,7 +1213,9 @@ export default function MyPage() {
             )}
             {isOfficialPartner && (
               <p className="mt-1.5" style={UI_DESC}>
-                공식 파트너 배지 · 우선 리워드 · 점핑매니저 우선 연결 혜택을 받고 계세요.
+                공식 파트너 배지 · 우선 리워드 · 점핑매니저 우선 연결 혜택을 받고 계세요.{" "}
+                {/* 2026-09-29: 리워드 등급제는 아직 없음 — 확정 안 된 혜택처럼 보이지 않게 */}
+                <span style={UI_META}>(등급제 오픈 예정)</span>
               </p>
             )}
 
