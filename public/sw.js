@@ -23,11 +23,11 @@ self.addEventListener("push", (event) => {
     badge: "/icon-192.png",
     image: payload.image, // 매물 사진이 있으면 알림에 크게 표시 (지원 브라우저에서)
     data: { url: payload.url || "/deals", logId: payload.logId },
-    requireInteraction: true, // 유저가 직접 닫기 전까지 화면에 계속 남아있음
+    requireInteraction: false, // 2026-09-30: 광고성 알림이 닫을 때까지 화면에 남지 않도록 (기기 기본 동작)
     renotify: true, // 같은 매물이어도 매번 다시 진동·소리 울림
     tag: payload.tag || "jumpingbid-deal",
     silent: false, // 무음 금지 — 기기 기본 알림음 재생
-    vibrate: [300, 100, 300, 100, 300, 100, 500], // 길고 반복되는 진동 패턴 (모바일)
+    vibrate: [200, 100, 200], // 짧은 두 번 진동 (모바일, 2026-09-30 약 1.7초 → 0.5초)
     actions: [
       { action: "view", title: "지금 확인하기" },
       { action: "dismiss", title: "닫기" },

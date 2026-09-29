@@ -12,7 +12,7 @@ if (vapidPublic && vapidPrivate) {
 }
 
 // 2026-09-30: 광고성 정보 표시 — 제목 앞 "(광고)", 본문 끝에 수신거부(알림 끄기) 방법.
-const OPT_OUT_LINE = "알림 끄기: MY > 알림 설정";
+const OPT_OUT_LINE = "알림 끄기: MY > 이 기기 푸시 알림";
 
 // 2026-09-30: 야간(한국 시간 21:00~07:59) 발송 보류 — 이 시간에 등록된 매물·공지는 push_sent_at을 비워 두고,
 // 아침 8시 /api/cron/morning-push가 모아서 보낸다.
@@ -77,6 +77,11 @@ export async function sendDealPush(dealId: string) {
     return { sentCount: 0, total: 0, skipped: "이미 발송됨" };
   }
 
+  // 할인율은 정상가가 있을 때만 (없으면 생략)
+  const discountPct = deal.original_price
+    ? Math.round(((deal.original_price - deal.deal_price) / deal.original_price) * 100)
+    : 0;
+  const discountPrefix = discountPct > 0 ? `${discountPct}%↓ · ` : "";
   const stockBadge = stockTypeBadge(deal.stock_type);
   const stockTypePrefix = stockBadge ? `${stockBadge} · ` : "";
 
@@ -142,8 +147,8 @@ export async function sendDealPush(dealId: string) {
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
           JSON.stringify({
             title: "(광고) 덤핑점핑 · 새 매물",
-            // 재고 유형 배지를 앞에 (general이면 없음) — 예: "⏰ 소비기한 임박 · 냉동 삼겹살 · 398,000원/박스\n알림 끄기: MY > 알림 설정"
-            body: `${stockTypePrefix}${deal.title} · ${formatDealPrice(Number(deal.deal_price), deal.quantity_unit, deal.price_unit)}\n${OPT_OUT_LINE}`,
+            // 재고 유형 배지를 앞에 (general이면 없음) — 예: "⏰ 소비기한 임박 · 냉동 삼겹살 · 36%↓ · 398,000원/박스\n알림 끄기: MY > 이 기기 푸시 알림"
+            body: `${stockTypePrefix}${deal.title} · ${discountPrefix}${formatDealPrice(Number(deal.deal_price), deal.quantity_unit, deal.price_unit)}\n${OPT_OUT_LINE}`,
             url: `/deals/${deal.id}`,
             tag: `deal-${deal.id}`,
             image: deal.images?.[0] || undefined,
