@@ -101,7 +101,7 @@ export async function sendDealPush(dealId: string) {
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
           JSON.stringify({
             title: "🔥 덤핑점핑 · 마감 임박",
-            // 재고 유형 배지를 앞에 (general이면 없음) — 예: "⏰ 유통기한 임박 · 냉동 삼겹살 · 36%↓ · 398,000원/박스"
+            // 재고 유형 배지를 앞에 (general이면 없음) — 예: "⏰ 소비기한 임박 · 냉동 삼겹살 · 36%↓ · 398,000원/박스"
             body: `${stockTypePrefix}${deal.title} · ${discountPrefix}${formatDealPrice(Number(deal.deal_price), deal.quantity_unit)}`,
             url: `/deals/${deal.id}`,
             tag: `deal-${deal.id}`,

@@ -1,9 +1,10 @@
 // 재고 유형 (seller_requests.stock_type / deals.stock_type, 2026-09-29).
 // DB check 제약과 같은 7개 값만 허용 — 바꾸면 supabase/schema.sql의 check도 같이 바꿀 것.
 // general은 "일반 재고"라 배지를 달지 않는다. 알림 매칭(matchesConditions)과는 무관.
+// 용어: "유통기한"이 아니라 "소비기한"(2023년 식품 표시제 변경) — near_expiry 값은 그대로, 라벨만.
 export const STOCK_TYPES = [
-  { value: "general", label: "일반 재고", icon: "" },
-  { value: "near_expiry", label: "유통기한 임박", icon: "⏰" },
+  { value: "general", label: "일반 재고", icon: "🏷️" },
+  { value: "near_expiry", label: "소비기한 임박", icon: "⏰" },
   { value: "overstock", label: "과잉재고", icon: "📦" },
   { value: "closure", label: "이전·폐업 정리", icon: "🏭" },
   { value: "season_end", label: "시즌 종료", icon: "🍂" },

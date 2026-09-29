@@ -12,7 +12,9 @@ import { formatPriceInput, parsePriceInput, formatMemberNo, formatPriceWithUnit 
 import type { ManifestRow } from "@/lib/parseCsv";
 import { SITE_URL } from "@/lib/siteUrl";
 import { rem } from "@/lib/rem";
-import { STOCK_TYPES, isStockType, type StockType } from "@/lib/stockType";
+import { isStockType, type StockType } from "@/lib/stockType";
+import StockTypePicker from "@/components/StockTypePicker";
+import StockTypeBadge from "@/components/StockTypeBadge";
 import { MAX_PHOTO_SLOTS } from "@/lib/photoLimit";
 
 type SellerRequest = {
@@ -1488,6 +1490,8 @@ function AdminDashboard({
               {[r.categories?.name, r.regions?.name].filter(Boolean).join(" · ") || "카테고리/지역 미입력"}
             </div>
             <div className="text-base font-bold text-gray900 mt-1.5">{r.product_name}</div>
+            {/* 2026-09-29: 재고 유형 배지 (일반 재고는 없음) */}
+            <StockTypeBadge value={r.stock_type} className="mt-1" />
             <div className="text-sm text-gray500 mt-1">
               {[r.company_name, r.contact_name, r.contact_phone].filter(Boolean).join(" · ")}
             </div>
@@ -2508,19 +2512,7 @@ function DealForm({
       </DealFormField>
 
       <DealFormField label="재고 유형" htmlFor="deal-stockType">
-        <select
-          id="deal-stockType"
-          className={inputCls()}
-          value={stockType}
-          onChange={(e) => setStockType(e.target.value as StockType)}
-        >
-          {STOCK_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.icon ? `${t.icon} ` : ""}
-              {t.label}
-            </option>
-          ))}
-        </select>
+        <StockTypePicker id="deal-stockType" value={stockType} onChange={setStockType} />
       </DealFormField>
 
       <div className="grid grid-cols-2 gap-2">
@@ -2692,7 +2684,7 @@ function DealForm({
             onChange={(e) => setOrigin(e.target.value)}
           />
         </DealFormField>
-        <DealFormField label="보관조건·유통기한" htmlFor="deal-storageCondition">
+        <DealFormField label="보관조건·소비기한" htmlFor="deal-storageCondition">
           <input
             id="deal-storageCondition"
             className={inputCls()}

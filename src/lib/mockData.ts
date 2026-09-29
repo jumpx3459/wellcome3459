@@ -21,7 +21,7 @@ export type Deal = {
   package_unit?: string | null; // 포장 단위 (예: "20kg 박스")
   origin?: string | null; // 원산지
   spec?: string | null; // 규격/사이즈
-  storage_condition?: string | null; // 보관조건 · 유통기한
+  storage_condition?: string | null; // 보관조건 · 소비기한
   quantity_unit?: string | null; // 수량 단위 (박스/개/kg/톤/팔레트 등) — 없으면 "개"로 표시
   min_order_qty?: number | null; // 최소주문수량(MOQ)
   created_at?: string; // ISO — mock 데이터엔 없음
@@ -129,7 +129,7 @@ const RAW_MOCK_DEALS: Deal[] = [
     closes_at: new Date(now + 1000 * 60 * 60 * 9.3).toISOString(),
     images: [],
     video_url: null,
-    description: "정품 인증서 보유 · 색상 혼합 구성 · 유통기한 1년 이상",
+    description: "정품 인증서 보유 · 색상 혼합 구성 · 소비기한 1년 이상",
   },
   {
     id: "6",
@@ -178,7 +178,7 @@ const RAW_MOCK_DEALS: Deal[] = [
   },
   {
     id: "9",
-    title: "유통기한 임박 즉석카레 5,000개",
+    title: "소비기한 임박 즉석카레 5,000개",
     category: "가공식품·잡화",
     region: "충남",
     location: "충남 아산",
@@ -189,8 +189,8 @@ const RAW_MOCK_DEALS: Deal[] = [
     closes_at: new Date(now + 1000 * 60 * 60 * 8.1).toISOString(),
     images: [],
     video_url: null,
-    description: "유통기한 3주 이내 · 박스당 40개입 · 상온 보관",
-    storage_condition: "상온보관 · 유통기한 임박",
+    description: "소비기한 3주 이내 · 박스당 40개입 · 상온 보관",
+    storage_condition: "상온보관 · 소비기한 임박",
   },
   {
     id: "10",
@@ -281,7 +281,7 @@ const RAW_MOCK_DEALS: Deal[] = [
     closes_at: new Date(now + 1000 * 60 * 60 * 18.9).toISOString(),
     images: [],
     video_url: null,
-    description: "유통기한 6개월 이상 · 미개봉 · 파렛트 단위 상차",
+    description: "소비기한 6개월 이상 · 미개봉 · 파렛트 단위 상차",
     storage_condition: "상온보관",
   },
   {

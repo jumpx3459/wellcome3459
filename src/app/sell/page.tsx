@@ -17,7 +17,8 @@ import ContactPhoneInput from "@/components/ContactPhoneInput";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import type { ManifestRow } from "@/lib/parseCsv";
 import { rem } from "@/lib/rem";
-import { STOCK_TYPES, type StockType } from "@/lib/stockType";
+import { type StockType } from "@/lib/stockType";
+import StockTypePicker from "@/components/StockTypePicker";
 import { getPhotoLimit, isPhotoLimitMaxed, MAX_PHOTO_SLOTS } from "@/lib/photoLimit";
 import { getFreshAccessToken } from "@/lib/authFetch";
 import { FieldLabel, FieldTag, FORM_INPUT_FONT_SIZE, FORM_HINT_STYLE, FORM_CHIP_FONT_SIZE } from "@/components/FormField";
@@ -314,30 +315,7 @@ export default function SellPage() {
         {/* 2026-09-29: 재고 유형(선택) — 매물 카드·상세·푸시 앞에 배지로 표시 (일반 재고는 배지 없음) */}
         <div>
           <FieldLabel need="optional">재고 유형</FieldLabel>
-          <div className="flex flex-wrap gap-1.5">
-            {STOCK_TYPES.map((t) => {
-              const picked = stockType === t.value;
-              return (
-                <button
-                  key={t.value}
-                  type="button"
-                  onClick={() => setStockType(t.value)}
-                  className="rounded-full whitespace-nowrap"
-                  style={{
-                    padding: "9px 13px",
-                    fontSize: FORM_CHIP_FONT_SIZE,
-                    fontWeight: 700,
-                    background: "#fff",
-                    border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
-                    color: "#1A1F26",
-                  }}
-                >
-                  {t.icon ? `${t.icon} ` : ""}
-                  {t.label}
-                </button>
-              );
-            })}
-          </div>
+          <StockTypePicker value={stockType} onChange={setStockType} />
         </div>
 
         <div>
@@ -657,7 +635,7 @@ export default function SellPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block" style={FORM_HINT_STYLE}>보관조건 · 유통기한</label>
+                  <label className="mb-1 block" style={FORM_HINT_STYLE}>보관조건 · 소비기한</label>
                   <input
                     className="w-full border-2 border-gray200 rounded-xl px-4 outline-none focus:border-orange"
                     style={{ height: "52px", fontSize: FORM_INPUT_FONT_SIZE }}
