@@ -13,6 +13,7 @@ import { MESSAGES_ENABLED, JUMPX_BRIDGE_ENABLED } from "@/lib/features";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 import { rem } from "@/lib/rem";
+import { getFreshAccessToken } from "@/lib/authFetch";
 import { SECTION_TITLE_STYLE, SERVICES_ANCHOR_ID, ServiceTilesCompact } from "@/components/EcosystemGrid";
 import StockTypeBadge from "@/components/StockTypeBadge";
 
@@ -275,12 +276,14 @@ function DealDetailPageInner() {
   // 호출 없이 "준비중" 안내만 하고, 클릭 자체는 수요 신호로 기록해둡니다.
   // 준비되면 이 핸들러만 원래 로직(전화번호 수집 → /api/jumpx-bridge)으로
   // 되돌리면 됩니다.
-  const handleBridgeClick = () => {
+  const handleBridgeClick = async () => {
     setBridgeComingSoon(true);
+    // 회원 연결은 서버가 accessToken으로 결정 (memberId는 보내지 않음, 비회원은 토큰 없이)
+    const accessToken = await getFreshAccessToken().catch(() => null);
     fetch("/api/bridge-interest", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ dealId: deal.id, memberId }),
+      body: JSON.stringify({ dealId: deal.id, accessToken }),
     }).catch(() => {});
   };
 
