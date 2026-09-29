@@ -1,6 +1,6 @@
 # PROGRESS
 
-마지막 업데이트: 2026-09-28 (2차 세션: 푸시 알림 켜기·탈퇴 보안·정식 주소·회원 홈 역할 정리·가독성)
+마지막 업데이트: 2026-09-29 (토큰 만료 401 수정·iPhone safe-area·재고 유형·로그인 개선·보안 정리·/en)
 
 새 세션을 시작할 때 이 파일을 먼저 읽고, 아래 "다음에 할 일"부터 확인하세요.
 
@@ -31,6 +31,37 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
   비공개 옵션 등) — 상세는 아래 "최근 작업 (2026-09-23)" 참고
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
+
+## 최근 작업 (2026-09-29) — 인앱 안내·가독성 2차·요청 연결·보안·/en·토큰·safe-area·재고 유형·로그인 (전부 main 직접 커밋)
+
+- **인앱 브라우저·iPhone 미설치 안내**(68b54fd, 6827b76): 카카오톡 등 인앱이면 첫 진입 하단 시트 + 주황 띠 +
+  "크롬/사파리로 열기", iPhone 미설치면 홈 화면 추가 안내. 설치 배너와 역할 분리.
+- **가독성 2차**(fb701aa): 섹션 제목·카드·서비스 타일·하단 탭 크기 체계. 마이페이지 견적함은 "곧 오픈" 예고 카드 +
+  오픈 알림 신청(`feature_waitlist`, QUOTES_ENABLED=false).
+- **입력 개선**: 연락처 "001034413459" 표시 버그(3c18251), 희망 단가 기준 단위 `hope_price_unit`(5cf8803),
+  연락처 칸 사무실 번호 허용 + 매물 가격 "2,000원/kg" 단위 표시(18e93d0), buy·sell 카테고리 자동 추천 정리(8ea0553).
+- **구매 요청 회원 연결**(6b65ddf): `buy_requests.member_id` + 마이페이지 "내 구매 요청".
+- **보안 정리**(118d4dc, 34d27d9): 요청 테이블 공개 insert 정책 제거, `protect_member_columns` 트리거(referred_by·
+  member_no·phone·사업자등록증·ref_code는 한 번 정해지면 고정) 기록. **재가입 시 추천인 보너스 +2 중복 지급 버그 수정**
+  (기존 회원이면 referred_by 안 보냄). 실제 회원 6명 referred_by/보너스 영향 없음 확인.
+- **영문 소개 `/en`**(85055de, 10e888b): 해외 투자자·파트너용 1페이지. 회사명 "JumpX Inc.", 로드맵 3단계.
+  JumpingBid 표기는 제거(내부 ID `jumpingbid_admin_session`, sw.js 태그 `jumpingbid-deal`은 그대로 두기로 함).
+- **예시 미디어**(1fc029f, 5b5a14b): 브랜드 노출·출처 미확인 파일 삭제, EXAMPLE_MEDIA_ENABLED=false. VAPID 연락처 교체.
+- **토큰 만료 401 버그**(00511cd): `src/lib/authFetch.ts` — 호출 직전 최신 토큰(60초 내 만료면 갱신), 401이면
+  refreshSession 후 1회 재시도, 그래도 실패면 `dj:auth-expired` → `AuthExpiredNotice`. `/api/push/status` 신설,
+  PushStatusCard "다른 기기 N대에서 알림 받는 중". **로그인 필요한 API 호출은 fetch 대신 authFetch로 쓸 것.**
+- **iPhone 홈 화면 앱 safe-area**(e934fda): `viewportFit: "cover"`, globals.css `--sat`/`--sab`/`--nav-bottom`,
+  BottomNav `NAV_BOTTOM`. 고정 CTA가 있는 화면은 하단 여백(상세 148·홈 156·buy 148·sell/signup 168).
+  JUMP X 브릿지 섹션 숨김(JUMPX_BRIDGE_ENABLED=false).
+- **재고 유형 `stock_type`**(a676112): `src/lib/stockType.ts` 7종, sell 칩·관리자 폼 선택(승인 시 이어받기),
+  두 API 400 `field: "stockType"`, 카드·상세·홈 배지(`StockTypeBadge`), 푸시 본문 앞에 유형.
+- **로그인 개선**(b936f0e, 98ad01a): 마지막 로그인 방식 기억(`dj_login_method`), 탭별 14px 안내, 비밀번호 탭
+  [인증번호로 로그인](번호 유지), 비밀번호 로그인 실패 시 한 문구로 안내(번호별 "비밀번호 없음"을 알려주면 회원 여부가
+  드러나서 구분 안 함), 인증번호 로그인 직후 비밀번호 없으면 권유 시트 1회(`dj_pw_prompt_dismissed`, returnTo 유지).
+  보유 여부는 서버 `app_metadata.has_password`(`/api/auth/password-status`, `/api/auth/mark-password`) —
+  마이페이지 비밀번호 설정·비밀번호 로그인 성공 시 표시. 번호는 010-1234-5678로 보이고 저장·전송은 숫자만.
+- **다음 할 일**: 국내산갈치(84b0b35c) 테스트 매물 마감 처리, 실제 iPhone 홈 화면 앱에서 safe-area 한 번 확인,
+  비밀번호 설정→로그아웃→비밀번호 로그인 흐름 프로덕션 확인. 운영 DB에 테스트 계정·행을 만드는 확인은 사용자에게 먼저 물어볼 것.
 
 ## 최근 작업 (2026-09-28, 2차 세션) — 푸시·보안·정식 주소·회원 홈·가독성 (전부 main 직접 커밋)
 
