@@ -518,13 +518,15 @@ export default function MyPage() {
     }
     if (!supabase) return;
     setPasswordSaving(true);
-    // has_password: 로그인 화면의 "비밀번호를 만들어 두세요" 시트를 안 띄우는 기준 (user_metadata)
-    const { error } = await supabase.auth.updateUser({ password: newPassword, data: { has_password: true } });
+    // 비밀번호 설정은 기존처럼 클라이언트 updateUser(보안 비밀번호 변경 설정 유지)
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
     setPasswordSaving(false);
     if (error) {
       setPasswordError("설정하지 못했어요. 다시 시도해주세요.");
       return;
     }
+    // 로그인 화면 "비밀번호를 만들어 두세요" 시트 기준 — 서버만 쓸 수 있는 app_metadata에 표시
+    authFetch("/api/auth/mark-password").catch(() => {});
     setPasswordSaved(true);
     setNewPassword("");
     setSettingPassword(false);
