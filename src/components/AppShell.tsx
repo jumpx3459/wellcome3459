@@ -7,6 +7,8 @@ import InAppBanner from "./InAppBanner";
 import AuthExpiredNotice from "./AuthExpiredNotice";
 import DebugPanel from "./DebugPanel"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 import { markAppNavigation, markAppBack } from "@/lib/appNav";
+import { supabase } from "@/lib/supabase";
+import { markReturningMember } from "@/lib/returningMember";
 
 // 관리자 화면은 운영자 전용 도구라 회원용 하단 탭바를 보여주지 않습니다.
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -53,6 +55,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   // PWA 설치 배너(beforeinstallprompt)가 뜨려면 서비스워커가 등록돼 있어야 해서,
   // 회원가입(알림 신청) 완료를 기다리지 않고 첫 방문 때부터 바로 등록해둡니다.
+  // 2026-09-29: 로그인 세션이 확인되면 "이 기기에서 로그인한 적 있음" 플래그 — 나중에 세션이 풀린 채로
+  // 오면 가입 온보딩 대신 재방문 화면(ReturningMemberIntro). 지우는 건 명시적 로그아웃·탈퇴 때만.
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) markReturningMember();
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) markReturningMember();
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
   useEffect(() => {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch(() => {});

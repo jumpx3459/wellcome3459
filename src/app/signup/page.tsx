@@ -16,6 +16,7 @@ import { SITE_URL, isCanonicalHost } from "@/lib/siteUrl";
 import { getPushBlocker, type PushBlocker } from "@/lib/browserEnv";
 import PushBlockerNotice from "@/components/PushBlockerNotice";
 import { rem } from "@/lib/rem";
+import { clearReturningMember } from "@/lib/returningMember";
 
 // "01012345678" -> "010****5678" 형태로 화면에만 일부 가려서 보여줍니다
 function maskPhone(phone: string): string {
@@ -227,6 +228,7 @@ function SignupPageInner() {
   };
 
   const tryDifferentNumber = async () => {
+    clearReturningMember(); // 명시적 로그아웃 — 재방문 화면 신호도 지움
     await supabase?.auth.signOut();
     setAlreadyMember(false);
     setAuthUserId(null);

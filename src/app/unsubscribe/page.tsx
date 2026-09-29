@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { authFetch } from "@/lib/authFetch";
+import { clearReturningMember } from "@/lib/returningMember";
 
 // 2026-09-28 보안 수정: 예전엔 전화번호만 입력하면 그 번호의 회원을 바로 삭제했음.
 // 이제 로그인 필수 + "알림 끄기"(푸시 구독만 삭제)와 "회원 탈퇴"(확인 단계 필수)를 분리.
@@ -45,7 +46,10 @@ export default function UnsubscribePage() {
         return;
       }
       await unsubscribeThisDevice();
-      if (action === "withdraw") await supabase?.auth.signOut();
+      if (action === "withdraw") {
+        clearReturningMember(); // 재방문 화면 신호(로그인 기록·방식)도 지움
+        await supabase?.auth.signOut();
+      }
       setDone(action);
     } catch {
       setError("처리 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");

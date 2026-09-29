@@ -71,14 +71,16 @@ export default function OnboardingIntro({
   if (!visible) return null;
 
   return (
+    // 2026-09-29: fixed inset-0이라 AppShell의 max-w-md를 벗어나 PC에서 내용이 전체 폭으로 퍼졌음 —
+    // 배경은 전체 폭 그대로, 내용만 회원 화면 폭(max-w-md) 가운데
     <div
-      className="fixed inset-0 z-50 flex flex-col justify-between text-white"
+      className="fixed inset-0 z-50 text-white"
       style={{
-        padding: "44px 26px 30px",
         background: "linear-gradient(155deg,#04101C 0%,#0B2540 58%,#14395C 100%)",
         overflowY: "auto",
       }}
     >
+      <div className="mx-auto w-full max-w-md min-h-full flex flex-col justify-between" style={{ padding: "44px 26px 30px" }}>
       <div>
         {/* 2026-09-26 (9): 로고와 890명 필이 세로로 쌓여 상단이 불필요하게 길어지고
             그만큼 캐릭터/통계가 아래로 밀려 위계가 흐트러진다는 피드백 — 한 줄로 배치. */}
@@ -212,6 +214,7 @@ export default function OnboardingIntro({
             둘러보기
           </button>
         </div>
+      </div>
       </div>
     </div>
   );

@@ -17,6 +17,8 @@ import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 import { SITE_URL } from "@/lib/siteUrl";
 import { rem } from "@/lib/rem";
 import StockTypeBadge from "@/components/StockTypeBadge";
+import ReturningMemberIntro from "@/components/ReturningMemberIntro";
+import { getRememberedLoginMethod, hasActivePushSubscription, hasLoginHistory, type LoginMethod } from "@/lib/returningMember";
 
 const TODAY_BADGE_THRESHOLD = 5; // 이보다 적으면 "오늘 N건" 배너를 아예 숨김 (빈약한 숫자 노출 방지)
 const BUSINESS_COUNT_THRESHOLD = 30; // 이보다 적으면 사업자 수 대신 무숫자 카피로 대체 (빈약한 숫자 노출 방지)
@@ -58,6 +60,33 @@ export default function Home() {
       setMemberState(data.session?.user ? "member" : "guest");
     });
   }, []);
+
+  // 2026-09-29: 재방문 회원 — 비로그인인데 이 기기에서 로그인한 적 있거나(방식 기억값 포함) 푸시 구독이 있으면
+  // 가입 온보딩 대신 "다시 오셨네요" 화면. null = 판별 중(그동안 온보딩도 안 띄움)
+  const [returning, setReturning] = useState<{ method: LoginMethod | null; pushActive: boolean } | null | false>(null);
+  const [returningBrowse, setReturningBrowse] = useState(false);
+  useEffect(() => {
+    if (memberState !== "guest") return;
+    let cancelled = false;
+    (async () => {
+      const pushActive = await hasActivePushSubscription();
+      if (cancelled) return;
+      if (!pushActive && !hasLoginHistory()) return setReturning(false);
+      setReturning({ method: getRememberedLoginMethod(), pushActive });
+      try {
+        setReturningBrowse(sessionStorage.getItem("dj_returning_browse") === "1");
+      } catch {}
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [memberState]);
+  const browseAsReturning = () => {
+    try {
+      sessionStorage.setItem("dj_returning_browse", "1"); // 이번 방문(탭)에서만 닫힘
+    } catch {}
+    setReturningBrowse(true);
+  };
 
   // 매물 상세 "점핑 서비스 · 전체 보기"(비회원)로 들어오면 섹션까지 스크롤
   useEffect(() => {
@@ -162,8 +191,11 @@ export default function Home() {
     {/* hreflang — React 19가 <link>를 <head>로 올려줌. 짝은 /en의 metadata.alternates */}
     <link rel="alternate" hrefLang="ko-KR" href={`${SITE_URL}/`} />
     <link rel="alternate" hrefLang="en" href={`${SITE_URL}/en`} />
-    {/* 세션 확인 전(unknown)엔 회원일 수도 있어 온보딩을 띄우지 않음 */}
-    <OnboardingIntro logoAnimate={logoAnimate} isMember={memberState !== "guest"} stats={onboardingStats} />
+    {/* 세션 확인 전(unknown)엔 회원일 수도 있어 온보딩을 띄우지 않음. 재방문 회원(판별 중 포함)도 온보딩 대신 */}
+    <OnboardingIntro logoAnimate={logoAnimate} isMember={memberState !== "guest" || returning !== false} stats={onboardingStats} />
+    {memberState === "guest" && returning && !returningBrowse && (
+      <ReturningMemberIntro method={returning.method} pushActive={returning.pushActive} onBrowse={browseAsReturning} />
+    )}
     {signupPending && (
       <Link
         href="/signup"
