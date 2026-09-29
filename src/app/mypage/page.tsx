@@ -27,6 +27,7 @@ import { clearReturningMember } from "@/lib/returningMember";
 import { UI_SECTION, UI_CARD_TITLE, UI_DESC, UI_META, UI_LINK } from "@/lib/uiText";
 import { FieldLabel, FORM_INPUT_FONT_SIZE } from "@/components/FormField";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
+import ReferralShareButtons from "@/components/ReferralShareButtons";
 
 type InterestItem = {
   id: string;
@@ -89,9 +90,6 @@ export default function MyPage() {
   const [referrals, setReferrals] = useState<ReferralItem[]>([]);
   const [shareDeals, setShareDeals] = useState<{ id: string; title: string; deal_price: number; quantity_unit: string | null; price_unit: string | null }[]>([]);
   const [selectedShareDealId, setSelectedShareDealId] = useState<string>("");
-  const [copied, setCopied] = useState(false);
-  const [shared, setShared] = useState(false);
-  const [qrOpen, setQrOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -422,29 +420,10 @@ export default function MyPage() {
       : `${SITE_URL}/signup?ref=${refCode}`
     : "";
 
-  const handleShareRefLink = async () => {
-    if (typeof window === "undefined" || !refCode) return;
-    const url = refUrl;
-    const text = shareDeal
-      ? `[덤핑점핑] ${shareDeal.title} ${formatDealPrice(shareDeal.deal_price, shareDeal.quantity_unit, shareDeal.price_unit)} 특가! 이런 재고특가 알림 매일 받아보세요 → ${url}`
-      : `점프엑스 덤핑점핑 - 재고 특가 알림 받아보세요! ${url}`;
-
-    if (typeof navigator !== "undefined" && navigator.share) {
-      try {
-        await navigator.share({ title: "덤핑점핑", text });
-      } catch {
-        // 사용자가 공유를 취소한 경우 — 무시
-      }
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(url);
-      setShared(true);
-      setTimeout(() => setShared(false), 2000);
-    } catch {
-      // 클립보드 접근 실패 — 무시
-    }
-  };
+  // 추천 링크 공유 문구 (ReferralShareButtons가 공유창에 넣음)
+  const shareText = shareDeal
+    ? `[덤핑점핑] ${shareDeal.title} ${formatDealPrice(shareDeal.deal_price, shareDeal.quantity_unit, shareDeal.price_unit)} 특가! 이런 재고특가 알림 매일 받아보세요 → ${refUrl}`
+    : `점프엑스 덤핑점핑 - 재고 특가 알림 받아보세요! ${refUrl}`;
 
   const save = async () => {
     if (!supabase) return;
@@ -1111,82 +1090,8 @@ export default function MyPage() {
               항상 펼쳐져 있어 복잡해 보인다는 피드백 → 카카오톡 오픈채팅방 서랍
               스타일(아이콘+라벨 3열, QR은 탭해서 펼침) 벤치마킹해 아이콘 그리드로
               압축 (2026-09-26). URL 전체 텍스트는 작은 캡션으로만 남김. */}
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                navigator.clipboard.writeText(refUrl);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-              }}
-              className="flex flex-col items-center gap-1 rounded-2xl bg-white border border-gray200"
-              style={{ padding: "14px 8px" }}
-            >
-              {copied ? (
-                <CheckCircle className="w-5 h-5" style={{ color: "#2F9E44" }} />
-              ) : (
-                <span className="text-xl leading-none">🔗</span>
-              )}
-              <span className="text-navy" style={UI_LINK}>{copied ? "복사됨" : "링크 복사"}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleShareRefLink}
-              aria-label="추천 링크 공유"
-              className="flex flex-col items-center gap-1 rounded-2xl bg-white border border-gray200"
-              style={{ padding: "14px 8px" }}
-            >
-              {shared ? (
-                <CheckCircle className="w-5 h-5" style={{ color: "#2F9E44" }} />
-              ) : (
-                <span className="text-xl leading-none">📤</span>
-              )}
-              <span className="text-navy" style={UI_LINK}>{shared ? "공유됨" : "링크 공유"}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setQrOpen(true)}
-              className="flex flex-col items-center gap-1 rounded-2xl bg-white border border-gray200"
-              style={{ padding: "14px 8px" }}
-            >
-              <span className="text-xl leading-none">⬛</span>
-              <span className="text-navy" style={UI_LINK}>QR 코드</span>
-            </button>
-          </div>
-          {refUrl && <p className="mt-2" style={{ ...UI_META, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{refUrl}</p>}
-
-          {qrOpen && typeof window !== "undefined" && refCode && (
-            <div
-              className="fixed inset-0 z-50 flex items-end justify-center"
-              style={{ background: "rgba(0,0,0,0.5)" }}
-              onClick={() => setQrOpen(false)}
-            >
-              <div
-                className="bg-white w-full max-w-md rounded-t-3xl flex flex-col items-center"
-                style={{ padding: "28px 24px 32px" }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(refUrl)}`}
-                  alt="추천 링크 QR 코드"
-                  className="w-44 h-44 rounded-xl border border-gray200"
-                />
-                <p className="mt-3 text-center" style={UI_DESC}>
-                  명함 대신 QR로 보여주세요 · 스캔하면 제 추천으로 가입돼요
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setQrOpen(false)}
-                  className={`mt-4 w-full ${BTN_CLASS}`}
-                  style={btnStyle("secondary")}
-                >
-                  닫기
-                </button>
-              </div>
-            </div>
-          )}
+          {/* 2026-09-29: "내 추천 회원" 화면과 같은 공용 버튼 */}
+          <ReferralShareButtons refUrl={refUrl} shareText={shareText} />
 
           <div className="mt-6 rounded-2xl" style={{ background: "#FFF9EC", border: "1px solid #F0DCA8", padding: "14px 15px" }}>
             <h3 style={{ ...UI_CARD_TITLE, color: "#0B2540" }}>🏅 공식 점핑파트너</h3>
