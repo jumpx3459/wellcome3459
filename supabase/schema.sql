@@ -1030,11 +1030,12 @@ alter table public.deals add column if not exists price_unit text
 -- 2026-09-30: 매물 상태 값 제한 — 코드가 쓰는 값은 active(진행)·closed(마감) 둘뿐이고 sold_out은 사용처 없음.
 -- /api/admin/deals/manage PATCH도 같은 두 값만 허용(그 외 400 field: "status").
 -- ⚠️ 아직 실행 안 함 — 대표가 Supabase SQL Editor에서 아래 순서대로 실행.
--- (1) 기존 값 확인: active·closed 외 값(또는 null)이 있으면 (3) validate가 실패하니 먼저 정리.
---   select status, count(*) from public.deals group by status order by status;
--- (2) 제약 추가 — not valid라 기존 행은 검사하지 않고 새 insert/update부터 적용.
+-- ① 기존 값 확인 (null도 한 줄로 나옴). active·closed 외 값이나 null이 있으면 ②·③이 실패하니 먼저 정리.
+--   select status, count(*) from public.deals group by status;
+-- ② null 금지 (컬럼 기본값 'active'는 그대로).
+alter table public.deals alter column status set not null;
+-- ③ 값 제한 — not valid로 추가(새 insert/update부터 적용) 후 validate로 기존 행까지 검사.
 alter table public.deals drop constraint if exists deals_status_check;
 alter table public.deals add constraint deals_status_check
   check (status in ('active','closed')) not valid;
--- (3) 기존 행까지 검사 (1)에서 다른 값이 없을 때 실행.
 alter table public.deals validate constraint deals_status_check;
