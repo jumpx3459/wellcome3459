@@ -629,7 +629,7 @@ function DealDetailPageInner() {
             <div className="text-base font-bold text-navy leading-relaxed">
               실제 매물이 등록되면 이런 화면으로{" "}
               <br className="hidden sm:inline" />
-              바로 알림이 가요.
+              빠르게 알림이 가요.
             </div>
             <Link
               href="/signup"

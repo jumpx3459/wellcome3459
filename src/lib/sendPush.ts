@@ -11,8 +11,21 @@ if (vapidPublic && vapidPrivate) {
   webpush.setVapidDetails("mailto:admin@jumpx.co.kr", vapidPublic, vapidPrivate);
 }
 
+// 2026-09-30: 광고성 정보 표시 — 제목 앞 "(광고)", 본문 끝에 수신거부(알림 끄기) 방법.
+const OPT_OUT_LINE = "알림 끄기: MY > 알림 설정";
+
+// 2026-09-30: 야간(한국 시간 21:00~07:59) 발송 보류 — 이 시간에 등록된 매물·공지는 push_sent_at을 비워 두고,
+// 아침 8시 /api/cron/morning-push가 모아서 보낸다.
+export function isQuietHoursKST(now = new Date()) {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Seoul", hour: "numeric", hourCycle: "h23" }).format(now)
+  );
+  return hour >= 21 || hour < 8;
+}
+
 // 카테고리·지역을 구독한 회원의 기기에 직접 웹 푸시를 발송합니다.
 // (카카오 알림톡 같은 중간 채널 없이 브라우저/PWA에 바로 전달, 알라미와 동일한 방식)
+// 매물당 1회만 — push_sent_at이 이미 있으면 skip, 발송 직전에 push_sent_at을 조건부로 채워 중복 발송(등록+cron 동시 실행)을 막는다.
 export async function sendDealPush(dealId: string) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -24,7 +37,7 @@ export async function sendDealPush(dealId: string) {
 
   const { data: deal, error: dealError } = await supabaseAdmin
     .from("deals")
-    .select("id, title, category_id, region_id, deal_price, original_price, quantity_unit, price_unit, stock_type, images, status, closes_at")
+    .select("id, title, category_id, region_id, deal_price, original_price, quantity_unit, price_unit, stock_type, images, status, closes_at, push_sent_at")
     .eq("id", dealId)
     .single();
 
@@ -45,11 +58,25 @@ export async function sendDealPush(dealId: string) {
     console.warn(`[sendDealPush] skip deal=${deal.id} — ${skipReason}`);
     return { sentCount: 0, total: 0, skipped: skipReason };
   }
+  if (deal.push_sent_at) {
+    return { sentCount: 0, total: 0, skipped: "이미 발송됨" };
+  }
+  if (isQuietHoursKST()) {
+    console.info(`[sendDealPush] hold deal=${deal.id} — 야간(21~08시), 아침 8시 발송 대기`);
+    return { sentCount: 0, total: 0, held: true };
+  }
 
-  const discountPct = deal.original_price
-    ? Math.round(((deal.original_price - deal.deal_price) / deal.original_price) * 100)
-    : 0;
-  const discountPrefix = discountPct > 0 ? `${discountPct}%↓ · ` : "";
+  // 먼저 차지한 쪽만 발송 (push_sent_at is null 조건부 update)
+  const { data: claimed } = await supabaseAdmin
+    .from("deals")
+    .update({ push_sent_at: new Date().toISOString() })
+    .eq("id", deal.id)
+    .is("push_sent_at", null)
+    .select("id");
+  if (!claimed?.length) {
+    return { sentCount: 0, total: 0, skipped: "이미 발송됨" };
+  }
+
   const stockBadge = stockTypeBadge(deal.stock_type);
   const stockTypePrefix = stockBadge ? `${stockBadge} · ` : "";
 
@@ -114,9 +141,9 @@ export async function sendDealPush(dealId: string) {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
           JSON.stringify({
-            title: "🔥 덤핑점핑 · 마감 임박",
-            // 재고 유형 배지를 앞에 (general이면 없음) — 예: "⏰ 소비기한 임박 · 냉동 삼겹살 · 36%↓ · 398,000원/박스"
-            body: `${stockTypePrefix}${deal.title} · ${discountPrefix}${formatDealPrice(Number(deal.deal_price), deal.quantity_unit, deal.price_unit)}`,
+            title: "(광고) 덤핑점핑 · 새 매물",
+            // 재고 유형 배지를 앞에 (general이면 없음) — 예: "⏰ 소비기한 임박 · 냉동 삼겹살 · 398,000원/박스\n알림 끄기: MY > 알림 설정"
+            body: `${stockTypePrefix}${deal.title} · ${formatDealPrice(Number(deal.deal_price), deal.quantity_unit, deal.price_unit)}\n${OPT_OUT_LINE}`,
             url: `/deals/${deal.id}`,
             tag: `deal-${deal.id}`,
             image: deal.images?.[0] || undefined,
@@ -139,6 +166,7 @@ export async function sendDealPush(dealId: string) {
 // 달리 카테고리 매칭이 없고, notice_alerts_opt_in을 켠 회원만 대상. 공지에 지역이
 // 지정돼 있으면 그 지역을 선택한 회원 + 지역 미선택("전국") 회원만, 지역이 없으면
 // (전국 공지) opt-in 회원 전원에게 보낸다.
+// 2026-09-30: 매물과 같은 규칙 — active 공지만, 1회만(push_sent_at), 야간 보류.
 export async function sendNoticePush(noticeId: string) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -150,12 +178,32 @@ export async function sendNoticePush(noticeId: string) {
 
   const { data: notice, error: noticeError } = await supabaseAdmin
     .from("urgent_notices")
-    .select("id, title, category, region_id, images")
+    .select("id, title, category, region_id, images, status, push_sent_at")
     .eq("id", noticeId)
     .single();
 
   if (noticeError || !notice) {
     return { error: "공지를 찾을 수 없습니다." };
+  }
+  if (notice.status !== "active") {
+    console.warn(`[sendNoticePush] skip notice=${notice.id} — status=${notice.status}`);
+    return { sentCount: 0, total: 0, skipped: `status=${notice.status}` };
+  }
+  if (notice.push_sent_at) {
+    return { sentCount: 0, total: 0, skipped: "이미 발송됨" };
+  }
+  if (isQuietHoursKST()) {
+    console.info(`[sendNoticePush] hold notice=${notice.id} — 야간(21~08시), 아침 8시 발송 대기`);
+    return { sentCount: 0, total: 0, held: true };
+  }
+  const { data: claimed } = await supabaseAdmin
+    .from("urgent_notices")
+    .update({ push_sent_at: new Date().toISOString() })
+    .eq("id", notice.id)
+    .is("push_sent_at", null)
+    .select("id");
+  if (!claimed?.length) {
+    return { sentCount: 0, total: 0, skipped: "이미 발송됨" };
   }
 
   const { data: optedIn } = await supabaseAdmin
@@ -196,8 +244,8 @@ export async function sendNoticePush(noticeId: string) {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
           JSON.stringify({
-            title: `📋 긴급 공지 · ${notice.category}`,
-            body: notice.title,
+            title: `(광고) 덤핑점핑 · 긴급 공지 · ${notice.category}`,
+            body: `${notice.title}\n${OPT_OUT_LINE}`,
             url: `/notices`,
             tag: `notice-${notice.id}`,
             image: notice.images?.[0] || undefined,

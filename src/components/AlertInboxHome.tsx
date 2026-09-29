@@ -476,7 +476,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
             );
           })}
           <p className="text-center" style={{ padding: "10px 20px 4px", fontSize: rem(11.5), color: "#9AA3AD" }}>
-            실제 매물이 아닌 예시예요 · 매물이 등록되면 실시간으로 알려드려요
+            실제 매물이 아닌 예시예요 · 매물이 등록되면 빠르게 알려드려요
           </p>
         </div>
       )}

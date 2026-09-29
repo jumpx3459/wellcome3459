@@ -94,7 +94,7 @@ export default function PushStatusCard() {
             )}
           </span>
           <span className="block mt-0.5" style={{ ...UI_DESC, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-            {state === "on" && "조건에 맞는 매물이 뜨면 바로 알려드려요"}
+            {state === "on" && "조건에 맞는 매물이 뜨면 빠르게 알려드려요"}
             {(state === "inapp" || state === "ios_needs_install") && "지금 이 화면에서는 알림을 켤 수 없어요"}
             {state === "off" && "지금은 꺼져 있어요 · 맞춤 특가 알림은 푸시로만 가요"}
             {state === "denied" && "브라우저에서 알림이 차단돼 있어요"}

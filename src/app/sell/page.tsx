@@ -329,7 +329,7 @@ export default function SellPage() {
           <span className="flex-1 min-w-0">
             <span className="block" style={{ fontSize: rem(18), fontWeight: 700, color: "#0B2540" }}>판매 등록은 완전 무료예요</span>
             <span className="block font-bold mt-1 leading-relaxed" style={{ fontSize: rem(16), color: "#E25100" }}>
-              조건 맞는 구매자에게 바로 알림이 가요
+              조건 맞는 구매자에게 빠르게 알림이 가요
             </span>
           </span>
         </div>
@@ -548,7 +548,7 @@ export default function SellPage() {
         <div className="flex items-center gap-2.5 rounded-2xl" style={{ background: "#F5F6F8", padding: "14px 16px" }}>
           <span style={{ fontSize: rem(18) }}>🔔</span>
           <span className="flex-1" style={{ ...FORM_HINT_STYLE, color: "#0B2540", fontWeight: 500 }}>
-            점핑매니저 검토 후, 이 조건 알림을 받는 회원들에게 바로 발송돼요.
+            점핑매니저 검토 후, 이 조건 알림을 받는 회원들에게 빠르게 발송돼요.
           </span>
         </div>
 

@@ -1039,3 +1039,17 @@ alter table public.deals drop constraint if exists deals_status_check;
 alter table public.deals add constraint deals_status_check
   check (status in ('active','closed')) not valid;
 alter table public.deals validate constraint deals_status_check;
+
+-- 2026-09-30: 알림 1회 발송 기록 + 야간(21:00~07:59 KST) 발송 보류 — src/lib/sendPush.ts, /api/cron/morning-push.
+-- null = 아직 안 보냄. 주간 등록은 발송 직전에 채우고, 야간 등록은 비워 두었다가 아침 8시 cron이 보낸 뒤 채운다.
+-- ⚠️ 아직 실행 안 함 — 대표가 Supabase SQL Editor에서 실행. PR merge(배포) 전에 실행해야 함
+--    (코드가 push_sent_at을 조회하므로 컬럼이 없으면 매물 등록 알림이 나가지 않음).
+alter table public.deals add column if not exists push_sent_at timestamptz;
+alter table public.urgent_notices add column if not exists push_sent_at timestamptz;
+-- backfill: 기존 매물·공지는 모두 등록 시점에 이미 발송(시도)됐으므로 created_at으로 채움 —
+-- 비워 두면 아침 8시 cron이 진행 중인 기존 매물·공지를 한 번 더 보냄. (closed 매물은 cron 조건에서도 빠지지만 같이 채움)
+update public.deals set push_sent_at = coalesce(created_at, now()) where push_sent_at is null;
+update public.urgent_notices set push_sent_at = coalesce(created_at, now()) where push_sent_at is null;
+-- 확인: 두 값 모두 0이어야 함
+--   select (select count(*) from public.deals where push_sent_at is null) as deals_null,
+--          (select count(*) from public.urgent_notices where push_sent_at is null) as notices_null;

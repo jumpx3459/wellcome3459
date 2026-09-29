@@ -76,7 +76,7 @@ export default function InAppBanner() {
             {appName}에서는 새 매물 알림을 못 받아요
           </p>
           <p className="mt-1.5" style={{ fontSize: rem(16), color: "#495057" }}>
-            {browser}에서 열면 관심 매물이 뜰 때 바로 알려드려요
+            {browser}에서 열면 관심 매물이 뜰 때 빠르게 알려드려요
           </p>
           {target ? (
             <button
