@@ -1042,8 +1042,8 @@ alter table public.deals validate constraint deals_status_check;
 
 -- 2026-09-30: 알림 1회 발송 기록 + 야간(21:00~07:59 KST) 발송 보류 — src/lib/sendPush.ts, /api/cron/morning-push.
 -- null = 아직 안 보냄. 주간 등록은 발송 직전에 채우고, 야간 등록은 비워 두었다가 아침 8시 cron이 보낸 뒤 채운다.
--- ⚠️ 아직 실행 안 함 — 대표가 Supabase SQL Editor에서 실행. PR merge(배포) 전에 실행해야 함
---    (코드가 push_sent_at을 조회하므로 컬럼이 없으면 매물 등록 알림이 나가지 않음).
+-- 2026-09-30 대표 운영 DB 실행 완료 (backfill 후 deals_null 0, notices_null 0).
+--    (코드가 push_sent_at을 조회하므로 컬럼이 없으면 매물 등록 알림이 나가지 않음 — PR #20 merge 전 실행)
 alter table public.deals add column if not exists push_sent_at timestamptz;
 alter table public.urgent_notices add column if not exists push_sent_at timestamptz;
 -- backfill: 기존 매물·공지는 모두 등록 시점에 이미 발송(시도)됐으므로 created_at으로 채움 —

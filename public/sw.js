@@ -16,7 +16,7 @@ self.addEventListener("push", (event) => {
     payload = { title: "덤핑점핑", body: event.data.text() };
   }
 
-  const title = payload.title || "🔥 덤핑점핑 · 마감 임박";
+  const title = payload.title || "(광고) 덤핑점핑";
   const options = {
     body: payload.body || "",
     icon: "/icon-192.png",
