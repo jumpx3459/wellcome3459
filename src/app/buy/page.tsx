@@ -497,7 +497,7 @@ export default function BuyPage() {
           {/* 2026-09-29: 실기기 피드백 — 캐릭터 46→72px, 제목 18px, 설명 16px */}
           <img src="/images/manager.png" alt="점핑매니저" className="flex-shrink-0 rounded-xl bg-white" style={{ width: 72, height: 72, objectFit: "contain" }} />
           <span className="flex-1 min-w-0">
-            <span className="block font-black" style={{ fontSize: rem(18), color: "#0B2540" }}>등록은 완전 무료</span>
+            <span className="block" style={{ fontSize: rem(18), fontWeight: 700, color: "#0B2540" }}>등록은 완전 무료</span>
             <span className="block font-bold mt-1 leading-relaxed" style={{ fontSize: rem(16), color: "#E25100" }}>
               매칭되면 점핑매니저가 먼저 연락드립니다
             </span>

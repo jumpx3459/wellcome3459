@@ -255,7 +255,7 @@ export default function SellPage() {
           backgroundSize: "16px 16px, cover",
         }}
       >
-        <div className="px-5 pt-5 pb-3">
+        <div className="px-5 pt-5 pb-5">
           <div className="flex items-center gap-2 mb-3">
             {/* 2026-09-27: buy(찾습니다)·sell(매물등록)은 진입 경로가 다양해
                 로고=홈 링크만으로는 부족하다는 피드백 — 뒤로가기(←)를 복원. */}
@@ -284,22 +284,20 @@ export default function SellPage() {
           <h1 className="font-display text-2xl mt-1.5 text-white">지금 등록하고 빠르게 파세요</h1>
         </div>
 
-        <div className="flex items-center gap-3.5" style={{ padding: "2px 22px 22px" }}>
-          {/* 2026-09-27: manager.png는 불투명 흰 배경이 박혀있어 네이비 위에서
-              흰 사각형이 그대로 보이는 문제 — 투명 컷아웃(buy와 동일 에셋/크기)으로 교체. */}
-          <img
-            src="/images/manager-cut.png"
-            alt="점핑매니저"
-            className="flex-shrink-0"
-            style={{ width: 76, height: 76, objectFit: "contain", filter: "drop-shadow(0 6px 10px rgba(0,0,0,.35))" }}
-          />
-          <p className="leading-snug" style={{ fontSize: rem(13), color: "rgba(255,255,255,.92)", fontWeight: 500 }}>
-            신청서를 검토한 뒤 점핑매니저가 직접 연락드려요.
-          </p>
-        </div>
       </div>
 
       <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: 168 }}>
+        {/* 2026-09-29: 헤더 안 캐릭터 소개(76px/13px) 대신 buy와 같은 "완전 무료" 카드 (판매자용 문구) */}
+        <div className="flex items-center gap-3 rounded-2xl" style={{ background: "#fff", border: "1.5px solid #E4E7EB", padding: "15px 16px" }}>
+          <img src="/images/manager.png" alt="점핑매니저" className="flex-shrink-0 rounded-xl bg-white" style={{ width: 72, height: 72, objectFit: "contain" }} />
+          <span className="flex-1 min-w-0">
+            <span className="block" style={{ fontSize: rem(18), fontWeight: 700, color: "#0B2540" }}>판매 등록은 완전 무료예요</span>
+            <span className="block font-bold mt-1 leading-relaxed" style={{ fontSize: rem(16), color: "#E25100" }}>
+              조건 맞는 구매자에게 바로 알림이 가요
+            </span>
+          </span>
+        </div>
+
         {/* 2026-09-29: 재고 유형(선택) — 매물 카드·상세·푸시 앞에 배지로 표시 (일반 재고는 배지 없음) */}
         <div>
           <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
