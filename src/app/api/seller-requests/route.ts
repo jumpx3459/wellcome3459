@@ -4,14 +4,14 @@ import { isValidContactPhone } from "@/lib/auth";
 import { sanitizeManifest, sanitizePid } from "@/lib/parseCsv";
 import { isStockType } from "@/lib/stockType";
 import { getPhotoLimit, photoLimitError } from "@/lib/photoLimit";
-import { getPhotoLimitForToken } from "@/lib/photoLimitServer";
+import { getMemberFromToken } from "@/lib/photoLimitServer";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const {
     companyName,
     isAnonymous,
-    memberId,
+    // memberId는 받지 않음 (2026-09-29) — 판매자 회원 연결은 아래에서 access token으로만 결정
     contactName,
     contactPhone,
     category,
@@ -68,8 +68,11 @@ export async function POST(req: NextRequest) {
 
   const supabaseAdmin = createClient(supabaseUrl, serviceKey);
 
-  // 2026-09-29: 매물 한 건의 사진 총 장수 — 회원 한도를 토큰으로 서버에서 다시 계산 (body의 memberId는 믿지 않음)
-  const photoLimit = await getPhotoLimitForToken(supabaseAdmin, accessToken);
+  // 2026-09-29: 요청한 회원은 access token으로만 확인 — 예전엔 body의 memberId를 그대로 seller_member_id로
+  // 저장해서 다른 회원 id를 넣을 수 있었음. 토큰 유효 → 그 회원 / 토큰 없음·무효 → null(비회원 신청).
+  const member = await getMemberFromToken(supabaseAdmin, accessToken);
+  // 매물 한 건의 사진 총 장수 — 같은 회원 기준 한도
+  const photoLimit = getPhotoLimit(member);
   if ((images?.length ?? 0) > photoLimit) {
     return NextResponse.json({ error: photoLimitError(photoLimit), field: "images" }, { status: 400 });
   }
@@ -84,7 +87,7 @@ export async function POST(req: NextRequest) {
   const { error } = await supabaseAdmin.from("seller_requests").insert({
     company_name: companyName || null,
     is_anonymous: !!isAnonymous,
-    seller_member_id: memberId || null,
+    seller_member_id: member?.id ?? null,
     stock_type: stockType ?? "general",
     contact_name: contactName || null,
     contact_phone: contactPhone,

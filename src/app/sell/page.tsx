@@ -146,7 +146,7 @@ export default function SellPage() {
         body: JSON.stringify({
           companyName: companyName || null,
           isAnonymous,
-          memberId,
+          // 회원 연결은 서버가 accessToken으로 결정 (memberId는 보내지 않음)
           contactName: contactName || null,
           contactPhone: formatContactPhone(contactPhone),
           category: category || null,
@@ -211,9 +211,10 @@ export default function SellPage() {
           <CheckCircle className="w-12 h-12 mb-4 text-verified" />
           <h1 className="font-display text-2xl text-navy mb-2">신청이 접수됐어요</h1>
           <p className="text-gray500 text-base leading-relaxed mb-6">
-            점핑매니저가 검토 후 24시간 이내에{" "}
+            {/* 2026-09-29: "24시간 이내에" → 매물 상세 배지("빠르게 연락드려요")와 같은 톤 */}
+            점핑매니저가 검토 후{" "}
             <br className="hidden sm:inline" />
-            입력하신 번호로 연락드려요.
+            입력하신 번호로 빠르게 연락드려요.
           </p>
           <div className="bg-gray100 rounded-2xl px-6 py-5 flex flex-col items-center gap-3">
             <img
