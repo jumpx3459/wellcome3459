@@ -10,7 +10,7 @@ import { mockCategories, mockRegions, categoryIcons, quantityUnits, guessCategor
 import ImageUploader from "@/components/ImageUploader";
 import VideoUploader from "@/components/VideoUploader";
 import ManifestUploader from "@/components/ManifestUploader";
-import { NAV_HEIGHT } from "@/components/BottomNav";
+import { NAV_BOTTOM } from "@/components/BottomNav";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
 import { isValidContactPhone, formatContactPhone } from "@/lib/auth";
 import ContactPhoneInput from "@/components/ContactPhoneInput";
@@ -296,7 +296,7 @@ export default function SellPage() {
         </div>
       </div>
 
-      <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: 132 }}>
+      <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: 168 }}>
         <div>
           <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
             매물 상품명
@@ -682,7 +682,7 @@ export default function SellPage() {
           이어지도록 함. */}
       <div
         className="fixed z-10 left-1/2 -translate-x-1/2 w-full max-w-md px-5 pb-5 pt-5"
-        style={{ bottom: NAV_HEIGHT }}
+        style={{ bottom: NAV_BOTTOM }}
       >
         <div
           className="pointer-events-none absolute left-0 right-0"

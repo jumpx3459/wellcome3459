@@ -9,6 +9,8 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { rem } from "@/lib/rem";
 
 export const NAV_HEIGHT = 64;
+// 하단 탭 위에 붙는 고정 요소의 bottom 값 — 탭 높이 + iPhone 홈 인디케이터 (globals.css --nav-bottom)
+export const NAV_BOTTOM = "var(--nav-bottom)";
 
 // Flame(매물)만 lucide 유지 — 단일 도형이라 fill 전환에 문제없음.
 // 나머지는 진짜 solid weight를 지원하는 phosphor-icons로 교체
@@ -74,7 +76,7 @@ export default function BottomNav() {
   return (
     <nav
       className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray200 flex z-40"
-      style={{ height: `${NAV_HEIGHT}px` }}
+      style={{ height: "var(--nav-bottom)", paddingBottom: "var(--sab)" }}
     >
       {TABS.map((tab, i) => {
         if (!tab) {

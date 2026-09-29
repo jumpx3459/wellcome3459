@@ -22,7 +22,7 @@ export default function AuthExpiredNotice() {
     <div
       role="alert"
       className="fixed left-1/2 -translate-x-1/2 w-full max-w-md z-50 px-3"
-      style={{ bottom: 76 }}
+      style={{ bottom: "calc(var(--nav-bottom) + 12px)" }}
     >
       <div className="flex items-center gap-2 rounded-2xl text-white shadow-lg" style={{ background: "#0B2540", padding: "12px 12px 12px 16px" }}>
         <span className="flex-1 min-w-0 font-bold" style={{ fontSize: rem(15) }}>로그인이 만료됐어요. 다시 로그인해주세요</span>

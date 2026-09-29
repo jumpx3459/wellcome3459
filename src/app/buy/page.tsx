@@ -10,7 +10,7 @@ import { formatPriceInput, parsePriceInput, PRICE_UNITS, formatPriceWithUnit } f
 import { isValidContactPhone, formatContactPhone } from "@/lib/auth";
 import ContactPhoneInput from "@/components/ContactPhoneInput";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { NAV_HEIGHT } from "@/components/BottomNav";
+import { NAV_BOTTOM } from "@/components/BottomNav";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import { rem } from "@/lib/rem";
 import { getFreshAccessToken } from "@/lib/authFetch";
@@ -264,7 +264,7 @@ export default function BuyPage() {
         </div>
       </div>
 
-      <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: 132 }}>
+      <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: 148 }}>
         <div>
           <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
             무엇을 찾으세요?
@@ -528,7 +528,7 @@ export default function BuyPage() {
           이어지도록 함. */}
       <div
         className="fixed z-10 left-1/2 -translate-x-1/2 w-full max-w-md px-5 pb-5 pt-5"
-        style={{ bottom: NAV_HEIGHT }}
+        style={{ bottom: NAV_BOTTOM }}
       >
         <div
           className="pointer-events-none absolute left-0 right-0"

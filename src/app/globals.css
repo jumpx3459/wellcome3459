@@ -40,6 +40,15 @@ html {
   font-size: 112.5%;
 }
 
+/* 2026-09-29: iPhone 안전 영역(상태 표시줄·홈 인디케이터). Android·PC는 0.
+   고정 요소는 이 변수만 쓸 것 — 상단 고정은 top: var(--sat), 하단 탭 위에 붙는 요소는
+   bottom: var(--nav-bottom). */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --nav-bottom: calc(64px + var(--sab)); /* 하단 탭(BottomNav) 전체 높이 */
+}
+
 html,
 body {
   background: #f5f6f8;

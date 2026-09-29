@@ -9,7 +9,7 @@ import { mockDeals, categoryIcons, categoryColors, type Deal } from "@/lib/mockD
 import CountdownBadge from "@/components/CountdownBadge";
 import { formatPrice, percentOff, formatDealPrice } from "@/lib/format";
 import { SITE_URL } from "@/lib/siteUrl";
-import { MESSAGES_ENABLED } from "@/lib/features";
+import { MESSAGES_ENABLED, JUMPX_BRIDGE_ENABLED } from "@/lib/features";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 
@@ -604,7 +604,7 @@ function DealDetailPageInner() {
         </div>
       ) : (
         <>
-          <div className="px-5 pt-1" style={{ paddingBottom: "116px" }}>
+          <div className="px-5 pt-1" style={{ paddingBottom: "148px" }} /* 고정 CTA(약 101px) + 위 페이드 28px + 여유 16px — 하단 탭·안전영역은 AppShell이 더함 */>
             <div className="bg-gray100 rounded-2xl p-3 flex items-center gap-3.5">
               <img
                 src="/images/manager.png"
@@ -629,6 +629,7 @@ function DealDetailPageInner() {
               </div>
             </div>
 
+            {JUMPX_BRIDGE_ENABLED && (
             <div className="bg-gray100 rounded-2xl p-4 mt-3">
               <div className="text-sm font-bold text-navy mb-1">지금 바로 입찰하고 싶다면</div>
               <p className="text-xs text-gray500 mb-3">
@@ -661,6 +662,7 @@ function DealDetailPageInner() {
                 </button>
               )}
             </div>
+            )}
 
             <Link
               href="/logistics"
@@ -682,7 +684,7 @@ function DealDetailPageInner() {
               이어지도록 함. */}
           <div
             className="fixed left-1/2 -translate-x-1/2 w-full max-w-md px-5 pb-5 pt-5"
-            style={{ bottom: "64px" }}
+            style={{ bottom: "var(--nav-bottom)" }}
           >
             <div
               className="pointer-events-none absolute left-0 right-0"

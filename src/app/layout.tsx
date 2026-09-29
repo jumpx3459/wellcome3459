@@ -45,6 +45,9 @@ export const viewport: Viewport = {
   themeColor: "#0B2540",
   width: "device-width",
   initialScale: 1,
+  // 2026-09-29: iPhone 홈 화면 앱(appleWebApp statusBarStyle "black-translucent")은 화면이 상태 표시줄
+  // 밑까지 그려짐 — cover로 두고 env(safe-area-inset-*)(globals.css --sat/--sab)만큼 피한다.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

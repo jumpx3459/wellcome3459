@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
-import BottomNav, { NAV_HEIGHT } from "./BottomNav";
+import BottomNav from "./BottomNav";
 import InAppBanner from "./InAppBanner";
 import AuthExpiredNotice from "./AuthExpiredNotice";
 import DebugPanel from "./DebugPanel"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
@@ -71,7 +71,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       }
     >
       {showInAppBanner && <InAppBanner />}
-      <div style={{ paddingBottom: isAdmin || isPartnerDemo || isEnglish ? 0 : `${NAV_HEIGHT}px` }}>{children}</div>
+      {/* iPhone 홈 화면 앱: 상태 표시줄 밑(black-translucent)을 네이비로 칠해 시계·배터리가 보이게 */}
+      <div aria-hidden className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ height: "var(--sat)", background: "#0B2540" }} />
+      <div
+        style={{
+          paddingTop: "var(--sat)",
+          paddingBottom: isAdmin || isPartnerDemo || isEnglish ? "var(--sab)" : "var(--nav-bottom)",
+        }}
+      >
+        {children}
+      </div>
       {!isAdmin && !isPartnerDemo && !isEnglish && <BottomNav />}
       {/* 2026-09-29: 토큰 갱신 후에도 401이면 "다시 로그인해주세요" (authFetch가 이벤트 발생) */}
       <AuthExpiredNotice />

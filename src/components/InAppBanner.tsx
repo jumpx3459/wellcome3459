@@ -122,8 +122,8 @@ export default function InAppBanner() {
   return (
     <>
       <div
-        className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-md z-30 flex items-center gap-2"
-        style={{ height: INAPP_BANNER_HEIGHT, padding: "0 6px 0 14px", background: "var(--color-brandOrangeDeep)", color: "#fff" }}
+        className="fixed left-1/2 -translate-x-1/2 w-full max-w-md z-30 flex items-center gap-2"
+        style={{ top: "var(--sat)", height: INAPP_BANNER_HEIGHT, padding: "0 6px 0 14px", background: "var(--color-brandOrangeDeep)", color: "#fff" }}
         role="region"
         aria-label="알림 받는 방법 안내"
       >

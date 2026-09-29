@@ -13,3 +13,8 @@ export const QUOTES_ENABLED = false;
 // loremflickr 외부 무작위 이미지)는 파일과 경로를 모두 삭제했고, 대표 사진을 받으면 새로 넣은 뒤 true로.
 // false인 동안 예시 카드·예시 상세는 전부 "사진 준비 중"(NoPhotoPlaceholder).
 export const EXAMPLE_MEDIA_ENABLED = false;
+
+// JUMP X 브릿지(매물 상세 "지금 바로 입찰하고 싶다면 · JUMP X 경매") — 2026-09-29 실제 브릿지는 꺼져 있고
+// 버튼을 누르면 "준비 중" 안내 + bridge_interests 기록만 남는 상태라 섹션 전체를 숨김. 코드는 유지 —
+// 거래 플랫폼이 열리면 true로 바꾸고 deals/[id]의 handleBridgeClick을 원래 브릿지(/api/jumpx-bridge)로.
+export const JUMPX_BRIDGE_ENABLED = false;

@@ -208,7 +208,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
         className="fixed z-10 left-1/2 -translate-x-1/2 w-full max-w-md"
         style={{
           // 인앱 브라우저 배너(InAppBanner)가 떠 있으면 그 아래로
-          top: "var(--inapp-banner-h, 0px)",
+          top: "calc(var(--sat) + var(--inapp-banner-h, 0px))",
           backgroundImage:
             "radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(120deg, #04101C, #1A4B78)",
           backgroundSize: "16px 16px, cover",

@@ -7,7 +7,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { sendOtp, verifyOtp, isValidKoreanPhone, toE164Phone } from "@/lib/auth";
 import { fmtLeft } from "@/lib/format";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
-import { NAV_HEIGHT } from "@/components/BottomNav";
+import { NAV_BOTTOM } from "@/components/BottomNav";
 import { rem } from "@/lib/rem";
 
 // 2026-09-28 (3): "비밀번호 로그인도 결국 번호를 매번 입력해야 하냐"는 지적 —
@@ -434,7 +434,7 @@ function LoginPageInner() {
               사이즈도 키움. */}
           <div
             className="flex-1 flex items-end justify-center"
-            style={{ minHeight: 24, paddingTop: 20, paddingBottom: NAV_HEIGHT }}
+            style={{ minHeight: 24, paddingTop: 20, paddingBottom: NAV_BOTTOM }}
           >
             <img
               src="/images/manager-cut.png"

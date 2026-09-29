@@ -10,7 +10,7 @@ import { generateRefCode } from "@/lib/refCode";
 import Toast, { useToast } from "@/components/Toast";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 import { fmtLeft } from "@/lib/format";
-import { NAV_HEIGHT } from "@/components/BottomNav";
+import { NAV_BOTTOM } from "@/components/BottomNav";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import { SITE_URL, isCanonicalHost } from "@/lib/siteUrl";
 import { getPushBlocker, type PushBlocker } from "@/lib/browserEnv";
@@ -558,7 +558,7 @@ function SignupPageInner() {
         )}
       </div>
 
-      <div className="flex-1" style={{ padding: alreadyMember ? "24px 22px 20px" : "24px 22px 132px" }}>
+      <div className="flex-1" style={{ padding: alreadyMember ? "24px 22px 20px" : "24px 22px 168px" }}>
         {alreadyMember ? (
           <div className="flex flex-col items-center text-center" style={{ padding: "32px 6px 0" }}>
             <div
@@ -992,7 +992,7 @@ function SignupPageInner() {
         // 이어지도록 함.
         <div
           className="fixed z-10 left-1/2 -translate-x-1/2 w-full max-w-md"
-          style={{ bottom: NAV_HEIGHT, padding: "20px 22px 24px" }}
+          style={{ bottom: NAV_BOTTOM, padding: "20px 22px 24px" }}
         >
           <div
             className="pointer-events-none absolute left-0 right-0"

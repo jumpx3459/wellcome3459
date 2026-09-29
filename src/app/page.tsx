@@ -398,7 +398,7 @@ export default function Home() {
           — 판매 등록(공급 유입)이 플랫폼 성립의 병목이라 시각적으로 가장 강조.
           정보성 pill을 맨 아래 두면 하단 고정 CTA(무료 알림받기, 총 높이 약 160px)에
           가려질 수 있어 액션 카드보다 위로 옮기고, 안전 여백도 108→132px로 늘림. */}
-      <div className="mt-9 px-5 flex flex-col gap-3" style={{ paddingBottom: "132px" }}>
+      <div className="mt-9 px-5 flex flex-col gap-3" style={{ paddingBottom: "156px" }}>
         <Link
           href="/deals"
           className="text-center text-sm font-bold text-gray500 underline underline-offset-4"
@@ -472,7 +472,7 @@ export default function Home() {
           스크롤 중인 매물 리스트가 CTA 아래로 자연스럽게 이어지도록 함. */}
       <div
         className="fixed left-1/2 -translate-x-1/2 w-full max-w-md px-5 pb-5 pt-5"
-        style={{ bottom: "64px" }}
+        style={{ bottom: "var(--nav-bottom)" }}
       >
         <div
           className="pointer-events-none absolute left-0 right-0"
