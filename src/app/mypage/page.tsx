@@ -1117,11 +1117,11 @@ export default function MyPage() {
               </>
             )}
             {isOfficialPartner && (
-              <p className="mt-1.5" style={UI_DESC}>
-                공식 파트너 배지 · 우선 리워드 · 점핑매니저 우선 연결 혜택을 받고 계세요.{" "}
-                {/* 2026-09-29: 리워드 등급제는 아직 없음 — 확정 안 된 혜택처럼 보이지 않게 */}
-                <span style={UI_META}>(등급제 오픈 예정)</span>
-              </p>
+              // 2026-09-29: 실제로 적용되는 건 배지뿐 — 리워드·우선 연결은 등급제 오픈 전이라 따로 안내
+              <div className="mt-1.5">
+                <p style={UI_DESC}>공식 파트너 배지를 받았어요.</p>
+                <p className="mt-0.5" style={UI_META}>우선 리워드 · 점핑매니저 우선 연결은 등급제 오픈 시 제공돼요.</p>
+              </div>
             )}
 
             {isOfficialPartner ? (
