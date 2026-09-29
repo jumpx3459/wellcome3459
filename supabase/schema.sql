@@ -133,6 +133,9 @@ create table if not exists public.bridge_interests (
 );
 alter table public.bridge_interests enable row level security;
 -- 정책 없음 = anon/authenticated 완전 차단, service role만 접근 (src/app/api/bridge-interest/route.ts)
+-- 2026-09-29: 클릭 출처 — "preview" = 매물 상세 "점프엑스 둘러보기"(JumpxPreviewSheet), null = JUMP X 입찰 브릿지 버튼.
+-- 허용값은 API 화이트리스트(bridge-interest/route.ts ALLOWED_SOURCES)로만 제한. Supabase SQL Editor 실행 완료 (2026-09-29).
+alter table public.bridge_interests add column if not exists source text;
 
 -- ---------------- 마이그레이션 (이미 위 스키마를 실행한 적이 있다면, 이 블록만 다시 실행해도 안전합니다) ----------------
 alter table public.interests add column if not exists contacted boolean default false;

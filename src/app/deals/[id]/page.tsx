@@ -677,7 +677,7 @@ function DealDetailPageInner() {
             )}
 
             {/* 2026-09-29: 점프엑스 둘러보기 — 실제 입찰 브릿지(JUMPX_BRIDGE_ENABLED)가 꺼져 있는 동안의 보조 버튼.
-                클릭 기록은 bridge_interests에 출처 칸이 없어 아직 안 남김 (브릿지 클릭과 섞이지 않게). */}
+                둘러보기 클릭은 bridge_interests에 source = "preview"로 기록 (브릿지 클릭은 source null). */}
             {JUMPX_PREVIEW_ENABLED && !JUMPX_BRIDGE_ENABLED && (
               <button
                 type="button"
@@ -695,7 +695,7 @@ function DealDetailPageInner() {
               </button>
             )}
             {jumpxSheetOpen && (
-              <JumpxPreviewSheet memberId={memberId} returnTo={`/deals/${deal.id}`} onClose={() => setJumpxSheetOpen(false)} />
+              <JumpxPreviewSheet dealId={deal.id} memberId={memberId} returnTo={`/deals/${deal.id}`} onClose={() => setJumpxSheetOpen(false)} />
             )}
 
             {/* 2026-09-29: "🚚 화물이 필요하세요?" 카드 → "점핑 서비스" 컴팩트 섹션 (화물배차·계산기 2칸).

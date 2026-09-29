@@ -7,6 +7,7 @@ import { rem } from "@/lib/rem";
 import { JUMPX_SITE_URL } from "@/lib/features";
 import { isInAppBrowser } from "@/lib/browserEnv";
 import { openExternal } from "@/lib/openExternal";
+import { getFreshAccessToken } from "@/lib/authFetch";
 
 // 매물 상세 "점프엑스에서 거래하기 · 오픈 준비 중" 바텀시트 (2026-09-29, JUMPX_PREVIEW_ENABLED).
 // 점프엑스(jumpx.co.kr)는 아직 서비스 구축 중 — 둘러보기 링크 + 오픈 알림 신청(feature_waitlist, feature = "jumpx_open")만.
@@ -21,11 +22,29 @@ export function openJumpxPreview(): void {
   window.open(JUMPX_PREVIEW_URL, "_blank", "noopener,noreferrer");
 }
 
+// 둘러보기 클릭 기록 (bridge_interests, source = "preview") — 회원은 서버가 토큰으로 결정, 비회원은 null.
+// fire-and-forget: 새 탭·외부 열기를 먼저 하고(팝업 차단 방지) 기록 실패는 무시.
+function recordPreviewClick(dealId: string): void {
+  getFreshAccessToken()
+    .catch(() => null)
+    .then((accessToken) =>
+      fetch("/api/bridge-interest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dealId, accessToken, source: "preview" }),
+        keepalive: true, // 카카오 인앱은 외부 브라우저로 넘어가며 페이지가 떠날 수 있음
+      }),
+    )
+    .catch(() => {});
+}
+
 export default function JumpxPreviewSheet({
+  dealId,
   memberId,
   returnTo,
   onClose,
 }: {
+  dealId: string;
   memberId: string | null;
   returnTo: string; // 비로그인 → 로그인 후 돌아올 곳 (이 매물 상세)
   onClose: () => void;
@@ -80,7 +99,10 @@ export default function JumpxPreviewSheet({
 
         <button
           type="button"
-          onClick={openJumpxPreview}
+          onClick={() => {
+            openJumpxPreview();
+            recordPreviewClick(dealId);
+          }}
           className="w-full font-bold rounded-2xl mt-5"
           style={{ minHeight: 52, fontSize: rem(16), border: "2px solid #0B2540", color: "#0B2540", background: "#fff" }}
         >
