@@ -5,6 +5,7 @@ import { isKakaoInApp, type PushBlocker } from "@/lib/browserEnv";
 import { openExternal, copyCurrentUrl, externalTarget } from "@/lib/openExternal";
 import { rem } from "@/lib/rem";
 import IosInstallSteps, { IOS_INSTALL_TITLE } from "@/components/IosInstallSteps";
+import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
 // 웹푸시를 받을 수 없는 환경(인앱 브라우저 / iPhone 홈 화면 미설치) 안내 — PushStatusCard·가입 화면 공용.
 // 이 상태에선 [알림 켜기]를 누르게 하지 않는다(눌러도 실패).
@@ -35,8 +36,8 @@ export default function PushBlockerNotice({ kind }: { kind: PushBlocker }) {
         <button
           type="button"
           onClick={open}
-          className="mt-2 w-full font-bold rounded-lg text-white"
-          style={{ background: "#0B2540", padding: "10px 0", fontSize: rem(14) }}
+          className={`mt-2 w-full ${BTN_CLASS}`}
+          style={btnStyle("primary")}
         >
           {target?.label}
         </button>

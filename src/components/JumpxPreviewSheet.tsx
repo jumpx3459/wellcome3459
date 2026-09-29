@@ -8,6 +8,7 @@ import { JUMPX_SITE_URL } from "@/lib/features";
 import { isInAppBrowser } from "@/lib/browserEnv";
 import { openExternal } from "@/lib/openExternal";
 import { getFreshAccessToken } from "@/lib/authFetch";
+import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
 // 매물 상세 "점프엑스에서 거래하기 · 오픈 준비 중" 바텀시트 (2026-09-29, JUMPX_PREVIEW_ENABLED).
 // 점프엑스(jumpx.co.kr)는 아직 서비스 구축 중 — 둘러보기 링크 + 오픈 알림 신청(feature_waitlist, feature = "jumpx_open")만.
@@ -103,8 +104,8 @@ export default function JumpxPreviewSheet({
             openJumpxPreview();
             recordPreviewClick(dealId);
           }}
-          className="w-full font-bold rounded-2xl mt-5"
-          style={{ minHeight: 52, fontSize: rem(16), border: "2px solid #0B2540", color: "#0B2540", background: "#fff" }}
+          className={`w-full mt-5 ${BTN_CLASS}`}
+          style={btnStyle("secondary")}
         >
           점프엑스 둘러보기 ↗
         </button>
@@ -112,8 +113,8 @@ export default function JumpxPreviewSheet({
         {!memberId ? (
           <Link
             href={`/login?returnTo=${encodeURIComponent(returnTo)}`}
-            className="block w-full text-center font-black rounded-2xl mt-2.5 text-white"
-            style={{ minHeight: 52, lineHeight: "52px", fontSize: rem(16), background: "var(--color-brandOrangeDeep)" }}
+            className={`w-full mt-2.5 ${BTN_CLASS}`}
+            style={btnStyle("primary")}
           >
             로그인하고 오픈 알림 받기
           </Link>
@@ -129,8 +130,8 @@ export default function JumpxPreviewSheet({
             type="button"
             onClick={join}
             disabled={busy}
-            className="w-full font-black rounded-2xl mt-2.5 text-white disabled:opacity-60"
-            style={{ minHeight: 52, fontSize: rem(16), background: "var(--color-brandOrangeDeep)" }}
+            className={`w-full mt-2.5 ${BTN_CLASS}`}
+            style={btnStyle("primary")}
           >
             {busy ? "신청 중…" : "오픈 알림 받기"}
           </button>

@@ -24,6 +24,7 @@ import { FieldLabel, FieldTag, FORM_INPUT_FONT_SIZE, FORM_HINT_STYLE, FORM_CHIP_
 import { DEAL_PRICE_UNITS, LUMP_SUM, isDealPriceUnit, isLumpSum, priceUnitSuffix, type DealPriceUnit } from "@/lib/priceUnit";
 import CategoryChips from "@/components/CategoryChips";
 import FloatingCTA, { FloatingCTANote, FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
+import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
 export default function SellPage() {
   const router = useRouter();
@@ -265,8 +266,8 @@ export default function SellPage() {
 
           <Link
             href="/"
-            className="w-full block text-center font-bold rounded-2xl text-white mt-5"
-            style={{ background: "#0B2540", padding: "15px 0", fontSize: rem(15) }}
+            className={`w-full mt-5 ${BTN_CLASS}`}
+            style={btnStyle("primary")}
           >
             홈으로
           </Link>

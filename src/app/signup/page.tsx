@@ -17,6 +17,7 @@ import PushBlockerNotice from "@/components/PushBlockerNotice";
 import { rem } from "@/lib/rem";
 import { clearReturningMember } from "@/lib/returningMember";
 import FloatingCTA, { FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
+import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
 // "01012345678" -> "010****5678" 형태로 화면에만 일부 가려서 보여줍니다
 function maskPhone(phone: string): string {
@@ -586,8 +587,8 @@ function SignupPageInner() {
             </div>
             <button
               onClick={() => router.push(returnTo || "/mypage")}
-              className="w-full text-white font-bold rounded-2xl mt-4.5"
-              style={{ padding: "17px 0", fontSize: rem(16.5), background: "linear-gradient(135deg,#E25100,#FF6F0F)", boxShadow: "0 8px 20px rgba(226,81,0,.3)" }}
+              className={`w-full mt-4.5 ${BTN_CLASS}`}
+              style={btnStyle("primary")}
             >
               {returnTo ? "매물 보러 가기" : "마이페이지로 이동"}
             </button>

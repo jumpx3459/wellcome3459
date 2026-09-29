@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import { rem } from "@/lib/rem";
+import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
 const STORAGE_KEY = "dj_onboarded"; // "1" = 명시적 액션(가입 시작/로그인 이동/둘러보기)으로 닫음 — 영구 억제
 const LAST_SHOWN_KEY = "dj_onboarding_last_shown"; // 버튼 없이 그냥 닫힌 경우 재노출 쿨다운 계산용
@@ -171,13 +172,8 @@ export default function OnboardingIntro({
         )}
         <button
           onClick={startSignup}
-          className="w-full font-bold rounded-2xl"
-          style={{
-            padding: "19px 0",
-            background: "linear-gradient(135deg,#E25100,#FF6F0F)",
-            fontSize: rem(18),
-            boxShadow: "0 10px 24px rgba(226,81,0,.4)",
-          }}
+          className={`w-full ${BTN_CLASS}`}
+          style={btnStyle("primary")}
         >
           🔔 30초만에 알림 설정하기
         </button>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { rem } from "@/lib/rem";
 import type { LoginMethod } from "@/lib/returningMember";
+import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
 // 재방문 회원 화면 (2026-09-29) — 로그아웃 상태로 돌아온 기존 회원에게 가입 온보딩 대신.
 // 판별은 page.tsx(src/lib/returningMember.ts). 레이아웃은 OnboardingIntro와 같이 배경은 전체 폭,
@@ -60,8 +61,8 @@ export default function ReturningMemberIntro({
         <div className="flex flex-col gap-2">
           <Link
             href="/login"
-            className="block w-full text-center font-bold rounded-2xl"
-            style={{ padding: "19px 0", background: "linear-gradient(135deg,#E25100,#FF6F0F)", fontSize: rem(18), boxShadow: "0 10px 24px rgba(226,81,0,.4)" }}
+            className={`w-full ${BTN_CLASS}`}
+            style={btnStyle("primary")}
           >
             {method ? LOGIN_LABEL[method] : "로그인"}
           </Link>

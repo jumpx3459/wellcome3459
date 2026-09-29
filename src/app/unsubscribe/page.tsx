@@ -5,6 +5,7 @@ import Link from "next/link";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { authFetch } from "@/lib/authFetch";
 import { clearReturningMember } from "@/lib/returningMember";
+import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
 // 2026-09-28 보안 수정: 예전엔 전화번호만 입력하면 그 번호의 회원을 바로 삭제했음.
 // 이제 로그인 필수 + "알림 끄기"(푸시 구독만 삭제)와 "회원 탈퇴"(확인 단계 필수)를 분리.
@@ -89,8 +90,8 @@ export default function UnsubscribePage() {
           </p>
           <Link
             href="/login?returnTo=/unsubscribe"
-            className="block w-full mt-4 text-center text-white font-bold rounded-2xl"
-            style={{ background: "var(--color-brandOrange)", padding: "14px 0" }}
+            className={`w-full mt-4 ${BTN_CLASS}`}
+            style={btnStyle("primary")}
           >
             로그인하기
           </Link>
@@ -108,8 +109,8 @@ export default function UnsubscribePage() {
             <button
               onClick={() => run("push_off")}
               disabled={busy !== null}
-              className="w-full mt-4 text-white font-bold rounded-2xl disabled:opacity-60"
-              style={{ background: "#0B2540", padding: "14px 0" }}
+              className={`w-full mt-4 ${BTN_CLASS}`}
+              style={btnStyle("secondary")}
             >
               {busy === "push_off" ? "처리 중..." : "알림 끄기"}
             </button>
@@ -132,8 +133,9 @@ export default function UnsubscribePage() {
             <button
               onClick={() => run("withdraw")}
               disabled={!confirmWithdraw || busy !== null}
-              className="w-full mt-4 text-white font-bold rounded-2xl disabled:opacity-40"
-              style={{ background: "#8A8A82", padding: "14px 0" }}
+              className={`w-full mt-4 ${BTN_CLASS}`}
+              // 탈퇴는 되돌릴 수 없어 주황(주 버튼) 대신 보조 버튼 모양, 확인 전엔 흐리게
+              style={{ ...btnStyle("secondary"), color: "#C2410C", opacity: !confirmWithdraw ? 0.4 : 1 }}
             >
               {busy === "withdraw" ? "처리 중..." : "회원 탈퇴하기"}
             </button>

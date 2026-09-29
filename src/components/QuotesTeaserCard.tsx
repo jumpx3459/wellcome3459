@@ -5,6 +5,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { rem } from "@/lib/rem";
 import { UI_CARD_TITLE, UI_DESC } from "@/lib/uiText";
+import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
 // 2026-09-29: "견적함 · 준비중" 자리를 "곧 오픈" 예고 카드로. 실제 견적함은 아직 없음
 // (features.ts QUOTES_ENABLED = false). 오픈 알림 신청은 feature_waitlist에 기록
@@ -54,8 +55,8 @@ export default function QuotesTeaserCard({ memberId }: { memberId: string | null
       type="button"
       onClick={() => join(role)}
       disabled={busy !== null}
-      className="flex-1 font-black rounded-2xl text-white disabled:opacity-60"
-      style={{ minHeight: 56, fontSize: rem(16), background: "var(--color-brandOrangeDeep)" }}
+      className={`flex-1 ${BTN_CLASS}`}
+      style={btnStyle("primary")}
     >
       {busy === role ? "신청 중…" : label}
     </button>
@@ -119,8 +120,8 @@ export default function QuotesTeaserCard({ memberId }: { memberId: string | null
                 <p className="mt-5 text-center" style={{ fontSize: rem(15), color: "#1A1F26" }}>가입하면 오픈 알림을 받을 수 있어요</p>
                 <Link
                   href="/signup"
-                  className="block w-full text-center font-black rounded-2xl mt-3 text-white"
-                  style={{ minHeight: 52, lineHeight: "52px", fontSize: rem(17), background: "var(--color-brandOrangeDeep)" }}
+                  className={`w-full mt-3 ${BTN_CLASS}`}
+                  style={btnStyle("primary")}
                 >
                   무료로 가입하기
                 </Link>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { isInAppBrowser, isKakaoInApp, isStandalone } from "@/lib/browserEnv";
 import { openExternal, copyCurrentUrl, externalTarget, type ExternalTarget } from "@/lib/openExternal";
 import { rem } from "@/lib/rem";
+import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
 // 2026-09-28: 카카오 채널 링크 등으로 인앱 브라우저에서 홈·/deals·매물 상세에 들어오면 안내.
 // 인앱에선 웹푸시가 안 되므로 크롬/사파리로 유도. 매물 내용은 막지 않는다.
@@ -81,8 +82,8 @@ export default function InAppBanner() {
             <button
               type="button"
               onClick={act}
-              className="w-full font-black text-white rounded-2xl mt-5"
-              style={{ minHeight: 52, fontSize: rem(17), background: "var(--color-brandOrangeDeep)" }}
+              className={`w-full mt-5 ${BTN_CLASS}`}
+              style={btnStyle("primary")}
             >
               {target.label}
             </button>
@@ -94,8 +95,8 @@ export default function InAppBanner() {
               <button
                 type="button"
                 onClick={act}
-                className="w-full font-black text-white rounded-2xl mt-3"
-                style={{ minHeight: 52, fontSize: rem(17), background: "var(--color-brandOrangeDeep)" }}
+                className={`w-full mt-3 ${BTN_CLASS}`}
+                style={btnStyle("primary")}
               >
                 {copied ? "링크 복사됨 ✓" : "링크 복사"}
               </button>

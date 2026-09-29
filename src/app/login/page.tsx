@@ -10,6 +10,7 @@ import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버�
 import { NAV_BOTTOM } from "@/components/BottomNav";
 import { rem } from "@/lib/rem";
 import { authFetch } from "@/lib/authFetch";
+import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
 // 2026-09-28 (3): "비밀번호 로그인도 결국 번호를 매번 입력해야 하냐"는 지적 —
 // phone+password는 Supabase Auth 구조상 식별자(번호) 없이는 로그인이 불가능해
@@ -294,8 +295,8 @@ function LoginPageInner() {
             </p>
             <Link
               href={signupHref}
-              className="w-full text-white font-bold rounded-2xl mt-5 text-center"
-              style={{ padding: "17px 0", fontSize: rem(16.5), background: "linear-gradient(135deg,#E25100,#FF6F0F)", boxShadow: "0 8px 20px rgba(226,81,0,.3)" }}
+              className={`w-full mt-5 ${BTN_CLASS}`}
+              style={btnStyle("primary")}
             >
               알림 신청하러 가기
             </Link>
@@ -440,8 +441,8 @@ function LoginPageInner() {
                 <button
                   onClick={handlePasswordSignIn}
                   disabled={passwordSigningIn}
-                  className="w-full text-white font-bold rounded-2xl mt-4.5 text-center disabled:opacity-60"
-                  style={{ padding: "15px 0", fontSize: rem(15.5), background: "linear-gradient(135deg,#E25100,#FF6F0F)" }}
+                  className={`w-full mt-4.5 ${BTN_CLASS}`}
+                  style={btnStyle("primary")}
                 >
                   {passwordSigningIn ? "로그인 중..." : "로그인"}
                 </button>
@@ -481,8 +482,8 @@ function LoginPageInner() {
                   <button
                     type="button"
                     onClick={() => router.push("/mypage#password")}
-                    className="w-full font-black text-white rounded-2xl mt-5"
-                    style={{ minHeight: 52, fontSize: rem(17), background: "var(--color-brandOrangeDeep)" }}
+                    className={`w-full mt-5 ${BTN_CLASS}`}
+                    style={btnStyle("primary")}
                   >
                     지금 만들기
                   </button>

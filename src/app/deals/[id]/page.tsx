@@ -21,6 +21,7 @@ import { isLumpSum } from "@/lib/priceUnit";
 import PhotoCarousel, { type PhotoCarouselHandle } from "@/components/PhotoCarousel";
 import PhotoViewer from "@/components/PhotoViewer";
 import FloatingCTA, { FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
+import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
 // 값이 없거나 공백뿐이면 섹션/행 자체를 그리지 않는다 (빈 공간 방지)
 function hasText(v: string | null | undefined): boolean {
@@ -614,8 +615,8 @@ function DealDetailPageInner() {
             </p>
             <Link
               href={ref ? `/signup?ref=${ref}` : "/signup"}
-              className="inline-block text-white text-center font-bold rounded-xl text-sm px-6"
-              style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)", padding: "12px 24px" }}
+              className={`w-full ${BTN_CLASS}`}
+              style={btnStyle("primary")}
             >
               덤핑정보 알림 받기
             </Link>
@@ -632,8 +633,8 @@ function DealDetailPageInner() {
             </div>
             <Link
               href="/signup"
-              className="inline-block mt-4 text-white text-center font-bold rounded-xl text-sm px-6 py-3"
-              style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)" }}
+              className={`w-full mt-4 ${BTN_CLASS}`}
+              style={btnStyle("primary")}
             >
               무료 알림받기 →
             </Link>

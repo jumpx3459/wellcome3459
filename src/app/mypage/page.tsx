@@ -26,6 +26,7 @@ import { getPhotoLimit, isPhotoLimitMaxed, MAX_PHOTO_SLOTS } from "@/lib/photoLi
 import { clearReturningMember } from "@/lib/returningMember";
 import { UI_SECTION, UI_CARD_TITLE, UI_DESC, UI_META, UI_LINK } from "@/lib/uiText";
 import { FieldLabel, FORM_INPUT_FONT_SIZE } from "@/components/FormField";
+import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
 type InterestItem = {
   id: string;
@@ -669,8 +670,8 @@ export default function MyPage() {
         </p>
         <Link
           href="/login"
-          className="text-white text-center rounded-2xl px-8"
-          style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)", padding: "14px 32px", ...UI_LINK }}
+          className={`px-8 ${BTN_CLASS}`}
+          style={btnStyle("primary")}
         >
           휴대폰 번호로 로그인
         </Link>
@@ -883,8 +884,8 @@ export default function MyPage() {
                 type="button"
                 onClick={savePassword}
                 disabled={passwordSaving}
-                className="flex-1 text-center font-bold rounded-xl disabled:opacity-60"
-                style={{ padding: "10px 0", ...UI_LINK, background: "linear-gradient(135deg,#E25100,#FF6F0F)", color: "#fff" }}
+                className={`flex-1 ${BTN_CLASS}`}
+                style={btnStyle("primary")}
               >
                 {passwordSaving ? "저장 중..." : "저장"}
               </button>
@@ -895,8 +896,9 @@ export default function MyPage() {
                   setPasswordError(null);
                   setNewPassword("");
                 }}
-                className="flex-1 text-center font-bold rounded-xl"
-                style={{ padding: "10px 0", ...UI_LINK, border: "1.5px solid rgba(255,255,255,.25)", color: "rgba(255,255,255,.85)" }}
+                className={`flex-1 ${BTN_CLASS}`}
+                // 네이비 헤더 위라 보조 버튼을 어두운 배경용(투명 + 흰 테두리)으로
+                style={{ ...btnStyle("secondary"), background: "transparent", border: "1.5px solid rgba(255,255,255,.35)", color: "#fff" }}
               >
                 취소
               </button>
@@ -1008,8 +1010,8 @@ export default function MyPage() {
                 <button
                   onClick={saveProfile}
                   disabled={profileSaving}
-                  className="flex-1 rounded-2xl disabled:opacity-60 border-2 border-gray200 text-navy"
-                  style={{ padding: "14px 0", ...UI_LINK }}
+                  className={`flex-1 ${BTN_CLASS}`}
+                  style={btnStyle("primary")}
                 >
                   {profileSaving ? (
                     "저장 중..."
@@ -1025,8 +1027,8 @@ export default function MyPage() {
                   <button
                     type="button"
                     onClick={() => setEditingProfile(false)}
-                    className="rounded-2xl border-2 border-gray200 text-gray500"
-                    style={{ padding: "14px 20px", ...UI_LINK }}
+                    className={BTN_CLASS}
+                    style={btnStyle("secondary")}
                   >
                     취소
                   </button>
@@ -1177,8 +1179,8 @@ export default function MyPage() {
                 <button
                   type="button"
                   onClick={() => setQrOpen(false)}
-                  className="mt-4 w-full rounded-xl border-2 border-gray200 text-navy"
-                  style={{ padding: "12px 0", ...UI_LINK }}
+                  className={`mt-4 w-full ${BTN_CLASS}`}
+                  style={btnStyle("secondary")}
                 >
                   닫기
                 </button>
@@ -1258,8 +1260,8 @@ export default function MyPage() {
                 <button
                   onClick={submitPartnerRequest}
                   disabled={partnerSubmitting}
-                  className="w-full rounded-xl text-white disabled:opacity-50"
-                  style={{ background: "#8A6100", padding: "13px 0", ...UI_LINK }}
+                  className={`w-full ${BTN_CLASS}`}
+                  style={btnStyle("primary")}
                 >
                   {partnerSubmitting ? "신청 중..." : "공식 점핑파트너 신청하기"}
                 </button>
@@ -1543,8 +1545,8 @@ export default function MyPage() {
         <button
           onClick={save}
           disabled={saving}
-          className="text-white rounded-2xl disabled:opacity-60"
-          style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)", padding: "14px 0", ...UI_LINK }}
+          className={`w-full ${BTN_CLASS}`}
+          style={btnStyle("primary")}
         >
           {saving ? (
             "저장 중..."
@@ -1698,8 +1700,8 @@ export default function MyPage() {
           type="button"
           onClick={logout}
           disabled={loggingOut}
-          className="w-full font-bold rounded-2xl bg-white border border-gray200 disabled:opacity-60"
-          style={{ minHeight: 52, ...UI_LINK, color: "#374151" }}
+          className={`w-full ${BTN_CLASS}`}
+          style={btnStyle("secondary")}
         >
           {loggingOut ? "로그아웃 중…" : "로그아웃"}
         </button>

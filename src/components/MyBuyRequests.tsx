@@ -6,7 +6,8 @@ import { rem } from "@/lib/rem";
 import { formatPriceWithUnit } from "@/lib/format";
 import { SECTION_TITLE_STYLE } from "@/components/EcosystemGrid";
 import { authFetch } from "@/lib/authFetch";
-import { UI_CARD_TITLE, UI_META, UI_LINK } from "@/lib/uiText";
+import { UI_CARD_TITLE, UI_META } from "@/lib/uiText";
+import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
 // 마이페이지 "내 구매 요청" (2026-09-29) — 로그인 상태로 /buy에서 등록한 요청(buy_requests.member_id) 최근 10건.
 type Item = {
@@ -55,8 +56,8 @@ export default function MyBuyRequests() {
           <p style={{ fontSize: rem(15), color: "#4B5563" }}>찾는 상품을 올려두면 점핑매니저가 매물을 찾아 연결해드려요.</p>
           <Link
             href="/buy"
-            className="inline-block mt-3 font-bold rounded-full text-white"
-            style={{ ...UI_LINK, padding: "10px 20px", background: "var(--color-brandOrangeDeep)" }}
+            className={`mt-3 w-full ${BTN_CLASS}`}
+            style={btnStyle("primary")}
           >
             구매 요청하기
           </Link>

@@ -17,6 +17,7 @@ import StockTypeBadge from "@/components/StockTypeBadge";
 import DealCardMedia from "@/components/DealCardMedia";
 import { SECTION_TITLE_STYLE } from "@/components/EcosystemGrid";
 import { isLumpSum } from "@/lib/priceUnit";
+import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
 // 헤더(점핑매니저 안내줄)의 실측 높이 — 아래 콘텐츠의 paddingTop 보정에 사용.
 // 2026-09-26 로컬 Playwright 실측 77.3px(360/390/430px 폭 동일) → 78로 올림.
@@ -410,15 +411,15 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
           <div className="flex justify-center gap-2 mt-4">
             <Link
               href="/mypage#alerts"
-              className="font-bold rounded-full"
-              style={{ fontSize: rem(13), padding: "9px 16px", border: "1.5px solid #E25100", color: "#E25100" }}
+              className={`flex-1 ${BTN_CLASS}`}
+              style={btnStyle("secondary")}
             >
               조건 넓히기
             </Link>
             <Link
               href="/deals"
-              className="font-bold rounded-full text-white"
-              style={{ fontSize: rem(13), padding: "9px 16px", background: "#0B2540" }}
+              className={`flex-1 ${BTN_CLASS}`}
+              style={btnStyle("primary")}
             >
               전체 매물 보기
             </Link>

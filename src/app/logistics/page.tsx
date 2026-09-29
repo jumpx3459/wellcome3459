@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
+import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
 // 환율 계산기에서 지원하는 통화 목록 (B2B 소싱에서 실사용 빈도가 높은 순)
 const CURRENCIES = [
@@ -646,8 +647,8 @@ function ShippingMatchTeaser() {
           href="https://www.cargo-link.co.kr/"
           target="_blank"
           rel="noopener noreferrer"
-          className="block text-center text-white font-bold rounded-xl py-3.5"
-          style={{ background: "#FF6F0F" }}
+          className={`w-full ${BTN_CLASS}`}
+          style={btnStyle("primary")}
         >
           카고링크에서 화물 견적 받기 →
         </a>
