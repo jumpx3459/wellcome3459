@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { sendDealPush } from "@/lib/sendPush";
 import { sanitizeManifest, sanitizePid } from "@/lib/parseCsv";
 import { checkAdminAuth } from "@/lib/adminAuth";
+import { isStockType } from "@/lib/stockType";
 
 function maskedSellerName(category: string) {
   const num = Math.floor(1000 + Math.random() * 9000);
@@ -36,6 +37,7 @@ export async function POST(req: NextRequest) {
     storageCondition,
     pid,
     manifestItems,
+    stockType,
   } = body;
 
   // 2026-09-28: 관리자 폼(DealForm)과 같은 필수 규칙 — field로 어느 칸인지 알려준다.
@@ -52,6 +54,8 @@ export async function POST(req: NextRequest) {
   if (minOrderQty != null && !isPositive(minOrderQty)) return bad("최소 주문량은 0보다 커야 해요.", "minOrderQty");
   if (minOrderQty != null && minOrderQty > totalQty) return bad("최소주문량은 총수량보다 클 수 없어요.", "minOrderQty");
   if (!closesAt || Number.isNaN(Date.parse(closesAt))) return bad("마감 시간이 올바르지 않아요.", "closesAt");
+  // 2026-09-29: 재고 유형 — 7개 값만 (DB check와 같음), 안 보내면 general
+  if (stockType != null && !isStockType(stockType)) return bad("재고 유형이 올바르지 않아요.", "stockType");
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return NextResponse.json({ ok: true, demo: true, id: "demo-deal" });
@@ -116,6 +120,7 @@ export async function POST(req: NextRequest) {
       storage_condition: storageCondition || null,
       pid: sanitizePid(pid),
       manifest_items: sanitizeManifest(manifestItems),
+      stock_type: stockType ?? "general",
       seller_member_id: sellerMemberId,
       is_anonymous: isAnonymous,
       seller_display_name: sellerDisplayName,

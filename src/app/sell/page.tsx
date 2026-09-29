@@ -17,6 +17,7 @@ import ContactPhoneInput from "@/components/ContactPhoneInput";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import type { ManifestRow } from "@/lib/parseCsv";
 import { rem } from "@/lib/rem";
+import { STOCK_TYPES, type StockType } from "@/lib/stockType";
 
 export default function SellPage() {
   const router = useRouter();
@@ -63,6 +64,7 @@ export default function SellPage() {
     })();
   }, []);
   const [category, setCategory] = useState<string>("");
+  const [stockType, setStockType] = useState<StockType>("general");
   const [categoryTouched, setCategoryTouched] = useState(false);
   // 2026-09-27: buy/page.tsx와 동일하게 자동 추천되면 칩 목록 대신 요약
   // 한 줄("추천됨" 배지 포함)로 접고, "수정"을 눌러야 다시 펼치도록 통일.
@@ -144,6 +146,7 @@ export default function SellPage() {
           contactName: contactName || null,
           contactPhone: formatContactPhone(contactPhone),
           category: category || null,
+          stockType,
           region: region || null,
           productName,
           quantity: Number(quantity),
@@ -297,6 +300,38 @@ export default function SellPage() {
       </div>
 
       <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: 168 }}>
+        {/* 2026-09-29: 재고 유형(선택) — 매물 카드·상세·푸시 앞에 배지로 표시 (일반 재고는 배지 없음) */}
+        <div>
+          <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
+            재고 유형
+            <span className="text-xs font-bold" style={{ color: "#6B7480" }}>(선택)</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {STOCK_TYPES.map((t) => {
+              const picked = stockType === t.value;
+              return (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => setStockType(t.value)}
+                  className="rounded-full whitespace-nowrap"
+                  style={{
+                    padding: "9px 13px",
+                    fontSize: rem(14),
+                    fontWeight: 700,
+                    background: "#fff",
+                    border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
+                    color: "#1A1F26",
+                  }}
+                >
+                  {t.icon ? `${t.icon} ` : ""}
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div>
           <div className="text-sm font-bold mb-2 flex items-center gap-1.5" style={{ color: "#0B2540" }}>
             매물 상품명
@@ -307,7 +342,7 @@ export default function SellPage() {
             style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: rem(14.5) }}
             value={productName}
             onChange={(e) => setProductName(e.target.value)}
-            placeholder="예: 국내산 갈치 20kg 박스"
+            placeholder={stockType === "closure" ? "예: 사무집기 일괄 (책상·의자·캐비닛)" : "예: 국내산 갈치 20kg 박스"}
           />
           <p className="mt-1.5" style={{ fontSize: rem(14), color: "#4B5563" }}>
             💡 상품명을 입력하면 카테고리를 자동으로 골라드려요
@@ -319,6 +354,11 @@ export default function SellPage() {
             카테고리
             <span className="text-xs font-bold" style={{ color: "#6B7480" }}>(선택)</span>
           </div>
+          {stockType === "closure" && (
+            <p className="mb-2" style={{ fontSize: rem(14), color: "#4B5563" }}>
+              여러 품목이 섞였으면 &apos;혼합재고&apos;를 골라주세요
+            </p>
+          )}
           {categoryEditing ? (
             <>
             {!category && !categoryTouched && (

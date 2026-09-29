@@ -998,3 +998,11 @@ $$ language plpgsql security definer set search_path = public;
 drop trigger if exists members_protect_columns on public.members;
 create trigger members_protect_columns before update on public.members
   for each row execute function public.protect_member_columns();
+
+-- 2026-09-29: 재고 유형 — 매물 카드·상세·푸시 앞 배지 (general은 배지 없음, 알림 매칭과 무관).
+-- 값 목록은 src/lib/stockType.ts STOCK_TYPES와 같아야 함. Supabase에서 실행 확인(2026-09-29,
+-- 두 테이블 모두 컬럼 존재·기본값 general·잘못된 값 insert 시 23514).
+alter table public.seller_requests add column if not exists stock_type text not null default 'general'
+  check (stock_type in ('general','near_expiry','overstock','closure','season_end','returned','discontinued'));
+alter table public.deals add column if not exists stock_type text not null default 'general'
+  check (stock_type in ('general','near_expiry','overstock','closure','season_end','returned','discontinued'));

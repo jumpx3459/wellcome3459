@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import { matchesConditions } from "@/lib/dealMatching";
 import { formatDealPrice } from "@/lib/format";
+import { stockTypeBadge } from "@/lib/stockType";
 
 const vapidPublic = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 const vapidPrivate = process.env.VAPID_PRIVATE_KEY;
@@ -23,7 +24,7 @@ export async function sendDealPush(dealId: string) {
 
   const { data: deal, error: dealError } = await supabaseAdmin
     .from("deals")
-    .select("id, title, category_id, region_id, deal_price, original_price, quantity_unit, images")
+    .select("id, title, category_id, region_id, deal_price, original_price, quantity_unit, stock_type, images")
     .eq("id", dealId)
     .single();
 
@@ -35,6 +36,8 @@ export async function sendDealPush(dealId: string) {
     ? Math.round(((deal.original_price - deal.deal_price) / deal.original_price) * 100)
     : 0;
   const discountPrefix = discountPct > 0 ? `${discountPct}%↓ · ` : "";
+  const stockBadge = stockTypeBadge(deal.stock_type);
+  const stockTypePrefix = stockBadge ? `${stockBadge} · ` : "";
 
   // member_categories와 member_regions는 서로 직접 연결된 외래키가 없어
   // 한 번의 조인 쿼리로는 가져올 수 없습니다. 각각 조회한 뒤 교집합을 계산합니다.
@@ -98,7 +101,8 @@ export async function sendDealPush(dealId: string) {
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
           JSON.stringify({
             title: "🔥 덤핑점핑 · 마감 임박",
-            body: `${deal.title} · ${discountPrefix}${formatDealPrice(Number(deal.deal_price), deal.quantity_unit)}`,
+            // 재고 유형 배지를 앞에 (general이면 없음) — 예: "⏰ 유통기한 임박 · 냉동 삼겹살 · 36%↓ · 398,000원/박스"
+            body: `${stockTypePrefix}${deal.title} · ${discountPrefix}${formatDealPrice(Number(deal.deal_price), deal.quantity_unit)}`,
             url: `/deals/${deal.id}`,
             tag: `deal-${deal.id}`,
             image: deal.images?.[0] || undefined,

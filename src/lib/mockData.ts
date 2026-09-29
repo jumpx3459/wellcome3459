@@ -6,6 +6,7 @@ export type Deal = {
   category: string;
   region: string;
   location: string;
+  stock_type?: string | null; // 2026-09-29 재고 유형 (src/lib/stockType.ts)
   original_price: number;
   deal_price: number;
   total_qty: number;

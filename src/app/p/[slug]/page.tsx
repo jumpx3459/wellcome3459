@@ -28,7 +28,7 @@ export default function PartnerDemoPage() {
       const { data, error } = await supabase
         .from("deals")
         .select(
-          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, closes_at, location, images, categories(name), regions(name)"
+          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, closes_at, location, images, stock_type, categories(name), regions(name)"
         )
         .eq("status", "active")
         .gt("closes_at", new Date().toISOString())

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isValidContactPhone } from "@/lib/auth";
 import { sanitizeManifest, sanitizePid } from "@/lib/parseCsv";
+import { isStockType } from "@/lib/stockType";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -28,6 +29,7 @@ export async function POST(req: NextRequest) {
     manifestItems,
     images,
     videoUrl,
+    stockType,
   } = body;
 
   if (!contactPhone || !productName || !quantity) {
@@ -36,6 +38,10 @@ export async function POST(req: NextRequest) {
   // 2026-09-29: 사무실 번호도 허용 (휴대폰 전용 검증은 로그인 OTP에만)
   if (!isValidContactPhone(contactPhone)) {
     return NextResponse.json({ error: "휴대폰 또는 사무실 번호를 정확히 입력해주세요", field: "contactPhone" }, { status: 400 });
+  }
+  // 2026-09-29: 재고 유형 — 7개 값만 (DB check와 같음), 안 보내면 general
+  if (stockType != null && !isStockType(stockType)) {
+    return NextResponse.json({ error: "재고 유형이 올바르지 않아요.", field: "stockType" }, { status: 400 });
   }
   // 2026-09-28: 수량보다 큰 MOQ(예: 수량 100kg, MOQ 1000kg)가 그대로 저장된 사례 — 폼(sell)과 같은 규칙
   if (minOrderQty != null && minOrderQty !== "" && Number(minOrderQty) > Number(quantity)) {
@@ -63,6 +69,7 @@ export async function POST(req: NextRequest) {
     company_name: companyName || null,
     is_anonymous: !!isAnonymous,
     seller_member_id: memberId || null,
+    stock_type: stockType ?? "general",
     contact_name: contactName || null,
     contact_phone: contactPhone,
     category_id: catRow?.id ?? null,

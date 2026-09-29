@@ -12,6 +12,7 @@ import { SITE_URL } from "@/lib/siteUrl";
 import { MESSAGES_ENABLED, JUMPX_BRIDGE_ENABLED } from "@/lib/features";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
+import StockTypeBadge from "@/components/StockTypeBadge";
 
 // 값이 없거나 공백뿐이면 섹션/행 자체를 그리지 않는다 (빈 공간 방지)
 function hasText(v: string | null | undefined): boolean {
@@ -123,7 +124,7 @@ function DealDetailPageInner() {
       const { data } = await supabase
         .from("deals")
         .select(
-          "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, location, images, video_url, description, status, package_unit, origin, spec, storage_condition, quantity_unit, min_order_qty, interest_count, pid, manifest_items, seller_member_id, seller_display_name, categories(name), regions(name)"
+          "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, location, images, video_url, description, status, package_unit, origin, spec, storage_condition, quantity_unit, min_order_qty, interest_count, pid, manifest_items, seller_member_id, seller_display_name, stock_type, categories(name), regions(name)"
         )
         .eq("id", params.id)
         .single();
@@ -135,6 +136,7 @@ function DealDetailPageInner() {
           category: (data.categories as unknown as { name: string } | null)?.name ?? "기타",
           region: (data.regions as unknown as { name: string } | null)?.name ?? "",
           location: formatDealLocation(((data.regions as unknown) as { name: string } | null)?.name, data.location),
+          stock_type: data.stock_type ?? "general",
           original_price: data.original_price,
           deal_price: data.deal_price,
           total_qty: data.total_qty,
@@ -360,6 +362,7 @@ function DealDetailPageInner() {
             <span className="text-sm">{categoryIcons[deal.category] ?? "🗂️"}</span>
             {deal.category}
           </span>
+          <StockTypeBadge value={deal.stock_type} />
           {isExampleId && (
             <span className="inline-flex items-center gap-1 text-xs font-bold text-white px-2.5 py-1 rounded-full" style={{ background: "rgba(226,81,0,.85)" }}>
               예시 미리보기

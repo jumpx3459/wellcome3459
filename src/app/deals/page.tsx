@@ -14,6 +14,7 @@ import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 
 import { EXAMPLE_DEALS, shouldShowExamples } from "@/lib/exampleDeals";
 import { rem } from "@/lib/rem";
+import StockTypeBadge from "@/components/StockTypeBadge";
 
 // design-v2: 헤더 우측의 "정부지원금" 링크를 마이페이지로 옮기고, 그 자리를
 // 이 화면이 다루는 매물 성격을 보여주는 순수 카피 로테이션으로 채움 (클릭 동작 없음).
@@ -67,7 +68,7 @@ function DealsPageInner() {
       const { data, error } = await supabase
         .from("deals")
         .select(
-          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, closes_at, location, images, video_url, origin, min_order_qty, interest_count, categories(name), regions(name)"
+          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, closes_at, location, images, video_url, origin, min_order_qty, interest_count, stock_type, categories(name), regions(name)"
         )
         .eq("status", "active")
         .gt("closes_at", new Date().toISOString()) // 마감 지난 매물은 애초에 가져오지 않음
@@ -81,6 +82,7 @@ function DealsPageInner() {
             category: (d.categories as unknown as { name: string } | null)?.name ?? "기타",
             region: (d.regions as unknown as { name: string } | null)?.name ?? "",
             location: formatDealLocation(((d.regions as unknown) as { name: string } | null)?.name, d.location),
+            stock_type: d.stock_type ?? "general",
             original_price: d.original_price,
             deal_price: d.deal_price,
             total_qty: d.total_qty,
@@ -106,7 +108,7 @@ function DealsPageInner() {
       const { data, error } = await supabase
         .from("deals")
         .select(
-          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, closes_at, location, images, video_url, origin, min_order_qty, interest_count, categories(name), regions(name)"
+          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, closes_at, location, images, video_url, origin, min_order_qty, interest_count, stock_type, categories(name), regions(name)"
         )
         .or(`status.eq.closed,closes_at.lte.${new Date().toISOString()}`)
         .order("closes_at", { ascending: false })
@@ -120,6 +122,7 @@ function DealsPageInner() {
             category: (d.categories as unknown as { name: string } | null)?.name ?? "기타",
             region: (d.regions as unknown as { name: string } | null)?.name ?? "",
             location: formatDealLocation(((d.regions as unknown) as { name: string } | null)?.name, d.location),
+            stock_type: d.stock_type ?? "general",
             original_price: d.original_price,
             deal_price: d.deal_price,
             total_qty: d.total_qty,
@@ -442,6 +445,7 @@ function DealsPageInner() {
                     <span className="text-sm flex-shrink-0">{categoryIcons[d.category] ?? "🗂️"}</span>
                     <span className="truncate">{d.category}</span>
                   </div>
+                  <StockTypeBadge value={d.stock_type} className="mr-auto" />
                   {/* 2026-09-26: 관심표시 3건 미만은 숨김(threshold-gating) — 초기 트래픽
                       단계에서 "관심 0~2명"이 그대로 보이면 오히려 인기 없어 보이는 역효과 방지. */}
                   {(d.interest_count ?? 0) >= 3 && (

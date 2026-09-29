@@ -16,6 +16,7 @@ import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 import { SITE_URL } from "@/lib/siteUrl";
 import { rem } from "@/lib/rem";
+import StockTypeBadge from "@/components/StockTypeBadge";
 
 const TODAY_BADGE_THRESHOLD = 5; // 이보다 적으면 "오늘 N건" 배너를 아예 숨김 (빈약한 숫자 노출 방지)
 const BUSINESS_COUNT_THRESHOLD = 30; // 이보다 적으면 사업자 수 대신 무숫자 카피로 대체 (빈약한 숫자 노출 방지)
@@ -93,7 +94,7 @@ export default function Home() {
         supabase
           .from("deals")
           .select(
-            "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, created_at, location, images, package_unit, min_order_qty, quantity_unit, categories(name), regions(name)"
+            "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, created_at, location, images, package_unit, min_order_qty, quantity_unit, stock_type, categories(name), regions(name)"
           )
           .eq("status", "active")
           .gt("closes_at", new Date().toISOString())
@@ -124,6 +125,7 @@ export default function Home() {
             category: (d.categories as unknown as { name: string } | null)?.name ?? "기타",
             region: (d.regions as unknown as { name: string } | null)?.name ?? "",
             location: formatDealLocation(((d.regions as unknown) as { name: string } | null)?.name, d.location),
+            stock_type: d.stock_type ?? "general",
             original_price: d.original_price,
             deal_price: d.deal_price,
             total_qty: d.total_qty,
@@ -343,6 +345,7 @@ export default function Home() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0 pr-10">
+                    {d.stock_type && d.stock_type !== "general" && <StockTypeBadge value={d.stock_type} className="mb-1" />}
                     <div className="text-sm font-bold text-navy truncate">{d.title}</div>
                     <div className="text-xs text-gray500 mt-0.5">
                       {d.category} · {d.location}

@@ -13,6 +13,7 @@ import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 import { matchesConditions } from "@/lib/dealMatching";
 import { EXAMPLE_DEALS, shouldShowExamples } from "@/lib/exampleDeals";
 import { rem } from "@/lib/rem";
+import StockTypeBadge from "@/components/StockTypeBadge";
 
 // 헤더(점핑매니저 안내줄)의 실측 높이 — 아래 콘텐츠의 paddingTop 보정에 사용.
 // 2026-09-26 로컬 Playwright 실측 77.3px(360/390/430px 폭 동일) → 78로 올림.
@@ -103,7 +104,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
       let matchQuery = supabase
         .from("deals")
         .select(
-          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, closes_at, created_at, location, images, video_url, origin, min_order_qty, category_id, region_id, categories(name), regions(name)",
+          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, closes_at, created_at, location, images, video_url, origin, min_order_qty, category_id, region_id, stock_type, categories(name), regions(name)",
           { count: "exact" }
         )
         .eq("status", "active")
@@ -139,6 +140,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
           category: (d.categories as unknown as { name: string } | null)?.name ?? "기타",
           region: (d.regions as unknown as { name: string } | null)?.name ?? "",
           location: formatDealLocation(((d.regions as unknown) as { name: string } | null)?.name, d.location),
+          stock_type: d.stock_type ?? "general",
           original_price: d.original_price,
           deal_price: d.deal_price,
           total_qty: d.total_qty,
@@ -352,6 +354,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                     </span>
                   )}
                   <span className="flex-1 min-w-0">
+                    {d.stock_type && d.stock_type !== "general" && <StockTypeBadge value={d.stock_type} className="mb-1" />}
                     <span className="block font-bold leading-snug" style={{ fontSize: rem(16), color: "#1A1F26" }}>{d.title}</span>
                     <span className="block mt-0.5" style={{ fontSize: rem(12.5), color: "#6B7480" }}>
                       {d.category} · {d.location} · 잔여 {d.remaining_qty}{d.quantity_unit || "개"}

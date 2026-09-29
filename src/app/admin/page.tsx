@@ -12,8 +12,10 @@ import { formatPriceInput, parsePriceInput, formatMemberNo, formatPriceWithUnit 
 import type { ManifestRow } from "@/lib/parseCsv";
 import { SITE_URL } from "@/lib/siteUrl";
 import { rem } from "@/lib/rem";
+import { STOCK_TYPES, isStockType, type StockType } from "@/lib/stockType";
 
 type SellerRequest = {
+  stock_type?: string | null; // 2026-09-29 재고 유형
   id: string;
   company_name: string | null;
   contact_name: string | null;
@@ -1582,6 +1584,7 @@ function AdminDashboard({
                   pid: r.pid ?? "",
                   manifestItems: r.manifest_items ?? [],
                   closesInHours: r.hope_duration_hours ?? undefined,
+                  stockType: r.stock_type ?? undefined,
                 }}
                 requestId={r.id}
                 onDone={() => { setOpenFormFor(null); load(); }}
@@ -2338,11 +2341,14 @@ function DealForm({
     pid?: string;
     manifestItems?: ManifestRow[];
     closesInHours?: number;
+    stockType?: string;
   };
   requestId?: string;
   onDone: () => void;
 }) {
   const [title, setTitle] = useState(prefill?.title ?? "");
+  // 재고 유형 — 판매신청 승인이면 신청서 값을 이어받음
+  const [stockType, setStockType] = useState<StockType>(isStockType(prefill?.stockType) ? prefill!.stockType as StockType : "general");
   // prefill이 없으면 비워둬서 관리자가 직접 고르게 함 (예전엔 첫 항목이 미리 선택돼 있어
   // 카테고리·지역을 안 고르고 그대로 등록되는 실수가 가능했음)
   const [category, setCategory] = useState(prefill?.category ?? "");
@@ -2424,6 +2430,7 @@ function DealForm({
         headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
         body: JSON.stringify({
           title: title.trim(),
+          stockType,
           category,
           region,
           originalPrice: orig,
@@ -2496,6 +2503,22 @@ function DealForm({
             clearErr("title");
           }}
         />
+      </DealFormField>
+
+      <DealFormField label="재고 유형" htmlFor="deal-stockType">
+        <select
+          id="deal-stockType"
+          className={inputCls()}
+          value={stockType}
+          onChange={(e) => setStockType(e.target.value as StockType)}
+        >
+          {STOCK_TYPES.map((t) => (
+            <option key={t.value} value={t.value}>
+              {t.icon ? `${t.icon} ` : ""}
+              {t.label}
+            </option>
+          ))}
+        </select>
       </DealFormField>
 
       <div className="grid grid-cols-2 gap-2">
