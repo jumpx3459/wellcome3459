@@ -16,6 +16,57 @@ const TILES = [
   { href: "/notices", icon: "📋", title: "긴급 공지", desc: "부동산·설비 처분" },
 ];
 
+// 매물 상세 하단 "점핑 서비스" 컴팩트 2칸 (2026-09-29) — 링크는 위 TILES와 같은 경로를 그대로 씀.
+// 계산기 설명만 매물 맥락에 맞춰 "운임·관부가세".
+const COMPACT_TILES = [
+  { ...TILES[0] },
+  { ...TILES[1], desc: "운임·관부가세" },
+];
+
+// 홈·마이페이지 "점핑 서비스" 섹션으로 가는 앵커 id — "전체 보기" 링크가 씀
+export const SERVICES_ANCHOR_ID = "services";
+
+// 해시(#services)로 들어오면 섹션까지 스크롤 — 내용이 비동기로 그려져서 잠깐 기다렸다가 찾음
+export function scrollToServicesIfHash() {
+  if (typeof window === "undefined" || window.location.hash !== `#${SERVICES_ANCHOR_ID}`) return;
+  // 위쪽 카드(알림 설정·구매 요청 등)가 늦게 그려지면 섹션이 밀려나서, 잠시 뒤 두 번 더 맞춤
+  let tries = 0;
+  const align = () => document.getElementById(SERVICES_ANCHOR_ID)?.scrollIntoView({ block: "start" });
+  const tick = () => {
+    if (document.getElementById(SERVICES_ANCHOR_ID)) {
+      align();
+      setTimeout(align, 500);
+      setTimeout(align, 1200);
+    } else if (tries++ < 20) setTimeout(tick, 100);
+  };
+  tick();
+}
+
+export function ServiceTilesCompact() {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {COMPACT_TILES.map((t) => (
+        <Link
+          key={t.href}
+          href={t.href}
+          className="flex flex-col items-center justify-center text-center rounded-2xl bg-white border border-gray200 min-w-0"
+          style={{ height: 96, padding: "8px 6px" }}
+        >
+          <span className="leading-none" style={{ fontSize: rem(32) }} aria-hidden>
+            {t.icon}
+          </span>
+          <span className="mt-1.5 block" style={{ fontSize: rem(16), fontWeight: 700, color: "#1F2937" }}>
+            {t.title}
+          </span>
+          <span className="block" style={{ fontSize: rem(14), fontWeight: 600, color: "#4B5563" }}>
+            {t.desc}
+          </span>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 // 섹션 제목(홈·마이페이지 "점핑 서비스" 등) 공통 스타일
 export const SECTION_TITLE_STYLE = { fontSize: rem(18), fontWeight: 800, color: "#1F2937" } as const;
 

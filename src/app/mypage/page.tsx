@@ -9,7 +9,7 @@ import { formatPrice, formatMemberNo, formatRelativeTime, dealUrgencyState, form
 import { generateRefCode } from "@/lib/refCode";
 import Toast, { useToast } from "@/components/Toast";
 import BusinessLicenseUploader from "@/components/BusinessLicenseUploader";
-import EcosystemGrid, { SECTION_TITLE_STYLE } from "@/components/EcosystemGrid";
+import EcosystemGrid, { SECTION_TITLE_STYLE, SERVICES_ANCHOR_ID, scrollToServicesIfHash } from "@/components/EcosystemGrid";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import PushStatusCard from "@/components/PushStatusCard";
 import { MESSAGES_ENABLED, QUOTES_ENABLED } from "@/lib/features";
@@ -239,6 +239,7 @@ export default function MyPage() {
         document.getElementById("referral")?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     }
+    scrollToServicesIfHash(); // 매물 상세 "점핑 서비스 · 전체 보기"
     if (window.location.hash === "#alerts") {
       setAlertsOpen(true);
       requestAnimationFrame(() => {
@@ -1661,7 +1662,7 @@ export default function MyPage() {
             2026-09-28: 홈 화면엔 "점핑 서비스" 라벨이 있는데 마이페이지엔 없어서
             같은 타일 그룹인데도 소속감이 없어 보인다는 피드백 — 홈과 동일하게
             라벨 추가. */}
-        <div className="border-t border-gray200 pt-5">
+        <div id={SERVICES_ANCHOR_ID} className="border-t border-gray200 pt-5" style={{ scrollMarginTop: 12 }}>
           <div className="mb-2.5" style={SECTION_TITLE_STYLE}>점핑 서비스</div>
           <EcosystemGrid />
 

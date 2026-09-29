@@ -13,6 +13,7 @@ import { MESSAGES_ENABLED, JUMPX_BRIDGE_ENABLED } from "@/lib/features";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 import { rem } from "@/lib/rem";
+import { SECTION_TITLE_STYLE, SERVICES_ANCHOR_ID, ServiceTilesCompact } from "@/components/EcosystemGrid";
 import StockTypeBadge from "@/components/StockTypeBadge";
 
 // 값이 없거나 공백뿐이면 섹션/행 자체를 그리지 않는다 (빈 공간 방지)
@@ -620,15 +621,16 @@ function DealDetailPageInner() {
                 <p className="text-base font-bold text-navy leading-snug">
                   점핑매니저가 바로 연락드립니다.
                 </p>
-                <div className="flex items-center gap-1 mt-1.5">
+                {/* 2026-09-29: "당일 연락 원칙" → "빠르게 연락드려요" (지킬 수 있는 표현으로). 390px에서 배지 2개 한 줄 유지 */}
+                <div className="flex items-center gap-1 mt-1.5 flex-nowrap">
                   <span
-                    className="text-[0.7222rem] font-bold px-2 py-1 rounded-full"
-                    style={{ background: "#E8F8EC", color: "#1D8A44" }}
+                    className="font-bold px-2 py-1 rounded-full whitespace-nowrap"
+                    style={{ fontSize: rem(13), background: "#E8F8EC", color: "#1D8A44" }}
                   >
                     ✓ 검증된 매니저
                   </span>
-                  <span className="text-[0.7222rem] font-bold text-gray500 px-2 py-1 rounded-full bg-white">
-                    당일 연락 원칙
+                  <span className="font-bold text-gray500 px-2 py-1 rounded-full bg-white whitespace-nowrap" style={{ fontSize: rem(13) }}>
+                    빠르게 연락드려요
                   </span>
                 </div>
               </div>
@@ -669,19 +671,22 @@ function DealDetailPageInner() {
             </div>
             )}
 
-            <Link
-              href="/logistics"
-              className="flex items-center justify-between rounded-2xl mt-3"
-              style={{ background: "rgba(11,37,64,.06)", border: "1px solid #1B3A5C", padding: "14px 16px" }}
-            >
-              <span>
-                <span className="block text-sm font-black text-navy">🚚 화물이 필요하세요?</span>
-                <span className="block text-xs mt-0.5" style={{ color: "#1B3A5C" }}>
-                  운임·팔레트·통관 계산기 보기
-                </span>
-              </span>
-              <span style={{ color: "#1B3A5C" }}>→</span>
-            </Link>
+            {/* 2026-09-29: "🚚 화물이 필요하세요?" 카드 → "점핑 서비스" 컴팩트 섹션 (화물배차·계산기 2칸).
+                순서: 가격·정보 → 점핑매니저 카드 → (관심있어요 CTA는 하단 고정) → JUMP X(꺼짐) → 점핑 서비스.
+                "전체 보기"는 회원이면 MY, 비회원이면 홈의 같은 섹션 (MY는 비회원에게 로그인 화면만 보여서). */}
+            <div className="mt-6" data-section="detail-services">
+              <div className="flex items-center justify-between mb-2.5">
+                <div style={SECTION_TITLE_STYLE}>점핑 서비스</div>
+                <Link
+                  href={isMember ? `/mypage#${SERVICES_ANCHOR_ID}` : `/#${SERVICES_ANCHOR_ID}`}
+                  className="font-bold flex items-center"
+                  style={{ fontSize: rem(14), color: "#4B5563", minHeight: 44 }}
+                >
+                  전체 보기 →
+                </Link>
+              </div>
+              <ServiceTilesCompact />
+            </div>
           </div>
 
           {/* 2026-09-27: 홈 하단 CTA와 동일한 톤으로 통일 — 불투명 흰 배경 대신
