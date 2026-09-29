@@ -9,7 +9,8 @@ import { mockDeals, categoryIcons, categoryColors, type Deal } from "@/lib/mockD
 import CountdownBadge from "@/components/CountdownBadge";
 import { formatPrice, percentOff, formatDealPrice } from "@/lib/format";
 import { SITE_URL } from "@/lib/siteUrl";
-import { MESSAGES_ENABLED, JUMPX_BRIDGE_ENABLED } from "@/lib/features";
+import { MESSAGES_ENABLED, JUMPX_BRIDGE_ENABLED, JUMPX_PREVIEW_ENABLED } from "@/lib/features";
+import JumpxPreviewSheet from "@/components/JumpxPreviewSheet";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 import { rem } from "@/lib/rem";
@@ -55,6 +56,7 @@ function DealDetailPageInner() {
   // "준비중" 안내만 하고, 클릭은 수요 신호로만 가볍게 기록합니다.
   const [memberId, setMemberId] = useState<string | null>(null);
   const [isMember, setIsMember] = useState(false);
+  const [jumpxSheetOpen, setJumpxSheetOpen] = useState(false);
   const [showMessageForm, setShowMessageForm] = useState(false);
   const [messageBody, setMessageBody] = useState("");
   const [messageSending, setMessageSending] = useState(false);
@@ -672,6 +674,28 @@ function DealDetailPageInner() {
                 </button>
               )}
             </div>
+            )}
+
+            {/* 2026-09-29: 점프엑스 둘러보기 — 실제 입찰 브릿지(JUMPX_BRIDGE_ENABLED)가 꺼져 있는 동안의 보조 버튼.
+                클릭 기록은 bridge_interests에 출처 칸이 없어 아직 안 남김 (브릿지 클릭과 섞이지 않게). */}
+            {JUMPX_PREVIEW_ENABLED && !JUMPX_BRIDGE_ENABLED && (
+              <button
+                type="button"
+                onClick={() => setJumpxSheetOpen(true)}
+                className="w-full flex items-center justify-center gap-2 rounded-2xl mt-3 bg-white"
+                style={{ minHeight: 52, border: "1.5px solid #0B2540", color: "#0B2540", padding: "0 16px" }}
+              >
+                <span className="font-bold" style={{ fontSize: rem(16) }}>점프엑스에서 거래하기</span>
+                <span
+                  className="font-bold rounded-full whitespace-nowrap"
+                  style={{ fontSize: rem(13), padding: "2px 8px", background: "#EEF1F5", color: "#4B5563" }}
+                >
+                  오픈 준비 중
+                </span>
+              </button>
+            )}
+            {jumpxSheetOpen && (
+              <JumpxPreviewSheet memberId={memberId} returnTo={`/deals/${deal.id}`} onClose={() => setJumpxSheetOpen(false)} />
             )}
 
             {/* 2026-09-29: "🚚 화물이 필요하세요?" 카드 → "점핑 서비스" 컴팩트 섹션 (화물배차·계산기 2칸).

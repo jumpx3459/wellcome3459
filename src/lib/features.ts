@@ -18,3 +18,8 @@ export const EXAMPLE_MEDIA_ENABLED = false;
 // 버튼을 누르면 "준비 중" 안내 + bridge_interests 기록만 남는 상태라 섹션 전체를 숨김. 코드는 유지 —
 // 거래 플랫폼이 열리면 true로 바꾸고 deals/[id]의 handleBridgeClick을 원래 브릿지(/api/jumpx-bridge)로.
 export const JUMPX_BRIDGE_ENABLED = false;
+
+// 점프엑스 둘러보기(매물 상세 "점프엑스에서 거래하기 · 오픈 준비 중") — 2026-09-29. jumpx.co.kr에 프리런치 문구
+// 배포 확인 후 켬. JUMPX_BRIDGE_ENABLED(실제 입찰 브릿지)가 false인 동안만 보임 — 브릿지가 열리면 그쪽이 대신함.
+export const JUMPX_PREVIEW_ENABLED = true;
+export const JUMPX_SITE_URL = "https://jumpx.co.kr";
