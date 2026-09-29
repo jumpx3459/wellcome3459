@@ -9,6 +9,7 @@ import { fmtLeft } from "@/lib/format";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 import { NAV_BOTTOM } from "@/components/BottomNav";
 import { rem } from "@/lib/rem";
+import { authFetch } from "@/lib/authFetch";
 
 // 2026-09-28 (3): "비밀번호 로그인도 결국 번호를 매번 입력해야 하냐"는 지적 —
 // phone+password는 Supabase Auth 구조상 식별자(번호) 없이는 로그인이 불가능해
@@ -132,12 +133,15 @@ function LoginPageInner() {
         debugLog(`[login] members-check already=${already} authUserId=${authUserId.slice(0, 8)}`);
         setMembership(already ? "member" : "not_member");
         if (!already) return;
-        // 인증번호로 방금 로그인했고 비밀번호가 없으면(user_metadata.has_password) 권유 시트 1회
+        // 인증번호로 방금 로그인했고 비밀번호가 없으면 권유 시트 1회 — 보유 여부는 서버(app_metadata)에서 확인
         if (loggedInVia.current === "otp" && lsGet(PW_PROMPT_DISMISSED_KEY) !== "1") {
-          supabase!.auth.getUser().then(({ data: u }) => {
-            if (u.user?.user_metadata?.has_password) router.push(returnTo || "/mypage");
-            else setShowPwPrompt(true);
-          });
+          authFetch("/api/auth/password-status")
+            .then((r) => (r.ok ? r.json() : { hasPassword: true })) // 확인 실패 시엔 안 띄우고 그냥 이동
+            .then((d: { hasPassword?: boolean }) => {
+              if (d.hasPassword) router.push(returnTo || "/mypage");
+              else setShowPwPrompt(true);
+            })
+            .catch(() => router.push(returnTo || "/mypage"));
           return;
         }
         router.push(returnTo || "/mypage");
@@ -180,7 +184,7 @@ function LoginPageInner() {
       return;
     }
     try {
-      localStorage.setItem(LAST_PHONE_KEY, phone);
+      localStorage.setItem(LAST_PHONE_KEY, phone.replace(/[^0-9]/g, "")); // 저장은 숫자만, 표시는 010-1234-5678
     } catch {}
     lsSet(LOGIN_METHOD_KEY, "otp");
     // authUserId는 위 onAuthStateChange 구독이 세션 발급과 동시에 채워줌
@@ -202,15 +206,16 @@ function LoginPageInner() {
     const { error } = await supabase.auth.signInWithPassword({ phone: toE164Phone(phone), password });
     setPasswordSigningIn(false);
     if (error) {
-      setPasswordError("번호 또는 비밀번호가 올바르지 않아요.");
+      // 번호별로 "비밀번호 없음"을 구분해 알려주면 아무 번호나 넣어 회원 여부를 알아낼 수 있어서 한 문구로
+      setPasswordError("번호 또는 비밀번호가 맞지 않아요. 비밀번호를 아직 안 만드셨다면 인증번호로 로그인해주세요");
       return;
     }
     try {
-      localStorage.setItem(LAST_PHONE_KEY, phone);
+      localStorage.setItem(LAST_PHONE_KEY, phone.replace(/[^0-9]/g, "")); // 저장은 숫자만, 표시는 010-1234-5678
     } catch {}
     lsSet(LOGIN_METHOD_KEY, "password");
-    // 이전에 만든 비밀번호엔 표시가 없어서, 비밀번호로 들어오면 has_password를 채워 둠 (권유 시트가 다시 안 뜨게)
-    supabase.auth.updateUser({ data: { has_password: true } }).catch(() => {});
+    // 이전에 만든 비밀번호엔 표시가 없어서, 비밀번호로 들어오면 서버(app_metadata)에 표시 (권유 시트가 다시 안 뜨게)
+    authFetch("/api/auth/mark-password").catch(() => {});
     // authUserId는 위 onAuthStateChange 구독이 세션 발급과 동시에 채워줌 (OTP 흐름과 동일)
   };
 
@@ -443,6 +448,17 @@ function LoginPageInner() {
                 <p className="mt-2.5" style={{ fontSize: rem(14), color: "#4B5563", lineHeight: 1.55 }}>
                   비밀번호를 아직 안 만드셨나요? 인증번호로 로그인한 뒤 마이페이지에서 만들 수 있어요
                 </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPasswordError(null);
+                    setAuthMode("otp"); // 입력한 번호(phone)는 두 탭이 같은 state라 그대로 유지
+                  }}
+                  className="mt-1.5 font-bold underline underline-offset-4"
+                  style={{ fontSize: rem(14), color: "#0B2540", minHeight: 44 }}
+                >
+                  인증번호로 로그인
+                </button>
               </>
             )}
 
