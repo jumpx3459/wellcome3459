@@ -9,6 +9,8 @@ function getAdminClient() {
   );
 }
 
+const DEAL_STATUSES: unknown[] = ["active", "closed"];
+
 // 진행 중인 매물 목록 (관리자용 - 재고/마감시간 수정 대상)
 export async function GET(req: NextRequest) {
   const auth = checkAdminAuth(req);
@@ -37,6 +39,10 @@ export async function PATCH(req: NextRequest) {
 
   const { id, remainingQty, closesAt, status, images, videoUrl } = await req.json();
   if (!id) return NextResponse.json({ error: "id가 필요합니다." }, { status: 400 });
+  // DB check 제약(deals_status_check)과 같은 값만 허용 — sold_out은 사용처가 없어 제외
+  if (status !== undefined && !DEAL_STATUSES.includes(status)) {
+    return NextResponse.json({ error: "매물 상태 값이 올바르지 않아요.", field: "status" }, { status: 400 });
+  }
 
   const supabaseAdmin = getAdminClient();
   const update: Record<string, unknown> = {};

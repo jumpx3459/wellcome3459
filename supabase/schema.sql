@@ -64,7 +64,7 @@ create table if not exists public.deals (
   remaining_qty int not null,
   location text,
   closes_at timestamptz not null,
-  status text default 'active', -- active | closed | sold_out
+  status text default 'active', -- active | closed (sold_out은 사용 안 함, deals_status_check 참고 — 2026-09-30)
   images text[] default '{}', -- 매물 사진 URL 목록 (기본 최대 6장 권장: 대표/실물/박스/라벨 + 여유 2장, 추천 리워드로 더 늘어날 수 있음)
   description text, -- 소비기한, 보관상태 등 판매자가 남긴 상세 설명
   created_at timestamptz default now()
@@ -1026,3 +1026,15 @@ alter table public.seller_requests add column if not exists price_unit text
   check (price_unit is null or price_unit in ('개','박스','kg','톤','파렛트','세트','L','일괄'));
 alter table public.deals add column if not exists price_unit text
   check (price_unit is null or price_unit in ('개','박스','kg','톤','파렛트','세트','L','일괄'));
+
+-- 2026-09-30: 매물 상태 값 제한 — 코드가 쓰는 값은 active(진행)·closed(마감) 둘뿐이고 sold_out은 사용처 없음.
+-- /api/admin/deals/manage PATCH도 같은 두 값만 허용(그 외 400 field: "status").
+-- ⚠️ 아직 실행 안 함 — 대표가 Supabase SQL Editor에서 아래 순서대로 실행.
+-- (1) 기존 값 확인: active·closed 외 값(또는 null)이 있으면 (3) validate가 실패하니 먼저 정리.
+--   select status, count(*) from public.deals group by status order by status;
+-- (2) 제약 추가 — not valid라 기존 행은 검사하지 않고 새 insert/update부터 적용.
+alter table public.deals drop constraint if exists deals_status_check;
+alter table public.deals add constraint deals_status_check
+  check (status in ('active','closed')) not valid;
+-- (3) 기존 행까지 검사 (1)에서 다른 값이 없을 때 실행.
+alter table public.deals validate constraint deals_status_check;
