@@ -17,6 +17,9 @@ import StockTypePicker from "@/components/StockTypePicker";
 import StockTypeBadge from "@/components/StockTypeBadge";
 import { MAX_PHOTO_SLOTS } from "@/lib/photoLimit";
 import { DEAL_PRICE_UNITS, LUMP_SUM, isDealPriceUnit, isLumpSum, priceUnitSuffix } from "@/lib/priceUnit";
+import { UI_SECTION, UI_CARD_TITLE, UI_LINK, BTN_CLASS, btnStyle } from "@/lib/uiText";
+import { FieldLabel, FORM_INPUT_FONT_SIZE } from "@/components/FormField";
+import { RatioMetric, DailyBars, FunnelBars, InlineBar, BIG_NUM, LABEL, CARD } from "@/components/admin/DashboardViz";
 
 type SellerRequest = {
   stock_type?: string | null; // 2026-09-29 재고 유형
@@ -372,6 +375,12 @@ function AdminDashboard({
   // 우선 핵심 구간(조치 필요·참고 지표·진행 중인 매물)에만 적용.
   const [viewMode, setViewMode] = useState<"auto" | "mobile" | "desktop">("auto");
   const [quotesWaitlist, setQuotesWaitlist] = useState<{ total: number; receiver: number; sender: number } | null>(null);
+  // 2026-09-29: 핵심 지표·최근 7일 추세 (/api/admin/dashboard-metrics, 읽기 전용 집계)
+  const [metrics, setMetrics] = useState<{
+    members: { total: number; withPush: number };
+    notifications7d: { sent: number; clicked: number };
+    daily: { days: string[]; signups: number[]; deals: number[]; leads: number[] };
+  } | null>(null);
   const [windowWidth, setWindowWidth] = useState(0);
   useEffect(() => {
     const update = () => setWindowWidth(window.innerWidth);
@@ -458,6 +467,10 @@ function AdminDashboard({
       fetch("/api/admin/notices", { headers: { "x-admin-key": adminKey } })
         .then((r) => r.json())
         .then((d) => setNotices(d.items ?? [])),
+      fetch("/api/admin/dashboard-metrics", { headers: { "x-admin-key": adminKey } })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => setMetrics(d?.members ? d : null))
+        .catch(() => setMetrics(null)),
     ])
       .then(([reqData, dealData, interestData, buyData, memberData]) => {
         setRequests(reqData.items ?? []);
@@ -803,150 +816,157 @@ function AdminDashboard({
         </div>
       </div>
 
-      <div className={isDesktop ? "px-8 pt-4 max-w-[1200px] mx-auto w-full" : "px-5 pt-4"}>
-      {/* 2026-09-26 (6): 조치필요/참고지표/카테고리별을 데스크톱에서 3열 카드로 분할 —
-          아래 패널 그리드와 동일한 카드 스타일 적용, 세로 스크롤 대폭 축소.
-          모바일은 display:contents로 기존 스택 순서/스타일 100% 유지. */}
-      <div className={isDesktop ? "grid grid-cols-3 gap-4 items-start" : "contents"}>
-        <div className={isDesktop ? "bg-white border border-gray200 rounded-2xl p-4" : ""}>
-        <div className="text-sm font-bold text-gray500 mb-1.5">⚡ 조치 필요</div>
-        <div className={isDesktop ? "grid grid-cols-2 gap-1.5" : "grid grid-cols-4 gap-1.5"}>
-          {[
-            {
-              label: "미연락 리드",
-              value: interests.filter((i) => !i.contacted).length,
-              onClick: () => jumpToSection("leads", () => setLeadsOpen(true)),
-            },
-            {
-              label: "마감임박(6h)",
-              value: activeDeals.filter((d) => {
-                const remainMs = new Date(d.closes_at).getTime() - new Date().getTime();
-                return remainMs > 0 && remainMs <= 6 * 60 * 60 * 1000;
-              }).length,
-              onClick: () => jumpToSection("active-deals"),
-            },
-            {
-              label: "대기중 판매신청",
-              value: requests.length,
-              onClick: () => jumpToSection("pending-sellers", () => setSellerReqOpen(true)),
-            },
-            {
-              label: "재고문의 미연락",
-              value: buyRequests.filter((b) => !b.contacted).length,
-              onClick: () => jumpToSection("buy-requests", () => setBuyReqOpen(true)),
-            },
-          ].map((stat) => (
-            <button
-              key={stat.label}
-              type="button"
-              onClick={stat.onClick}
-              className="rounded-xl px-1 py-3 text-center"
-              style={
-                stat.value > 0
-                  ? { background: "#FDEEE8", border: "1px solid #F5C4A8" }
-                  : { background: "#fff", border: "1px solid #E4E7EB" }
-              }
-            >
-              <div className="font-black" style={{ fontSize: rem(20), color: stat.value > 0 ? "#C2410C" : "#0B2540" }}>
-                {stat.value}
-              </div>
-              <div
-                className="mt-0.5 font-bold leading-tight"
-                style={{ fontSize: rem(12.5), color: stat.value > 0 ? "#C2410C" : "#6B7480" }}
-              >
-                {stat.label}
-              </div>
-            </button>
-          ))}
-        </div>
-        </div>
+      {/* 2026-09-29: 시각적 위계 — ① 조치 필요 → ② 핵심 지표 → ③ 참고 현황·목록.
+          색은 의미 있을 때만(조치 1건↑ 주황/빨강, 0건 회색, 일반 지표 남색 1색). 막대는 CSS만(DashboardViz). */}
+      <div className={isDesktop ? "px-8 pt-5 max-w-[1200px] mx-auto w-full flex flex-col gap-6" : "px-5 pt-5 flex flex-col gap-6"}>
+        {(() => {
+          const soonDeals = activeDeals.filter((d) => {
+            const remainMs = new Date(d.closes_at).getTime() - new Date().getTime();
+            return remainMs > 0 && remainMs <= 6 * 60 * 60 * 1000;
+          }).length;
+          const actions = [
+            { label: "미연락 리드", value: interests.filter((i) => !i.contacted).length, urgent: true, go: () => { setLeadFilter("uncontacted"); jumpToSection("leads", () => setLeadsOpen(true)); } },
+            { label: "마감임박(6h)", value: soonDeals, urgent: true, go: () => jumpToSection("active-deals") },
+            { label: "대기 판매신청", value: requests.length, urgent: false, go: () => jumpToSection("pending-sellers", () => setSellerReqOpen(true)) },
+            { label: "재고문의 미연락", value: buyRequests.filter((b) => !b.contacted).length, urgent: false, go: () => jumpToSection("buy-requests", () => setBuyReqOpen(true)) },
+          ];
+          const hot = actions.filter((a) => a.value > 0);
+          const cold = actions.filter((a) => a.value === 0);
+          return (
+            <section aria-label="조치 필요">
+              <h2 style={UI_SECTION}>⚡ 조치 필요</h2>
+              {hot.length > 0 && (
+                <div className={`mt-2.5 grid gap-2 ${isDesktop ? "grid-cols-4" : "grid-cols-2"}`}>
+                  {hot.map((a) => (
+                    <button
+                      key={a.label}
+                      type="button"
+                      onClick={a.go}
+                      className="rounded-2xl text-left"
+                      style={{ padding: "14px 14px 12px", background: a.urgent ? "#FDECEC" : "#FDEEE8", border: `1px solid ${a.urgent ? "#F5B5B5" : "#F5C4A8"}` }}
+                    >
+                      <div style={{ ...BIG_NUM, color: a.urgent ? "#DC2626" : "#C2410C" }}>{a.value}</div>
+                      <div className="font-bold mt-0.5" style={{ fontSize: rem(14), color: a.urgent ? "#B91C1C" : "#C2410C" }}>{a.label}</div>
+                      <div className="mt-2" style={{ ...UI_LINK, color: a.urgent ? "#B91C1C" : "#C2410C" }}>바로 처리 →</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {cold.length > 0 && (
+                <p className="mt-2" style={{ ...LABEL, fontVariantNumeric: "tabular-nums" }}>
+                  {hot.length === 0 ? "✓ 지금 처리할 일이 없어요 · " : ""}
+                  {cold.map((a) => `${a.label} 0`).join(" · ")}
+                </p>
+              )}
+            </section>
+          );
+        })()}
 
-        <div className={isDesktop ? "bg-white border border-gray200 rounded-2xl p-4" : ""}>
-        <div className={isDesktop ? "text-sm font-bold text-gray500 mb-1.5" : "text-sm font-bold text-gray500 mb-1.5 mt-4"}>참고 지표</div>
-        <div className={isDesktop ? "grid grid-cols-2 gap-1.5" : "grid grid-cols-4 gap-1.5"}>
-          {[
-            { label: "오늘 신규가입", value: members.filter((m) => isToday(m.created_at)).length },
-            { label: "오늘 등록매물", value: activeDeals.filter((d) => isToday(d.created_at)).length },
-            { label: "오늘 구매희망", value: buyRequests.filter((b) => isToday(b.created_at)).length },
-            { label: "전체 회원", value: members.length },
-            { label: "사업자 인증", value: members.filter((m) => m.business_verified).length },
-            {
-              label: "누적 성사금액",
-              value: `${interests
-                .filter((i) => i.outcome === "completed")
-                .reduce((sum, i) => sum + (i.completed_amount ?? 0), 0)
-                .toLocaleString()}원`,
-            },
-            {
-              label: "리드 성사율",
-              value: `${
-                interests.filter((i) => i.outcome !== "pending").length > 0
-                  ? Math.round(
-                      (interests.filter((i) => i.outcome === "completed").length /
-                        interests.filter((i) => i.outcome !== "pending").length) *
-                        100
-                    )
-                  : 0
-              }%`,
-            },
-          ].map((stat) => (
-            <div key={stat.label} className="bg-white border border-gray200 rounded-xl px-1 py-2.5 text-center">
-              <div className="font-black text-navy" style={{ fontSize: rem(16) }}>{stat.value}</div>
-              <div className="mt-0.5 font-bold text-gray500 leading-tight" style={{ fontSize: rem(12.5) }}>{stat.label}</div>
+        <section aria-label="핵심 지표">
+          <h2 style={UI_SECTION}>📈 핵심 지표</h2>
+          <div className={`mt-2.5 grid gap-2 ${isDesktop ? "grid-cols-4" : "grid-cols-1"}`}>
+            {metrics ? (
+              <>
+                <RatioMetric label="알림 활성 회원 비율" num={metrics.members.withPush} den={metrics.members.total} unit="명" note="푸시 구독이 1개 이상인 회원 / 전체 회원" />
+                <RatioMetric label="알림 → 확인 전환율 (최근 7일)" num={metrics.notifications7d.clicked} den={metrics.notifications7d.sent} unit="건" note="알림을 눌러 매물을 연 건 / 발송 건" />
+              </>
+            ) : (
+              <div className={CARD} style={LABEL}>핵심 지표를 불러오지 못했어요.</div>
+            )}
+            <div className={`${CARD} ${isDesktop ? "col-span-2" : ""}`}>
+              <div className="font-bold" style={LABEL}>리드 흐름</div>
+              <div className="mt-2.5">
+                <FunnelBars
+                  steps={[
+                    { label: "전체 리드", value: interests.length },
+                    { label: "연락완료", value: interests.filter((i) => i.contacted).length },
+                    { label: "거래 성사", value: interests.filter((i) => i.outcome === "completed").length },
+                  ]}
+                />
+              </div>
             </div>
-          ))}
-        </div>
-        {/* 2026-09-29: 내 견적함 "곧 오픈" 예고 카드의 오픈 알림 신청 수 (feature_waitlist) */}
-        <div className="mt-1.5 bg-white border border-gray200 rounded-xl px-3 py-2.5" style={{ fontSize: rem(14), color: "#1F2937" }}>
-          <span className="font-bold">내 견적함 오픈 알림 신청</span>{" "}
-          {quotesWaitlist === null ? (
-            <span className="text-gray500">—</span>
-          ) : (
-            <>
-              <b className="text-navy">{quotesWaitlist.total}명</b>{" "}
-              <span className="text-gray500">
-                (받은 견적 {quotesWaitlist.receiver} / 보낸 견적 {quotesWaitlist.sender})
-              </span>
-            </>
-          )}
-        </div>
-        </div>
-
-        <div className={isDesktop ? "bg-white border border-gray200 rounded-2xl p-4" : ""}>
-        <div className={isDesktop ? "text-xs font-bold text-gray500 mb-1.5" : "text-xs font-bold text-gray500 mb-1.5 mt-3"}>카테고리별 현황 (액티브 = 최근 7일)</div>
-        <div className={isDesktop ? "overflow-hidden" : "bg-white border border-gray200 rounded-xl overflow-hidden"}>
-          <div className="grid grid-cols-[1.4fr_0.7fr_0.7fr_0.7fr_0.7fr] gap-1 px-3 py-2 bg-gray100" style={{ fontSize: rem(12.5) }}>
-            <span className="font-bold text-gray500">카테고리</span>
-            <span className="font-bold text-gray500 text-right">리드</span>
-            <span className="font-bold text-gray500 text-right">성사율</span>
-            <span className="font-bold text-gray500 text-right">공급자</span>
-            <span className="font-bold text-gray500 text-right">수요자</span>
           </div>
-          {categoryKpis
-            .filter((c) => c.leads > 0 || c.activeSuppliers > 0 || c.activeDemanders > 0)
-            .map((c) => (
-              <div
-                key={c.name}
-                className="grid grid-cols-[1.4fr_0.7fr_0.7fr_0.7fr_0.7fr] gap-1 px-3 py-2"
-                style={{ borderTop: "1px solid #F1F3F5", fontSize: rem(13.5) }}
-              >
-                <span className="truncate">{categoryIcons[c.name] ?? "🗂️"} {c.name}</span>
-                <span className="text-right font-mono font-bold text-navy">{c.leads}</span>
-                <span className="text-right font-mono" style={{ color: c.completionRate == null ? "#9AA3AD" : "#0B2540" }}>
-                  {c.completionRate == null ? "—" : `${c.completionRate}%`}
-                </span>
-                <span className="text-right font-mono">{c.activeSuppliers}</span>
-                <span className="text-right font-mono">{c.activeDemanders}</span>
+        </section>
+
+        {metrics && (
+          <section aria-label="최근 7일 추세">
+            <h2 style={UI_SECTION}>🗓️ 최근 7일 추세</h2>
+            <div className={`mt-2.5 grid gap-2 ${isDesktop ? "grid-cols-3" : "grid-cols-1"}`}>
+              <DailyBars title="신규 가입" days={metrics.daily.days} values={metrics.daily.signups} />
+              <DailyBars title="등록 매물" days={metrics.daily.days} values={metrics.daily.deals} />
+              <DailyBars title="리드" days={metrics.daily.days} values={metrics.daily.leads} />
+            </div>
+          </section>
+        )}
+
+        <section aria-label="참고 현황">
+          <h2 style={UI_SECTION}>참고 현황</h2>
+          <div className={`mt-2.5 grid gap-2 ${isDesktop ? "grid-cols-4" : "grid-cols-2"}`}>
+            {[
+              { label: "오늘 신규가입", value: members.filter((m) => isToday(m.created_at)).length.toLocaleString() },
+              { label: "오늘 등록매물", value: activeDeals.filter((d) => isToday(d.created_at)).length.toLocaleString() },
+              { label: "오늘 구매희망", value: buyRequests.filter((b) => isToday(b.created_at)).length.toLocaleString() },
+              { label: "전체 회원", value: members.length.toLocaleString() },
+              { label: "사업자 인증", value: members.filter((m) => m.business_verified).length.toLocaleString() },
+              {
+                label: "리드 성사율",
+                value:
+                  interests.filter((i) => i.outcome !== "pending").length > 0
+                    ? `${Math.round((interests.filter((i) => i.outcome === "completed").length / interests.filter((i) => i.outcome !== "pending").length) * 100)}%`
+                    : "—",
+              },
+              {
+                label: "누적 성사금액",
+                value: `${interests.filter((i) => i.outcome === "completed").reduce((sum, i) => sum + (i.completed_amount ?? 0), 0).toLocaleString()}원`,
+                wide: true,
+              },
+              {
+                label: "내 견적함 오픈 알림 신청",
+                value: quotesWaitlist === null ? "—" : `${quotesWaitlist.total}명`,
+                sub: quotesWaitlist === null ? undefined : `받은 견적 ${quotesWaitlist.receiver} / 보낸 견적 ${quotesWaitlist.sender}`,
+                wide: true,
+              },
+            ].map((stat) => (
+              <div key={stat.label} className={`${CARD} ${stat.wide && !isDesktop ? "col-span-2" : ""}`} style={{ padding: "12px 14px" }}>
+                <div style={{ ...BIG_NUM, color: "#0B2540" }}>{stat.value}</div>
+                <div className="mt-0.5 font-bold" style={LABEL}>{stat.label}</div>
+                {stat.sub && <div style={LABEL}>{stat.sub}</div>}
               </div>
             ))}
-          {categoryKpis.every((c) => c.leads === 0 && c.activeSuppliers === 0 && c.activeDemanders === 0) && (
-            <div className="text-center text-gray500" style={{ fontSize: rem(12), padding: "16px 12px" }}>
-              아직 데이터가 없어요.
+          </div>
+        </section>
+
+        <section aria-label="카테고리별 현황">
+          <h2 style={UI_SECTION}>카테고리별 현황 <span style={{ ...LABEL, fontWeight: 400 }}>(액티브 = 최근 7일)</span></h2>
+          <div className="mt-2.5 bg-white border border-gray200 rounded-2xl overflow-hidden" style={{ fontVariantNumeric: "tabular-nums" }}>
+            <div className="grid grid-cols-[1.3fr_1.3fr_0.7fr_0.6fr_0.6fr] gap-2 px-3 py-2 bg-gray100" style={{ fontSize: rem(14) }}>
+              <span className="font-bold text-gray500">카테고리</span>
+              <span className="font-bold text-gray500">리드</span>
+              <span className="font-bold text-gray500 text-right">성사율</span>
+              <span className="font-bold text-gray500 text-right">공급자</span>
+              <span className="font-bold text-gray500 text-right">수요자</span>
             </div>
-          )}
-        </div>
-        </div>
-      </div>
+            {(() => {
+              const rows = categoryKpis.filter((c) => c.leads > 0 || c.activeSuppliers > 0 || c.activeDemanders > 0);
+              const maxLeads = Math.max(0, ...rows.map((c) => c.leads));
+              return rows.map((c) => (
+                <div key={c.name} className="grid grid-cols-[1.3fr_1.3fr_0.7fr_0.6fr_0.6fr] gap-2 px-3 py-2.5 items-center" style={{ borderTop: "1px solid #F1F3F5", fontSize: rem(15) }}>
+                  <span className="truncate">{categoryIcons[c.name] ?? "🗂️"} {c.name}</span>
+                  <span className="flex items-center gap-2 min-w-0">
+                    <b className="text-navy" style={{ minWidth: "2ch" }}>{c.leads}</b>
+                    <InlineBar value={c.leads} max={maxLeads} />
+                  </span>
+                  <span className="text-right" style={{ color: c.completionRate == null ? "#9AA3AD" : "#0B2540" }}>{c.completionRate == null ? "—" : `${c.completionRate}%`}</span>
+                  <span className="text-right">{c.activeSuppliers}</span>
+                  <span className="text-right">{c.activeDemanders}</span>
+                </div>
+              ));
+            })()}
+            {categoryKpis.every((c) => c.leads === 0 && c.activeSuppliers === 0 && c.activeDemanders === 0) && (
+              <div className="text-center" style={{ ...LABEL, padding: "16px 12px" }}>아직 데이터가 없어요.</div>
+            )}
+          </div>
+        </section>
       </div>
 
       {/* 2026-09-26 (4): PC에서도 그냥 한 열로 쭉 늘어놓기만 해서 여전히 스크롤이
@@ -971,7 +991,7 @@ function AdminDashboard({
           onClick={() => setMembersOpen((v) => !v)}
           className="w-full flex items-center justify-between"
         >
-          <span className="text-sm font-bold text-gray500">최근 가입 회원 ({members.length}명)</span>
+          <span style={UI_SECTION}>최근 가입 회원 ({members.length}명)</span>
           <span className="text-sm font-bold text-gray500">{membersOpen ? "접기 ▲" : "펼치기 ▼"}</span>
         </button>
 
@@ -1143,47 +1163,13 @@ function AdminDashboard({
           onClick={() => setLeadsOpen((v) => !v)}
           className="w-full flex items-center justify-between"
         >
-          <span className="text-sm font-bold text-gray500">
-            관심 표시한 회원 ({interests.filter((i) => !i.contacted).length}건 미연락)
+          <span style={UI_SECTION}>
+            관심 표시한 회원 <span style={{ ...LABEL, fontWeight: 400 }}>({interests.filter((i) => !i.contacted).length}건 미연락)</span>
           </span>
           <span className="text-sm font-bold text-gray500">{leadsOpen ? "접기 ▲" : "펼치기 ▼"}</span>
         </button>
         {leadsOpen && (
         <>
-
-        {interests.length > 0 && (
-          <div className="bg-white border border-gray200 rounded-2xl px-4 py-3 flex justify-around text-center">
-            <div>
-              <div className="text-lg font-black text-navy">{interests.length}</div>
-              <div className="text-xs text-gray500 mt-0.5">전체 리드</div>
-            </div>
-            <div>
-              <div className="text-lg font-black" style={{ color: "#1D8A44" }}>
-                {interests.filter((i) => i.outcome === "completed").length}
-              </div>
-              <div className="text-xs text-gray500 mt-0.5">거래 성사</div>
-            </div>
-            <div>
-              <div className="text-lg font-black text-gray500">
-                {interests.filter((i) => i.outcome === "pending").length}
-              </div>
-              <div className="text-xs text-gray500 mt-0.5">진행 중</div>
-            </div>
-            <div>
-              <div className="text-lg font-black text-navy">
-                {interests.filter((i) => i.outcome !== "pending").length > 0
-                  ? Math.round(
-                      (interests.filter((i) => i.outcome === "completed").length /
-                        interests.filter((i) => i.outcome !== "pending").length) *
-                        100
-                    )
-                  : 0}
-                %
-              </div>
-              <div className="text-xs text-gray500 mt-0.5">성사율</div>
-            </div>
-          </div>
-        )}
 
         <input
           value={leadSearch}
@@ -1262,67 +1248,58 @@ function AdminDashboard({
                   : "#FF6F0F",
             }}
           >
-            <div className="flex items-center gap-3">
+            {/* 2026-09-29: 매물명(17/800) → 회원 정보 한 줄 → 상태 배지 → 연락·성사/불발 버튼 한 줄 */}
+            <div className="flex items-start gap-3">
               <input
                 type="checkbox"
                 checked={selectedLeads.has(i.id)}
                 onChange={() => toggleLeadSelected(i.id)}
-                className="w-4 h-4 flex-shrink-0"
+                className="w-4 h-4 flex-shrink-0 mt-1.5"
               />
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <div className="text-sm font-bold text-gray900 truncate">
-                    {i.deals?.title ?? "삭제된 매물"}
-                  </div>
+                <div className="truncate" style={UI_CARD_TITLE}>
+                  {i.deals?.title ?? "삭제된 매물"}
+                </div>
+                <div className="mt-1 flex items-center gap-1.5 min-w-0 overflow-hidden" style={{ fontSize: rem(15), color: "#4B5563", fontVariantNumeric: "tabular-nums" }}>
+                  {i.members?.phone ?? i.phone ? (
+                    <a href={`tel:${i.members?.phone ?? i.phone}`} className="font-bold text-navy whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      {i.members?.phone ?? i.phone}
+                    </a>
+                  ) : (
+                    <span className="whitespace-nowrap">번호 없음</span>
+                  )}
+                  {i.members?.member_no != null && <span className="whitespace-nowrap" style={LABEL}>· {formatMemberNo(i.members.member_no)}</span>}
+                  {i.members?.business_verified ? (
+                    <span className="whitespace-nowrap inline-flex items-center gap-0.5" style={{ fontSize: rem(14), color: "#1D8A44" }}>
+                      · <CheckCircle className="w-3 h-3" /> 인증 사업자
+                    </span>
+                  ) : (
+                    i.members?.is_business && <span className="whitespace-nowrap" style={LABEL}>· 사업자</span>
+                  )}
+                </div>
+                <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
                   {i.outcome === "completed" && (
-                    <span
-                      className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
-                      style={{ background: "#E8F8EC", color: "#1D8A44" }}
-                    >
+                    <span className="font-bold px-2 py-0.5 rounded-full" style={{ fontSize: rem(14), background: "#E8F8EC", color: "#1D8A44" }}>
                       성사
                     </span>
                   )}
                   {i.outcome === "no_deal" && (
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 bg-gray100 text-gray500">
+                    <span className="font-bold px-2 py-0.5 rounded-full bg-gray100 text-gray500" style={{ fontSize: rem(14) }}>
                       불발
                     </span>
                   )}
                   {i.source === "quick" && (
-                    <span
-                      className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
-                      style={{ background: "#FDEEE8", color: "#C2410C" }}
-                    >
+                    <span className="font-bold px-2 py-0.5 rounded-full" style={{ fontSize: rem(14), background: "#FDEEE8", color: "#C2410C" }}>
                       ⚡ 원클릭
                     </span>
                   )}
-                </div>
-                <div className="text-sm text-gray500 mt-0.5">
-                  {i.members?.phone ?? i.phone ? (
-                    <a
-                      href={`tel:${i.members?.phone ?? i.phone}`}
-                      className="underline"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {i.members?.phone ?? i.phone}
-                    </a>
-                  ) : (
-                    "번호 없음"
-                  )}
-                  {i.members?.member_no != null && (
-                    <span className="ml-1.5 text-xs font-bold text-gray500">
-                      {formatMemberNo(i.members.member_no)}
-                    </span>
-                  )}
-                  {i.members?.is_business && (
-                    <span className="ml-1.5 text-xs font-bold text-navy">· 사업자</span>
-                  )}
-                  {i.members?.business_verified && (
-                    <span className="ml-1.5 text-xs font-bold inline-flex items-center gap-1" style={{ color: "#1D8A44" }}>
-                      · <CheckCircle className="w-3 h-3" /> 인증된 사업자
+                  {!i.contacted && i.outcome === "pending" && (
+                    <span className="font-bold px-2 py-0.5 rounded-full" style={{ fontSize: rem(14), background: "#FDECEC", color: "#B91C1C" }}>
+                      미연락
                     </span>
                   )}
                 </div>
-                <div className="text-xs text-gray500 mt-0.5">
+                <div className="mt-1" style={{ ...LABEL, fontVariantNumeric: "tabular-nums" }}>
                   {new Date(i.created_at).toLocaleString("ko-KR", {
                     month: "numeric",
                     day: "numeric",
@@ -1336,6 +1313,9 @@ function AdminDashboard({
                   )}
                 </div>
               </div>
+            </div>
+
+            <div className="flex gap-2 mt-3">
               <button
                 onClick={async () => {
                   await fetch("/api/admin/interests", {
@@ -1345,19 +1325,13 @@ function AdminDashboard({
                   });
                   load();
                 }}
-                className="text-xs font-bold rounded-lg px-3 py-2 flex-shrink-0"
-                style={
-                  i.contacted
-                    ? { background: "#F5F6F8", color: "#6B7480" }
-                    : { background: "#0B2540", color: "#fff" }
-                }
+                className="flex-1 font-bold rounded-lg whitespace-nowrap"
+                style={{ fontSize: rem(15), minHeight: 40, ...(i.contacted ? { background: "#F5F6F8", color: "#6B7480" } : { background: "#0B2540", color: "#fff" }) }}
               >
-                {i.contacted ? "✓ 연락완료" : "연락완료로 표시"}
+                {i.contacted ? "✓ 연락완료" : "연락완료"}
               </button>
-            </div>
-
             {i.outcome === "pending" && (
-              <div className="flex gap-2 mt-3">
+              <>
                 <button
                   onClick={async () => {
                     const amountStr = prompt("실제 거래 금액을 입력해주세요 (원)", String(i.deals?.deal_price ?? ""));
@@ -1370,10 +1344,10 @@ function AdminDashboard({
                     });
                     load();
                   }}
-                  className="flex-1 text-xs font-bold rounded-lg py-2 inline-flex items-center justify-center gap-1"
-                  style={{ background: "#E8F8EC", color: "#1D8A44" }}
+                  className="flex-1 font-bold rounded-lg inline-flex items-center justify-center gap-1 whitespace-nowrap"
+                  style={{ fontSize: rem(15), minHeight: 40, background: "#E8F8EC", color: "#1D8A44" }}
                 >
-                  <CheckCircle className="w-3.5 h-3.5" /> 거래 성사
+                  <CheckCircle className="w-3.5 h-3.5" /> 성사
                 </button>
                 <button
                   onClick={async () => {
@@ -1385,12 +1359,14 @@ function AdminDashboard({
                     });
                     load();
                   }}
-                  className="flex-1 text-xs font-bold rounded-lg py-2 bg-gray100 text-gray500"
+                  className="flex-1 font-bold rounded-lg bg-gray100 text-gray500 whitespace-nowrap"
+                  style={{ fontSize: rem(15), minHeight: 40 }}
                 >
-                  거래 불발
+                  불발
                 </button>
-              </div>
+              </>
             )}
+            </div>
           </div>
         ))}
         </>
@@ -1401,13 +1377,15 @@ function AdminDashboard({
         className={isDesktop ? "col-span-3" : "px-5 py-4"}
         style={isDesktop ? { order: -1 } : undefined}
       >
-        <button
-          onClick={() => setOpenFormFor(openFormFor === "new" ? null : "new")}
-          className="w-full text-white font-bold rounded-xl text-base"
-          style={{ background: "linear-gradient(135deg, #E25100, #FF6F0F)", padding: "14px 0" }}
-        >
-          {openFormFor === "new" ? "닫기" : "+ 새 매물 직접 등록"}
-        </button>
+        {openFormFor === "new" ? (
+          <button type="button" onClick={() => setOpenFormFor(null)} className={`ml-auto ${BTN_CLASS}`} style={{ ...btnStyle("secondary"), minHeight: 40, fontSize: rem(15), padding: "0 16px" }}>
+            닫기
+          </button>
+        ) : (
+          <button onClick={() => setOpenFormFor("new")} className={`w-full ${BTN_CLASS}`} style={btnStyle("primary")}>
+            + 새 매물 직접 등록
+          </button>
+        )}
         {openFormFor === "new" && (
           <DealForm adminKey={adminKey} onDone={() => { setOpenFormFor(null); load(); }} />
         )}
@@ -1415,13 +1393,18 @@ function AdminDashboard({
         {/* 2026-09-28: 긴급 공지(부동산·설비 처분) — 재고 매물과 별개 등록 경로.
             방향성 확정 전까지는 메모만 해두기로 했던 부동산/설비 아이디어를
             "긴급 공지"라는 가벼운 트랙으로 구현. 구인/구직은 법률 검토 전까지 제외. */}
-        <button
-          onClick={() => setOpenFormFor(openFormFor === "notice" ? null : "notice")}
-          className="w-full font-bold rounded-xl text-base mt-2"
-          style={{ background: "#0B2540", color: "#fff", padding: "12px 0" }}
-        >
-          {openFormFor === "notice" ? "닫기" : "+ 긴급 공지 등록 (부동산·설비)"}
-        </button>
+        {openFormFor === "notice" ? (
+          <div className="flex items-center justify-between mt-3">
+            <span style={UI_SECTION}>긴급 공지 등록</span>
+            <button type="button" onClick={() => setOpenFormFor(null)} className={BTN_CLASS} style={{ ...btnStyle("secondary"), minHeight: 40, fontSize: rem(15), padding: "0 16px" }}>
+              닫기
+            </button>
+          </div>
+        ) : (
+          <button onClick={() => setOpenFormFor("notice")} className={`w-full mt-2 ${BTN_CLASS}`} style={btnStyle("secondary")}>
+            + 긴급 공지 등록 (부동산·설비)
+          </button>
+        )}
         {openFormFor === "notice" && (
           <NoticeForm adminKey={adminKey} onDone={() => { setOpenFormFor(null); load(); }} />
         )}
@@ -2926,68 +2909,60 @@ function NoticeForm({ adminKey, onDone }: { adminKey: string; onDone: () => void
   };
 
   return (
-    <div className="mt-3 bg-gray100 rounded-xl p-3.5 flex flex-col gap-3">
-      <select
-        className="border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm"
-        value={category}
-        onChange={(e) => setCategory(e.target.value)}
-      >
-        {NOTICE_CATEGORIES.map((c) => (
-          <option key={c} value={c}>
-            {c}
-          </option>
-        ))}
-      </select>
-      <input
-        className="border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-navy"
-        placeholder="제목 * (예: 하남 사세확장으로 인수하실분 찾습니다)"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-      />
-      <textarea
-        className="border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-navy"
-        rows={4}
-        placeholder="내용 * (평수, 시설, 가격 협의 여부 등)"
-        value={noticeBody}
-        onChange={(e) => setNoticeBody(e.target.value)}
-      />
-      <select
-        className="border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm"
-        value={region}
-        onChange={(e) => setRegion(e.target.value)}
-      >
-        <option value="">전국 (지역 무관)</option>
-        {mockRegions.map((r) => (
-          <option key={r} value={r}>
-            {r}
-          </option>
-        ))}
-      </select>
-      <div className="flex gap-2">
-        <input
-          className="flex-1 min-w-0 border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-navy"
-          placeholder="담당자명 (선택)"
-          value={contactName}
-          onChange={(e) => setContactName(e.target.value)}
-        />
-        <input
-          className="flex-1 min-w-0 border-2 border-gray200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-navy"
-          placeholder="연락처 (선택)"
-          value={contactPhone}
-          onChange={(e) => setContactPhone(e.target.value)}
+    // 2026-09-29: 폼 라벨 방식(FieldLabel) — 안내가 placeholder에만 있던 문제, 사진 "최대 6장" 중복 제거
+    <div className="mt-2 bg-gray100 rounded-2xl p-4 flex flex-col gap-4">
+      <div>
+        <FieldLabel need="required">분류</FieldLabel>
+        <select className="w-full border-2 border-gray200 rounded-xl px-3.5 outline-none focus:border-navy bg-white" style={{ height: 52, fontSize: FORM_INPUT_FONT_SIZE }} value={category} onChange={(e) => setCategory(e.target.value)}>
+          {NOTICE_CATEGORIES.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <FieldLabel need="required">제목</FieldLabel>
+        <input className="w-full border-2 border-gray200 rounded-xl px-3.5 outline-none focus:border-navy bg-white" style={{ height: 52, fontSize: FORM_INPUT_FONT_SIZE }} placeholder="예: 하남 사세확장으로 인수하실분 찾습니다" value={title} onChange={(e) => setTitle(e.target.value)} />
+      </div>
+      <div>
+        <FieldLabel need="required">내용</FieldLabel>
+        <textarea
+          className="w-full border-2 border-gray200 rounded-xl px-3.5 py-3 outline-none focus:border-navy bg-white"
+          style={{ fontSize: FORM_INPUT_FONT_SIZE, lineHeight: 1.55 }}
+          rows={4}
+          placeholder="평수, 시설, 가격 협의 여부 등"
+          value={noticeBody}
+          onChange={(e) => setNoticeBody(e.target.value)}
         />
       </div>
+      <div>
+        <FieldLabel need="optional">지역</FieldLabel>
+        <select className="w-full border-2 border-gray200 rounded-xl px-3.5 outline-none focus:border-navy bg-white" style={{ height: 52, fontSize: FORM_INPUT_FONT_SIZE }} value={region} onChange={(e) => setRegion(e.target.value)}>
+          <option value="">전국 (지역 무관)</option>
+          {mockRegions.map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="min-w-0">
+          <FieldLabel need="optional">담당자명</FieldLabel>
+          <input className="w-full border-2 border-gray200 rounded-xl px-3.5 outline-none focus:border-navy bg-white" style={{ height: 52, fontSize: FORM_INPUT_FONT_SIZE }} value={contactName} onChange={(e) => setContactName(e.target.value)} />
+        </div>
+        <div className="min-w-0">
+          <FieldLabel need="optional">연락처</FieldLabel>
+          <input className="w-full border-2 border-gray200 rounded-xl px-3.5 outline-none focus:border-navy bg-white" style={{ height: 52, fontSize: FORM_INPUT_FONT_SIZE }} inputMode="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} />
+        </div>
+      </div>
 
-      {error && <div className="text-xs text-orange font-medium">{error}</div>}
+      <ImageUploader onChange={setImages} label="사진" hint="부동산·설비 현장 사진" />
 
-      <ImageUploader onChange={setImages} label="사진" hint="최대 6장 (선택)" />
+      {error && <div className="text-orange font-medium" style={{ fontSize: rem(15) }}>{error}</div>}
 
-      <button
-        onClick={submit}
-        disabled={submitting}
-        className="text-white font-bold rounded-lg text-sm disabled:opacity-60"
-        style={{ background: "#0B2540", padding: "12px 0" }}
-      >
+      <button onClick={submit} disabled={submitting} className={`w-full ${BTN_CLASS}`} style={btnStyle("primary")}>
         {submitting ? "등록 중..." : "공지 등록 확정"}
       </button>
     </div>
