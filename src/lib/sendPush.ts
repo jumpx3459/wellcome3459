@@ -24,12 +24,26 @@ export async function sendDealPush(dealId: string) {
 
   const { data: deal, error: dealError } = await supabaseAdmin
     .from("deals")
-    .select("id, title, category_id, region_id, deal_price, original_price, quantity_unit, price_unit, stock_type, images")
+    .select("id, title, category_id, region_id, deal_price, original_price, quantity_unit, price_unit, stock_type, images, status, closes_at")
     .eq("id", dealId)
     .single();
 
   if (dealError || !deal) {
     return { error: "매물을 찾을 수 없습니다." };
+  }
+
+  // 2026-09-30: 마감된 매물(status≠active 또는 closes_at 지남)에는 발송하지 않음 — 예전 재발송 경로(/api/push/send, 삭제됨)로
+  // 지난 매물 알림이 나가던 문제 방지.
+  const closesAtMs = deal.closes_at ? Date.parse(deal.closes_at) : null;
+  const skipReason =
+    deal.status !== "active"
+      ? `status=${deal.status}`
+      : closesAtMs !== null && closesAtMs <= Date.now()
+      ? `closes_at 지남(${deal.closes_at})`
+      : null;
+  if (skipReason) {
+    console.warn(`[sendDealPush] skip deal=${deal.id} — ${skipReason}`);
+    return { sentCount: 0, total: 0, skipped: skipReason };
   }
 
   const discountPct = deal.original_price
