@@ -13,6 +13,7 @@ import type { ManifestRow } from "@/lib/parseCsv";
 import { SITE_URL } from "@/lib/siteUrl";
 import { rem } from "@/lib/rem";
 import { STOCK_TYPES, isStockType, type StockType } from "@/lib/stockType";
+import { MAX_PHOTO_SLOTS } from "@/lib/photoLimit";
 
 type SellerRequest = {
   stock_type?: string | null; // 2026-09-29 재고 유형
@@ -2253,6 +2254,7 @@ function ActiveDealCard({
               <ImageUploader
                 initialUrls={images}
                 onChange={setImages}
+                max={MAX_PHOTO_SLOTS}
                 label="매물 사진"
                 hint="탭해서 사진 추가 · × 로 삭제 후 아래 '변경사항 저장'으로 반영"
               />
@@ -2743,7 +2745,9 @@ function DealForm({
       <ImageUploader
         onChange={setImages}
         label="매물 사진"
-        hint="최대 6장 (신청서에 첨부된 사진 포함)"
+        // 2026-09-29: 판매신청은 추천 보너스로 최대 16장까지 올 수 있어 관리자 폼도 최대치로 (src/lib/photoLimit.ts)
+        max={MAX_PHOTO_SLOTS}
+        hint={`최대 ${MAX_PHOTO_SLOTS}장 (신청서에 첨부된 사진 포함)`}
         initialUrls={prefill?.images ?? []}
       />
 

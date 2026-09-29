@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { resizeImageForUpload } from "@/lib/resizeImage";
 import { rem } from "@/lib/rem";
+import { getFreshAccessToken } from "@/lib/authFetch";
 
 type Item = { preview: string; url?: string; uploading: boolean };
 
@@ -52,6 +53,9 @@ export default function ImageUploader({
         const resized = await resizeImageForUpload(files[i]);
         const formData = new FormData();
         formData.append("files", resized, files[i].name || "photo.jpg");
+        // 2026-09-29: 로그인 회원이면 토큰도 보냄 — 서버가 회원 사진 한도를 다시 계산 (비회원은 토큰 없이 기본 한도)
+        const token = await getFreshAccessToken().catch(() => null);
+        if (token) formData.append("accessToken", token);
         const res = await fetch("/api/upload", { method: "POST", body: formData });
         const data = await res.json();
         const url: string | undefined = data.urls?.[0];

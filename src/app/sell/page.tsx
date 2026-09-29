@@ -18,6 +18,8 @@ import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import type { ManifestRow } from "@/lib/parseCsv";
 import { rem } from "@/lib/rem";
 import { STOCK_TYPES, type StockType } from "@/lib/stockType";
+import { getPhotoLimit, isPhotoLimitMaxed, MAX_PHOTO_SLOTS } from "@/lib/photoLimit";
+import { getFreshAccessToken } from "@/lib/authFetch";
 
 export default function SellPage() {
   const router = useRouter();
@@ -136,6 +138,8 @@ export default function SellPage() {
     }
     setSubmitting(true);
     try {
+      // 2026-09-29: 서버가 회원 사진 한도를 토큰으로 다시 계산 (비회원은 토큰 없이 기본 6장)
+      const accessToken = await getFreshAccessToken().catch(() => null);
       const res = await fetch("/api/seller-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -163,6 +167,7 @@ export default function SellPage() {
           manifestItems: manifestItems.length ? manifestItems : null,
           images,
           videoUrl,
+          accessToken,
         }),
       });
       if (!res.ok) {
@@ -174,6 +179,10 @@ export default function SellPage() {
         }
         if (data.field === "minOrderQty") {
           showMoqError(data.error ?? "최소주문량은 총수량보다 클 수 없어요.");
+          return;
+        }
+        if (data.field === "images") {
+          setError(data.error ?? "사진 장수를 확인해주세요.");
           return;
         }
         throw new Error();
@@ -222,7 +231,9 @@ export default function SellPage() {
               style={{ background: "#FFF9EC", border: "1px solid #F0DCA8", padding: "13px 15px" }}
             >
               <p className="text-xs font-bold" style={{ color: "#8A6100" }}>
-                🎁 친구 추천하면 나도 친구도 사진 슬롯 +2장 (최대 6장까지)
+                {isPhotoLimitMaxed({ bonus_photo_slots: bonusPhotoSlots })
+                  ? `🎁 사진 슬롯을 최대로 모았어요 (${MAX_PHOTO_SLOTS}장)`
+                  : `🎁 친구 추천하면 나도 친구도 사진 슬롯 +2장 (최대 ${MAX_PHOTO_SLOTS}장까지)`}
               </p>
               <p className="text-xs mt-1" style={{ color: "#8A6100" }}>추천 링크 보내러 가기 →</p>
             </Link>
@@ -568,7 +579,7 @@ export default function SellPage() {
 
         {showDetails && (
           <div className="flex flex-col gap-5 border-2 border-gray200 rounded-2xl p-4">
-            <ImageUploader onChange={setImages} max={6 + bonusPhotoSlots} />
+            <ImageUploader onChange={setImages} max={getPhotoLimit({ bonus_photo_slots: bonusPhotoSlots })} />
 
             <VideoUploader onChange={setVideoUrl} />
 

@@ -22,6 +22,7 @@ import { rem } from "@/lib/rem";
 import { formatKoreanPhone } from "@/lib/auth";
 import { authFetch } from "@/lib/authFetch";
 import { isTestTitle } from "@/lib/categoryAvg";
+import { getPhotoLimit, isPhotoLimitMaxed, MAX_PHOTO_SLOTS } from "@/lib/photoLimit";
 
 type InterestItem = {
   id: string;
@@ -1034,8 +1035,16 @@ export default function MyPage() {
             아래 링크로 가입하면 내가 추천한 회원으로 따로 관리돼요.
           </p>
           <p className="text-sm font-bold mb-3" style={{ color: "#966B00" }}>
-            🎁 추천 1명당 나도 친구도 사진 슬롯 +2장{" "}
-            <span className="whitespace-nowrap">(지금 내 사진 슬롯: {6 + bonusPhotoSlots}장)</span>
+            {isPhotoLimitMaxed({ bonus_photo_slots: bonusPhotoSlots }) ? (
+              <>🎁 사진 슬롯을 최대로 모았어요 ({MAX_PHOTO_SLOTS}장)</>
+            ) : (
+              <>
+                🎁 추천 1명당 나도 친구도 사진 슬롯 +2장{" "}
+                <span className="whitespace-nowrap">
+                  (지금 내 사진 슬롯: {getPhotoLimit({ bonus_photo_slots: bonusPhotoSlots })}장 · 최대 {MAX_PHOTO_SLOTS}장)
+                </span>
+              </>
+            )}
           </p>
 
           {bonusPhotoSlots > 0 && !bannerDismissed && (
@@ -1045,7 +1054,7 @@ export default function MyPage() {
             >
               <p className="text-sm font-bold leading-relaxed" style={{ color: "#1F7A34" }}>
                 🎉 {referrals[0]?.company_name || (referrals[0]?.member_no != null ? `${formatMemberNo(referrals[0].member_no)} 회원` : "추천하신 분")}
-                이 추천으로 가입했어요! 사진 슬롯이 {6 + bonusPhotoSlots}장으로 늘었어요.
+                이 추천으로 가입했어요! 사진 슬롯이 {getPhotoLimit({ bonus_photo_slots: bonusPhotoSlots })}장으로 늘었어요.
               </p>
               <button
                 type="button"

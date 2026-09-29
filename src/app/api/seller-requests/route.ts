@@ -3,6 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 import { isValidContactPhone } from "@/lib/auth";
 import { sanitizeManifest, sanitizePid } from "@/lib/parseCsv";
 import { isStockType } from "@/lib/stockType";
+import { getPhotoLimit, photoLimitError } from "@/lib/photoLimit";
+import { getPhotoLimitForToken } from "@/lib/photoLimitServer";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -30,6 +32,7 @@ export async function POST(req: NextRequest) {
     images,
     videoUrl,
     stockType,
+    accessToken,
   } = body;
 
   if (!contactPhone || !productName || !quantity) {
@@ -48,15 +51,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "최소주문량은 총수량보다 클 수 없어요.", field: "minOrderQty" }, { status: 400 });
   }
 
+  if (images != null && !Array.isArray(images)) {
+    return NextResponse.json({ error: "사진 목록이 올바르지 않아요.", field: "images" }, { status: 400 });
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !serviceKey) {
-    // Supabase 미설정(로컬 데모) — 저장 없이 성공 처리만
+    // Supabase 미설정(로컬 데모) — 저장 없이 성공 처리만 (사진 장수는 기본 한도로 검사)
+    if ((images?.length ?? 0) > getPhotoLimit(null)) {
+      return NextResponse.json({ error: photoLimitError(getPhotoLimit(null)), field: "images" }, { status: 400 });
+    }
     return NextResponse.json({ ok: true, demo: true });
   }
 
   const supabaseAdmin = createClient(supabaseUrl, serviceKey);
+
+  // 2026-09-29: 매물 한 건의 사진 총 장수 — 회원 한도를 토큰으로 서버에서 다시 계산 (body의 memberId는 믿지 않음)
+  const photoLimit = await getPhotoLimitForToken(supabaseAdmin, accessToken);
+  if ((images?.length ?? 0) > photoLimit) {
+    return NextResponse.json({ error: photoLimitError(photoLimit), field: "images" }, { status: 400 });
+  }
 
   const catRow = category
     ? (await supabaseAdmin.from("categories").select("id").eq("name", category).maybeSingle()).data
