@@ -134,8 +134,8 @@ export default function UnsubscribePage() {
               onClick={() => run("withdraw")}
               disabled={!confirmWithdraw || busy !== null}
               className={`w-full mt-4 ${BTN_CLASS}`}
-              // 탈퇴는 되돌릴 수 없어 주황(주 버튼) 대신 보조 버튼 모양, 확인 전엔 흐리게
-              style={{ ...btnStyle("secondary"), color: "#C2410C", opacity: !confirmWithdraw ? 0.4 : 1 }}
+              // 탈퇴는 되돌릴 수 없어 보조 버튼 모양 + 빨강 계열(주황은 주 버튼 전용), 확인 전엔 흐리게
+              style={{ ...btnStyle("secondary"), color: "#DC2626", border: "1.5px solid #FCA5A5", opacity: !confirmWithdraw ? 0.4 : 1 }}
             >
               {busy === "withdraw" ? "처리 중..." : "회원 탈퇴하기"}
             </button>
