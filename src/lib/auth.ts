@@ -62,6 +62,15 @@ export function formatContactPhone(input: string | null | undefined): string {
   return d;
 }
 
+/** 휴대폰 번호 입력칸용 — 치는 동안 "010-1234-5678"로 하이픈을 넣어줌 (숫자 11자리까지). */
+export function formatPhoneTyping(input: string): string {
+  const d = input.replace(/[^0-9]/g, "").slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 7) return `${d.slice(0, 3)}-${d.slice(3)}`;
+  if (d.length === 10) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
+  return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
+}
+
 /** @deprecated toLocalPhone 사용. 기존 호출부 호환용. */
 export const fromE164Phone = toLocalPhone;
 

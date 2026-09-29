@@ -1,10 +1,10 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { sendOtp, verifyOtp, isValidKoreanPhone, toE164Phone } from "@/lib/auth";
+import { sendOtp, verifyOtp, isValidKoreanPhone, toE164Phone, formatPhoneTyping } from "@/lib/auth";
 import { fmtLeft } from "@/lib/format";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 import { NAV_BOTTOM } from "@/components/BottomNav";
@@ -15,6 +15,22 @@ import { rem } from "@/lib/rem";
 // 번호 자체를 없앨 수는 없지만, 로그인 성공 시 이 기기에 번호를 기억해뒀다가
 // 다음 방문부터 자동으로 채워주면 체감상 "비밀번호만 입력"하는 경험이 된다.
 const LAST_PHONE_KEY = "dj_last_phone";
+// 2026-09-29: 이 기기에서 마지막으로 성공한 로그인 방식 — 다음 방문 때 그 탭을 기본으로
+const LOGIN_METHOD_KEY = "dj_login_method";
+// 인증번호 로그인 뒤 "비밀번호를 만들어 두세요" 시트를 [나중에]로 닫았는지
+const PW_PROMPT_DISMISSED_KEY = "dj_pw_prompt_dismissed";
+const lsGet = (k: string) => {
+  try {
+    return localStorage.getItem(k);
+  } catch {
+    return null;
+  }
+};
+const lsSet = (k: string, v: string) => {
+  try {
+    localStorage.setItem(k, v);
+  } catch {}
+};
 
 // 기존 회원 전용 경량 로그인 — 전화번호+OTP만 물어보고, 카테고리/지역/채널/약관
 // 같은 가입 전용 항목은 다시 안 물어봅니다. signup/page.tsx의 4단계(전화인증)와
@@ -49,6 +65,9 @@ function LoginPageInner() {
   // 미리 설정해둔 회원은 SMS 없이 바로 로그인할 수 있는 탭을 추가. 비밀번호를
   // 잊으면 그냥 "인증번호로 로그인" 탭으로 돌아가면 되므로 별도 찾기 플로우 불필요.
   const [authMode, setAuthMode] = useState<"otp" | "password">("otp");
+  // 세션 이벤트(onAuthStateChange)가 verifyOtp 응답보다 먼저 올 수 있어서, 요청 "전에" ref에 기록해 둔다
+  const loggedInVia = useRef<"otp" | "password" | null>(null);
+  const [showPwPrompt, setShowPwPrompt] = useState(false);
   const [password, setPassword] = useState("");
   const [passwordSigningIn, setPasswordSigningIn] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
@@ -82,9 +101,10 @@ function LoginPageInner() {
     try {
       const saved = localStorage.getItem(LAST_PHONE_KEY);
       if (saved) {
-        setPhone(saved);
+        setPhone(formatPhoneTyping(saved));
         setRememberedPhone(true);
       }
+      if (localStorage.getItem(LOGIN_METHOD_KEY) === "password") setAuthMode("password");
     } catch {}
   }, []);
 
@@ -111,7 +131,16 @@ function LoginPageInner() {
         const already = Boolean(data);
         debugLog(`[login] members-check already=${already} authUserId=${authUserId.slice(0, 8)}`);
         setMembership(already ? "member" : "not_member");
-        if (already) router.push(returnTo || "/mypage");
+        if (!already) return;
+        // 인증번호로 방금 로그인했고 비밀번호가 없으면(user_metadata.has_password) 권유 시트 1회
+        if (loggedInVia.current === "otp" && lsGet(PW_PROMPT_DISMISSED_KEY) !== "1") {
+          supabase!.auth.getUser().then(({ data: u }) => {
+            if (u.user?.user_metadata?.has_password) router.push(returnTo || "/mypage");
+            else setShowPwPrompt(true);
+          });
+          return;
+        }
+        router.push(returnTo || "/mypage");
       });
   }, [authUserId, returnTo, router]);
 
@@ -142,6 +171,7 @@ function LoginPageInner() {
   const handleVerifyOtp = async (code: string) => {
     setOtpError(null);
     setOtpVerifying(true);
+    loggedInVia.current = "otp";
     const result = await verifyOtp(phone, code);
     setOtpVerifying(false);
     if (!result.ok) {
@@ -152,6 +182,7 @@ function LoginPageInner() {
     try {
       localStorage.setItem(LAST_PHONE_KEY, phone);
     } catch {}
+    lsSet(LOGIN_METHOD_KEY, "otp");
     // authUserId는 위 onAuthStateChange 구독이 세션 발급과 동시에 채워줌
   };
 
@@ -167,6 +198,7 @@ function LoginPageInner() {
     }
     if (!isSupabaseConfigured || !supabase) return;
     setPasswordSigningIn(true);
+    loggedInVia.current = "password";
     const { error } = await supabase.auth.signInWithPassword({ phone: toE164Phone(phone), password });
     setPasswordSigningIn(false);
     if (error) {
@@ -176,6 +208,9 @@ function LoginPageInner() {
     try {
       localStorage.setItem(LAST_PHONE_KEY, phone);
     } catch {}
+    lsSet(LOGIN_METHOD_KEY, "password");
+    // 이전에 만든 비밀번호엔 표시가 없어서, 비밀번호로 들어오면 has_password를 채워 둠 (권유 시트가 다시 안 뜨게)
+    supabase.auth.updateUser({ data: { has_password: true } }).catch(() => {});
     // authUserId는 위 onAuthStateChange 구독이 세션 발급과 동시에 채워줌 (OTP 흐름과 동일)
   };
 
@@ -315,7 +350,7 @@ function LoginPageInner() {
                     inputMode="numeric"
                     value={phone}
                     disabled={Boolean(authUserId)}
-                    onChange={(e) => setPhone(e.target.value.replace(/[^\d-]/g, "").slice(0, 13))}
+                    onChange={(e) => setPhone(formatPhoneTyping(e.target.value))}
                   />
                   <button
                     onClick={handleSendOtp}
@@ -335,6 +370,11 @@ function LoginPageInner() {
                 </div>
 
                 {!codeSent && otpError && <p className="text-sm font-medium mt-2" style={{ color: "#E5484D" }}>{otpError}</p>}
+                {!authUserId && (
+                  <p className="mt-2.5" style={{ fontSize: rem(14), color: "#4B5563", lineHeight: 1.55 }}>
+                    💡 비밀번호를 설정해 두면 문자 없이 바로 로그인돼요 (마이페이지 → 비밀번호 설정)
+                  </p>
+                )}
 
                 {codeSent && !authUserId && (
                   <div>
@@ -379,7 +419,7 @@ function LoginPageInner() {
                   placeholder="010-0000-0000"
                   inputMode="numeric"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/[^\d-]/g, "").slice(0, 13))}
+                  onChange={(e) => setPhone(formatPhoneTyping(e.target.value))}
                 />
                 <div className="text-sm font-bold mt-3.5 mb-2" style={{ color: "#0B2540" }}>비밀번호</div>
                 <input
@@ -400,8 +440,8 @@ function LoginPageInner() {
                 >
                   {passwordSigningIn ? "로그인 중..." : "로그인"}
                 </button>
-                <p className="mt-2.5" style={{ fontSize: rem(11.5), color: "#9AA3AD" }}>
-                  비밀번호를 아직 안 만드셨거나 잊으셨다면 &quot;인증번호로 로그인&quot;을 이용해주세요.
+                <p className="mt-2.5" style={{ fontSize: rem(14), color: "#4B5563", lineHeight: 1.55 }}>
+                  비밀번호를 아직 안 만드셨나요? 인증번호로 로그인한 뒤 마이페이지에서 만들 수 있어요
                 </p>
               </>
             )}
@@ -412,6 +452,36 @@ function LoginPageInner() {
                 <span className="flex-1 text-xs font-bold" style={{ lineHeight: 1.5, color: "#2F9E44" }}>
                   인증 완료 · 계정 확인 중...
                 </span>
+              </div>
+            )}
+
+            {showPwPrompt && (
+              <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: "rgba(0,0,0,.5)" }} role="dialog" aria-modal="true" aria-label="비밀번호 설정 권유">
+                <div className="w-full max-w-md bg-white rounded-t-3xl text-center" style={{ padding: "26px 20px calc(20px + var(--sab))" }}>
+                  <div aria-hidden style={{ fontSize: rem(36), lineHeight: 1 }}>🔑</div>
+                  <p className="font-black mt-3" style={{ fontSize: rem(19), color: "#0B2540" }}>
+                    다음부터 문자 없이 로그인하려면 비밀번호를 만들어 두세요
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/mypage#password")}
+                    className="w-full font-black text-white rounded-2xl mt-5"
+                    style={{ minHeight: 52, fontSize: rem(17), background: "var(--color-brandOrangeDeep)" }}
+                  >
+                    지금 만들기
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      lsSet(PW_PROMPT_DISMISSED_KEY, "1");
+                      router.push(returnTo || "/mypage");
+                    }}
+                    className="mt-3 w-full"
+                    style={{ minHeight: 44, fontSize: rem(15), color: "#6B7480" }}
+                  >
+                    나중에
+                  </button>
+                </div>
               </div>
             )}
 

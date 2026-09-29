@@ -106,6 +106,10 @@ export default function MyPage() {
   // Supabase Auth가 phone 계정에 비밀번호를 얹는 걸 기본 지원해서(updateUser),
   // 별도 테이블/해싱 없이 여기서 설정 → /login에서 signInWithPassword로 사용.
   const [settingPassword, setSettingPassword] = useState(false);
+  // 로그인 화면 권유 시트의 [지금 만들기] → /mypage#password: 비밀번호 설정을 바로 펼침
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash === "#password") setSettingPassword(true);
+  }, []);
   const [newPassword, setNewPassword] = useState("");
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordSaved, setPasswordSaved] = useState(false);
@@ -514,7 +518,8 @@ export default function MyPage() {
     }
     if (!supabase) return;
     setPasswordSaving(true);
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    // has_password: 로그인 화면의 "비밀번호를 만들어 두세요" 시트를 안 띄우는 기준 (user_metadata)
+    const { error } = await supabase.auth.updateUser({ password: newPassword, data: { has_password: true } });
     setPasswordSaving(false);
     if (error) {
       setPasswordError("설정하지 못했어요. 다시 시도해주세요.");
