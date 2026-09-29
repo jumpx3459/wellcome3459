@@ -73,21 +73,23 @@ export function formatRelativeTime(iso?: string | null): string | null {
   return `${day}일 전`;
 }
 
-// 2026-09-29: 가격 기준 단위 — 구매 희망 단가(buy_requests.hope_price_unit) 등.
-// 값은 수량 단위 그대로("개"/"박스"/"kg"/"파렛트"/"톤"/"세트") 또는 "총액".
-export const PRICE_UNITS = ["개", "박스", "kg", "파렛트", "톤", "세트", "총액"] as const;
+// 2026-09-29: 가격 기준 단위 — 구매 희망 단가(buy_requests.hope_price_unit).
+// sell 단가 단위(src/lib/priceUnit.ts DEAL_PRICE_UNITS)와 같은 목록·같은 저장값 — 전체 가격은 "일괄".
+// 예전 저장값 "총액"은 표시할 때 "일괄"로 보임(formatPriceWithUnit).
+export const PRICE_UNITS = ["개", "박스", "kg", "톤", "파렛트", "세트", "L", "일괄"] as const;
 export type PriceUnit = (typeof PRICE_UNITS)[number];
 
-// 선택지 라벨: "개당", "kg당" … / "총액"
+// 선택지 라벨: "개당", "kg당" … / "일괄(전체)"
 export function priceUnitLabel(unit: string): string {
-  return unit === "총액" ? "총액" : `${unit}당`;
+  return unit === "총액" || unit === "일괄" ? "일괄(전체)" : `${unit}당`;
 }
 
-// "30,000원/kg", "30,000원(총액)", "5,000,000원(일괄)", 단위 없으면 "30,000원"
+// "30,000원/kg", "5,000,000원(일괄)"(예전 "총액"도 같게), 단위 없으면 "30,000원"
 export function formatPriceWithUnit(price: number, unit?: string | null): string {
   const base = `${price.toLocaleString()}원`;
   if (!unit) return base;
-  return unit === "총액" || unit === "일괄" ? `${base}(${unit})` : `${base}/${unit}`;
+  // 예전 buy 저장값 "총액"도 "일괄"로 보여줌 (2026-09-29 이름 통일)
+  return unit === "총액" || unit === "일괄" ? `${base}(일괄)` : `${base}/${unit}`;
 }
 
 // 매물 가격(deal_price·original_price)은 단가 — 판매신청 "희망 단가"가 그대로 deal_price가 됨.

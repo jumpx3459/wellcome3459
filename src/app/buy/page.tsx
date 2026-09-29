@@ -16,6 +16,7 @@ import { rem } from "@/lib/rem";
 import { getFreshAccessToken } from "@/lib/authFetch";
 import { FieldLabel, FieldTag, FORM_INPUT_FONT_SIZE, FORM_HINT_STYLE, FORM_CHIP_FONT_SIZE, FORM_LABEL_STYLE } from "@/components/FormField";
 import CategoryChips from "@/components/CategoryChips";
+import { priceUnitSuffix } from "@/lib/priceUnit";
 
 export default function BuyPage() {
   const router = useRouter();
@@ -379,7 +380,7 @@ export default function BuyPage() {
                 onChange={(e) => setHopePrice(e.target.value)}
                 placeholder="30,000"
               />
-              {/* 2026-09-29: "원"만 있어 개당인지 kg당인지 총액인지 알 수 없었음 → "원 / kg" 형식 선택 */}
+              {/* 2026-09-29: "원"만 있어 개당인지 kg당인지 전체 가격인지 알 수 없었음 → "원 / kg" · "원 (전체)" 선택 (sell과 같은 목록) */}
               <select
                 aria-label="희망 단가 기준"
                 className="flex-shrink-0 outline-none"
@@ -392,7 +393,7 @@ export default function BuyPage() {
               >
                 {PRICE_UNITS.map((u) => (
                   <option key={u} value={u}>
-                    {u === "총액" ? "원 (총액)" : `원 / ${u}`}
+                    {priceUnitSuffix(u)}
                   </option>
                 ))}
               </select>

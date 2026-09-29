@@ -289,7 +289,7 @@ type BuyRequest = {
   product_name: string;
   quantity: string | null;
   hope_price: number | null;
-  hope_price_unit: string | null; // 2026-09-29 "kg" 등 수량 단위 또는 "총액"
+  hope_price_unit: string | null; // 2026-09-29 "kg" 등 수량 단위 또는 "일괄"(예전 "총액")
   contact_phone: string;
   description: string | null;
   contacted: boolean;

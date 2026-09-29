@@ -31,7 +31,8 @@ export type Deal = {
   manifest_items?: Record<string, string>[] | null; // 혼합매물 구성품 CSV 목록 (헤더 그대로)
 };
 
-export const quantityUnits = ["개", "박스", "kg", "톤", "파렛트", "세트"];
+// 2026-09-29: L 추가 (sell·buy·관리자 공통). 단가 단위 목록(priceUnit.ts)도 같은 순서
+export const quantityUnits = ["개", "박스", "kg", "톤", "파렛트", "세트", "L"];
 
 const now = Date.now();
 
