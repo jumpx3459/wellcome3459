@@ -1,6 +1,6 @@
 # PROGRESS
 
-마지막 업데이트: 2026-09-30 (PR #19 푸시 재발송 경로 제거·deals.status 제약 / PR #20 (광고) 표시·수신거부 안내·야간 발송 보류 / 공개일 10/7 연기)
+마지막 업데이트: 2026-09-30 (PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
 
 새 세션을 시작할 때 이 파일을 먼저 읽고, 아래 "다음에 할 일"부터 확인하세요.
 
@@ -31,7 +31,7 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 ## 현재 상태
 
 - 기본 브랜치: `main` (로컬/GitHub 모두 일치, `origin/HEAD -> origin/main`)
-- 열려 있는 PR: 없음 (**PR #20 푸시 규칙((광고)·수신거부·야간 보류)은 2026-09-30 병합 · 머지 커밋 `1c4e68d`** · **PR #19 푸시 발송 보안·매물 상태 검증은 2026-09-30 병합 · 머지 커밋 `957620f`** · **PR #18 로그인 비밀번호 유도 후속은 2026-09-29 병합 · `b7be300`** · **PR #17 선택적 비밀번호 로그인은 2026-09-28 병합 완료 · 머지 커밋 `6465faa`** —
+- 열려 있는 PR: 없음 (**PR #21 수신 동의 기록·약관·처리방침은 2026-09-30 병합 · 머지 커밋 `b10a9c8`** · **PR #20 푸시 규칙((광고)·수신거부·야간 보류)은 2026-09-30 병합 · 머지 커밋 `1c4e68d`** · **PR #19 푸시 발송 보안·매물 상태 검증은 2026-09-30 병합 · 머지 커밋 `957620f`** · **PR #18 로그인 비밀번호 유도 후속은 2026-09-29 병합 · `b7be300`** · **PR #17 선택적 비밀번호 로그인은 2026-09-28 병합 완료 · 머지 커밋 `6465faa`** —
   사용자가 Supabase "Secure password change" 설정 후 병합 승인. 실제 설정→로그아웃→비밀번호 로그인 흐름은
   프로덕션에서 한 번 직접 확인 권장. PR #16 회원가입 3단계→2단계 통합은 2026-09-25 병합 · `5fb0375`)
 - 병합 완료 (기본 브랜치에 모두 반영됨): PR #1~#14 (견적함 메뉴+Toast, 회원가입 개선,
@@ -61,20 +61,33 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
   카카오 채널 토글 `kakao` 초기값 true), 푸시 본문에 "(광고)"·수신거부 안내 없음, 21~08시 발송 제한 없음.
   → 푸시 쪽 3개는 아래 커밋 B(PR #20)로 해결. **동의 저장(컬럼·시각)은 아직 미착수.**
 
-## 최근 작업 (2026-09-30) — 커밋 C: 수신 동의 기록·가입/알림 켜기·약관 정리 (브랜치 `fix/consent-records`, PR 대기)
+## 최근 작업 (2026-09-30) — 커밋 C: 수신 동의 기록·가입/알림 켜기·약관·처리방침 (PR #21, 머지 `b10a9c8`)
 
-- **`member_consents`** (SQL 작성, merge 전 대표 실행 필요): 동의/철회를 한 줄씩 추가만(수정·삭제 없음), 타입별 최신은
-  `member_consent_latest` 뷰(security_invoker). RLS 본인 조회만, 기록은 `/api/consents`(토큰→회원 id, 약관 버전 `2026-10-07` 서버 상수).
-  값: tos·privacy·deal_alert_ad·night_ad(미사용)·kakao_marketing / source: signup·push_enable·reconsent·mypage. 상수는 `src/lib/consent.ts`.
-- **발송 대상**: sendDealPush·sendNoticePush는 `deal_alert_ad` 최신 agreed=true 회원만. 기록 없으면 제외 → **기존 회원은 재동의 전까지 알림 안 감.**
-  동의 조회 실패는 `consent_error`로 발송 중단(push_sent_at 선점 전이라 다시 보낼 수 있음).
-- **가입**: [필수] 이용약관(/terms)·개인정보(/privacy), [선택] 매물 알림 수신(광고성)·카카오톡 채널 소식(광고성), 선택은 기본 false.
-  앱 푸시 토글·필수 조건 제거 — 매물 알림 동의 시 제출 때 권한 요청. 카카오 채널 추가 토글은 동의와 분리(기본 꺼짐). 버튼 "동의하고 시작하기".
-- **알림 켜기**(PushStatusCard): 매물 알림 동의가 없으면 동의 시트 → 저장(push_enable)과 구독을 같은 클릭에서 시작.
-- **재동의**(ConsentGate, AppShell): 회원인데 tos·privacy 기록이 없으면 닫을 수 없는 시트(필수 2 + 선택 2). 거부 시 이용 불가 안내 + 로그아웃·탈퇴.
-  가입·로그인·약관·탈퇴·관리자·/en·/p 화면 제외, 동의 조회 실패 시 띄우지 않음. 동의/철회 직후 안내("…동의하셨어요 (YYYY.MM.DD, 덤핑점핑)")도 여기서.
-- **MY**: "이 기기 푸시 알림" 아래 매물 알림·카카오 소식 동의 토글(변경마다 새 행, mypage). 매물 알림 철회 시 발송만 제외, 구독은 유지.
-- **약관**: `/terms` 틀만(본문은 대표 전달 예정 — 공개 전 채울 것). 개인정보 처리방침: 푸시 구독 정보를 필수→선택, 광고성 정보 수신은 선택.
+- **배포**: GitHub Actions run 36685603805 success, 커밋 `b10a9c8`. 운영 확인(읽기만): `/api/cron/morning-push` 인증 없이 → 401,
+  `x-vercel-id: icn1::icn1::…` → **함수 실행 지역 icn1(서울)** 확인. `/terms`·`/privacy` 200(약관 제1조~부칙, 처리방침 국외 이전·Twilio 표시).
+- **운영 DB SQL 실행 완료 (2026-09-30, 대표)**: `member_consents` + `member_consent_latest` 뷰(tables 2 · RLS true · policy 1 ·
+  security_invoker=true · rows 0), 비회원 동의 컬럼 `quick_leads`·`buy_requests`의 `privacy_consented_at`·`privacy_consent_version`(4개).
+- **`member_consents`**: 동의/철회를 한 줄씩 추가만(수정·삭제 없음), 타입별 최신은 `member_consent_latest` 뷰. RLS 본인 조회만,
+  기록은 `/api/consents`(토큰→회원 id, 약관 버전 `2026-10-07` 서버 상수). consent_type 8개: tos·privacy·eligibility(필수) /
+  deal_alert_ad·kakao_marketing(선택) / night_ad(예약)·seller_terms(커밋 E)·biz_info(공개 후). 상수·문구는 `src/lib/consent.ts`.
+- **문구 기준**: `docs/legal/terms-2026-10-07.md`(약관 전문, `/terms`가 빌드 때 렌더링), `docs/legal/consent-texts-2026-10-07.md`(동의 문구·처리방침 수정안).
+  원본 파일은 이후 에디터가 역슬래시 이스케이프로 다시 저장했지만 문구 동일 — 커밋된 판 유지(대표 결정).
+- **발송 대상**: sendDealPush·sendNoticePush는 `deal_alert_ad` 최신 agreed=true 회원만 → **기존 회원은 재동의 전까지 알림 안 감.**
+  동의 조회 실패는 `consent_error`로 발송 중단(push_sent_at 선점 전).
+- **가입**: [필수] 이용약관(/terms)·개인정보(보기 → 수집·이용 전문 시트)·"사업 목적으로 이용하며, 만 14세 이상입니다"(eligibility),
+  [선택] 매물 알림·카카오톡 채널 소식(기본 false). 앱 푸시 필수 조건 제거, 카카오 채널 추가 토글은 동의와 분리(기본 꺼짐).
+- **알림 켜기**(PushStatusCard): 매물 알림 동의 없으면 동의 시트 → 저장(push_enable)과 구독을 같은 클릭에서 시작.
+- **재동의**(ConsentGate, AppShell): tos·privacy·eligibility 중 하나라도 기록 없으면 닫을 수 없는 시트(필수 3 + 선택 2), 거부 시 이용 불가 안내 + 로그아웃·탈퇴.
+  동의/철회 안내 "…동의하셨어요 / 동의를 철회하셨어요 (YYYY.MM.DD, 덤핑점핑)" — 날짜는 저장된 created_at의 한국 날짜.
+- **MY**: 매물 알림·카카오 소식 동의 토글(mypage). 매물 알림 철회 시 발송만 제외, 기기 구독은 유지.
+- **비회원 폼**(매물 상세 번호만 남기기·구매 희망 등록): [필수] 개인정보 수집·이용 동의, API는 `privacyConsent=true` 필수(400 field privacyConsent).
+  **동의 시각 컬럼은 생겼지만 API가 아직 안 채움 — 후속 커밋 필요.**
+- **처리방침**: 수집 항목 표(비회원 관심·구매 희망 포함), 제3자 제공 신설(+ 커밋 F 전 임시 문구 "문자로 동의 받은 뒤에만 제공" — F 배포 시 삭제),
+  위탁(Supabase·Vercel·Twilio·푸시 서비스), 국외 이전(Twilio·Vercel, 미국, privacy@twilio.com·privacy@vercel.com), 보유 기간
+  (인증번호 기록 30일, 비회원 연락처 상담 종료 후 30일), 광고성 정보, 보호책임자(직책 없음), 시행일 2026-10-07, 맨 아래 /terms 링크.
+- **`vercel.json`**: `"regions": ["icn1"]` + 아침 8시 cron.
+- **남은 것**: 비회원 동의 컬럼 채우기, "상담 종료 후 30일" 자동 삭제(종료 시각 기록 + pg_cron) 미구현, icn1 전환 뒤 국외 이전 표의 Vercel 줄 유지 여부 판단,
+  기존 회원 재동의 안내(공지 여부), 판매자 표시 후속은 커밋 E(관리자 직접 등록 표시·임의 이름 규칙·seller_member_id 공개 차단), 연결 동의는 커밋 F.
 
 ## 최근 작업 (2026-09-30) — 커밋 B: 푸시 규칙 (광고)·수신거부·야간 보류 (PR #20, 머지 `1c4e68d`)
 
