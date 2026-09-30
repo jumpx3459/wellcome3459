@@ -1165,3 +1165,80 @@ end $$;
 --     직접 조회: page.tsx(3곳)·deals/page.tsx(3)·deals/[id]/page.tsx·deals/[id]/layout.tsx·p/[slug]·sitemap.ts·AlertInboxHome(2)·mypage(1)
 --     임베드: mypage interests→deals(…)·notification_logs→deals(…)·messages→deals(title, seller_display_name)
 --     realtime 구독 없음. 트리거·RPC(sync_deal_*·admin_category_kpis)는 security definer라 권한 영향 없음. 서버 라우트는 service role.
+
+-- 2026-09-30 (커밋 G): 비회원 연락처 — 수집일(created_at)로부터 90일 후 자동 삭제. ⚠ 운영 DB 미실행 (대표 실행).
+-- 대상: quick_leads 전체(비회원 원클릭 리드), buy_requests 중 member_id가 없는 행(비회원 구매 희망).
+-- 행은 지우지 않고 연락처만 null + anonymized_at 기록 → 관심 수 카운트(interest_count·quick_lead_count)는 그대로.
+--   (카운트 트리거 trg_quick_leads_sync_interest_count·trg_quick_leads_sync_quick_lead_count는 "after insert or delete"만 — update엔 반응 안 함)
+-- 구매 희망 내용(품목·수량·희망가·지역·설명·결과)과 동의 기록(privacy_consented_at·version)은 남김.
+-- 문구: 비회원 폼 "보유: 수집일로부터 90일", 처리방침 "수집일로부터 90일 후 자동 삭제".
+--
+-- 실행 전 확인 (삭제 대상 건수 · 카운트 합계 기록해 두기):
+--   select
+--     (select count(*) from public.quick_leads where phone is not null and created_at < now() - interval '90 days') as quick_leads_due,
+--     (select count(*) from public.buy_requests where member_id is null and contact_phone is not null
+--        and created_at < now() - interval '90 days') as buy_requests_due,
+--     (select min(created_at) from public.quick_leads) as quick_leads_oldest,
+--     (select min(created_at) from public.buy_requests where member_id is null) as buy_requests_oldest;
+--   select sum(interest_count) as interest_sum, sum(quick_lead_count) as quick_lead_sum from public.deals;
+
+-- ① 연락처 컬럼 null 허용 + 비운 시각
+alter table public.quick_leads  alter column phone drop not null;
+alter table public.buy_requests alter column contact_phone drop not null;
+alter table public.quick_leads  add column if not exists anonymized_at timestamptz;
+alter table public.buy_requests add column if not exists anonymized_at timestamptz;
+
+-- ② 비우는 함수 (service role·cron 전용 — anon/authenticated 실행 불가)
+create or replace function public.purge_nonmember_contacts()
+returns table (quick_leads_purged int, buy_requests_purged int)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  q int;
+  b int;
+begin
+  update public.quick_leads
+     set phone = null, anonymized_at = now()
+   where phone is not null
+     and created_at < now() - interval '90 days';
+  get diagnostics q = row_count;
+
+  update public.buy_requests
+     set contact_phone = null, anonymized_at = now()
+   where member_id is null
+     and contact_phone is not null
+     and created_at < now() - interval '90 days';
+  get diagnostics b = row_count;
+
+  return query select q, b;
+end;
+$$;
+revoke execute on function public.purge_nonmember_contacts() from public, anon, authenticated;
+
+-- ③ 매일 03:10 KST (= UTC 18:10) — 같은 이름이면 일정만 갱신
+select cron.schedule(
+  'purge-nonmember-contacts',
+  '10 18 * * *',
+  $$ select public.purge_nonmember_contacts() $$
+);
+
+-- (선택) 지금 한 번 바로 실행: select * from public.purge_nonmember_contacts();
+--
+-- 실행 후 확인:
+--   select jobname, schedule, active from cron.job where jobname = 'purge-nonmember-contacts';         -- '10 18 * * *' · true
+--   select column_name, is_nullable from information_schema.columns
+--    where table_schema = 'public' and ((table_name = 'quick_leads' and column_name in ('phone','anonymized_at'))
+--       or (table_name = 'buy_requests' and column_name in ('contact_phone','anonymized_at')));        -- 4행 · 모두 YES
+--   select has_function_privilege('anon', 'public.purge_nonmember_contacts()', 'execute') as anon_exec,          -- false
+--          has_function_privilege('authenticated', 'public.purge_nonmember_contacts()', 'execute') as auth_exec; -- false
+--   (바로 실행했거나 첫 실행 후) 대상 0건 · 카운트 합계 변화 없음:
+--   select
+--     (select count(*) from public.quick_leads where phone is not null and created_at < now() - interval '90 days') as quick_leads_due,   -- 0
+--     (select count(*) from public.buy_requests where member_id is null and contact_phone is not null
+--        and created_at < now() - interval '90 days') as buy_requests_due;                                                            -- 0
+--   select sum(interest_count) as interest_sum, sum(quick_lead_count) as quick_lead_sum from public.deals;                           -- 실행 전과 같음
+--   select status, return_message, start_time from cron.job_run_details
+--    where jobid = (select jobid from cron.job where jobname = 'purge-nonmember-contacts') order by start_time desc limit 5;
+-- 해제: select cron.unschedule('purge-nonmember-contacts');

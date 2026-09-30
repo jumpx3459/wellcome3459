@@ -62,7 +62,7 @@ export default function PrivacyBody() {
             <ul className="list-disc pl-5 space-y-1">
               <li>회원 정보: 탈퇴 시까지(탈퇴 시 지체 없이 파기, 법령상 보관 항목 제외).</li>
               <li>인증번호 요청 기록: 30일 후 자동 삭제.</li>
-              <li>비회원 관심 표시·구매 희망 등록 연락처: 상담 종료 후 30일.</li>
+              <li>비회원 관심 표시·구매 희망 등록 연락처: 수집일로부터 90일 후 자동 삭제.</li>
               <li>동의 이력: 회원 탈퇴 시 함께 삭제.</li>
             </ul>
           </div>
@@ -98,7 +98,7 @@ export default function PrivacyBody() {
             <h2 className="font-bold text-navy mb-1.5">6. 개인정보의 국외 이전</h2>
             <p>서비스는 위탁 업무 처리와 보관을 위해 아래와 같이 개인정보를 국외로 이전합니다.</p>
             <Table
-              head={["이전받는 자(연락처)", "국가", "이전 항목", "목적", "이전 일시·방법", "보유 기간"]}
+              head={["이전받는 자(연락처)", "국가", "이전 항목", "목적", "이전 일시·방법", "보유 기간", "비고"]}
               rows={[
                 [
                   "Twilio Inc. (privacy@twilio.com)",
@@ -107,6 +107,7 @@ export default function PrivacyBody() {
                   "인증 문자 발송",
                   "인증 요청 시 네트워크 전송",
                   "발송 목적 달성 후 수탁자 정책에 따른 기간",
+                  "—",
                 ],
                 [
                   "Vercel Inc. (privacy@vercel.com)",
@@ -115,6 +116,7 @@ export default function PrivacyBody() {
                   "웹 호스팅·서버 실행",
                   "서비스 이용 시 네트워크 전송",
                   "위탁 계약 종료 시까지",
+                  "서버 실행 지역은 대한민국(서울)이며, 운영 기록 등 일부 처리는 미국에서 이뤄질 수 있어요",
                 ],
               ]}
             />

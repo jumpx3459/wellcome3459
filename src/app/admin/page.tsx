@@ -298,7 +298,7 @@ type BuyRequest = {
   quantity: string | null;
   hope_price: number | null;
   hope_price_unit: string | null; // 2026-09-29 "kg" 등 수량 단위 또는 "일괄"(예전 "총액")
-  contact_phone: string;
+  contact_phone: string | null; // 2026-09-30: 비회원 연락처는 수집 90일 후 자동으로 비움(schema.sql 커밋 G)
   description: string | null;
   contacted: boolean;
   outcome: "pending" | "matched" | "no_match";
@@ -1271,7 +1271,7 @@ function AdminDashboard({
                       {i.members?.phone ?? i.phone}
                     </a>
                   ) : (
-                    <span className="whitespace-nowrap">번호 없음</span>
+                    <span className="whitespace-nowrap">{i.members ? "번호 없음" : "연락처 삭제됨 (수집 90일 경과)"}</span>
                   )}
                   {i.members?.member_no != null && <span className="whitespace-nowrap" style={LABEL}>· {formatMemberNo(i.members.member_no)}</span>}
                   {i.members?.business_verified ? (
@@ -1772,9 +1772,13 @@ function AdminDashboard({
                   이미 다 펼쳐져 있어 상세 모달 자체가 없는 구조) — 실제로
                   누를 만한 유일한 액션인 전화번호를 tel: 링크로 만들어 탭하면
                   바로 전화가 걸리게 함. */}
-              <a href={`tel:${b.contact_phone}`} className="underline font-bold" style={{ color: "#0B2540" }}>
-                📞 {b.contact_phone}
-              </a>
+              {b.contact_phone ? (
+                <a href={`tel:${b.contact_phone}`} className="underline font-bold" style={{ color: "#0B2540" }}>
+                  📞 {b.contact_phone}
+                </a>
+              ) : (
+                <span>연락처 삭제됨 (수집 90일 경과)</span>
+              )}
               {b.quantity ? ` · 희망수량 ${b.quantity}` : ""}
               {b.hope_price ? ` · 희망가 ${formatPriceWithUnit(b.hope_price, b.hope_price_unit)} 이하` : ""}
             </div>
