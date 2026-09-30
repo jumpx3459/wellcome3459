@@ -1483,3 +1483,37 @@ select cron.schedule('kpi-daily-snapshot', '5 15 * * *', $$ select public.kpi_sn
 --     select status, return_message, start_time from cron.job_run_details
 --      where jobid = (select jobid from cron.job where jobname = 'kpi-daily-snapshot') order by start_time desc limit 3;
 --   해제: select cron.unschedule('kpi-daily-snapshot');
+
+-- ============================================================================
+-- 2026-10-01: members 권한 컬럼 보호 — 공개 전 보안 점검 후속. 2026-10-01 대표 운영 DB 실행 완료.
+-- 배경: members_self_upsert(insert)·members_self_update(update) 정책에 컬럼 제한이 없어, 회원이 본인 토큰으로
+--   is_official_partner를 언제든 true로 바꾸거나, 가입 insert 때 business_verified=true를 넣을 수 있었음
+--   (protect_business_verified는 update만, protect_member_columns는 referred_by·member_no·phone·business_license_path·ref_code만).
+-- 정상 경로(관리자 사업자 인증·파트너 승인·사업자등록증 재첨부)는 모두 service role이라 영향 없음.
+-- 확인(대표): authenticated 권한으로 false 변경 시도 → true 유지. pg_trigger 확인.
+-- ⚠ 아래는 실행 내용 설명(business_verified·is_official_partner 보호, insert 시 business_license_path null)을 바탕으로 적은 것 —
+--   운영 DB 정의와 같은지 대조: select pg_get_functiondef('public.protect_member_privileged()'::regprocedure);
+-- 참고: 제안안의 member_no(insert 때 새 번호) 처리와 grant_referral_bonus의 pg_trigger_depth 보완은 이번 실행 설명에 없음 — 필요하면 별도 실행.
+-- ============================================================================
+create or replace function public.protect_member_privileged()
+returns trigger as $$
+begin
+  if auth.role() in ('authenticated', 'anon') then
+    if tg_op = 'INSERT' then
+      new.business_verified := false;
+      new.is_official_partner := false;
+      new.business_license_path := null;   -- 첨부는 /api/business-license/upload(service role)로만
+    else
+      new.business_verified := old.business_verified;
+      new.is_official_partner := old.is_official_partner;
+    end if;
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+drop trigger if exists members_protect_privileged on public.members;
+create trigger members_protect_privileged before insert or update on public.members
+  for each row execute function public.protect_member_privileged();
+-- 확인 — 한 줄:
+--   select (select count(*) from pg_trigger where tgname = 'members_protect_privileged') as privileged_trigger,   -- 1
+--          (position('is_official_partner' in pg_get_functiondef('public.protect_member_privileged()'::regprocedure)) > 0) as protects_partner; -- true

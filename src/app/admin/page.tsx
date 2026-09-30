@@ -255,7 +255,14 @@ export default function AdminPage() {
   if (!key) {
     return (
       <main className="flex flex-col items-center justify-center min-h-screen px-6 mx-auto w-full max-w-md bg-white shadow-sm">
-        <div className="text-2xl mb-4">🔒</div>
+        {/* 2026-10-01 (커밋 J): 일반 회원 로그인(네이비 헤더·캐릭터)과 한눈에 구분 — 작은 로고 + "관리자" 라벨, 기존 로고 에셋만 사용 */}
+        <div className="flex items-center gap-2 mb-5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/logo.png" alt="덤핑점핑" className="h-8 w-auto" />
+          <span className="rounded-md font-bold text-white" style={{ fontSize: rem(14), padding: "4px 10px", background: "#1A1F26", letterSpacing: "0.02em" }}>
+            관리자
+          </span>
+        </div>
         <h1 className="font-display text-xl text-navy mb-4">관리자 로그인</h1>
         <input
           type="password"

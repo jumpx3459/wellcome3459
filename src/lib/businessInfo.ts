@@ -17,4 +17,6 @@ export const BUSINESS_INFO = {
 export const telHref = (tel: string) => `tel:${tel.replace(/[^0-9+]/g, "")}`;
 export const mailHref = (email: string) => `mailto:${email}`;
 
-export const SERVICE_ROLE_NOTICE = "덤핑점핑은 판매자와 구매자를 연결하는 서비스로, 거래 당사자가 아닙니다.";
+// 통신판매중개자 고지 — 푸터에 접혀 있어도 항상 보임 (2026-10-01 커밋 J 문구)
+export const SERVICE_ROLE_NOTICE =
+  "점프엑스 주식회사는 통신판매중개자로서 매물 거래의 당사자가 아니며, 거래 정보와 거래에 대한 책임은 판매자와 구매자에게 있습니다.";
