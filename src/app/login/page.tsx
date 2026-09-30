@@ -69,6 +69,15 @@ function LoginPageInner() {
   const [authMode, setAuthMode] = useState<"otp" | "password">("otp");
   // 세션 이벤트(onAuthStateChange)가 verifyOtp 응답보다 먼저 올 수 있어서, 요청 "전에" ref에 기록해 둔다
   const loggedInVia = useRef<"otp" | "password" | null>(null);
+  // 2026-10-01: 비밀번호 관리자·자동완성이 입력 이벤트 없이 칸에 값만 채우면 phone state가 비어 있어
+  // "휴대폰 번호를 정확히 입력해주세요"가 떴음(칸에는 010-3441-3459가 보이는데) → 누르는 순간 칸의 실제 값을 다시 읽음
+  const phoneRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null); // 비밀번호 관리자가 번호·비밀번호를 같이 채우는 경우 대비
+  const readPhone = () => {
+    const typed = formatPhoneTyping(phoneRef.current?.value || phone);
+    if (typed !== phone) setPhone(typed);
+    return typed;
+  };
   const [showPwPrompt, setShowPwPrompt] = useState(false);
   const [password, setPassword] = useState("");
   const [passwordSigningIn, setPasswordSigningIn] = useState(false);
@@ -156,13 +165,14 @@ function LoginPageInner() {
   }, [codeSent, authUserId, codeLeft]);
 
   const handleSendOtp = async () => {
-    if (!isValidKoreanPhone(phone)) {
+    const typed = readPhone();
+    if (!isValidKoreanPhone(typed)) {
       setOtpError("휴대폰 번호를 정확히 입력해주세요.");
       return;
     }
     setOtpError(null);
     setOtpSending(true);
-    const result = await sendOtp(phone);
+    const result = await sendOtp(typed);
     setOtpSending(false);
     if (!result.ok) {
       setOtpError(result.error);
@@ -193,18 +203,21 @@ function LoginPageInner() {
 
   const handlePasswordSignIn = async () => {
     setPasswordError(null);
-    if (!isValidKoreanPhone(phone)) {
+    const typed = readPhone();
+    if (!isValidKoreanPhone(typed)) {
       setPasswordError("휴대폰 번호를 정확히 입력해주세요.");
       return;
     }
-    if (!password) {
+    const typedPassword = passwordRef.current?.value || password;
+    if (typedPassword !== password) setPassword(typedPassword);
+    if (!typedPassword) {
       setPasswordError("비밀번호를 입력해주세요.");
       return;
     }
     if (!isSupabaseConfigured || !supabase) return;
     setPasswordSigningIn(true);
     loggedInVia.current = "password";
-    const { error } = await supabase.auth.signInWithPassword({ phone: toE164Phone(phone), password });
+    const { error } = await supabase.auth.signInWithPassword({ phone: toE164Phone(typed), password: typedPassword });
     setPasswordSigningIn(false);
     if (error) {
       // 번호별로 "비밀번호 없음"을 구분해 알려주면 아무 번호나 넣어 회원 여부를 알아낼 수 있어서 한 문구로
@@ -212,7 +225,7 @@ function LoginPageInner() {
       return;
     }
     try {
-      localStorage.setItem(LAST_PHONE_KEY, phone.replace(/[^0-9]/g, "")); // 저장은 숫자만, 표시는 010-1234-5678
+      localStorage.setItem(LAST_PHONE_KEY, typed.replace(/[^0-9]/g, "")); // 저장은 숫자만, 표시는 010-1234-5678
     } catch {}
     lsSet(LOGIN_METHOD_KEY, "password");
     // 이전에 만든 비밀번호엔 표시가 없어서, 비밀번호로 들어오면 서버(app_metadata)에 표시 (권유 시트가 다시 안 뜨게)
@@ -350,6 +363,10 @@ function LoginPageInner() {
                 </div>
                 <div className="flex gap-2">
                   <input
+                    ref={phoneRef}
+                    type="tel"
+                    name="username"
+                    autoComplete="username"
                     className="flex-1 min-w-0 rounded-xl outline-none"
                     style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: rem(15), fontVariantNumeric: "tabular-nums" }}
                     placeholder="010-0000-0000"
@@ -360,9 +377,10 @@ function LoginPageInner() {
                   />
                   <button
                     onClick={handleSendOtp}
-                    disabled={otpSending || Boolean(authUserId) || !isValidKoreanPhone(phone)}
+                    disabled={otpSending || Boolean(authUserId)}
                     className="flex-shrink-0 rounded-xl font-bold disabled:opacity-60"
                     style={{
+                      opacity: isValidKoreanPhone(phone) ? undefined : 0.6,
                       border: "none",
                       background: "linear-gradient(135deg,#E25100,#FF6F0F)",
                       padding: "0 15px",
@@ -420,6 +438,10 @@ function LoginPageInner() {
                   )}
                 </div>
                 <input
+                  ref={phoneRef}
+                  type="tel"
+                  name="username"
+                  autoComplete="username"
                   className="w-full rounded-xl outline-none"
                   style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: rem(15), fontVariantNumeric: "tabular-nums" }}
                   placeholder="010-0000-0000"
@@ -429,7 +451,11 @@ function LoginPageInner() {
                 />
                 <div className="text-sm font-bold mt-3.5 mb-2" style={{ color: "#0B2540" }}>비밀번호</div>
                 <input
+                  ref={passwordRef}
                   type="password"
+                  name="password"
+                  autoComplete="current-password"
+                  onFocus={() => readPhone()} // 번호만 자동완성된 뒤 비밀번호를 치면 다시 그려질 때 번호 칸이 비지 않게 먼저 반영
                   className="w-full rounded-xl outline-none"
                   style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: rem(15) }}
                   placeholder="마이페이지에서 설정한 비밀번호"
