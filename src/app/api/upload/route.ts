@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { getPhotoLimit, photoLimitError } from "@/lib/photoLimit";
-import { getPhotoLimitForToken } from "@/lib/photoLimitServer";
+import { getPhotoLimit, photoLimitError, MAX_PHOTO_SLOTS } from "@/lib/photoLimit";
+import { getMemberFromToken } from "@/lib/photoLimitServer";
+import { checkAdminAuth } from "@/lib/adminAuth";
 
 const BUCKET = "deal-images";
 const MAX_VIDEO_BYTES = 25 * 1024 * 1024; // 15초 영상은 대체로 이 안에 들어옵니다
@@ -23,6 +24,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "파일이 없습니다." }, { status: 400 });
   }
 
+  // 2026-09-30: 로그인 회원(토큰) 또는 관리자(x-admin-key)만 업로드 — 판매 신청이 회원 전용이 되면서
+  // 비회원 업로드 경로가 없어짐. 회원 사진 한도(6 + 추천 보너스, 최대 16)는 토큰의 회원 기준으로 서버에서 다시 계산,
+  // 관리자는 최대치. ImageUploader는 장당 1요청이라 매물 한 건의 총 장수는 /api/seller-requests에서 한 번 더 막는다.
+  if (!supabaseUrl || !serviceKey) {
+    // 데모 모드: 실제 저장 없이 빈 값 반환 (화면에서는 로컬 미리보기만 보임)
+    return NextResponse.json({ urls: [], videoUrl: null, demo: true });
+  }
+  const supabaseAdmin = createClient(supabaseUrl, serviceKey);
+  let photoLimit = MAX_PHOTO_SLOTS;
+  if (!checkAdminAuth(req).ok) {
+    const member = await getMemberFromToken(supabaseAdmin, formData.get("accessToken"));
+    if (!member) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+    photoLimit = getPhotoLimit(member);
+  }
+
   for (const file of files) {
     if (typeof file === "string" || !IMAGE_EXT[file.type]) {
       return NextResponse.json({ error: "JPG·PNG·WEBP·GIF 사진만 올릴 수 있어요.", field: "images" }, { status: 400 });
@@ -42,24 +58,10 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 2026-09-29: 요청한 회원의 사진 한도(6 + 추천 보너스 최대 10 = 최대 16)를 서버에서 다시 계산.
-  // 토큰(accessToken)이 없으면(비회원 매물 등록·관리자) 기본 6장. ImageUploader는 장당 1요청이라
-  // 매물 한 건의 총 장수는 /api/seller-requests에서 한 번 더 막는다.
-  const accessToken = formData.get("accessToken");
-  const photoLimit =
-    supabaseUrl && serviceKey
-      ? await getPhotoLimitForToken(createClient(supabaseUrl, serviceKey), accessToken)
-      : getPhotoLimit(null);
   if (files.length > photoLimit) {
     return NextResponse.json({ error: photoLimitError(photoLimit), field: "images" }, { status: 400 });
   }
 
-  if (!supabaseUrl || !serviceKey) {
-    // 데모 모드: 실제 저장 없이 빈 값 반환 (화면에서는 로컬 미리보기만 보임)
-    return NextResponse.json({ urls: [], videoUrl: null, demo: true });
-  }
-
-  const supabaseAdmin = createClient(supabaseUrl, serviceKey);
   const urls: string[] = [];
 
   // 2026-09-28: 기본 6장(+추천 리워드로 회원별 bonus_photo_slots만큼 추가, 무제한 아님)

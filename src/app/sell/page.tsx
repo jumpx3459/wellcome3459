@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { hasAppHistory } from "@/lib/appNav";
@@ -19,12 +19,23 @@ import { rem } from "@/lib/rem";
 import { type StockType } from "@/lib/stockType";
 import StockTypePicker from "@/components/StockTypePicker";
 import { getPhotoLimit, isPhotoLimitMaxed, MAX_PHOTO_SLOTS } from "@/lib/photoLimit";
-import { getFreshAccessToken } from "@/lib/authFetch";
+import { authFetch } from "@/lib/authFetch";
 import { FieldLabel, FieldTag, FORM_INPUT_FONT_SIZE, FORM_HINT_STYLE, FORM_CHIP_FONT_SIZE } from "@/components/FormField";
 import { DEAL_PRICE_UNITS, LUMP_SUM, isDealPriceUnit, isLumpSum, priceUnitSuffix, type DealPriceUnit } from "@/lib/priceUnit";
 import CategoryChips from "@/components/CategoryChips";
 import FloatingCTA, { FloatingCTANote, FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
+import SellGuestNotice from "@/components/SellGuestNotice";
+
+// 2026-09-30: 작성 중 내용 (sessionStorage) — 사진·영상은 이미 올라간 URL만 보관, 매니페스트 표는 제외
+const SELL_DRAFT_KEY = "dj_sell_draft";
+type SellDraft = {
+  companyName: string; isAnonymous: boolean; contactName: string; contactPhone: string; category: string;
+  categoryTouched: boolean; stockType: string; region: string; productName: string; quantity: string; quantityUnit: string;
+  minOrderQty: string; hopePrice: string; priceUnit: string; priceUnitTouched: boolean; hopeDurationHours: string;
+  description: string; packageUnit: string; origin: string; spec: string; storageCondition: string; pid: string;
+  images: string[]; videoUrl: string | null; showDetails: boolean;
+};
 
 export default function SellPage() {
   const router = useRouter();
@@ -49,25 +60,42 @@ export default function SellPage() {
   const [contactError, setContactError] = useState<string | null>(null);
   const [bonusPhotoSlots, setBonusPhotoSlots] = useState(0);
 
+  // 2026-09-30: 판매 신청은 회원 전용 — 비회원(로그인 안 함·가입 전)이면 폼 대신 SellGuestNotice.
+  // checking 동안은 폼을 그리지 않음(작성 중 내용 복원 전 업로더가 먼저 마운트되지 않게).
+  const [authState, setAuthState] = useState<"checking" | "member" | "guest">("checking");
+  const draftPhoneRef = useRef<string | null>(null); // 복원한 작성 중 연락처가 있으면 회원 번호로 덮어쓰지 않음
+
   // 로그인한 회원이면 인증된 번호를 미리 채워준다 — 대리 등록(다른 담당자
   // 연락처로 접수) 케이스가 있어서 수정은 그대로 허용한다.
   useEffect(() => {
-    if (!isSupabaseConfigured || !supabase) return;
+    if (!isSupabaseConfigured || !supabase) {
+      setAuthState("member"); // 로컬 데모(Supabase 미설정) — 저장 없이 폼만
+      return;
+    }
     (async () => {
       const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) return;
-      setMemberId(userData.user.id);
+      if (!userData.user) {
+        setAuthState("guest");
+        return;
+      }
       const { data: member } = await supabase
         .from("members")
         .select("phone, bonus_photo_slots")
         .eq("id", userData.user.id)
         .maybeSingle();
-      if (member?.phone) {
+      // 인증만 하고 가입(members 행)을 안 마친 경우도 비회원 — 서버(/api/seller-requests)도 같은 기준
+      if (!member) {
+        setAuthState("guest");
+        return;
+      }
+      setMemberId(userData.user.id);
+      setAuthState("member");
+      if (member.phone && !draftPhoneRef.current) {
         const filled = formatContactPhone(member.phone);
         setContactPhone(filled);
         setAutofilledPhone(filled);
       }
-      setBonusPhotoSlots(member?.bonus_photo_slots ?? 0);
+      setBonusPhotoSlots(member.bonus_photo_slots ?? 0);
     })();
   }, []);
   const [category, setCategory] = useState<string>("");
@@ -128,6 +156,65 @@ export default function SellPage() {
   const [error, setError] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(false);
 
+  // 2026-09-30: 작성 중 내용 유지 — 제출 중 세션이 끊겨 로그인·가입을 다녀와도(returnTo=/sell) 이어서 쓰게
+  // sessionStorage에 보관. 저장소가 막혀 있으면(사생활 보호 모드 등) 조용히 넘어감. 카테고리 자동 추천 effect보다
+  // 뒤에 둬야 첫 렌더의 추천 effect가 복원한 카테고리를 비우지 않음.
+  const [draftReady, setDraftReady] = useState(false);
+  useEffect(() => {
+    let d: Partial<SellDraft> | null = null;
+    try {
+      const raw = window.sessionStorage.getItem(SELL_DRAFT_KEY);
+      d = raw ? (JSON.parse(raw) as Partial<SellDraft>) : null;
+    } catch {}
+    if (d) {
+      if (typeof d.companyName === "string") setCompanyName(d.companyName);
+      if (typeof d.isAnonymous === "boolean") setIsAnonymous(d.isAnonymous);
+      if (typeof d.contactName === "string") setContactName(d.contactName);
+      if (typeof d.contactPhone === "string" && d.contactPhone) {
+        setContactPhone(d.contactPhone);
+        draftPhoneRef.current = d.contactPhone;
+      }
+      if (typeof d.categoryTouched === "boolean") setCategoryTouched(d.categoryTouched);
+      if (typeof d.category === "string") setCategory(d.category);
+      if (d.category) setCategoryEditing(false);
+      if (typeof d.stockType === "string") setStockType(d.stockType as StockType);
+      if (typeof d.region === "string") setRegion(d.region);
+      if (typeof d.productName === "string") setProductName(d.productName);
+      if (typeof d.quantity === "string") setQuantity(d.quantity);
+      if (typeof d.quantityUnit === "string") setQuantityUnit(d.quantityUnit);
+      if (typeof d.minOrderQty === "string") setMinOrderQty(d.minOrderQty);
+      if (typeof d.hopePrice === "string") setHopePrice(d.hopePrice);
+      if (typeof d.priceUnit === "string" && isDealPriceUnit(d.priceUnit)) setPriceUnit(d.priceUnit);
+      if (typeof d.priceUnitTouched === "boolean") setPriceUnitTouched(d.priceUnitTouched);
+      if (typeof d.hopeDurationHours === "string") setHopeDurationHours(d.hopeDurationHours);
+      if (typeof d.description === "string") setDescription(d.description);
+      if (typeof d.packageUnit === "string") setPackageUnit(d.packageUnit);
+      if (typeof d.origin === "string") setOrigin(d.origin);
+      if (typeof d.spec === "string") setSpec(d.spec);
+      if (typeof d.storageCondition === "string") setStorageCondition(d.storageCondition);
+      if (typeof d.pid === "string") setPid(d.pid);
+      if (Array.isArray(d.images)) setImages(d.images.filter((u): u is string => typeof u === "string"));
+      if (typeof d.videoUrl === "string") setVideoUrl(d.videoUrl);
+      if (typeof d.showDetails === "boolean") setShowDetails(d.showDetails);
+    }
+    setDraftReady(true);
+  }, []);
+  useEffect(() => {
+    if (!draftReady || done) return;
+    const d: SellDraft = {
+      companyName, isAnonymous, contactName, contactPhone, category, categoryTouched, stockType, region, productName,
+      quantity, quantityUnit, minOrderQty, hopePrice, priceUnit, priceUnitTouched, hopeDurationHours, description,
+      packageUnit, origin, spec, storageCondition, pid, images, videoUrl, showDetails,
+    };
+    try {
+      window.sessionStorage.setItem(SELL_DRAFT_KEY, JSON.stringify(d));
+    } catch {}
+  }, [
+    draftReady, done, companyName, isAnonymous, contactName, contactPhone, category, categoryTouched, stockType, region,
+    productName, quantity, quantityUnit, minOrderQty, hopePrice, priceUnit, priceUnitTouched, hopeDurationHours,
+    description, packageUnit, origin, spec, storageCondition, pid, images, videoUrl, showDetails,
+  ]);
+
   const submit = async () => {
     setError(null);
     setMoqError(null);
@@ -156,12 +243,9 @@ export default function SellPage() {
     }
     setSubmitting(true);
     try {
-      // 2026-09-29: 서버가 회원 사진 한도를 토큰으로 다시 계산 (비회원은 토큰 없이 기본 6장)
-      const accessToken = await getFreshAccessToken().catch(() => null);
-      const res = await fetch("/api/seller-requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      // 2026-09-30: 회원 전용 — authFetch가 최신 토큰을 넣고(만료 시 갱신·1회 재시도), 서버는 토큰으로 회원·사진 한도 결정
+      const res = await authFetch("/api/seller-requests", {
+        json: {
           companyName: companyName || null,
           isAnonymous,
           // 회원 연결은 서버가 accessToken으로 결정 (memberId는 보내지 않음)
@@ -186,9 +270,13 @@ export default function SellPage() {
           manifestItems: manifestItems.length ? manifestItems : null,
           images,
           videoUrl,
-          accessToken,
-        }),
+        },
       });
+      if (res.status === 401) {
+        // 세션이 끊김 — 작성 중 내용은 sessionStorage에 남아 있어 로그인 후 /sell로 돌아오면 그대로 이어짐
+        setAuthState("guest");
+        return;
+      }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         if (data.field === "contactPhone") {
@@ -212,6 +300,9 @@ export default function SellPage() {
         throw new Error();
       }
       setDone(true);
+      try {
+        window.sessionStorage.removeItem(SELL_DRAFT_KEY);
+      } catch {}
     } catch {
       setError("신청 처리 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");
     } finally {
@@ -322,6 +413,10 @@ export default function SellPage() {
 
       </div>
 
+      {authState === "guest" && <SellGuestNotice />}
+
+      {authState === "member" && draftReady && (
+      <>
       <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: FLOATING_CTA_SPACE }}>
         {/* 2026-09-29: 헤더 안 캐릭터 소개(76px/13px) 대신 buy와 같은 "완전 무료" 카드 (판매자용 문구) */}
         <div className="flex items-center gap-3 rounded-2xl" style={{ background: "#fff", border: "1.5px solid #E4E7EB", padding: "15px 16px" }}>
@@ -569,9 +664,9 @@ export default function SellPage() {
 
         {showDetails && (
           <div className="flex flex-col gap-5 border-2 border-gray200 rounded-2xl p-4">
-            <ImageUploader onChange={setImages} max={getPhotoLimit({ bonus_photo_slots: bonusPhotoSlots })} />
+            <ImageUploader onChange={setImages} initialUrls={images} max={getPhotoLimit({ bonus_photo_slots: bonusPhotoSlots })} />
 
-            <VideoUploader onChange={setVideoUrl} />
+            <VideoUploader onChange={setVideoUrl} initialUrl={videoUrl} />
 
             <div>
               <FieldLabel need="optional">업체명</FieldLabel>
@@ -732,6 +827,8 @@ export default function SellPage() {
             {submitting ? "처리 중..." : "무료로 매물 등록하기"}
           </button>
               </FloatingCTA>
+      </>
+      )}
     </main>
   );
 }

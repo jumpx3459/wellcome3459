@@ -575,7 +575,7 @@ export default function MyPage() {
       const resized = await resizeImageForAvatar(file);
       const formData = new FormData();
       formData.append("files", resized, "avatar.jpg");
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const res = await authFetch("/api/upload", { formData }); // 2026-09-30: 업로드는 회원 토큰 필수
       const data = await res.json();
       const url: string | undefined = data.urls?.[0];
       if (!url) {

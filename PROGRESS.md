@@ -1,6 +1,6 @@
 # PROGRESS
 
-마지막 업데이트: 2026-09-30 (PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
+마지막 업데이트: 2026-09-30 (커밋 H: 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내 — PR 진행 중 / PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
 
 새 세션을 시작할 때 이 파일을 먼저 읽고, 아래 "다음에 할 일"부터 확인하세요.
 
@@ -49,6 +49,29 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
   비공개 옵션 등) — 상세는 아래 "최근 작업 (2026-09-23)" 참고
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
+
+## 최근 작업 (2026-09-30) — 커밋 H: 동의 상태 표시·확대 안내·판매 신청 회원 전용·업로드 인증 (브랜치 `fix/consent-ux-upload-auth`, PR 진행 중)
+
+- **판매 신청은 회원 전용 (대표 결정 (d))**: `/sell`은 비회원(로그인 안 함·가입 전=members 행 없음)이면 폼 대신
+  `SellGuestNotice` — "판매 신청은 회원만 할 수 있어요 / 휴대폰 인증 1분이면 가입할 수 있어요" + [로그인·가입]
+  (`/login?returnTo=/sell`, 가입으로 넘어가도 returnTo 유지) + "가입이 어려우면 점핑매니저에게 문의하세요" →
+  카카오톡 채널 홈(`https://pf.kakao.com/_xcFZrX`). 별도 1:1 상담 창구·전화번호는 없음.
+  `/api/seller-requests`는 회원 토큰 필수(없음·무효·members 행 없음 → 401), `seller_member_id`는 토큰의 회원.
+- **작성 중 내용 유지**: `/sell` 입력값·올린 사진/영상 URL을 sessionStorage `dj_sell_draft`에 보관(매니페스트 표 제외),
+  신청 중 401(세션 끊김)이면 안내 화면으로 바꾸고 로그인 후 돌아오면 복원. 접수 완료 시 삭제.
+- **`/api/upload` 인증**: 회원 토큰(authFetch) 또는 관리자 `x-admin-key`(checkAdminAuth) 없으면 401.
+  사진 JPG·PNG·WEBP·GIF 20MB, 영상 MP4·MOV·WEBM·3GP 25MB, 확장자는 형식에서 결정. 회원 사진 한도는 토큰 회원 기준,
+  관리자는 최대치. 업로드 호출은 `src/lib/uploadClient.ts` — `ImageUploader`·`VideoUploader`에 `adminKey` prop
+  (관리자 화면 5곳 전달), 회원 화면·MY 프로필 사진은 authFetch.
+- **MY 푸시 카드**: 구독 중인데 `deal_alert_ad` 동의가 없으면 "동의 필요"(주황) + [동의하고 알림 받기](source mypage),
+  초록 "알림 받는 중"은 구독+동의 모두일 때만. **긴급 공지 토글**: 동의 없으면 흐리게·비활성 + 안내(값 유지).
+- **확대 안내**: 매물 상세 첫 방문 1회 `ZoomTip`(localStorage `dj_zoom_tip_seen`), 사진 전체 화면 열 때 2.5초 안내,
+  PhotoViewer 두 손가락 시작에서 preventDefault(가로 넘기기가 먼저 잡히는 경우 방지) + iOS gesture* 차단.
+- **회귀 확인 (Playwright·가짜 응답, 운영 DB 요청 없음)**: 회원 판매 신청+사진(토큰), 초안 복원·401 시 유지·완료 후 삭제,
+  관리자 매물 등록 사진·영상·긴급 공지 사진(x-admin-key), 프로필 사진(토큰), 실제 로컬 서버에서 비회원 업로드·위조 관리자 키·
+  비회원 판매 신청 → 401. **실기기 확인은 배포 후** (알림 카드 3상태, 핀치 확대, 회원 판매 신청 1건).
+- 기존 경고(이번 범위 밖): `ImageUploader`가 setItems 갱신 함수 안에서 부모 onChange를 불러 React
+  "Cannot update a component while rendering" 콘솔 경고 — 동작엔 문제없음.
 
 ## 최근 작업 (2026-09-30) — 커밋 A: 푸시 발송 보안 + 매물 상태 검증 (PR #19, 머지 `957620f`)
 
@@ -459,10 +482,10 @@ curl로 확인. 단, 이 세션엔 브라우저 접근이 없어 육안 확인�
 - [x] `create_admin_user` anon 실행 불가 확인 (2026-09-28, 제약 위반 인자로 안전하게 호출 → 42501)
 - [ ] 인덱스 7개(0012) 생성 여부 — SQL Editor에서 `select indexname from pg_indexes where indexname like '%_idx';`로 확인
 - [x] 약관 "보기"가 이용약관·개인정보 모두 `/privacy`로 연결됨 → PR #21(2026-09-30)에서 이용약관은 `/terms`(약관 전문), 개인정보는 수집·이용 전문 시트로 분리 완료
-- [ ] **`/api/upload`가 로그인 없이 누구나 호출 가능** (2026-09-27): 프로필 사진 업로드 추가하며
-  발견 — sell 페이지가 비회원 매물 등록(`memberId` null)을 의도적으로 허용해서 이 API도 비회원이
-  씀 → 단순 로그인 필수화는 그 흐름을 깨뜨림. 현재는 위험(익명 업로드 남용) 감수하고 유지하기로
-  결정. 필요해지면 Supabase 익명 인증(`signInAnonymously`)으로 비회원 흐름 유지하며 보호하는 안 검토
+- [x] **`/api/upload`가 로그인 없이 누구나 호출 가능** (2026-09-27 발견) → 2026-09-30 커밋 H: 판매 신청을 회원 전용으로 바꾸고
+  업로드는 회원 토큰 또는 관리자 키만 허용(401) + 형식·크기 검사
+- [ ] **`ImageUploader` 렌더 중 setState 경고** (2026-09-30 백로그): setItems 갱신 함수 안에서 `emitChange`(부모 onChange) 호출 →
+  React 콘솔 경고. 갱신 후 useEffect로 onChange를 부르는 식으로 정리
 
 - [ ] **쪽지/업체명 비공개 기능 — 관리자 승인 경로 자연 확인 대기** (2026-09-23):
   마이그레이션 실행 후 공개 API(`/api/seller-requests`)는 재검증 완료, 하지만
