@@ -494,9 +494,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
       )}
 
       {/* 2026-09-30 (커밋 D): 단독 English 링크 → 사업자 정보 푸터의 링크 줄로 이동 */}
-      <div style={{ padding: "8px 20px 28px", borderTop: "1px solid #EEF0F2" }}>
-        <BusinessFooter className="pt-4" />
-      </div>
+      <BusinessFooter className="mt-2" />
 
       {viewer && (
         <div

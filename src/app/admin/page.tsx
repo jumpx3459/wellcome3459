@@ -775,8 +775,970 @@ function AdminDashboard({
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  // 2026-10-01 (커밋 J): 목록 카드를 변수로 — 📱·자동은 기존 1열 순서 그대로, 💻는 세로로 쌓는 3단(CSS columns)에
+  // 중요도 순(재고문의(관심 표시) → 판매 신청 → 진행 중 매물 → 파트너 신청 → 실적 → 찾습니다 → 회원 → 관리자)으로 배치.
+  // 예전 3칸 격자는 행 높이가 가장 긴 카드에 맞춰져 빈칸이 컸음. 💻에서 0건 카드는 한 줄(제목 + "없어요")로 줄임.
+  const membersBlock = (
+    <>
+      <div
+        className={
+          isDesktop
+            ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3 overflow-y-auto"
+            : "px-5 pt-4 flex flex-col gap-3"
+        }
+        style={isDesktop ? { maxHeight: 480 } : undefined}
+      >
+        <button
+          type="button"
+          onClick={() => setMembersOpen((v) => !v)}
+          className="w-full flex items-center justify-between"
+        >
+          <span style={UI_SECTION}>최근 가입 회원 ({members.length}명)</span>
+          <span className="text-sm font-bold text-gray500">{membersOpen ? "접기 ▲" : "펼치기 ▼"}</span>
+        </button>
+
+        {membersOpen && (
+        <>
+        <input
+          value={memberSearch}
+          onChange={(e) => setMemberSearch(e.target.value)}
+          placeholder="번호/상호명 검색"
+          className="border-2 border-gray200 rounded-xl px-3 text-sm outline-none focus:border-orange"
+          style={{ height: "40px" }}
+        />
+        <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+          {(
+            [
+              { key: "all", label: "전체" },
+              { key: "business", label: "사업자" },
+              { key: "subscribed", label: "구독중" },
+              { key: "unsubscribed", label: "미구독" },
+            ] as const
+          ).map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setMemberFilter(f.key)}
+              className="flex-shrink-0 text-xs font-bold rounded-full px-3 py-1.5"
+              style={
+                memberFilter === f.key
+                  ? { background: "#0B2540", color: "#fff" }
+                  : { background: "#F5F6F8", color: "#6B7480" }
+              }
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <button onClick={exportMembersCsv} className="self-end text-xs font-bold text-navy underline">
+          CSV 내보내기 ({filteredMembers.length}건)
+        </button>
+
+        {!loading && filteredMembers.length === 0 && (
+          <div className="text-center text-gray500 py-6 text-sm">
+            {members.length === 0 ? "아직 가입한 회원이 없어요." : "검색/필터 결과가 없어요."}
+          </div>
+        )}
+        {filteredMembers.slice(0, memberShowCount).map((m) => (
+          <div key={m.id} className="bg-white border border-gray200 rounded-2xl px-4 py-3.5">
+            {/* 2026-09-28: 데스크톱 3열 레이아웃의 좁은 컬럼 폭에서 전화번호+뱃지가
+                줄바꿈 없이 한 줄로 강제돼 카드 자체가 옆으로 넘쳤음(overflow-y만
+                걸려 있으면 overflow-x가 자동으로 auto가 되는 CSS 규칙 때문에
+                가로 스크롤바까지 생김) — 그 결과 카드 하단 "관리자로 임명" 버튼도
+                스크롤해야만 보이는 문제로 이어짐. flex-wrap으로 뱃지가 필요하면
+                둘째 줄로 내려가게 해서 카드 폭 안에 항상 들어오도록 수정. */}
+            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+              <div className="text-base font-bold text-gray900">
+                {m.phone}
+                {m.member_no != null && (
+                  <span className="text-xs font-bold text-gray500 ml-1.5">{formatMemberNo(m.member_no)}</span>
+                )}
+                {m.nickname && <span className="text-sm font-medium text-gray500 ml-1.5">{m.nickname}</span>}
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span
+                  className="text-xs font-bold px-2 py-1 rounded-full"
+                  style={{
+                    background: m.push_subscribed ? "#E8F8EC" : "#FDEEE8",
+                    color: m.push_subscribed ? "#1D8A44" : "#C2410C",
+                  }}
+                >
+                  {m.push_subscribed ? "🔔 구독중" : "🔕 미구독"}
+                </span>
+                {m.is_business && (
+                  <span
+                    className="text-xs font-bold px-2 py-1 rounded-full"
+                    style={{ background: "#EAF0F7", color: "#1B3A5C" }}
+                  >
+                    사업자
+                  </span>
+                )}
+                {m.business_verified && (
+                  <span
+                    className="text-xs font-bold px-2 py-1 rounded-full inline-flex items-center gap-1"
+                    style={{ background: "#E8F8EC", color: "#1D8A44" }}
+                  >
+                    <CheckCircle className="w-3 h-3" /> 인증된 사업자
+                  </span>
+                )}
+              </div>
+            </div>
+            {m.company_name && (
+              <div className="text-sm font-bold text-navy mt-1">{m.company_name}</div>
+            )}
+            {m.has_business_license && !m.business_verified && (
+              <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                <span
+                  className="text-xs font-bold px-2 py-1 rounded-full flex-shrink-0"
+                  style={{ background: "#FFF4E0", color: "#966B00" }}
+                >
+                  인증 대기중
+                </span>
+                <button
+                  onClick={() => viewBusinessLicense(m.id)}
+                  disabled={licenseLoadingId === m.id}
+                  className="text-xs font-bold rounded-lg px-3 py-1.5 border border-gray200 text-navy disabled:opacity-60"
+                >
+                  {licenseLoadingId === m.id ? "불러오는 중..." : "사업자등록증 보기"}
+                </button>
+                <button
+                  onClick={() => verifyBusiness(m.id)}
+                  className="text-xs font-bold rounded-lg px-3 py-1.5 text-white"
+                  style={{ background: "#0B2540" }}
+                >
+                  인증 완료 처리
+                </button>
+              </div>
+            )}
+            <div className="text-sm text-gray500 mt-1">
+              {m.categories.length > 0 ? m.categories.join(", ") : "관심 카테고리 미선택"}
+              {" · "}
+              {m.regions.length > 0 ? m.regions.join(", ") : "관심 지역 미선택"}
+            </div>
+            {m.referrer_phone && (
+              <div className="text-xs text-gray500 mt-1">추천인: {m.referrer_phone}</div>
+            )}
+            <div className="flex items-center justify-between mt-1.5">
+              <div className="text-xs text-gray500">
+                {new Date(m.created_at).toLocaleString("ko-KR", {
+                  month: "long",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}{" "}
+                가입
+              </div>
+              {adminRole === "최고관리자" && !adminPhones.has(m.phone) && (
+                <button
+                  onClick={() => openAppoint(m)}
+                  className="text-xs font-bold rounded-lg px-2.5 py-1 border border-gray200 text-navy"
+                >
+                  관리자로 임명
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+        {filteredMembers.length > memberShowCount && (
+          <button
+            type="button"
+            onClick={() => setMemberShowCount((n) => n + 20)}
+            className="text-sm font-bold text-navy border-2 border-gray200 rounded-xl py-2.5"
+          >
+            더보기 ({filteredMembers.length - memberShowCount}명 더 있음)
+          </button>
+        )}
+        </>
+        )}
+      </div>
+    </>
+  );
+  const leadsBlock = (
+    <>
+      <div
+        id="leads"
+        className={
+          isDesktop
+            ? "col-span-2 bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3 overflow-y-auto"
+            : "px-5 pt-4 flex flex-col gap-3"
+        }
+        style={isDesktop ? { maxHeight: 480 } : undefined}
+      >
+        <button
+          type="button"
+          onClick={() => setLeadsOpen((v) => !v)}
+          className="w-full flex items-center justify-between"
+        >
+          <span style={UI_SECTION}>
+            관심 표시한 회원 <span style={{ ...LABEL, fontWeight: 400 }}>({interests.filter((i) => !i.contacted).length}건 미연락)</span>
+          </span>
+          <span className="text-sm font-bold text-gray500">{leadsOpen ? "접기 ▲" : "펼치기 ▼"}</span>
+        </button>
+        {leadsOpen && (
+        <>
+
+        <input
+          value={leadSearch}
+          onChange={(e) => setLeadSearch(e.target.value)}
+          placeholder="번호/매물명 검색"
+          className="border-2 border-gray200 rounded-xl px-3 text-sm outline-none focus:border-orange"
+          style={{ height: "40px" }}
+        />
+        <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+          {(
+            [
+              { key: "all", label: "전체" },
+              { key: "uncontacted", label: "미연락" },
+              { key: "pending", label: "진행중" },
+              { key: "completed", label: "성사" },
+              { key: "no_deal", label: "불발" },
+            ] as const
+          ).map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setLeadFilter(f.key)}
+              className="flex-shrink-0 text-xs font-bold rounded-full px-3 py-1.5"
+              style={
+                leadFilter === f.key
+                  ? { background: "#0B2540", color: "#fff" }
+                  : { background: "#F5F6F8", color: "#6B7480" }
+              }
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center justify-between">
+          <label className="flex items-center gap-1.5 text-xs font-bold text-gray500">
+            <input
+              type="checkbox"
+              checked={filteredInterests.length > 0 && filteredInterests.every((i) => selectedLeads.has(i.id))}
+              onChange={(e) =>
+                setSelectedLeads(e.target.checked ? new Set(filteredInterests.map((i) => i.id)) : new Set())
+              }
+            />
+            전체 선택
+          </label>
+          <button onClick={exportLeadsCsv} className="text-xs font-bold text-navy underline">
+            CSV 내보내기 ({filteredInterests.length}건)
+          </button>
+        </div>
+        {selectedLeads.size > 0 && (
+          <button
+            onClick={bulkMarkContacted}
+            disabled={bulkProcessing}
+            className="text-sm font-bold rounded-xl py-2.5 text-white disabled:opacity-60"
+            style={{ background: "#0B2540" }}
+          >
+            {bulkProcessing ? "처리 중..." : `선택 ${selectedLeads.size}건 연락완료 처리`}
+          </button>
+        )}
+
+        {!loading && filteredInterests.length === 0 && (
+          <div className="text-center text-gray500 py-6 text-sm">
+            {interests.length === 0 ? "아직 관심 표시가 없어요." : "검색/필터 결과가 없어요."}
+          </div>
+        )}
+        {filteredInterests.map((i) => (
+          <div
+            key={i.id}
+            className="bg-white border rounded-2xl px-4 py-3.5"
+            style={{
+              borderColor:
+                i.outcome === "completed"
+                  ? "#34C471"
+                  : i.outcome === "no_deal"
+                  ? "#E4E7EB"
+                  : i.contacted
+                  ? "#E4E7EB"
+                  : "#FF6F0F",
+            }}
+          >
+            {/* 2026-09-29: 매물명(17/800) → 회원 정보 한 줄 → 상태 배지 → 연락·성사/불발 버튼 한 줄 */}
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={selectedLeads.has(i.id)}
+                onChange={() => toggleLeadSelected(i.id)}
+                className="w-4 h-4 flex-shrink-0 mt-1.5"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="truncate" style={UI_CARD_TITLE}>
+                  {i.deals?.title ?? "삭제된 매물"}
+                </div>
+                <div className="mt-1 flex items-center gap-1.5 min-w-0 overflow-hidden" style={{ fontSize: rem(15), color: "#4B5563", fontVariantNumeric: "tabular-nums" }}>
+                  {i.members?.phone ?? i.phone ? (
+                    <a href={`tel:${i.members?.phone ?? i.phone}`} className="font-bold text-navy whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      {i.members?.phone ?? i.phone}
+                    </a>
+                  ) : (
+                    <span className="whitespace-nowrap">{i.members ? "번호 없음" : "연락처 삭제됨 (수집 90일 경과)"}</span>
+                  )}
+                  {i.members?.member_no != null && <span className="whitespace-nowrap" style={LABEL}>· {formatMemberNo(i.members.member_no)}</span>}
+                  {i.members?.business_verified ? (
+                    <span className="whitespace-nowrap inline-flex items-center gap-0.5" style={{ fontSize: rem(14), color: "#1D8A44" }}>
+                      · <CheckCircle className="w-3 h-3" /> 인증 사업자
+                    </span>
+                  ) : (
+                    i.members?.is_business && <span className="whitespace-nowrap" style={LABEL}>· 사업자</span>
+                  )}
+                </div>
+                <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                  {i.outcome === "completed" && (
+                    <span className="font-bold px-2 py-0.5 rounded-full" style={{ fontSize: rem(14), background: "#E8F8EC", color: "#1D8A44" }}>
+                      성사
+                    </span>
+                  )}
+                  {i.outcome === "no_deal" && (
+                    <span className="font-bold px-2 py-0.5 rounded-full bg-gray100 text-gray500" style={{ fontSize: rem(14) }}>
+                      불발
+                    </span>
+                  )}
+                  {i.source === "quick" && (
+                    <span className="font-bold px-2 py-0.5 rounded-full" style={{ fontSize: rem(14), background: "#FDEEE8", color: "#C2410C" }}>
+                      ⚡ 원클릭
+                    </span>
+                  )}
+                  {!i.contacted && i.outcome === "pending" && (
+                    <span className="font-bold px-2 py-0.5 rounded-full" style={{ fontSize: rem(14), background: "#FDECEC", color: "#B91C1C" }}>
+                      미연락
+                    </span>
+                  )}
+                </div>
+                <div className="mt-1" style={{ ...LABEL, fontVariantNumeric: "tabular-nums" }}>
+                  {new Date(i.created_at).toLocaleString("ko-KR", {
+                    month: "numeric",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                  {i.outcome === "completed" && i.completed_amount && (
+                    <span className="ml-1.5 font-bold" style={{ color: "#1D8A44" }}>
+                      · {i.completed_amount.toLocaleString()}원
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={async () => {
+                  await fetch("/api/admin/interests", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+                    body: JSON.stringify({ id: i.id, source: i.source, contacted: !i.contacted }),
+                  });
+                  load();
+                }}
+                className="flex-1 font-bold rounded-lg whitespace-nowrap"
+                style={{ fontSize: rem(15), minHeight: 40, ...(i.contacted ? { background: "#F5F6F8", color: "#6B7480" } : { background: "#0B2540", color: "#fff" }) }}
+              >
+                {i.contacted ? "✓ 연락완료" : "연락완료"}
+              </button>
+            {i.outcome === "pending" && (
+              <>
+                <button
+                  onClick={async () => {
+                    const amountStr = prompt("실제 거래 금액을 입력해주세요 (원)", String(i.deals?.deal_price ?? ""));
+                    if (amountStr === null) return;
+                    const amount = Number(amountStr.replace(/[^\d]/g, ""));
+                    await fetch("/api/admin/interests", {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+                      body: JSON.stringify({ id: i.id, source: i.source, outcome: "completed", completedAmount: amount || null }),
+                    });
+                    load();
+                  }}
+                  className="flex-1 font-bold rounded-lg inline-flex items-center justify-center gap-1 whitespace-nowrap"
+                  style={{ fontSize: rem(15), minHeight: 40, background: "#E8F8EC", color: "#1D8A44" }}
+                >
+                  <CheckCircle className="w-3.5 h-3.5" /> 성사
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!confirm("이 리드를 거래 불발로 처리할까요?")) return;
+                    await fetch("/api/admin/interests", {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+                      body: JSON.stringify({ id: i.id, source: i.source, outcome: "no_deal" }),
+                    });
+                    load();
+                  }}
+                  className="flex-1 font-bold rounded-lg bg-gray100 text-gray500 whitespace-nowrap"
+                  style={{ fontSize: rem(15), minHeight: 40 }}
+                >
+                  불발
+                </button>
+              </>
+            )}
+            </div>
+          </div>
+        ))}
+        </>
+        )}
+      </div>
+    </>
+  );
+  const newDealBlock = (
+    <>
+      <div
+        className={isDesktop ? "col-span-3" : "px-5 py-4"}
+        style={isDesktop ? { order: -1 } : undefined}
+      >
+        {openFormFor === "new" ? (
+          <button type="button" onClick={() => setOpenFormFor(null)} className={`ml-auto ${BTN_CLASS}`} style={{ ...btnStyle("secondary"), minHeight: 40, fontSize: rem(15), padding: "0 16px" }}>
+            닫기
+          </button>
+        ) : (
+          <button onClick={() => setOpenFormFor("new")} className={`w-full ${BTN_CLASS}`} style={btnStyle("primary")}>
+            + 새 매물 직접 등록
+          </button>
+        )}
+        {openFormFor === "new" && (
+          <DealForm adminKey={adminKey} onDone={() => { setOpenFormFor(null); load(); }} />
+        )}
+
+        {/* 2026-09-28: 긴급 공지(부동산·설비 처분) — 재고 매물과 별개 등록 경로.
+            방향성 확정 전까지는 메모만 해두기로 했던 부동산/설비 아이디어를
+            "긴급 공지"라는 가벼운 트랙으로 구현. 구인/구직은 법률 검토 전까지 제외. */}
+        {openFormFor === "notice" ? (
+          <div className="flex items-center justify-between mt-3">
+            <span style={UI_SECTION}>긴급 공지 등록</span>
+            <button type="button" onClick={() => setOpenFormFor(null)} className={BTN_CLASS} style={{ ...btnStyle("secondary"), minHeight: 40, fontSize: rem(15), padding: "0 16px" }}>
+              닫기
+            </button>
+          </div>
+        ) : (
+          <button onClick={() => setOpenFormFor("notice")} className={`w-full mt-2 ${BTN_CLASS}`} style={btnStyle("secondary")}>
+            + 긴급 공지 등록 (부동산·설비)
+          </button>
+        )}
+        {openFormFor === "notice" && (
+          <NoticeForm adminKey={adminKey} onDone={() => { setOpenFormFor(null); load(); }} />
+        )}
+
+        {/* 2026-09-28 (2): 등록 폼만 있고 내릴 방법이 없다는 지적 반영 — 등록된
+            공지를 한 줄 요약 + [마감]으로 노출. deals의 "조기 마감" 패턴과 동일. */}
+        {notices.length > 0 && (
+          <div className="flex flex-col gap-2 mt-3">
+            <div className="text-xs font-bold text-gray500">등록된 긴급 공지 ({notices.length})</div>
+            {notices.map((n) => (
+              <NoticeAdminRow key={n.id} notice={n} adminKey={adminKey} onChanged={load} />
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+  const activeDealsBlock = (
+    <>
+      <div
+        id="active-deals"
+        className={
+          isDesktop
+            ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3 overflow-y-auto"
+            : "px-5 pb-6 flex flex-col gap-3"
+        }
+        style={isDesktop ? { maxHeight: 480 } : undefined}
+      >
+        <div className="text-sm font-bold text-gray500">
+          진행 중인 매물 ({activeDeals.length})
+        </div>
+        {!loading && activeDeals.length === 0 && (
+          <div className="text-center text-gray500 py-6 text-sm">진행 중인 매물이 없어요.</div>
+        )}
+        <div className="flex flex-col gap-3">
+          {activeDeals.map((d) => (
+            <ActiveDealCard key={d.id} deal={d} adminKey={adminKey} onChanged={load} />
+          ))}
+        </div>
+      </div>
+    </>
+  );
+  const pendingSellersBlock = (
+    <>
+      <div
+        id="pending-sellers"
+        className={
+          isDesktop
+            ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3 overflow-y-auto"
+            : "px-5 pb-8 flex flex-col gap-3"
+        }
+        style={isDesktop ? { maxHeight: 480 } : undefined}
+      >
+        <button
+          type="button"
+          onClick={() => setSellerReqOpen((v) => !v)}
+          className="w-full flex items-center justify-between"
+        >
+          <span className="text-sm font-bold text-gray500">대기 중인 판매자 신청 ({requests.length})</span>
+          <span className="text-sm font-bold text-gray500">{sellerReqOpen ? "접기 ▲" : "펼치기 ▼"}</span>
+        </button>
+        {sellerReqOpen && (
+        <>
+
+        {loading && <div className="text-center text-gray500 py-8">불러오는 중...</div>}
+        {!loading && requests.length === 0 && (
+          <div className="text-center text-gray500 py-8 text-sm">대기 중인 신청이 없어요.</div>
+        )}
+
+        {requests.map((r) => (
+          <div key={r.id} className="bg-white border border-gray200 rounded-2xl px-4 py-4">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-gray500">
+              <span>{categoryIcons[r.categories?.name ?? ""] ?? "🗂️"}</span>
+              {[r.categories?.name, r.regions?.name].filter(Boolean).join(" · ") || "카테고리/지역 미입력"}
+            </div>
+            <div className="text-base font-bold text-gray900 mt-1.5">{r.product_name}</div>
+            {/* 2026-09-29: 재고 유형 배지 (일반 재고는 없음) */}
+            <StockTypeBadge value={r.stock_type} className="mt-1" />
+            <div className="text-sm text-gray500 mt-1">
+              {[r.company_name, r.contact_name, r.contact_phone].filter(Boolean).join(" · ")}
+            </div>
+            <div className="text-sm text-gray500 mt-1">
+              수량 {r.quantity}{r.quantity_unit || "개"}
+              {r.min_order_qty ? ` (MOQ ${r.min_order_qty}${r.quantity_unit || "개"})` : ""}
+              {r.hope_price ? ` · 희망단가 ${formatDealPrice(r.hope_price, r.quantity_unit, r.price_unit)}` : ""}
+              {r.hope_duration_hours
+                ? ` · 희망 마감 ${
+                    r.hope_duration_hours >= 24
+                      ? `${Math.round(r.hope_duration_hours / 24)}일`
+                      : `${r.hope_duration_hours}시간`
+                  } 후`
+                : " · 마감시점 협의 필요"}
+            </div>
+            {(r.package_unit || r.spec || r.origin || r.storage_condition) && (
+              <div className="text-sm text-gray500 mt-1">
+                {[r.package_unit, r.spec, r.origin, r.storage_condition].filter(Boolean).join(" · ")}
+              </div>
+            )}
+            {r.description && (
+              <div className="text-sm text-gray500 mt-1 bg-gray100 rounded-lg px-3 py-2">
+                {r.description}
+              </div>
+            )}
+            {(r.pid || (r.manifest_items && r.manifest_items.length > 0)) && (
+              <div className="text-sm text-gray500 mt-1 bg-gray100 rounded-lg px-3 py-2">
+                🧾 혼합매물{r.pid ? ` · PID# ${r.pid}` : ""}
+                {r.manifest_items && r.manifest_items.length > 0 ? ` · 구성품 ${r.manifest_items.length}개 CSV 첨부됨` : ""}
+              </div>
+            )}
+            {r.images && r.images.length > 0 && (
+              <div className="flex gap-2 mt-2 overflow-x-auto">
+                {r.images.map((url, i) => (
+                  <img
+                    key={i}
+                    src={url}
+                    alt={`신청 사진 ${i + 1}`}
+                    className="w-16 h-16 rounded-lg object-cover flex-shrink-0 border border-gray200"
+                  />
+                ))}
+              </div>
+            )}
+            {r.video_url && (
+              <video
+                src={r.video_url}
+                controls
+                className="w-full rounded-lg mt-2 bg-black"
+                style={{ maxHeight: "180px" }}
+              />
+            )}
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={() => setOpenFormFor(openFormFor === r.id ? null : r.id)}
+                className="flex-1 text-navy font-bold border-2 border-navy rounded-xl text-sm"
+                style={{ padding: "10px 0" }}
+              >
+                {openFormFor === r.id ? "닫기" : "매물로 등록하기"}
+              </button>
+              <button
+                onClick={async () => {
+                  if (!confirm("이 신청을 거절할까요?")) return;
+                  await fetch("/api/admin/seller-requests", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+                    body: JSON.stringify({ id: r.id, status: "rejected" }),
+                  });
+                  load();
+                }}
+                className="text-gray500 font-bold border-2 border-gray200 rounded-xl text-sm px-4"
+              >
+                거절
+              </button>
+            </div>
+            {openFormFor === r.id && (
+              <DealForm
+                adminKey={adminKey}
+                prefill={{
+                  title: r.product_name,
+                  // 신청서에 없으면 비워서 관리자가 직접 고르게 함 — 예전엔 첫 항목(수산·축산물/서울)이
+                  // 조용히 들어가 엉뚱한 구독자에게 알림이 갈 수 있었음
+                  category: r.categories?.name ?? undefined,
+                  region: r.regions?.name ?? undefined,
+                  dealPrice: r.hope_price ?? undefined,
+                  totalQty: r.quantity,
+                  quantityUnit: r.quantity_unit ?? undefined,
+                  priceUnit: r.price_unit ?? undefined,
+                  minOrderQty: r.min_order_qty ?? undefined,
+                  images: r.images ?? [],
+                  videoUrl: r.video_url ?? undefined,
+                  description: r.description ?? "",
+                  packageUnit: r.package_unit ?? "",
+                  origin: r.origin ?? "",
+                  spec: r.spec ?? "",
+                  storageCondition: r.storage_condition ?? "",
+                  pid: r.pid ?? "",
+                  manifestItems: r.manifest_items ?? [],
+                  closesInHours: r.hope_duration_hours ?? undefined,
+                  stockType: r.stock_type ?? undefined,
+                  // 2026-09-30: 판매자 표시 — 신청서에서 공개를 고르고 업체명이 있을 때만 상호 공개로 시작
+                  sellerPublic: r.is_anonymous === false && !!r.company_name?.trim(),
+                  sellerCompanyName: r.company_name ?? "",
+                }}
+                requestId={r.id}
+                onDone={() => { setOpenFormFor(null); load(); }}
+              />
+            )}
+          </div>
+        ))}
+        </>
+        )}
+      </div>
+    </>
+  );
+  const partnerReqBlock = (
+    <>
+      <section
+        className={
+          isDesktop
+            ? "bg-white border border-gray200 rounded-2xl p-4 overflow-y-auto"
+            : "mt-8 px-5"
+        }
+        style={isDesktop ? { maxHeight: 480 } : undefined}
+      >
+        <button
+          type="button"
+          onClick={() => setPartnerReqOpen((v) => !v)}
+          className="w-full flex items-center justify-between"
+        >
+          <h2 className="text-sm font-bold text-navy">
+            🏅 공식 점핑파트너 신청 ({partnerRequests.filter((r) => r.status === "pending").length}건 대기)
+          </h2>
+          <span className="text-sm font-bold text-gray500">{partnerReqOpen ? "접기 ▲" : "펼치기 ▼"}</span>
+        </button>
+        {partnerReqOpen && (
+        <div className="mt-3 flex flex-col gap-2">
+          {partnerRequests.map((r) => (
+            <div key={r.id} className="bg-white border border-gray200 rounded-2xl px-4 py-4 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-bold text-gray900">{r.members?.company_name ?? r.members?.phone ?? r.member_id}</span>
+                <span
+                  className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+                  style={
+                    r.status === "pending"
+                      ? { background: "#FFF4E0", color: "#966B00" }
+                      : r.status === "approved"
+                      ? { background: "#E8F8EC", color: "#1D8A44" }
+                      : { background: "#F1F1EF", color: "#6B7480" }
+                  }
+                >
+                  {r.status === "pending" ? "심사중" : r.status === "approved" ? "승인됨" : "거절됨"}
+                </span>
+              </div>
+              <p className="mt-1.5 text-gray500">업종: {r.business_type}</p>
+              <p className="text-gray500">채널: {r.channel_info}</p>
+              {r.message && <p className="text-gray500">메모: {r.message}</p>}
+              {r.status === "pending" && (
+                <div className="mt-2.5 flex gap-2">
+                  <button
+                    onClick={() => reviewPartnerRequest(r.id, "approved")}
+                    className="text-white font-bold rounded-lg text-xs px-3.5 py-2"
+                    style={{ background: "#0B2540" }}
+                  >
+                    승인
+                  </button>
+                  <button
+                    onClick={() => reviewPartnerRequest(r.id, "rejected")}
+                    className="font-bold rounded-lg text-xs px-3.5 py-2 border border-gray200 text-gray500"
+                  >
+                    거절
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        )}
+      </section>
+    </>
+  );
+  const partnersOverviewBlock = (
+    <>
+      {/* 2026-09-27: 운영자가 승인된 파트너 전원의 추천 실적을 한눈에 보는
+          집계 대시보드 — 위 섹션(신청 승인/거절)과는 별개로, 이미 승인된
+          파트너들의 성과 비교용. 승인 즉시 여기 0건으로 나타남. */}
+      <section
+        className={
+          isDesktop
+            ? "bg-white border border-gray200 rounded-2xl p-4 overflow-y-auto"
+            : "mt-8 px-5"
+        }
+        style={isDesktop ? { maxHeight: 480 } : undefined}
+      >
+        <button
+          type="button"
+          onClick={() => setPartnersOverviewOpen((v) => !v)}
+          className="w-full flex items-center justify-between"
+        >
+          <h2 className="text-sm font-bold text-navy">
+            📊 점핑파트너 실적 ({partnersOverview.length}명)
+          </h2>
+          <span className="text-sm font-bold text-gray500">{partnersOverviewOpen ? "접기 ▲" : "펼치기 ▼"}</span>
+        </button>
+        {partnersOverviewOpen && (
+          partnersOverview.length === 0 ? (
+            <p className="mt-3 text-sm text-gray500">아직 승인된 파트너가 없어요.</p>
+          ) : (
+            <div className="mt-3 flex flex-col gap-2">
+              {partnersOverview.map((p, i) => (
+                <div key={p.id} className="bg-white border border-gray200 rounded-2xl px-4 py-3.5 text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-gray900">
+                      {i === 0 && p.total_referrals > 0 && "🥇 "}
+                      {p.company_name ?? p.name ?? p.phone}
+                    </span>
+                    <span className="text-xs text-gray500 flex-shrink-0">
+                      {p.member_no != null ? `#${p.member_no}` : p.phone}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex gap-4">
+                    <div>
+                      <div className="font-mono font-bold text-navy" style={{ fontSize: rem(17) }}>
+                        {p.total_referrals}
+                      </div>
+                      <div className="text-xs text-gray500">총 추천</div>
+                    </div>
+                    <div>
+                      <div className="font-mono font-bold text-navy" style={{ fontSize: rem(17) }}>
+                        {p.this_month_referrals}
+                      </div>
+                      <div className="text-xs text-gray500">이번달</div>
+                    </div>
+                    <div>
+                      <div className="font-mono font-bold text-navy" style={{ fontSize: rem(17) }}>
+                        {p.business_verified_referrals}
+                      </div>
+                      <div className="text-xs text-gray500">사업자 인증</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        )}
+      </section>
+    </>
+  );
+  const buyRequestsBlock = (
+    <>
+      <div
+        id="buy-requests"
+        className={
+          isDesktop
+            ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3 overflow-y-auto"
+            : "px-5 pb-8 flex flex-col gap-3"
+        }
+        style={isDesktop ? { maxHeight: 480 } : undefined}
+      >
+        <button
+          type="button"
+          onClick={() => setBuyReqOpen((v) => !v)}
+          className="w-full flex items-center justify-between"
+        >
+          <span className="text-sm font-bold text-gray500">
+            🔍 이런 재고 찾습니다 ({buyRequests.filter((b) => !b.contacted).length}건 미연락)
+          </span>
+          <span className="text-sm font-bold text-gray500">{buyReqOpen ? "접기 ▲" : "펼치기 ▼"}</span>
+        </button>
+        {buyReqOpen && (
+        <>
+
+        {!loading && buyRequests.length === 0 && (
+          <div className="text-center text-gray500 py-6 text-sm">등록된 구매 희망이 없어요.</div>
+        )}
+
+        {buyRequests.map((b) => (
+          <div key={b.id} className="bg-white border border-gray200 rounded-2xl px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-gray500">
+                <span>{categoryIcons[b.categories?.name ?? ""] ?? "🗂️"}</span>
+                {b.categories?.name ?? "카테고리 미지정"} · {b.regions?.name ?? "전국 가능"}
+              </div>
+              {b.outcome === "matched" && (
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#E8F8EC", color: "#1D8A44" }}>
+                  매칭 완료
+                </span>
+              )}
+              {b.outcome === "no_match" && (
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-gray100 text-gray500">
+                  매칭 불발
+                </span>
+              )}
+            </div>
+            <div className="text-base font-bold text-gray900 mt-1.5">{b.product_name}</div>
+            <div className="text-sm text-gray500 mt-1">
+              {/* 2026-09-26: 카드 전체는 눌러도 반응이 없어 혼란을 줬음(정보가
+                  이미 다 펼쳐져 있어 상세 모달 자체가 없는 구조) — 실제로
+                  누를 만한 유일한 액션인 전화번호를 tel: 링크로 만들어 탭하면
+                  바로 전화가 걸리게 함. */}
+              {b.contact_phone ? (
+                <a href={`tel:${b.contact_phone}`} className="underline font-bold" style={{ color: "#0B2540" }}>
+                  📞 {b.contact_phone}
+                </a>
+              ) : (
+                <span>연락처 삭제됨 (수집 90일 경과)</span>
+              )}
+              {b.quantity ? ` · 희망수량 ${b.quantity}` : ""}
+              {b.hope_price ? ` · 희망가 ${formatPriceWithUnit(b.hope_price, b.hope_price_unit)} 이하` : ""}
+            </div>
+            {b.description && (
+              <div className="text-sm text-gray500 mt-1 bg-gray100 rounded-lg px-3 py-2">
+                <span className="font-bold" style={{ color: "#9AA3AD" }}>
+                  💬 메모{" "}
+                </span>
+                {b.description}
+              </div>
+            )}
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={async () => {
+                  await fetch("/api/admin/buy-requests", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+                    body: JSON.stringify({ id: b.id, contacted: !b.contacted }),
+                  });
+                  load();
+                }}
+                className="flex-1 text-xs font-bold rounded-lg py-2"
+                style={
+                  b.contacted
+                    ? { background: "#F5F6F8", color: "#6B7480" }
+                    : { background: "#FDEEE8", color: "#C2410C" }
+                }
+              >
+                {/* 2026-09-26: "매칭 완료/불발"(outcome, 재고 매칭 여부) 배지와
+                    나란히 있으면 이 버튼이 뭘 가리키는지 헷갈렸음 — 매칭과
+                    무관하게 "구매 희망자한테 전화했는지"만 추적하는 버튼이라는
+                    걸 라벨에 명시. */}
+                {b.contacted ? "구매자 연락 완료" : "구매자 연락 전"}
+              </button>
+              {b.outcome === "pending" && (
+                <>
+                  <button
+                    onClick={async () => {
+                      await fetch("/api/admin/buy-requests", {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+                        body: JSON.stringify({ id: b.id, outcome: "matched" }),
+                      });
+                      load();
+                    }}
+                    className="flex-1 text-xs font-bold rounded-lg py-2"
+                    style={{ background: "#E8F8EC", color: "#1D8A44" }}
+                  >
+                    매칭 완료
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!confirm("매칭 불발로 처리할까요?")) return;
+                      await fetch("/api/admin/buy-requests", {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+                        body: JSON.stringify({ id: b.id, outcome: "no_match" }),
+                      });
+                      load();
+                    }}
+                    className="flex-1 text-xs font-bold rounded-lg py-2 bg-gray100 text-gray500"
+                  >
+                    매칭 불발
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        ))}
+        </>
+        )}
+      </div>
+    </>
+  );
+  const adminsBlock = adminRole === "최고관리자" ? (
+        <div className={isDesktop ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3" : "px-5 pt-4 pb-8 flex flex-col gap-3"}>
+          <button
+            type="button"
+            onClick={() => setAdminsOpen((v) => !v)}
+            className="w-full flex items-center justify-between"
+          >
+            <span className={isDesktop ? undefined : "text-sm font-bold text-gray500"} style={isDesktop ? UI_SECTION : undefined}>관리자 목록 ({admins.length}명)</span>
+            <span className="text-sm font-bold text-gray500">{adminsOpen ? "접기 ▲" : "펼치기 ▼"}</span>
+          </button>
+          {adminsOpen && (
+          <>
+          {admins.map((a) => (
+            <div
+              key={a.id}
+              className="bg-white border border-gray200 rounded-2xl px-4 py-3.5 flex items-center justify-between gap-2"
+            >
+              <div>
+                <div className="text-base font-bold text-gray900">
+                  {a.name}
+                  <span
+                    className="text-xs font-bold px-2 py-0.5 rounded-full ml-1.5"
+                    style={{ background: "#EAF0F7", color: "#1B3A5C" }}
+                  >
+                    {a.role}
+                  </span>
+                </div>
+                <div className="text-xs text-gray500 mt-1">{a.phone ?? "번호 미연결"}</div>
+                <div className="text-xs text-gray500 mt-0.5">
+                  {a.last_login_at
+                    ? `마지막 로그인 ${new Date(a.last_login_at).toLocaleString("ko-KR", {
+                        month: "long",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}`
+                    : "아직 로그인 기록 없음"}
+                </div>
+              </div>
+              <div className="flex-shrink-0 flex flex-col gap-1.5">
+                <button
+                  onClick={() => changeAdminRole(a)}
+                  disabled={roleChangingId === a.id}
+                  className="text-xs font-bold rounded-lg px-3 py-1.5 border border-gray200 text-navy disabled:opacity-60"
+                >
+                  {roleChangingId === a.id ? "변경 중..." : "역할 변경"}
+                </button>
+                <button
+                  onClick={() => removeAdmin(a)}
+                  disabled={removingAdminId === a.id}
+                  className="text-xs font-bold rounded-lg px-3 py-1.5 border border-gray200 text-orange disabled:opacity-60"
+                >
+                  {removingAdminId === a.id ? "처리 중..." : "해제"}
+                </button>
+              </div>
+            </div>
+          ))}
+          </>
+          )}
+        </div>
+  ) : null;
+
   return (
-    <main className={isDesktop ? "flex flex-col min-h-screen mx-auto w-full max-w-[1200px] bg-white shadow-sm" : "flex flex-col min-h-screen mx-auto w-full max-w-md bg-white shadow-sm"}>
+    <main
+      className={isDesktop ? "flex flex-col min-h-screen mx-auto w-full max-w-[1200px] bg-white shadow-sm" : "flex flex-col min-h-screen mx-auto w-full max-w-md bg-white shadow-sm"}
+      // 2026-10-01 (커밋 J): 맨 아래 목록이 화면 끝에 붙어 "끝난 것처럼" 보이던 문제 — 하단 여백 pb-24 + 안전 영역
+      style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom, 0px))" }}
+    >
       <div
         className="px-5 pt-6 pb-5 text-white flex items-center justify-between"
         style={{ background: "linear-gradient(120deg,#04101C,#1A4B78)" }}
@@ -1063,939 +2025,47 @@ function AdminDashboard({
           display:contents로 그리드를 무효화해 기존 구조 그대로 유지 — "+ 새 매물
           직접 등록" 버튼은 DOM 위치(모바일 순서)는 그대로 두고 desktop에서만
           order:-1로 그리드 맨 앞 전체 폭 줄로 끌어올림. */}
-      <div className={isDesktop ? "grid grid-cols-3 gap-4 items-start px-8 pb-6 max-w-[1200px] mx-auto w-full" : "contents"}>
-
-      <div
-        className={
-          isDesktop
-            ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3 overflow-y-auto"
-            : "px-5 pt-4 flex flex-col gap-3"
-        }
-        style={isDesktop ? { maxHeight: 480 } : undefined}
-      >
-        <button
-          type="button"
-          onClick={() => setMembersOpen((v) => !v)}
-          className="w-full flex items-center justify-between"
-        >
-          <span style={UI_SECTION}>최근 가입 회원 ({members.length}명)</span>
-          <span className="text-sm font-bold text-gray500">{membersOpen ? "접기 ▲" : "펼치기 ▼"}</span>
-        </button>
-
-        {membersOpen && (
-        <>
-        <input
-          value={memberSearch}
-          onChange={(e) => setMemberSearch(e.target.value)}
-          placeholder="번호/상호명 검색"
-          className="border-2 border-gray200 rounded-xl px-3 text-sm outline-none focus:border-orange"
-          style={{ height: "40px" }}
-        />
-        <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
-          {(
-            [
-              { key: "all", label: "전체" },
-              { key: "business", label: "사업자" },
-              { key: "subscribed", label: "구독중" },
-              { key: "unsubscribed", label: "미구독" },
-            ] as const
-          ).map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setMemberFilter(f.key)}
-              className="flex-shrink-0 text-xs font-bold rounded-full px-3 py-1.5"
-              style={
-                memberFilter === f.key
-                  ? { background: "#0B2540", color: "#fff" }
-                  : { background: "#F5F6F8", color: "#6B7480" }
-              }
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <button onClick={exportMembersCsv} className="self-end text-xs font-bold text-navy underline">
-          CSV 내보내기 ({filteredMembers.length}건)
-        </button>
-
-        {!loading && filteredMembers.length === 0 && (
-          <div className="text-center text-gray500 py-6 text-sm">
-            {members.length === 0 ? "아직 가입한 회원이 없어요." : "검색/필터 결과가 없어요."}
-          </div>
-        )}
-        {filteredMembers.slice(0, memberShowCount).map((m) => (
-          <div key={m.id} className="bg-white border border-gray200 rounded-2xl px-4 py-3.5">
-            {/* 2026-09-28: 데스크톱 3열 레이아웃의 좁은 컬럼 폭에서 전화번호+뱃지가
-                줄바꿈 없이 한 줄로 강제돼 카드 자체가 옆으로 넘쳤음(overflow-y만
-                걸려 있으면 overflow-x가 자동으로 auto가 되는 CSS 규칙 때문에
-                가로 스크롤바까지 생김) — 그 결과 카드 하단 "관리자로 임명" 버튼도
-                스크롤해야만 보이는 문제로 이어짐. flex-wrap으로 뱃지가 필요하면
-                둘째 줄로 내려가게 해서 카드 폭 안에 항상 들어오도록 수정. */}
-            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
-              <div className="text-base font-bold text-gray900">
-                {m.phone}
-                {m.member_no != null && (
-                  <span className="text-xs font-bold text-gray500 ml-1.5">{formatMemberNo(m.member_no)}</span>
-                )}
-                {m.nickname && <span className="text-sm font-medium text-gray500 ml-1.5">{m.nickname}</span>}
-              </div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span
-                  className="text-xs font-bold px-2 py-1 rounded-full"
-                  style={{
-                    background: m.push_subscribed ? "#E8F8EC" : "#FDEEE8",
-                    color: m.push_subscribed ? "#1D8A44" : "#C2410C",
-                  }}
-                >
-                  {m.push_subscribed ? "🔔 구독중" : "🔕 미구독"}
-                </span>
-                {m.is_business && (
-                  <span
-                    className="text-xs font-bold px-2 py-1 rounded-full"
-                    style={{ background: "#EAF0F7", color: "#1B3A5C" }}
-                  >
-                    사업자
-                  </span>
-                )}
-                {m.business_verified && (
-                  <span
-                    className="text-xs font-bold px-2 py-1 rounded-full inline-flex items-center gap-1"
-                    style={{ background: "#E8F8EC", color: "#1D8A44" }}
-                  >
-                    <CheckCircle className="w-3 h-3" /> 인증된 사업자
-                  </span>
-                )}
-              </div>
-            </div>
-            {m.company_name && (
-              <div className="text-sm font-bold text-navy mt-1">{m.company_name}</div>
-            )}
-            {m.has_business_license && !m.business_verified && (
-              <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                <span
-                  className="text-xs font-bold px-2 py-1 rounded-full flex-shrink-0"
-                  style={{ background: "#FFF4E0", color: "#966B00" }}
-                >
-                  인증 대기중
-                </span>
-                <button
-                  onClick={() => viewBusinessLicense(m.id)}
-                  disabled={licenseLoadingId === m.id}
-                  className="text-xs font-bold rounded-lg px-3 py-1.5 border border-gray200 text-navy disabled:opacity-60"
-                >
-                  {licenseLoadingId === m.id ? "불러오는 중..." : "사업자등록증 보기"}
-                </button>
-                <button
-                  onClick={() => verifyBusiness(m.id)}
-                  className="text-xs font-bold rounded-lg px-3 py-1.5 text-white"
-                  style={{ background: "#0B2540" }}
-                >
-                  인증 완료 처리
-                </button>
-              </div>
-            )}
-            <div className="text-sm text-gray500 mt-1">
-              {m.categories.length > 0 ? m.categories.join(", ") : "관심 카테고리 미선택"}
-              {" · "}
-              {m.regions.length > 0 ? m.regions.join(", ") : "관심 지역 미선택"}
-            </div>
-            {m.referrer_phone && (
-              <div className="text-xs text-gray500 mt-1">추천인: {m.referrer_phone}</div>
-            )}
-            <div className="flex items-center justify-between mt-1.5">
-              <div className="text-xs text-gray500">
-                {new Date(m.created_at).toLocaleString("ko-KR", {
-                  month: "long",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}{" "}
-                가입
-              </div>
-              {adminRole === "최고관리자" && !adminPhones.has(m.phone) && (
-                <button
-                  onClick={() => openAppoint(m)}
-                  className="text-xs font-bold rounded-lg px-2.5 py-1 border border-gray200 text-navy"
-                >
-                  관리자로 임명
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-        {filteredMembers.length > memberShowCount && (
-          <button
-            type="button"
-            onClick={() => setMemberShowCount((n) => n + 20)}
-            className="text-sm font-bold text-navy border-2 border-gray200 rounded-xl py-2.5"
-          >
-            더보기 ({filteredMembers.length - memberShowCount}명 더 있음)
-          </button>
-        )}
-        </>
-        )}
-      </div>
-
-      <div
-        id="leads"
-        className={
-          isDesktop
-            ? "col-span-2 bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3 overflow-y-auto"
-            : "px-5 pt-4 flex flex-col gap-3"
-        }
-        style={isDesktop ? { maxHeight: 480 } : undefined}
-      >
-        <button
-          type="button"
-          onClick={() => setLeadsOpen((v) => !v)}
-          className="w-full flex items-center justify-between"
-        >
-          <span style={UI_SECTION}>
-            관심 표시한 회원 <span style={{ ...LABEL, fontWeight: 400 }}>({interests.filter((i) => !i.contacted).length}건 미연락)</span>
-          </span>
-          <span className="text-sm font-bold text-gray500">{leadsOpen ? "접기 ▲" : "펼치기 ▼"}</span>
-        </button>
-        {leadsOpen && (
-        <>
-
-        <input
-          value={leadSearch}
-          onChange={(e) => setLeadSearch(e.target.value)}
-          placeholder="번호/매물명 검색"
-          className="border-2 border-gray200 rounded-xl px-3 text-sm outline-none focus:border-orange"
-          style={{ height: "40px" }}
-        />
-        <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
-          {(
-            [
-              { key: "all", label: "전체" },
-              { key: "uncontacted", label: "미연락" },
-              { key: "pending", label: "진행중" },
-              { key: "completed", label: "성사" },
-              { key: "no_deal", label: "불발" },
-            ] as const
-          ).map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setLeadFilter(f.key)}
-              className="flex-shrink-0 text-xs font-bold rounded-full px-3 py-1.5"
-              style={
-                leadFilter === f.key
-                  ? { background: "#0B2540", color: "#fff" }
-                  : { background: "#F5F6F8", color: "#6B7480" }
-              }
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center justify-between">
-          <label className="flex items-center gap-1.5 text-xs font-bold text-gray500">
-            <input
-              type="checkbox"
-              checked={filteredInterests.length > 0 && filteredInterests.every((i) => selectedLeads.has(i.id))}
-              onChange={(e) =>
-                setSelectedLeads(e.target.checked ? new Set(filteredInterests.map((i) => i.id)) : new Set())
-              }
-            />
-            전체 선택
-          </label>
-          <button onClick={exportLeadsCsv} className="text-xs font-bold text-navy underline">
-            CSV 내보내기 ({filteredInterests.length}건)
-          </button>
-        </div>
-        {selectedLeads.size > 0 && (
-          <button
-            onClick={bulkMarkContacted}
-            disabled={bulkProcessing}
-            className="text-sm font-bold rounded-xl py-2.5 text-white disabled:opacity-60"
-            style={{ background: "#0B2540" }}
-          >
-            {bulkProcessing ? "처리 중..." : `선택 ${selectedLeads.size}건 연락완료 처리`}
-          </button>
-        )}
-
-        {!loading && filteredInterests.length === 0 && (
-          <div className="text-center text-gray500 py-6 text-sm">
-            {interests.length === 0 ? "아직 관심 표시가 없어요." : "검색/필터 결과가 없어요."}
-          </div>
-        )}
-        {filteredInterests.map((i) => (
-          <div
-            key={i.id}
-            className="bg-white border rounded-2xl px-4 py-3.5"
-            style={{
-              borderColor:
-                i.outcome === "completed"
-                  ? "#34C471"
-                  : i.outcome === "no_deal"
-                  ? "#E4E7EB"
-                  : i.contacted
-                  ? "#E4E7EB"
-                  : "#FF6F0F",
-            }}
-          >
-            {/* 2026-09-29: 매물명(17/800) → 회원 정보 한 줄 → 상태 배지 → 연락·성사/불발 버튼 한 줄 */}
-            <div className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                checked={selectedLeads.has(i.id)}
-                onChange={() => toggleLeadSelected(i.id)}
-                className="w-4 h-4 flex-shrink-0 mt-1.5"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="truncate" style={UI_CARD_TITLE}>
-                  {i.deals?.title ?? "삭제된 매물"}
-                </div>
-                <div className="mt-1 flex items-center gap-1.5 min-w-0 overflow-hidden" style={{ fontSize: rem(15), color: "#4B5563", fontVariantNumeric: "tabular-nums" }}>
-                  {i.members?.phone ?? i.phone ? (
-                    <a href={`tel:${i.members?.phone ?? i.phone}`} className="font-bold text-navy whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                      {i.members?.phone ?? i.phone}
-                    </a>
+      {isDesktop ? (
+        <div className="px-8 pb-6 max-w-[1200px] mx-auto w-full">
+          <div className="mb-4">{newDealBlock}</div>
+          <div className="columns-3 gap-4">
+            {[
+              { key: "leads", title: "관심 표시한 회원", count: interests.length, node: leadsBlock },
+              { key: "pending-sellers", title: "대기 중인 판매자 신청", count: requests.length, node: pendingSellersBlock },
+              { key: "active-deals", title: "진행 중인 매물", count: activeDeals.length, node: activeDealsBlock },
+              { key: "partner-requests", title: "🏅 공식 점핑파트너 신청", count: partnerRequests.length, node: partnerReqBlock },
+              { key: "partners-overview", title: "📊 점핑파트너 실적", count: partnersOverview.length, node: partnersOverviewBlock },
+              { key: "buy-requests", title: "🔍 이런 재고 찾습니다", count: buyRequests.length, node: buyRequestsBlock },
+              { key: "members", title: "최근 가입 회원", count: members.length, node: membersBlock },
+              { key: "admins", title: "관리자 목록", count: -1, node: adminsBlock },
+            ]
+              .filter((c) => c.node)
+              .map((c) => (
+                <div key={c.key} className="break-inside-avoid mb-4">
+                  {c.count === 0 ? (
+                    <div className="bg-white border border-gray200 rounded-2xl flex items-center justify-between gap-2" style={{ padding: "12px 16px" }}>
+                      <span style={UI_SECTION}>{c.title}</span>
+                      <span style={LABEL}>없어요</span>
+                    </div>
                   ) : (
-                    <span className="whitespace-nowrap">{i.members ? "번호 없음" : "연락처 삭제됨 (수집 90일 경과)"}</span>
+                    c.node
                   )}
-                  {i.members?.member_no != null && <span className="whitespace-nowrap" style={LABEL}>· {formatMemberNo(i.members.member_no)}</span>}
-                  {i.members?.business_verified ? (
-                    <span className="whitespace-nowrap inline-flex items-center gap-0.5" style={{ fontSize: rem(14), color: "#1D8A44" }}>
-                      · <CheckCircle className="w-3 h-3" /> 인증 사업자
-                    </span>
-                  ) : (
-                    i.members?.is_business && <span className="whitespace-nowrap" style={LABEL}>· 사업자</span>
-                  )}
-                </div>
-                <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-                  {i.outcome === "completed" && (
-                    <span className="font-bold px-2 py-0.5 rounded-full" style={{ fontSize: rem(14), background: "#E8F8EC", color: "#1D8A44" }}>
-                      성사
-                    </span>
-                  )}
-                  {i.outcome === "no_deal" && (
-                    <span className="font-bold px-2 py-0.5 rounded-full bg-gray100 text-gray500" style={{ fontSize: rem(14) }}>
-                      불발
-                    </span>
-                  )}
-                  {i.source === "quick" && (
-                    <span className="font-bold px-2 py-0.5 rounded-full" style={{ fontSize: rem(14), background: "#FDEEE8", color: "#C2410C" }}>
-                      ⚡ 원클릭
-                    </span>
-                  )}
-                  {!i.contacted && i.outcome === "pending" && (
-                    <span className="font-bold px-2 py-0.5 rounded-full" style={{ fontSize: rem(14), background: "#FDECEC", color: "#B91C1C" }}>
-                      미연락
-                    </span>
-                  )}
-                </div>
-                <div className="mt-1" style={{ ...LABEL, fontVariantNumeric: "tabular-nums" }}>
-                  {new Date(i.created_at).toLocaleString("ko-KR", {
-                    month: "numeric",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                  {i.outcome === "completed" && i.completed_amount && (
-                    <span className="ml-1.5 font-bold" style={{ color: "#1D8A44" }}>
-                      · {i.completed_amount.toLocaleString()}원
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-2 mt-3">
-              <button
-                onClick={async () => {
-                  await fetch("/api/admin/interests", {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
-                    body: JSON.stringify({ id: i.id, source: i.source, contacted: !i.contacted }),
-                  });
-                  load();
-                }}
-                className="flex-1 font-bold rounded-lg whitespace-nowrap"
-                style={{ fontSize: rem(15), minHeight: 40, ...(i.contacted ? { background: "#F5F6F8", color: "#6B7480" } : { background: "#0B2540", color: "#fff" }) }}
-              >
-                {i.contacted ? "✓ 연락완료" : "연락완료"}
-              </button>
-            {i.outcome === "pending" && (
-              <>
-                <button
-                  onClick={async () => {
-                    const amountStr = prompt("실제 거래 금액을 입력해주세요 (원)", String(i.deals?.deal_price ?? ""));
-                    if (amountStr === null) return;
-                    const amount = Number(amountStr.replace(/[^\d]/g, ""));
-                    await fetch("/api/admin/interests", {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
-                      body: JSON.stringify({ id: i.id, source: i.source, outcome: "completed", completedAmount: amount || null }),
-                    });
-                    load();
-                  }}
-                  className="flex-1 font-bold rounded-lg inline-flex items-center justify-center gap-1 whitespace-nowrap"
-                  style={{ fontSize: rem(15), minHeight: 40, background: "#E8F8EC", color: "#1D8A44" }}
-                >
-                  <CheckCircle className="w-3.5 h-3.5" /> 성사
-                </button>
-                <button
-                  onClick={async () => {
-                    if (!confirm("이 리드를 거래 불발로 처리할까요?")) return;
-                    await fetch("/api/admin/interests", {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
-                      body: JSON.stringify({ id: i.id, source: i.source, outcome: "no_deal" }),
-                    });
-                    load();
-                  }}
-                  className="flex-1 font-bold rounded-lg bg-gray100 text-gray500 whitespace-nowrap"
-                  style={{ fontSize: rem(15), minHeight: 40 }}
-                >
-                  불발
-                </button>
-              </>
-            )}
-            </div>
-          </div>
-        ))}
-        </>
-        )}
-      </div>
-
-      <div
-        className={isDesktop ? "col-span-3" : "px-5 py-4"}
-        style={isDesktop ? { order: -1 } : undefined}
-      >
-        {openFormFor === "new" ? (
-          <button type="button" onClick={() => setOpenFormFor(null)} className={`ml-auto ${BTN_CLASS}`} style={{ ...btnStyle("secondary"), minHeight: 40, fontSize: rem(15), padding: "0 16px" }}>
-            닫기
-          </button>
-        ) : (
-          <button onClick={() => setOpenFormFor("new")} className={`w-full ${BTN_CLASS}`} style={btnStyle("primary")}>
-            + 새 매물 직접 등록
-          </button>
-        )}
-        {openFormFor === "new" && (
-          <DealForm adminKey={adminKey} onDone={() => { setOpenFormFor(null); load(); }} />
-        )}
-
-        {/* 2026-09-28: 긴급 공지(부동산·설비 처분) — 재고 매물과 별개 등록 경로.
-            방향성 확정 전까지는 메모만 해두기로 했던 부동산/설비 아이디어를
-            "긴급 공지"라는 가벼운 트랙으로 구현. 구인/구직은 법률 검토 전까지 제외. */}
-        {openFormFor === "notice" ? (
-          <div className="flex items-center justify-between mt-3">
-            <span style={UI_SECTION}>긴급 공지 등록</span>
-            <button type="button" onClick={() => setOpenFormFor(null)} className={BTN_CLASS} style={{ ...btnStyle("secondary"), minHeight: 40, fontSize: rem(15), padding: "0 16px" }}>
-              닫기
-            </button>
-          </div>
-        ) : (
-          <button onClick={() => setOpenFormFor("notice")} className={`w-full mt-2 ${BTN_CLASS}`} style={btnStyle("secondary")}>
-            + 긴급 공지 등록 (부동산·설비)
-          </button>
-        )}
-        {openFormFor === "notice" && (
-          <NoticeForm adminKey={adminKey} onDone={() => { setOpenFormFor(null); load(); }} />
-        )}
-
-        {/* 2026-09-28 (2): 등록 폼만 있고 내릴 방법이 없다는 지적 반영 — 등록된
-            공지를 한 줄 요약 + [마감]으로 노출. deals의 "조기 마감" 패턴과 동일. */}
-        {notices.length > 0 && (
-          <div className="flex flex-col gap-2 mt-3">
-            <div className="text-xs font-bold text-gray500">등록된 긴급 공지 ({notices.length})</div>
-            {notices.map((n) => (
-              <NoticeAdminRow key={n.id} notice={n} adminKey={adminKey} onChanged={load} />
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div
-        id="active-deals"
-        className={
-          isDesktop
-            ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3 overflow-y-auto"
-            : "px-5 pb-6 flex flex-col gap-3"
-        }
-        style={isDesktop ? { maxHeight: 480 } : undefined}
-      >
-        <div className="text-sm font-bold text-gray500">
-          진행 중인 매물 ({activeDeals.length})
-        </div>
-        {!loading && activeDeals.length === 0 && (
-          <div className="text-center text-gray500 py-6 text-sm">진행 중인 매물이 없어요.</div>
-        )}
-        <div className="flex flex-col gap-3">
-          {activeDeals.map((d) => (
-            <ActiveDealCard key={d.id} deal={d} adminKey={adminKey} onChanged={load} />
-          ))}
-        </div>
-      </div>
-
-      <div
-        id="pending-sellers"
-        className={
-          isDesktop
-            ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3 overflow-y-auto"
-            : "px-5 pb-8 flex flex-col gap-3"
-        }
-        style={isDesktop ? { maxHeight: 480 } : undefined}
-      >
-        <button
-          type="button"
-          onClick={() => setSellerReqOpen((v) => !v)}
-          className="w-full flex items-center justify-between"
-        >
-          <span className="text-sm font-bold text-gray500">대기 중인 판매자 신청 ({requests.length})</span>
-          <span className="text-sm font-bold text-gray500">{sellerReqOpen ? "접기 ▲" : "펼치기 ▼"}</span>
-        </button>
-        {sellerReqOpen && (
-        <>
-
-        {loading && <div className="text-center text-gray500 py-8">불러오는 중...</div>}
-        {!loading && requests.length === 0 && (
-          <div className="text-center text-gray500 py-8 text-sm">대기 중인 신청이 없어요.</div>
-        )}
-
-        {requests.map((r) => (
-          <div key={r.id} className="bg-white border border-gray200 rounded-2xl px-4 py-4">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-gray500">
-              <span>{categoryIcons[r.categories?.name ?? ""] ?? "🗂️"}</span>
-              {[r.categories?.name, r.regions?.name].filter(Boolean).join(" · ") || "카테고리/지역 미입력"}
-            </div>
-            <div className="text-base font-bold text-gray900 mt-1.5">{r.product_name}</div>
-            {/* 2026-09-29: 재고 유형 배지 (일반 재고는 없음) */}
-            <StockTypeBadge value={r.stock_type} className="mt-1" />
-            <div className="text-sm text-gray500 mt-1">
-              {[r.company_name, r.contact_name, r.contact_phone].filter(Boolean).join(" · ")}
-            </div>
-            <div className="text-sm text-gray500 mt-1">
-              수량 {r.quantity}{r.quantity_unit || "개"}
-              {r.min_order_qty ? ` (MOQ ${r.min_order_qty}${r.quantity_unit || "개"})` : ""}
-              {r.hope_price ? ` · 희망단가 ${formatDealPrice(r.hope_price, r.quantity_unit, r.price_unit)}` : ""}
-              {r.hope_duration_hours
-                ? ` · 희망 마감 ${
-                    r.hope_duration_hours >= 24
-                      ? `${Math.round(r.hope_duration_hours / 24)}일`
-                      : `${r.hope_duration_hours}시간`
-                  } 후`
-                : " · 마감시점 협의 필요"}
-            </div>
-            {(r.package_unit || r.spec || r.origin || r.storage_condition) && (
-              <div className="text-sm text-gray500 mt-1">
-                {[r.package_unit, r.spec, r.origin, r.storage_condition].filter(Boolean).join(" · ")}
-              </div>
-            )}
-            {r.description && (
-              <div className="text-sm text-gray500 mt-1 bg-gray100 rounded-lg px-3 py-2">
-                {r.description}
-              </div>
-            )}
-            {(r.pid || (r.manifest_items && r.manifest_items.length > 0)) && (
-              <div className="text-sm text-gray500 mt-1 bg-gray100 rounded-lg px-3 py-2">
-                🧾 혼합매물{r.pid ? ` · PID# ${r.pid}` : ""}
-                {r.manifest_items && r.manifest_items.length > 0 ? ` · 구성품 ${r.manifest_items.length}개 CSV 첨부됨` : ""}
-              </div>
-            )}
-            {r.images && r.images.length > 0 && (
-              <div className="flex gap-2 mt-2 overflow-x-auto">
-                {r.images.map((url, i) => (
-                  <img
-                    key={i}
-                    src={url}
-                    alt={`신청 사진 ${i + 1}`}
-                    className="w-16 h-16 rounded-lg object-cover flex-shrink-0 border border-gray200"
-                  />
-                ))}
-              </div>
-            )}
-            {r.video_url && (
-              <video
-                src={r.video_url}
-                controls
-                className="w-full rounded-lg mt-2 bg-black"
-                style={{ maxHeight: "180px" }}
-              />
-            )}
-            <div className="flex gap-2 mt-3">
-              <button
-                onClick={() => setOpenFormFor(openFormFor === r.id ? null : r.id)}
-                className="flex-1 text-navy font-bold border-2 border-navy rounded-xl text-sm"
-                style={{ padding: "10px 0" }}
-              >
-                {openFormFor === r.id ? "닫기" : "매물로 등록하기"}
-              </button>
-              <button
-                onClick={async () => {
-                  if (!confirm("이 신청을 거절할까요?")) return;
-                  await fetch("/api/admin/seller-requests", {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
-                    body: JSON.stringify({ id: r.id, status: "rejected" }),
-                  });
-                  load();
-                }}
-                className="text-gray500 font-bold border-2 border-gray200 rounded-xl text-sm px-4"
-              >
-                거절
-              </button>
-            </div>
-            {openFormFor === r.id && (
-              <DealForm
-                adminKey={adminKey}
-                prefill={{
-                  title: r.product_name,
-                  // 신청서에 없으면 비워서 관리자가 직접 고르게 함 — 예전엔 첫 항목(수산·축산물/서울)이
-                  // 조용히 들어가 엉뚱한 구독자에게 알림이 갈 수 있었음
-                  category: r.categories?.name ?? undefined,
-                  region: r.regions?.name ?? undefined,
-                  dealPrice: r.hope_price ?? undefined,
-                  totalQty: r.quantity,
-                  quantityUnit: r.quantity_unit ?? undefined,
-                  priceUnit: r.price_unit ?? undefined,
-                  minOrderQty: r.min_order_qty ?? undefined,
-                  images: r.images ?? [],
-                  videoUrl: r.video_url ?? undefined,
-                  description: r.description ?? "",
-                  packageUnit: r.package_unit ?? "",
-                  origin: r.origin ?? "",
-                  spec: r.spec ?? "",
-                  storageCondition: r.storage_condition ?? "",
-                  pid: r.pid ?? "",
-                  manifestItems: r.manifest_items ?? [],
-                  closesInHours: r.hope_duration_hours ?? undefined,
-                  stockType: r.stock_type ?? undefined,
-                  // 2026-09-30: 판매자 표시 — 신청서에서 공개를 고르고 업체명이 있을 때만 상호 공개로 시작
-                  sellerPublic: r.is_anonymous === false && !!r.company_name?.trim(),
-                  sellerCompanyName: r.company_name ?? "",
-                }}
-                requestId={r.id}
-                onDone={() => { setOpenFormFor(null); load(); }}
-              />
-            )}
-          </div>
-        ))}
-        </>
-        )}
-      </div>
-
-      <section
-        className={
-          isDesktop
-            ? "bg-white border border-gray200 rounded-2xl p-4 overflow-y-auto"
-            : "mt-8 px-5"
-        }
-        style={isDesktop ? { maxHeight: 480 } : undefined}
-      >
-        <button
-          type="button"
-          onClick={() => setPartnerReqOpen((v) => !v)}
-          className="w-full flex items-center justify-between"
-        >
-          <h2 className="text-sm font-bold text-navy">
-            🏅 공식 점핑파트너 신청 ({partnerRequests.filter((r) => r.status === "pending").length}건 대기)
-          </h2>
-          <span className="text-sm font-bold text-gray500">{partnerReqOpen ? "접기 ▲" : "펼치기 ▼"}</span>
-        </button>
-        {partnerReqOpen && (
-        <div className="mt-3 flex flex-col gap-2">
-          {partnerRequests.map((r) => (
-            <div key={r.id} className="bg-white border border-gray200 rounded-2xl px-4 py-4 text-sm">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-bold text-gray900">{r.members?.company_name ?? r.members?.phone ?? r.member_id}</span>
-                <span
-                  className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
-                  style={
-                    r.status === "pending"
-                      ? { background: "#FFF4E0", color: "#966B00" }
-                      : r.status === "approved"
-                      ? { background: "#E8F8EC", color: "#1D8A44" }
-                      : { background: "#F1F1EF", color: "#6B7480" }
-                  }
-                >
-                  {r.status === "pending" ? "심사중" : r.status === "approved" ? "승인됨" : "거절됨"}
-                </span>
-              </div>
-              <p className="mt-1.5 text-gray500">업종: {r.business_type}</p>
-              <p className="text-gray500">채널: {r.channel_info}</p>
-              {r.message && <p className="text-gray500">메모: {r.message}</p>}
-              {r.status === "pending" && (
-                <div className="mt-2.5 flex gap-2">
-                  <button
-                    onClick={() => reviewPartnerRequest(r.id, "approved")}
-                    className="text-white font-bold rounded-lg text-xs px-3.5 py-2"
-                    style={{ background: "#0B2540" }}
-                  >
-                    승인
-                  </button>
-                  <button
-                    onClick={() => reviewPartnerRequest(r.id, "rejected")}
-                    className="font-bold rounded-lg text-xs px-3.5 py-2 border border-gray200 text-gray500"
-                  >
-                    거절
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-        )}
-      </section>
-
-      {/* 2026-09-27: 운영자가 승인된 파트너 전원의 추천 실적을 한눈에 보는
-          집계 대시보드 — 위 섹션(신청 승인/거절)과는 별개로, 이미 승인된
-          파트너들의 성과 비교용. 승인 즉시 여기 0건으로 나타남. */}
-      <section
-        className={
-          isDesktop
-            ? "bg-white border border-gray200 rounded-2xl p-4 overflow-y-auto"
-            : "mt-8 px-5"
-        }
-        style={isDesktop ? { maxHeight: 480 } : undefined}
-      >
-        <button
-          type="button"
-          onClick={() => setPartnersOverviewOpen((v) => !v)}
-          className="w-full flex items-center justify-between"
-        >
-          <h2 className="text-sm font-bold text-navy">
-            📊 점핑파트너 실적 ({partnersOverview.length}명)
-          </h2>
-          <span className="text-sm font-bold text-gray500">{partnersOverviewOpen ? "접기 ▲" : "펼치기 ▼"}</span>
-        </button>
-        {partnersOverviewOpen && (
-          partnersOverview.length === 0 ? (
-            <p className="mt-3 text-sm text-gray500">아직 승인된 파트너가 없어요.</p>
-          ) : (
-            <div className="mt-3 flex flex-col gap-2">
-              {partnersOverview.map((p, i) => (
-                <div key={p.id} className="bg-white border border-gray200 rounded-2xl px-4 py-3.5 text-sm">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-bold text-gray900">
-                      {i === 0 && p.total_referrals > 0 && "🥇 "}
-                      {p.company_name ?? p.name ?? p.phone}
-                    </span>
-                    <span className="text-xs text-gray500 flex-shrink-0">
-                      {p.member_no != null ? `#${p.member_no}` : p.phone}
-                    </span>
-                  </div>
-                  <div className="mt-2 flex gap-4">
-                    <div>
-                      <div className="font-mono font-bold text-navy" style={{ fontSize: rem(17) }}>
-                        {p.total_referrals}
-                      </div>
-                      <div className="text-xs text-gray500">총 추천</div>
-                    </div>
-                    <div>
-                      <div className="font-mono font-bold text-navy" style={{ fontSize: rem(17) }}>
-                        {p.this_month_referrals}
-                      </div>
-                      <div className="text-xs text-gray500">이번달</div>
-                    </div>
-                    <div>
-                      <div className="font-mono font-bold text-navy" style={{ fontSize: rem(17) }}>
-                        {p.business_verified_referrals}
-                      </div>
-                      <div className="text-xs text-gray500">사업자 인증</div>
-                    </div>
-                  </div>
                 </div>
               ))}
-            </div>
-          )
-        )}
-      </section>
-
-      <div
-        id="buy-requests"
-        className={
-          isDesktop
-            ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3 overflow-y-auto"
-            : "px-5 pb-8 flex flex-col gap-3"
-        }
-        style={isDesktop ? { maxHeight: 480 } : undefined}
-      >
-        <button
-          type="button"
-          onClick={() => setBuyReqOpen((v) => !v)}
-          className="w-full flex items-center justify-between"
-        >
-          <span className="text-sm font-bold text-gray500">
-            🔍 이런 재고 찾습니다 ({buyRequests.filter((b) => !b.contacted).length}건 미연락)
-          </span>
-          <span className="text-sm font-bold text-gray500">{buyReqOpen ? "접기 ▲" : "펼치기 ▼"}</span>
-        </button>
-        {buyReqOpen && (
-        <>
-
-        {!loading && buyRequests.length === 0 && (
-          <div className="text-center text-gray500 py-6 text-sm">등록된 구매 희망이 없어요.</div>
-        )}
-
-        {buyRequests.map((b) => (
-          <div key={b.id} className="bg-white border border-gray200 rounded-2xl px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-gray500">
-                <span>{categoryIcons[b.categories?.name ?? ""] ?? "🗂️"}</span>
-                {b.categories?.name ?? "카테고리 미지정"} · {b.regions?.name ?? "전국 가능"}
-              </div>
-              {b.outcome === "matched" && (
-                <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#E8F8EC", color: "#1D8A44" }}>
-                  매칭 완료
-                </span>
-              )}
-              {b.outcome === "no_match" && (
-                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-gray100 text-gray500">
-                  매칭 불발
-                </span>
-              )}
-            </div>
-            <div className="text-base font-bold text-gray900 mt-1.5">{b.product_name}</div>
-            <div className="text-sm text-gray500 mt-1">
-              {/* 2026-09-26: 카드 전체는 눌러도 반응이 없어 혼란을 줬음(정보가
-                  이미 다 펼쳐져 있어 상세 모달 자체가 없는 구조) — 실제로
-                  누를 만한 유일한 액션인 전화번호를 tel: 링크로 만들어 탭하면
-                  바로 전화가 걸리게 함. */}
-              {b.contact_phone ? (
-                <a href={`tel:${b.contact_phone}`} className="underline font-bold" style={{ color: "#0B2540" }}>
-                  📞 {b.contact_phone}
-                </a>
-              ) : (
-                <span>연락처 삭제됨 (수집 90일 경과)</span>
-              )}
-              {b.quantity ? ` · 희망수량 ${b.quantity}` : ""}
-              {b.hope_price ? ` · 희망가 ${formatPriceWithUnit(b.hope_price, b.hope_price_unit)} 이하` : ""}
-            </div>
-            {b.description && (
-              <div className="text-sm text-gray500 mt-1 bg-gray100 rounded-lg px-3 py-2">
-                <span className="font-bold" style={{ color: "#9AA3AD" }}>
-                  💬 메모{" "}
-                </span>
-                {b.description}
-              </div>
-            )}
-            <div className="flex gap-2 mt-3">
-              <button
-                onClick={async () => {
-                  await fetch("/api/admin/buy-requests", {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
-                    body: JSON.stringify({ id: b.id, contacted: !b.contacted }),
-                  });
-                  load();
-                }}
-                className="flex-1 text-xs font-bold rounded-lg py-2"
-                style={
-                  b.contacted
-                    ? { background: "#F5F6F8", color: "#6B7480" }
-                    : { background: "#FDEEE8", color: "#C2410C" }
-                }
-              >
-                {/* 2026-09-26: "매칭 완료/불발"(outcome, 재고 매칭 여부) 배지와
-                    나란히 있으면 이 버튼이 뭘 가리키는지 헷갈렸음 — 매칭과
-                    무관하게 "구매 희망자한테 전화했는지"만 추적하는 버튼이라는
-                    걸 라벨에 명시. */}
-                {b.contacted ? "구매자 연락 완료" : "구매자 연락 전"}
-              </button>
-              {b.outcome === "pending" && (
-                <>
-                  <button
-                    onClick={async () => {
-                      await fetch("/api/admin/buy-requests", {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
-                        body: JSON.stringify({ id: b.id, outcome: "matched" }),
-                      });
-                      load();
-                    }}
-                    className="flex-1 text-xs font-bold rounded-lg py-2"
-                    style={{ background: "#E8F8EC", color: "#1D8A44" }}
-                  >
-                    매칭 완료
-                  </button>
-                  <button
-                    onClick={async () => {
-                      if (!confirm("매칭 불발로 처리할까요?")) return;
-                      await fetch("/api/admin/buy-requests", {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
-                        body: JSON.stringify({ id: b.id, outcome: "no_match" }),
-                      });
-                      load();
-                    }}
-                    className="flex-1 text-xs font-bold rounded-lg py-2 bg-gray100 text-gray500"
-                  >
-                    매칭 불발
-                  </button>
-                </>
-              )}
-            </div>
           </div>
-        ))}
-        </>
-        )}
-      </div>
-
-      </div>
-
-      {adminRole === "최고관리자" && (
-        <div className="px-5 pt-4 pb-8 flex flex-col gap-3">
-          <button
-            type="button"
-            onClick={() => setAdminsOpen((v) => !v)}
-            className="w-full flex items-center justify-between"
-          >
-            <span className="text-sm font-bold text-gray500">관리자 목록 ({admins.length}명)</span>
-            <span className="text-sm font-bold text-gray500">{adminsOpen ? "접기 ▲" : "펼치기 ▼"}</span>
-          </button>
-          {adminsOpen && (
-          <>
-          {admins.map((a) => (
-            <div
-              key={a.id}
-              className="bg-white border border-gray200 rounded-2xl px-4 py-3.5 flex items-center justify-between gap-2"
-            >
-              <div>
-                <div className="text-base font-bold text-gray900">
-                  {a.name}
-                  <span
-                    className="text-xs font-bold px-2 py-0.5 rounded-full ml-1.5"
-                    style={{ background: "#EAF0F7", color: "#1B3A5C" }}
-                  >
-                    {a.role}
-                  </span>
-                </div>
-                <div className="text-xs text-gray500 mt-1">{a.phone ?? "번호 미연결"}</div>
-                <div className="text-xs text-gray500 mt-0.5">
-                  {a.last_login_at
-                    ? `마지막 로그인 ${new Date(a.last_login_at).toLocaleString("ko-KR", {
-                        month: "long",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}`
-                    : "아직 로그인 기록 없음"}
-                </div>
-              </div>
-              <div className="flex-shrink-0 flex flex-col gap-1.5">
-                <button
-                  onClick={() => changeAdminRole(a)}
-                  disabled={roleChangingId === a.id}
-                  className="text-xs font-bold rounded-lg px-3 py-1.5 border border-gray200 text-navy disabled:opacity-60"
-                >
-                  {roleChangingId === a.id ? "변경 중..." : "역할 변경"}
-                </button>
-                <button
-                  onClick={() => removeAdmin(a)}
-                  disabled={removingAdminId === a.id}
-                  className="text-xs font-bold rounded-lg px-3 py-1.5 border border-gray200 text-orange disabled:opacity-60"
-                >
-                  {removingAdminId === a.id ? "처리 중..." : "해제"}
-                </button>
-              </div>
-            </div>
-          ))}
-          </>
-          )}
         </div>
+      ) : (
+        <>
+          {membersBlock}
+          {leadsBlock}
+          {newDealBlock}
+          {activeDealsBlock}
+          {pendingSellersBlock}
+          {partnerReqBlock}
+          {partnersOverviewBlock}
+          {buyRequestsBlock}
+          {adminsBlock}
+        </>
       )}
 
       {appointFor && (

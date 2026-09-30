@@ -679,9 +679,7 @@ export default function MyPage() {
           처음이신가요? 알림 신청하기
         </Link>
         {/* 2026-09-30 (커밋 G): 비로그인 화면에도 사업자 정보 푸터 */}
-        <div className="w-full max-w-md mt-10 pt-4 text-left" style={{ borderTop: "1px solid #EEF0F2" }}>
-          <BusinessFooter />
-        </div>
+        <BusinessFooter className="self-stretch -mx-6 mt-10 text-left" />
       </main>
     );
   }
@@ -1642,9 +1640,7 @@ export default function MyPage() {
         <Link href="/unsubscribe" className="text-center underline py-2" style={{ ...UI_LINK, fontWeight: 500, color: "#6B7480" }}>
           알림이 필요 없으신가요? 알림 해지 · 탈퇴
         </Link>
-        <div className="pt-4" style={{ borderTop: "1px solid #EEF0F2" }}>
-          <BusinessFooter />
-        </div>
+        <BusinessFooter className="-mx-5 -mb-5" />
       </div>
 
       <Toast message={toastMessage} />

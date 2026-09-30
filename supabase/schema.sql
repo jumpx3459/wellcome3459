@@ -1491,9 +1491,9 @@ select cron.schedule('kpi-daily-snapshot', '5 15 * * *', $$ select public.kpi_sn
 --   (protect_business_verified는 update만, protect_member_columns는 referred_by·member_no·phone·business_license_path·ref_code만).
 -- 정상 경로(관리자 사업자 인증·파트너 승인·사업자등록증 재첨부)는 모두 service role이라 영향 없음.
 -- 확인(대표): authenticated 권한으로 false 변경 시도 → true 유지. pg_trigger 확인.
--- ⚠ 아래는 실행 내용 설명(business_verified·is_official_partner 보호, insert 시 business_license_path null)을 바탕으로 적은 것 —
---   운영 DB 정의와 같은지 대조: select pg_get_functiondef('public.protect_member_privileged()'::regprocedure);
--- 참고: 제안안의 member_no(insert 때 새 번호) 처리와 grant_referral_bonus의 pg_trigger_depth 보완은 이번 실행 설명에 없음 — 필요하면 별도 실행.
+-- 2026-10-01 운영 DB 정의와 대조 완료 — 아래 함수·트리거는 운영 실행본과 동일
+--   (security definer · search_path=public · 역할 체크 · insert 시 license null · update 시 partner 유지 · 트리거 활성).
+-- 참고: 제안안의 member_no(insert 때 새 번호) 처리와 grant_referral_bonus의 pg_trigger_depth 보완은 실행하지 않음 — 필요하면 별도.
 -- ============================================================================
 create or replace function public.protect_member_privileged()
 returns trigger as $$
@@ -1502,7 +1502,7 @@ begin
     if tg_op = 'INSERT' then
       new.business_verified := false;
       new.is_official_partner := false;
-      new.business_license_path := null;   -- 첨부는 /api/business-license/upload(service role)로만
+      new.business_license_path := null;
     else
       new.business_verified := old.business_verified;
       new.is_official_partner := old.is_official_partner;

@@ -433,9 +433,7 @@ function DealsPageInner() {
         <a href="/unsubscribe" className="text-center text-xs text-gray500 underline mt-2 mb-4 py-2">
           알림이 필요 없으신가요? 알림 해지 · 탈퇴
         </a>
-        <div className="pt-4" style={{ borderTop: "1px solid #EEF0F2" }}>
-          <BusinessFooter />
-        </div>
+        <BusinessFooter className="-mx-4 -mb-3.5 mt-2" />
       </div>
     </main>
   );
