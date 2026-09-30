@@ -6,9 +6,17 @@ import { isStockType } from "@/lib/stockType";
 import { isDealPriceUnit, isLumpSum } from "@/lib/priceUnit";
 import { getPhotoLimit, photoLimitError } from "@/lib/photoLimit";
 import { getMemberFromToken } from "@/lib/photoLimitServer";
+import { isReservedSellerName } from "@/lib/sellerDisplay";
+import { TERMS_VERSION } from "@/lib/consent";
+
+const LOGIN_REQUIRED = "판매 신청은 회원만 할 수 있어요. 로그인 후 다시 시도해주세요.";
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
+  // 2026-09-30: 본문이 없거나 JSON이 아니면 토큰도 없는 것 — 예전엔 여기서 예외가 나 500이었음
+  const body = await req.json().catch(() => null);
+  if (!body || typeof body !== "object" || typeof body.accessToken !== "string" || !body.accessToken) {
+    return NextResponse.json({ error: LOGIN_REQUIRED }, { status: 401 });
+  }
   const {
     companyName,
     isAnonymous,
@@ -35,10 +43,19 @@ export async function POST(req: NextRequest) {
     stockType,
     priceUnit,
     accessToken,
+    sellerTermsAgreed,
   } = body;
 
   if (!contactPhone || !productName || !quantity) {
     return NextResponse.json({ error: "필수 항목이 누락되었습니다." }, { status: 400 });
+  }
+  // 2026-09-30 (커밋 E): [필수] 판매자 확인 사항 (consent-texts 7-2) — 아래에서 member_consents(seller_terms)에 기록
+  if (sellerTermsAgreed !== true) {
+    return NextResponse.json({ error: "판매자 확인 사항에 동의해주세요.", field: "sellerTerms" }, { status: 400 });
+  }
+  // 사칭 방지 (약관 제12조 4항) — 회사·서비스 이름이 들어간 상호는 받지 않음 (관리자 입력은 예외)
+  if (isReservedSellerName(companyName)) {
+    return NextResponse.json({ error: "점프엑스·덤핑점핑으로 오인될 수 있는 업체명은 쓸 수 없어요.", field: "companyName" }, { status: 400 });
   }
   // 2026-09-29: 희망 단가 필수 (sell 폼과 같은 규칙)
   if (typeof hopePrice !== "number" || !Number.isFinite(hopePrice) || hopePrice <= 0) {
@@ -84,7 +101,7 @@ export async function POST(req: NextRequest) {
   // 2026-09-30: 판매 신청은 회원 전용 — 토큰 없음·무효·회원 행 없음이면 401 (비회원 신청 경로 폐지)
   const member = await getMemberFromToken(supabaseAdmin, accessToken);
   if (!member) {
-    return NextResponse.json({ error: "판매 신청은 회원만 할 수 있어요. 로그인 후 다시 시도해주세요." }, { status: 401 });
+    return NextResponse.json({ error: LOGIN_REQUIRED }, { status: 401 });
   }
   // 매물 한 건의 사진 총 장수 — 같은 회원 기준 한도
   const photoLimit = getPhotoLimit(member);
@@ -99,9 +116,25 @@ export async function POST(req: NextRequest) {
     ? (await supabaseAdmin.from("regions").select("id").eq("name", region).maybeSingle()).data
     : null;
 
+  // 판매자 확인 사항 동의 기록 — 신청보다 먼저 남김(기록 없이 신청만 들어가지 않게).
+  // source 'sell'은 member_consents.source check에 추가하는 SQL(schema.sql 커밋 E 블록)이 실행돼 있어야 함.
+  const { error: consentError } = await supabaseAdmin.from("member_consents").insert({
+    member_id: member.id,
+    consent_type: "seller_terms",
+    agreed: true,
+    terms_version: TERMS_VERSION,
+    source: "sell",
+    user_agent: (req.headers.get("user-agent") ?? "").slice(0, 500) || null,
+  });
+  if (consentError) {
+    console.error("[seller-requests] seller_terms 동의 기록 실패", consentError.code, consentError.message);
+    return NextResponse.json({ error: "신청 처리 중 문제가 발생했어요. 잠시 후 다시 시도해주세요." }, { status: 500 });
+  }
+
   const { error } = await supabaseAdmin.from("seller_requests").insert({
     company_name: companyName || null,
-    is_anonymous: !!isAnonymous,
+    // 2026-09-30: 업체명 공개 설정 기본 비공개 — 명시적으로 공개(false)를 고른 경우만 공개
+    is_anonymous: isAnonymous !== false,
     seller_member_id: member.id,
     stock_type: stockType ?? "general",
     contact_name: contactName || null,

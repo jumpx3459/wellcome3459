@@ -5,7 +5,8 @@
 // 알림 켜기 4번, 동의·철회 안내 5번). 약관 전문은 docs/legal/terms-2026-10-07.md(/terms).
 export const TERMS_VERSION = "2026-10-07";
 
-// seller_terms(판매 신청 확인 사항, 커밋 E)·biz_info(사업자 인증 정보, 공개 후)·night_ad(예약)는 아직 받지 않음
+// seller_terms(판매 신청 확인 사항)는 커밋 E부터 /api/seller-requests가 source 'sell'로 기록.
+// biz_info(사업자 인증 정보, 공개 후)·night_ad(예약)는 아직 받지 않음
 export const CONSENT_TYPES = [
   "tos",
   "privacy",
@@ -17,7 +18,8 @@ export const CONSENT_TYPES = [
   "biz_info",
 ] as const;
 export type ConsentType = (typeof CONSENT_TYPES)[number];
-export const CONSENT_SOURCES = ["signup", "push_enable", "reconsent", "mypage"] as const;
+// 'sell'은 판매 신청(/api/seller-requests) — DB check에 'sell' 추가 SQL(schema.sql 커밋 E 블록) 실행 후 배포
+export const CONSENT_SOURCES = ["signup", "push_enable", "reconsent", "mypage", "sell"] as const;
 export type ConsentSource = (typeof CONSENT_SOURCES)[number];
 
 export const isConsentType = (v: unknown): v is ConsentType =>
@@ -41,6 +43,24 @@ export const CONSENT_TEXT = {
     pushDesc: "관심 조건에 맞는 매물을 앱 푸시로 빠르게 알려드려요.\n밤 9시~아침 8시에 등록된 매물은 아침 8시에 보내드려요.\nMY > 이 기기 푸시 알림에서 언제든 끌 수 있어요.",
   },
   kakao_marketing: { label: "카카오톡 채널 소식 수신 동의 (광고성 정보)", desc: "공지·이벤트 소식을 카카오톡으로 받아요." },
+  // 판매 신청 확인 사항 (consent-texts 7-2)
+  seller_terms: {
+    label: "[필수] 판매자 확인 사항에 동의합니다",
+    items: [
+      "매물 정보(수량·가격·정상가·소비기한 등)를 사실대로 적었어요.",
+      "판매에 필요한 인허가를 갖추고 있어요.",
+      "사진·설명을 게시할 권리가 있어요.",
+      "점핑매니저가 매물 정보를 확인·보완해 게시하고, 알림·공유에 이용하는 데 동의해요.",
+      "연결된 구매자의 정보는 거래 상담에만 쓰고, 상담이 끝나면 파기할게요.",
+    ],
+  },
+} as const;
+
+// 판매 신청 업체명 공개 설정 (consent-texts 7-2) — 기본 비공개
+export const COMPANY_DISCLOSURE_TEXT = {
+  title: "업체명 공개 설정 (기본: 비공개)",
+  private: { label: "비공개", desc: "구매자에게 \"비공개 판매자\"로 보여요. 점핑매니저에게는 실제 업체명이 보여요." },
+  public: { label: "공개", desc: "매물 상세에 업체명이 보여요." },
 } as const;
 
 // 개인정보 수집·이용 동의(필수) 전문 — consent-texts 3번. [확인] 자리는 가입 화면이 실제로 받는 항목으로 채움

@@ -22,6 +22,7 @@ import { isLumpSum } from "@/lib/priceUnit";
 import PhotoCarousel, { type PhotoCarouselHandle } from "@/components/PhotoCarousel";
 import PhotoViewer from "@/components/PhotoViewer";
 import ZoomTip from "@/components/ZoomTip";
+import { PRIVATE_SELLER_NAME, PRIVATE_SELLER_NOTE, publicSellerName } from "@/lib/sellerDisplay";
 import FloatingCTA, { FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
@@ -63,6 +64,7 @@ function DealDetailPageInner() {
   const [interestError, setInterestError] = useState<string | null>(null);
   const [interestNeedsReauth, setInterestNeedsReauth] = useState(false);
   const [manifestOpen, setManifestOpen] = useState(false);
+  const sellerName = publicSellerName(deal);
 
   // JUMP X 브릿지("JUMP X에서 입찰 참여하기") — 거래 플랫폼이 준비될 때까지는
   // "준비중" 안내만 하고, 클릭은 수요 신호로만 가볍게 기록합니다.
@@ -141,7 +143,7 @@ function DealDetailPageInner() {
       const { data } = await supabase
         .from("deals")
         .select(
-          "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, location, images, video_url, description, status, package_unit, origin, spec, storage_condition, quantity_unit, price_unit, min_order_qty, interest_count, pid, manifest_items, seller_member_id, seller_display_name, stock_type, categories(name), regions(name)"
+          "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, location, images, video_url, description, status, package_unit, origin, spec, storage_condition, quantity_unit, price_unit, min_order_qty, interest_count, pid, manifest_items, is_anonymous, seller_display_name, stock_type, categories(name), regions(name)"
         )
         .eq("id", params.id)
         .single();
@@ -173,7 +175,8 @@ function DealDetailPageInner() {
           interest_count: data.interest_count ?? 0,
           pid: data.pid ?? null,
           manifest_items: data.manifest_items ?? null,
-          seller_member_id: data.seller_member_id ?? null,
+          // 2026-09-30: seller_member_id는 공개 조회 대상에서 뺌(컬럼 권한 SQL) — 쪽지(꺼져 있음)를 다시 켤 땐 서버 API로
+          is_anonymous: data.is_anonymous ?? null,
           seller_display_name: data.seller_display_name ?? null,
         });
       }
@@ -510,11 +513,19 @@ function DealDetailPageInner() {
           ))}
         </div>
 
-        {deal.seller_display_name && (
-          <div className="border border-gray200 rounded-2xl p-4 flex items-center justify-between gap-3">
-            <div>
-              <div className="text-xs text-gray500 font-bold mb-0.5">판매자</div>
-              <div className="text-sm font-bold text-navy">{deal.seller_display_name}</div>
+        {/* 2026-09-30: 판매자 칸은 항상 표시 (약관 제10조 3항) — 상호 공개면 상호, 그 외는 "비공개 판매자" */}
+        {(
+          <div className="border border-gray200 rounded-2xl p-4 flex items-center justify-between gap-3" data-seller-box>
+            <div className="min-w-0">
+              <div className="text-gray500 font-bold mb-0.5" style={{ fontSize: rem(13) }}>판매자</div>
+              {sellerName ? (
+                <div className="font-bold text-navy break-words" style={{ fontSize: rem(16) }}>{sellerName}</div>
+              ) : (
+                <div className="font-bold text-navy" style={{ fontSize: rem(16) }}>
+                  {PRIVATE_SELLER_NAME}
+                  <span className="font-medium text-gray500" style={{ fontSize: rem(14) }}> · {PRIVATE_SELLER_NOTE}</span>
+                </div>
+              )}
             </div>
             {MESSAGES_ENABLED && deal.seller_member_id && isMember && memberId !== deal.seller_member_id && (
               <button

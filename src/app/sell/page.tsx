@@ -26,6 +26,7 @@ import CategoryChips from "@/components/CategoryChips";
 import FloatingCTA, { FloatingCTANote, FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 import SellGuestNotice from "@/components/SellGuestNotice";
+import { COMPANY_DISCLOSURE_TEXT, CONSENT_TEXT } from "@/lib/consent";
 
 // 2026-09-30: 작성 중 내용 (sessionStorage) — 사진·영상은 이미 올라간 URL만 보관, 매니페스트 표는 제외
 const SELL_DRAFT_KEY = "dj_sell_draft";
@@ -52,7 +53,12 @@ export default function SellPage() {
     }
   };
   const [companyName, setCompanyName] = useState("");
-  const [isAnonymous, setIsAnonymous] = useState(false);
+  // 2026-09-30: 업체명 공개 설정 기본 비공개 (consent-texts 7-2) — 승인 시 공개 && 업체명 있음 → 상호, 그 외 "비공개 판매자"
+  const [isAnonymous, setIsAnonymous] = useState(true);
+  const [companyError, setCompanyError] = useState<string | null>(null);
+  // [필수] 판매자 확인 사항 — 매번 새로 체크(작성 중 내용에 저장하지 않음), 서버가 member_consents(seller_terms)에 기록
+  const [sellerTermsAgreed, setSellerTermsAgreed] = useState(false);
+  const [sellerTermsError, setSellerTermsError] = useState(false);
   const [memberId, setMemberId] = useState<string | null>(null);
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
@@ -241,6 +247,11 @@ export default function SellPage() {
       showMoqError("최소주문량은 총수량보다 클 수 없어요.");
       return;
     }
+    if (!sellerTermsAgreed) {
+      setSellerTermsError(true);
+      document.getElementById("sell-seller-terms")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     setSubmitting(true);
     try {
       // 2026-09-30: 회원 전용 — authFetch가 최신 토큰을 넣고(만료 시 갱신·1회 재시도), 서버는 토큰으로 회원·사진 한도 결정
@@ -270,6 +281,7 @@ export default function SellPage() {
           manifestItems: manifestItems.length ? manifestItems : null,
           images,
           videoUrl,
+          sellerTermsAgreed,
         },
       });
       if (res.status === 401) {
@@ -295,6 +307,15 @@ export default function SellPage() {
         }
         if (data.field === "images") {
           setError(data.error ?? "사진 장수를 확인해주세요.");
+          return;
+        }
+        if (data.field === "companyName") {
+          setCompanyError(data.error ?? "업체명을 확인해주세요.");
+          document.getElementById("sell-companyName")?.focus();
+          return;
+        }
+        if (data.field === "sellerTerms") {
+          setSellerTermsError(true);
           return;
         }
         throw new Error();
@@ -640,6 +661,70 @@ export default function SellPage() {
           </p>
         </div>
 
+        {/* 2026-09-30: 업체명·공개 설정을 "상세 정보 추가" 밖으로 (consent-texts 7-2, 기본 비공개) */}
+        <div>
+          <FieldLabel need="optional">업체명</FieldLabel>
+          <input
+            id="sell-companyName"
+            className="w-full border-2 rounded-xl px-4 outline-none focus:border-orange"
+            style={{ height: "52px", fontSize: FORM_INPUT_FONT_SIZE, borderColor: companyError ? "var(--color-orange)" : "#E4E7EB" }}
+            value={companyName}
+            onChange={(e) => {
+              setCompanyName(e.target.value);
+              setCompanyError(null);
+            }}
+            placeholder="예: 웰컴코리아(주)"
+          />
+          {companyError && <p className="font-medium mt-1.5" style={{ fontSize: rem(15), color: "var(--color-orange)" }}>{companyError}</p>}
+          <div className="mt-3 font-bold text-navy" style={{ fontSize: rem(15) }}>{COMPANY_DISCLOSURE_TEXT.title}</div>
+          <div className="flex flex-col gap-2 mt-2" role="radiogroup" aria-label="업체명 공개 설정">
+            {([true, false] as const).map((anon) => {
+              const t = anon ? COMPANY_DISCLOSURE_TEXT.private : COMPANY_DISCLOSURE_TEXT.public;
+              const picked = isAnonymous === anon;
+              return (
+                <label
+                  key={t.label}
+                  className="flex items-start gap-2.5 rounded-xl cursor-pointer"
+                  style={{ padding: "12px 14px", background: "#fff", border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB" }}
+                >
+                  <input type="radio" name="sell-company-disclosure" checked={picked} onChange={() => setIsAnonymous(anon)} className="mt-1 flex-shrink-0" />
+                  <span className="leading-relaxed" style={{ fontSize: rem(15), color: "#4B5563" }}>
+                    <span className="font-bold text-navy">{t.label}</span> — {t.desc}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
+        <div id="sell-seller-terms">
+          <label
+            className="flex items-start gap-2.5 rounded-xl cursor-pointer"
+            style={{ padding: "14px 16px", background: "#F5F6F8", border: sellerTermsError ? "1.5px solid var(--color-orange)" : "1.5px solid transparent" }}
+          >
+            <input
+              type="checkbox"
+              checked={sellerTermsAgreed}
+              onChange={(e) => {
+                setSellerTermsAgreed(e.target.checked);
+                setSellerTermsError(false);
+              }}
+              className="mt-1 flex-shrink-0 w-4 h-4"
+            />
+            <span className="min-w-0">
+              <span className="block font-bold text-navy" style={{ fontSize: rem(15) }}>{CONSENT_TEXT.seller_terms.label}</span>
+              <ul className="mt-1.5 flex flex-col gap-1">
+                {CONSENT_TEXT.seller_terms.items.map((line) => (
+                  <li key={line} className="leading-relaxed" style={{ fontSize: rem(14), color: "#4B5563" }}>· {line}</li>
+                ))}
+              </ul>
+            </span>
+          </label>
+          {sellerTermsError && (
+            <p className="font-medium mt-1.5" style={{ fontSize: rem(15), color: "var(--color-orange)" }}>판매자 확인 사항에 동의해주세요.</p>
+          )}
+        </div>
+
         <div className="flex items-center gap-2.5 rounded-2xl" style={{ background: "#F5F6F8", padding: "14px 16px" }}>
           <span style={{ fontSize: rem(18) }}>🔔</span>
           <span className="flex-1" style={{ ...FORM_HINT_STYLE, color: "#0B2540", fontWeight: 500 }}>
@@ -667,30 +752,6 @@ export default function SellPage() {
             <ImageUploader onChange={setImages} initialUrls={images} max={getPhotoLimit({ bonus_photo_slots: bonusPhotoSlots })} />
 
             <VideoUploader onChange={setVideoUrl} initialUrl={videoUrl} />
-
-            <div>
-              <FieldLabel need="optional">업체명</FieldLabel>
-              <input
-                className="w-full border-2 border-gray200 rounded-xl px-4 outline-none focus:border-orange"
-                style={{ height: "52px", fontSize: FORM_INPUT_FONT_SIZE }}
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                placeholder="예: 웰컴코리아(주)"
-              />
-              <label className="flex items-start gap-2.5 rounded-xl mt-2.5" style={{ background: "#F5F6F8", padding: "12px 14px" }}>
-                <input
-                  type="checkbox"
-                  checked={isAnonymous}
-                  onChange={(e) => setIsAnonymous(e.target.checked)}
-                  className="mt-0.5"
-                />
-                <span className="text-xs leading-relaxed text-gray500">
-                  <span className="font-bold text-navy">업체명 비공개로 등록</span>
-                  <br />
-                  체크하면 구매자에게는 업체명 대신 임의 표시명이 노출돼요(거래처·경쟁사 노출 걱정 없이 등록 가능). 점핑매니저에게는 항상 실제 업체명이 보여요.
-                </span>
-              </label>
-            </div>
 
             <div>
               <FieldLabel need="optional">담당자명</FieldLabel>

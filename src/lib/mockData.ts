@@ -16,6 +16,7 @@ export type Deal = {
   video_url?: string | null;
   seller_member_id?: string | null;
   seller_display_name?: string | null;
+  is_anonymous?: boolean | null;
   description?: string;
   status?: "active" | "closed";
   package_unit?: string | null; // 포장 단위 (예: "20kg 박스")

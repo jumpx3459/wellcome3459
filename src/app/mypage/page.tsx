@@ -358,13 +358,14 @@ export default function MyPage() {
     if (!isSupabaseConfigured || !supabase || !memberId) return;
     const { data } = await supabase
       .from("messages")
-      .select("id, deal_id, sender_id, receiver_id, body, created_at, deals(title, seller_member_id, seller_display_name)")
+      .select("id, deal_id, sender_id, receiver_id, body, created_at, deals(title, seller_display_name)")
       .or(`sender_id.eq.${memberId},receiver_id.eq.${memberId}`)
       .order("created_at", { ascending: true });
     if (!data) return;
     const map = new Map<string, MessageThread>();
     for (const m of data) {
-      const dealInfo = m.deals as unknown as { title: string; seller_member_id: string | null; seller_display_name: string | null } | null;
+      // 2026-09-30: deals.seller_member_id는 공개 조회 불가(컬럼 권한) — 쪽지를 다시 켤 땐 판매자 판별을 서버 API로 옮길 것
+      const dealInfo = m.deals as unknown as { title: string; seller_member_id?: string | null; seller_display_name: string | null } | null;
       const counterpartId = m.sender_id === memberId ? m.receiver_id : m.sender_id;
       const key = `${m.deal_id}__${counterpartId}`;
       const counterpartLabel =
