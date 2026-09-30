@@ -5,11 +5,15 @@ import { sendAdminPush } from "@/lib/sendPush";
 // 비회원이 "관심있어요"를 누를 때, 전체 회원가입 없이 전화번호만으로 바로
 // 점핑매니저에게 리드를 넘기기 위한 경량 엔드포인트입니다.
 export async function POST(req: NextRequest) {
-  const { dealId, phone } = await req.json();
+  const { dealId, phone, privacyConsent } = await req.json();
 
   const digits = (phone ?? "").replace(/[^0-9]/g, "");
   if (!dealId || digits.length < 9) {
     return NextResponse.json({ error: "휴대폰 번호를 확인해주세요." }, { status: 400 });
+  }
+  // 2026-09-30: [필수] 개인정보 수집·이용 동의 (화면 GuestPrivacyConsent). 동의 시각 저장은 consented_at 컬럼 SQL 실행 후
+  if (privacyConsent !== true) {
+    return NextResponse.json({ error: "개인정보 수집·이용에 동의해주세요.", field: "privacyConsent" }, { status: 400 });
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

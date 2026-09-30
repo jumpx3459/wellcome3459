@@ -6,12 +6,17 @@ import { SITE_URL } from "@/lib/siteUrl";
 import { rem } from "@/lib/rem";
 import PushBlockerNotice from "@/components/PushBlockerNotice";
 import { UI_CARD_TITLE, UI_DESC, UI_LINK } from "@/lib/uiText";
+import ConsentSheet from "@/components/ConsentSheet";
+import { CONSENT_TEXT } from "@/lib/consent";
+import { CONSENT_CHANGED_EVENT, announceConsents, fetchMyConsents, saveConsents } from "@/lib/consentClient";
 
 // 2026-09-28: 마이페이지 알림 상태 카드. 예전엔 푸시 구독이 가입 화면에서만 가능해서
 // 기존 회원이 알림을 다시 켤 곳이 없었음(구독자 0명). 권한 요청은 반드시 버튼 클릭
 // 핸들러 안에서만 한다 — 마운트 시엔 getPushState()로 현재 상태만 조회.
 // 2026-09-29: 토큰은 authFetch가 호출할 때마다 최신으로 받음(오래 켜 둔 PWA에서 만료 토큰 401 버그).
 // 조용한 재저장 실패는 화면에 띄우지 않고(콘솔만), 실패 문구는 [알림 켜기]를 눌렀을 때만.
+// 2026-09-30: 매물 알림 수신 동의(deal_alert_ad) 최신 값이 true가 아니면 [알림 켜기] 전에 동의 시트 →
+// 동의 저장(source push_enable)과 구독을 같은 클릭에서 시작(권한 요청이 클릭 안에 있어야 해서 저장을 기다리지 않음).
 type CardState = "loading" | "inapp" | "ios_needs_install" | "unsupported" | "noncanonical" | "denied" | "off" | "on" | "optedOut" | "saveFailed";
 
 export default function PushStatusCard() {
@@ -19,6 +24,19 @@ export default function PushStatusCard() {
   const [busy, setBusy] = useState(false);
   const [otherDevices, setOtherDevices] = useState(0); // 이 기기 말고 알림 받는 내 기기 수
   const resynced = useRef(false);
+  const [dealConsent, setDealConsent] = useState<boolean | null>(null); // null = 모름(조회 전·실패)
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = () =>
+      fetchMyConsents().then((c) => {
+        if (c) setDealConsent(Boolean(c.deal_alert_ad?.agreed));
+      });
+    load();
+    window.addEventListener(CONSENT_CHANGED_EVENT, load);
+    return () => window.removeEventListener(CONSENT_CHANGED_EVENT, load);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,8 +71,28 @@ export default function PushStatusCard() {
     };
   }, []);
 
-  const enable = async () => {
+  const enable = () => {
     if (busy) return;
+    setConsentError(null);
+    if (dealConsent !== true) {
+      setSheetOpen(true);
+      return;
+    }
+    subscribe();
+  };
+
+  const agreeAndEnable = async () => {
+    setConsentError(null);
+    const consents = [{ type: "deal_alert_ad" as const, agreed: true }];
+    const saving = saveConsents(consents, "push_enable");
+    setSheetOpen(false);
+    await subscribe();
+    const r = await saving;
+    if (r.ok) announceConsents(consents, r.recordedAt);
+    else setConsentError("매물 알림 수신 동의 저장에 실패했어요. 다시 시도해주세요.");
+  };
+
+  const subscribe = async () => {
     setBusy(true);
     try {
       const r = await subscribeToPush();
@@ -94,7 +132,8 @@ export default function PushStatusCard() {
             )}
           </span>
           <span className="block mt-0.5" style={{ ...UI_DESC, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-            {state === "on" && "조건에 맞는 매물이 뜨면 빠르게 알려드려요"}
+            {state === "on" && dealConsent !== false && "조건에 맞는 매물이 뜨면 빠르게 알려드려요"}
+            {state === "on" && dealConsent === false && "매물 알림 수신에 동의하지 않아 알림이 가지 않아요"}
             {(state === "inapp" || state === "ios_needs_install") && "지금 이 화면에서는 알림을 켤 수 없어요"}
             {state === "off" && "지금은 꺼져 있어요 · 맞춤 특가 알림은 푸시로만 가요"}
             {state === "denied" && "브라우저에서 알림이 차단돼 있어요"}
@@ -116,6 +155,21 @@ export default function PushStatusCard() {
           </button>
         )}
       </div>
+
+      {consentError && (
+        <p className="mt-3 font-medium" style={{ fontSize: rem(14), color: "var(--color-orange)" }}>{consentError}</p>
+      )}
+
+      {sheetOpen && (
+        <ConsentSheet
+          title={CONSENT_TEXT.deal_alert_ad.pushTitle}
+          items={[{ type: "deal_alert_ad", required: true, tag: "선택", label: CONSENT_TEXT.deal_alert_ad.label, desc: CONSENT_TEXT.deal_alert_ad.pushDesc }]}
+          primaryLabel="동의하고 알림 켜기"
+          pendingLabel="알림을 켜려면 동의해주세요"
+          onSubmit={agreeAndEnable}
+          onCancel={() => setSheetOpen(false)}
+        />
+      )}
 
       {/* 이 기기는 꺼져 있어도 다른 기기(폰·PC 등)로는 받고 있을 수 있음 */}
       {thisDeviceOff && state !== "optedOut" && otherDevices > 0 && (

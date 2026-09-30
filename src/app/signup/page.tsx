@@ -18,6 +18,9 @@ import { rem } from "@/lib/rem";
 import { clearReturningMember } from "@/lib/returningMember";
 import FloatingCTA, { FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
+import { CONSENT_TEXT } from "@/lib/consent";
+import { announceConsents, saveConsents } from "@/lib/consentClient";
+import PrivacyConsentTextSheet from "@/components/PrivacyConsentTextSheet";
 
 // "01012345678" -> "010****5678" 형태로 화면에만 일부 가려서 보여줍니다
 function maskPhone(phone: string): string {
@@ -67,14 +70,18 @@ function SignupPageInner() {
   const [categories, setCategories] = useState<string[]>([]);
   const [regions, setRegions] = useState<string[]>([]);
   const [regionOpen, setRegionOpen] = useState(false);
-  const [push, setPush] = useState(true);
   // 카카오 알림톡(개인화된 매물 메시지) 발송은 현재 구현돼 있지 않음 — 이 토글은
-  // 카카오톡 "채널 추가"(친구 추가) 링크로 보낼 뿐인 공지·이벤트용 보조 채널이라,
-  // 알림 수신 여부 판정(anyChannel)에서는 제외한다. 2단계(휴대폰 인증) 하단 채널
-  // 토글과 그 아래 마케팅 수신 동의는 여전히 이 값 하나를 공유한다(Claude Design 원안 유지).
-  const [kakao, setKakao] = useState(true);
+  // 카카오톡 "채널 추가"(친구 추가) 링크를 가입 완료 때 열어줄 뿐인 공지·이벤트용 보조 채널.
+  // 2026-09-30: 마케팅 수신 동의(agreeKakaoMkt)와 분리하고 기본값 false (예전엔 둘이 한 값 + 기본 true).
+  const [kakao, setKakao] = useState(false);
   const [agreeTos, setAgreeTos] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
+  // 2026-09-30: [필수] 사업 목적 이용·만 14세 이상 확인 (eligibility, 약관 제4조)
+  const [agreeEligibility, setAgreeEligibility] = useState(false);
+  const [viewingPrivacyText, setViewingPrivacyText] = useState(false);
+  // 2026-09-30: [선택] 광고성 정보 수신 동의 — 기본 false. 매물 알림 동의가 앱 푸시 켜기를 겸함(예전 push 토글 대체)
+  const [agreeDealAlert, setAgreeDealAlert] = useState(false);
+  const [agreeKakaoMkt, setAgreeKakaoMkt] = useState(false);
 
   // 사업자 회원 여부 + 업체명 — 별도 화면 없이 2단계(휴대폰 인증) 하단에 그대로 유지합니다.
   const [isBusiness, setIsBusiness] = useState(true);
@@ -246,13 +253,8 @@ function SignupPageInner() {
       setError("휴대폰 인증을 먼저 완료해주세요.");
       return;
     }
-    if (!agreeTos || !agreePrivacy) {
+    if (!agreeTos || !agreePrivacy || !agreeEligibility) {
       setError("필수 약관에 동의해주세요.");
-      return;
-    }
-    if (!push && !kakao) {
-      setObStep(2);
-      setError("알림 받을 방법을 하나 이상 선택해주세요.");
       return;
     }
     if (categories.length === 0) {
@@ -277,7 +279,7 @@ function SignupPageInner() {
     if (!isSupabaseConfigured || !supabase) {
       // 데모 모드: 실제 저장 없이 다음 화면으로 이동
       if (kakaoWindow) kakaoWindow.close();
-      if (push && !pushBlocker) {
+      if (agreeDealAlert && !pushBlocker) {
         const pushResult = await subscribeToPush();
         if (pushResult.status === "denied") setPushStatus("denied");
         else if (pushResult.status === "unsupported") setPushStatus("unsupported");
@@ -345,8 +347,21 @@ function SignupPageInner() {
         kakaoRedirected = true;
       }
 
+      // 2026-09-30: 동의 기록 — 회원 행이 생긴 뒤라야 저장됨(FK). 실패해도 가입은 진행하고,
+      // 필수 동의 기록이 없으면 다음 화면에서 재동의 시트(ConsentGate)가 한 번 더 받는다.
+      const consents = [
+        { type: "tos" as const, agreed: agreeTos },
+        { type: "privacy" as const, agreed: agreePrivacy },
+        { type: "eligibility" as const, agreed: agreeEligibility },
+        { type: "deal_alert_ad" as const, agreed: agreeDealAlert },
+        { type: "kakao_marketing" as const, agreed: agreeKakaoMkt },
+      ];
+      const consentSaved = await saveConsents(consents, "signup");
+      if (consentSaved.ok) announceConsents(consents.filter((c) => c.agreed), consentSaved.recordedAt);
+      else debugLog("[signup] consent save failed");
+
       let pushResult: Awaited<ReturnType<typeof subscribeToPush>> | null = null;
-      if (push && !pushBlocker) {
+      if (agreeDealAlert && !pushBlocker) {
         pushResult = await subscribeToPush();
         if (pushResult.status === "denied") setPushStatus("denied");
         else if (pushResult.status === "unsupported") setPushStatus("unsupported");
@@ -397,10 +412,11 @@ function SignupPageInner() {
   };
 
   // ---- 파생 값 (Claude Design 원안의 estAlerts/condCats/condRegions 로직과 동일) ----
-  const reqAgreed = agreeTos && agreePrivacy;
-  const anyChannel = push; // 카카오 채널 추가는 실제 알림 채널이 아니라 판정에서 제외
+  const reqAgreed = agreeTos && agreePrivacy && agreeEligibility;
+  const allAgreed = reqAgreed && agreeDealAlert && agreeKakaoMkt;
   const verified = Boolean(authUserId);
-  const step4Ready = verified && reqAgreed && anyChannel;
+  // 2026-09-30: 앱 푸시(매물 알림 동의)는 선택 — 필수 3개(약관·개인정보·이용 대상) + 휴대폰 인증만으로 가입 가능
+  const step4Ready = verified && reqAgreed;
   const estAlerts = Math.max(2, categories.length * 4 + (regions.length === 0 ? 6 : regions.length * 2));
   const condCats =
     categories.length > 0
@@ -423,9 +439,7 @@ function SignupPageInner() {
         ? "휴대폰 인증이 필요해요"
         : !reqAgreed
         ? "필수 항목에 동의해주세요"
-        : !anyChannel
-        ? "알림 받을 방법을 골라주세요"
-        : "동의하고 알림 받기 시작"
+        : "동의하고 시작하기"
       : "다음";
   const obCtaDisabled = (obStep === 1 && categories.length === 0) || (obStep === 2 && !step4Ready);
 
@@ -451,10 +465,6 @@ function SignupPageInner() {
       }
       if (!reqAgreed) {
         showToast("필수 동의 항목을 확인해주세요");
-        return;
-      }
-      if (!anyChannel) {
-        showToast("알림 받으려면 앱 푸시를 켜주세요");
         return;
       }
       submit();
@@ -800,93 +810,19 @@ function SignupPageInner() {
               </div>
             )}
 
-            {/* design-v2: 예전엔 여기 있던 "어디로 알려드릴까요?" 전체 화면 스텝을 없애고,
-                토글 자체를 이 화면(2단계) 하단으로 옮겼습니다 — 알림 권한은 별도 스텝으로
-                끊기보다 맥락 안에서 물어보는 쪽이 이탈이 적다는 벤치마킹 결과 반영.
-                기본값은 그대로 push=on/kakao=on이라 대부분은 손댈 필요 없이 지나갑니다. */}
-            <div className="mt-5" style={{ borderTop: "1px solid #EEF0F2", paddingTop: 16 }}>
-              <div className="text-xs font-bold" style={{ color: "#0B2540" }}>알림 받을 방법</div>
-              <div className="text-xs mt-0.5 mb-3" style={{ color: "#6B7480" }}>
-                {myCondText} · 주간 약 {estAlerts}건
-              </div>
-
-              <button
-                onClick={() => setPush(!push)}
-                className="w-full flex items-center gap-3 text-left rounded-2xl"
-                style={{ padding: "13px 15px", background: "#fff", border: push ? "2px solid var(--color-toggleOn)" : "1.5px solid #E4E7EB" }}
-              >
-                <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 34, height: 34, background: "#FDEEE8", fontSize: rem(16) }}>🔔</span>
-                <span className="flex-1">
-                  <span className="flex items-center gap-1.5">
-                    <span className="text-sm font-bold" style={{ color: "#0B2540" }}>앱 푸시 알림</span>
-                    <span className="text-xs font-bold" style={{ color: "#E25100" }}>[기본]</span>
-                  </span>
-                  <span className="block text-xs mt-0.5" style={{ color: "#6B7480" }}>조건에 맞는 매물을 빠르게 알려드려요</span>
-                </span>
-                <span className="rounded-full flex-shrink-0 relative" style={{ width: 42, height: 25, background: push ? "var(--color-toggleOn)" : "#D5D9DE", transition: "background .2s" }}>
-                  <span className="absolute rounded-full bg-white" style={{ top: 2, width: 19, height: 19, left: push ? 20 : 2, transition: "left .2s", boxShadow: "0 1px 3px rgba(0,0,0,.25)" }} />
-                </span>
-              </button>
-
-              {push && pushBlocker && (
-                <div className="mt-2">
-                  <PushBlockerNotice kind={pushBlocker} />
-                </div>
-              )}
-
-              {push && !pushBlocker && nonCanonicalHost && (
-                <div className="text-xs rounded-xl mt-2 leading-relaxed" style={{ color: "#6B7480", background: "#F5F6F8", padding: "10px 14px" }}>
-                  이 주소에서는 알림을 켤 수 없어요. 정식 주소에서 알림을 켜주세요 →{" "}
-                  <a href={`${SITE_URL}/signup`} className="font-bold underline" style={{ color: "#E25100" }}>
-                    {SITE_URL.replace(/^https?:\/\//, "")}
-                  </a>
-                </div>
-              )}
-
-              <button
-                onClick={() => setKakao(!kakao)}
-                className="w-full flex items-center gap-3 text-left rounded-2xl mt-2"
-                style={{ padding: "13px 15px", background: "#fff", border: kakao ? "2px solid var(--color-toggleOn)" : "1.5px solid #E4E7EB" }}
-              >
-                <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 34, height: 34, background: "#FEE500", fontSize: rem(16) }}>💬</span>
-                <span className="flex-1">
-                  <span className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-sm font-bold" style={{ color: "#0B2540", whiteSpace: "nowrap" }}>카카오톡 채널 추가</span>
-                    <span className="text-xs font-bold" style={{ color: "#6B7480", whiteSpace: "nowrap" }}>[선택]</span>
-                  </span>
-                  <span className="block text-xs mt-0.5" style={{ color: "#6B7480" }}>
-                    {kakao ? "추가됨 · 공지·이벤트 소식 받는 중" : "공지·이벤트 소식을 카톡으로 받기"}
-                  </span>
-                </span>
-                <span className="rounded-full flex-shrink-0 relative" style={{ width: 42, height: 25, background: kakao ? "var(--color-toggleOn)" : "#D5D9DE", transition: "background .2s" }}>
-                  <span className="absolute rounded-full bg-white" style={{ top: 2, width: 19, height: 19, left: kakao ? 20 : 2, transition: "left .2s", boxShadow: "0 1px 3px rgba(0,0,0,.25)" }} />
-                </span>
-              </button>
-
-              <p className="mt-2.5" style={{ fontSize: rem(14), color: "#6B7480", lineHeight: 1.6 }}>
-                맞춤 특가 알림은 앱 푸시로만 발송돼요. 카카오톡 채널은 공지·이벤트 소식용 보조 채널입니다.
-              </p>
-
-              {!anyChannel && (
-                <div
-                  className="flex items-center gap-2.5 w-full text-left rounded-2xl mt-2.5"
-                  style={{ border: "1.5px solid #E5484D", background: "#FDEEE8", padding: "13px 15px" }}
-                >
-                  <span style={{ fontSize: rem(15) }}>⚠️</span>
-                  <span className="flex-1 text-xs font-bold" style={{ color: "#E5484D", lineHeight: 1.5 }}>
-                    알림 받을 방법이 없어요 · 앱 푸시를 켜주세요
-                  </span>
-                </div>
-              )}
-            </div>
-
+            {/* 2026-09-30: 동의 항목 정리 — 앱 푸시는 [선택] 매물 알림 수신 동의(광고성 정보)로 받고, 동의하면
+                제출 때 알림 권한을 요청한다(예전엔 앱 푸시 토글이 필수 조건이었음). 카카오톡 채널 추가(친구 추가 링크)는
+                마케팅 동의와 분리한 별도 토글(기본 꺼짐). 선택 항목은 모두 기본 false, 필수는 이용약관·개인정보 2개.
+                동의 기록은 제출 때 /api/consents(member_consents, source signup)로 저장. */}
             <div className="mt-5 rounded-2xl overflow-hidden" style={{ border: "1.5px solid #E4E7EB" }}>
               <button
                 onClick={() => {
-                  const all = agreeTos && agreePrivacy && kakao;
+                  const all = allAgreed;
                   setAgreeTos(!all);
                   setAgreePrivacy(!all);
-                  setKakao(!all);
+                  setAgreeEligibility(!all);
+                  setAgreeDealAlert(!all);
+                  setAgreeKakaoMkt(!all);
                 }}
                 className="flex items-center gap-2.5 w-full text-left"
                 style={{ borderBottom: "1px solid #EEF0F2", background: "#FAFBFC", padding: "14px 15px" }}
@@ -897,59 +833,101 @@ function SignupPageInner() {
                     width: 22,
                     height: 22,
                     fontSize: rem(13),
-                    background: agreeTos && agreePrivacy && kakao ? "var(--color-brandOrange)" : "#fff",
-                    border: agreeTos && agreePrivacy && kakao ? "1.5px solid var(--color-brandOrange)" : "1.5px solid #C9CFD6",
+                    background: allAgreed ? "var(--color-brandOrange)" : "#fff",
+                    border: allAgreed ? "1.5px solid var(--color-brandOrange)" : "1.5px solid #C9CFD6",
                   }}
                 >
-                  {agreeTos && agreePrivacy && kakao ? "✓" : ""}
+                  {allAgreed ? "✓" : ""}
                 </span>
                 <span className="text-sm font-bold" style={{ color: "#0B2540" }}>약관 전체 동의</span>
               </button>
 
-              {/* 2026-09-27: 동의 체크박스에 실제 약관 내용을 볼 수 있는 경로가 없던
-                  문제 — 서비스 이용약관/개인정보 동의 항목에 "보기" 링크 추가, /privacy
-                  페이지(이용약관 요약 + 개인정보 처리방침이 같이 있음)를 새 탭으로 연결.
-                  마케팅 동의는 별도 약관 문서가 없어 링크 없이 유지. */}
               {[
-                { key: "tos", label: "서비스 이용약관 동의", tag: "필수", on: agreeTos, toggle: () => setAgreeTos(!agreeTos), href: "/privacy" },
-                { key: "privacy", label: "개인정보 수집·이용 동의", tag: "필수", on: agreePrivacy, toggle: () => setAgreePrivacy(!agreePrivacy), href: "/privacy" },
-                { key: "marketing", label: "마케팅·광고 정보 수신 (카카오톡 채널 소식)", tag: "선택", on: kakao, toggle: () => setKakao(!kakao), href: undefined },
+                { key: "tos", label: CONSENT_TEXT.tos.label, tag: "필수", on: agreeTos, toggle: () => setAgreeTos(!agreeTos), href: CONSENT_TEXT.tos.href },
+                { key: "privacy", label: CONSENT_TEXT.privacy.label, tag: "필수", on: agreePrivacy, toggle: () => setAgreePrivacy(!agreePrivacy), view: () => setViewingPrivacyText(true) },
+                { key: "eligibility", label: CONSENT_TEXT.eligibility.label, tag: "필수", on: agreeEligibility, toggle: () => setAgreeEligibility(!agreeEligibility) },
+                { key: "deal_alert_ad", label: CONSENT_TEXT.deal_alert_ad.label, desc: CONSENT_TEXT.deal_alert_ad.desc, tag: "선택", on: agreeDealAlert, toggle: () => setAgreeDealAlert(!agreeDealAlert) },
+                { key: "kakao_marketing", label: CONSENT_TEXT.kakao_marketing.label, desc: CONSENT_TEXT.kakao_marketing.desc, tag: "선택", on: agreeKakaoMkt, toggle: () => setAgreeKakaoMkt(!agreeKakaoMkt) },
               ].map((a) => (
-                <div
-                  key={a.key}
-                  className="flex items-center w-full"
-                  style={{ borderBottom: "1px solid #F1F3F5", background: "#fff" }}
-                >
-                  <button
-                    onClick={a.toggle}
-                    className="flex items-center gap-2.5 flex-1 min-w-0 text-left"
-                    style={{ padding: "12px 15px" }}
-                  >
+                <div key={a.key} className="flex items-start w-full" style={{ borderBottom: "1px solid #F1F3F5", background: "#fff" }}>
+                  <button onClick={a.toggle} className="flex items-start gap-2.5 flex-1 min-w-0 text-left" style={{ padding: "12px 15px" }}>
                     <span
                       className="rounded flex items-center justify-center flex-shrink-0 text-white font-black"
-                      style={{ width: 20, height: 20, fontSize: rem(12), background: a.on ? "var(--color-brandOrange)" : "#fff", border: a.on ? "1.5px solid var(--color-brandOrange)" : "1.5px solid #C9CFD6" }}
+                      style={{ width: 20, height: 20, marginTop: 1, fontSize: rem(12), background: a.on ? "var(--color-brandOrange)" : "#fff", border: a.on ? "1.5px solid var(--color-brandOrange)" : "1.5px solid #C9CFD6" }}
                     >
                       {a.on ? "✓" : ""}
                     </span>
-                    <span className="text-xs font-bold flex-shrink-0" style={{ color: a.tag === "필수" ? "#E25100" : "#6B7480" }}>[{a.tag}]</span>
-                    <span className="flex-1" style={{ fontSize: rem(14), lineHeight: 1.45, color: a.on ? "#1A1F26" : "#6B7480" }}>{a.label}</span>
+                    <span className="flex-1 min-w-0">
+                      <span style={{ fontSize: rem(14), lineHeight: 1.45, color: a.on ? "#1A1F26" : "#6B7480" }}>
+                        <b style={{ color: a.tag === "필수" ? "#E25100" : "#6B7480" }}>[{a.tag}]</b> {a.label}
+                      </span>
+                      {a.desc && (
+                        <span className="block mt-1" style={{ fontSize: rem(14), color: "#6B7480", lineHeight: 1.5 }}>
+                          {a.desc}
+                        </span>
+                      )}
+                    </span>
                   </button>
                   {a.href && (
-                    <a
-                      href={a.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-shrink-0 font-bold"
-                      style={{ fontSize: rem(14), color: "#9AA3AD", padding: "12px 15px 12px 4px" }}
-                    >
+                    <a href={a.href} target="_blank" rel="noopener noreferrer" className="flex-shrink-0 font-bold" style={{ fontSize: rem(14), color: "#9AA3AD", padding: "12px 15px 12px 4px" }}>
                       보기 ›
                     </a>
+                  )}
+                  {a.view && (
+                    <button type="button" onClick={a.view} className="flex-shrink-0 font-bold" style={{ fontSize: rem(14), color: "#9AA3AD", padding: "12px 15px 12px 4px" }}>
+                      보기 ›
+                    </button>
                   )}
                 </div>
               ))}
             </div>
+            {viewingPrivacyText && <PrivacyConsentTextSheet onClose={() => setViewingPrivacyText(false)} />}
+
+            {agreeDealAlert && pushBlocker && (
+              <div className="mt-2">
+                <PushBlockerNotice kind={pushBlocker} />
+              </div>
+            )}
+            {agreeDealAlert && !pushBlocker && nonCanonicalHost && (
+              <div className="text-xs rounded-xl mt-2 leading-relaxed" style={{ color: "#6B7480", background: "#F5F6F8", padding: "10px 14px" }}>
+                이 주소에서는 알림을 켤 수 없어요. 정식 주소에서 알림을 켜주세요 →{" "}
+                <a href={`${SITE_URL}/signup`} className="font-bold underline" style={{ color: "#E25100" }}>
+                  {SITE_URL.replace(/^https?:\/\//, "")}
+                </a>
+              </div>
+            )}
+            {agreeDealAlert && (
+              <p className="mt-2" style={{ fontSize: rem(14), color: "#6B7480" }}>
+                {myCondText} · 주간 약 {estAlerts}건
+              </p>
+            )}
+
+            {/* 카카오톡 채널 추가 — 친구 추가 링크를 여는 것뿐이라 수신 동의와 별개 (기본 꺼짐) */}
+            <button
+              onClick={() => setKakao(!kakao)}
+              className="w-full flex items-center gap-3 text-left rounded-2xl mt-3"
+              style={{ padding: "13px 15px", background: "#fff", border: kakao ? "2px solid var(--color-toggleOn)" : "1.5px solid #E4E7EB" }}
+            >
+              <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 34, height: 34, background: "#FEE500", fontSize: rem(16) }}>💬</span>
+              <span className="flex-1">
+                <span className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-sm font-bold" style={{ color: "#0B2540", whiteSpace: "nowrap" }}>카카오톡 채널 추가</span>
+                  <span className="text-xs font-bold" style={{ color: "#6B7480", whiteSpace: "nowrap" }}>[선택]</span>
+                </span>
+                <span className="block text-xs mt-0.5" style={{ color: "#6B7480" }}>
+                  {kakao ? "가입 완료 때 채널 추가 화면이 열려요" : "공지·이벤트 소식을 카톡으로 받기"}
+                </span>
+              </span>
+              <span className="rounded-full flex-shrink-0 relative" style={{ width: 42, height: 25, background: kakao ? "var(--color-toggleOn)" : "#D5D9DE", transition: "background .2s" }}>
+                <span className="absolute rounded-full bg-white" style={{ top: 2, width: 19, height: 19, left: kakao ? 20 : 2, transition: "left .2s", boxShadow: "0 1px 3px rgba(0,0,0,.25)" }} />
+              </span>
+            </button>
+
+            <p className="mt-2.5" style={{ fontSize: rem(14), color: "#6B7480", lineHeight: 1.6 }}>
+              맞춤 특가 알림은 앱 푸시로만 발송돼요. 카카오톡 채널은 공지·이벤트 소식용 보조 채널입니다.
+            </p>
             <p className="mt-3" style={{ fontSize: rem(14), color: "#6B7480", lineHeight: 1.6 }}>
-              개인정보는 재고 알림 발송·본인 확인 목적으로만 사용하며, 알림 해지 시 즉시 파기합니다. 사업자 인증은 MY에서 언제든 추가할 수 있어요.
+              개인정보는 회원 관리·매물 알림 발송·본인 확인에 사용하며, 탈퇴 시 관계 법령에 따라 보관하는 항목을 제외하고 지체 없이 파기합니다.
             </p>
 
             {pushStatus === "denied" && (

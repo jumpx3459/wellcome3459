@@ -1053,3 +1053,58 @@ update public.urgent_notices set push_sent_at = coalesce(created_at, now()) wher
 -- 확인: 두 값 모두 0이어야 함
 --   select (select count(*) from public.deals where push_sent_at is null) as deals_null,
 --          (select count(*) from public.urgent_notices where push_sent_at is null) as notices_null;
+
+-- 2026-09-30: 수신·약관 동의 기록 — src/lib/consent.ts(값 목록), /api/consents(기록), sendPush.ts(매물 알림 동의자만 발송).
+-- 한 줄씩 추가만 한다(수정·삭제 없음). 타입별 가장 최근 행이 현재 상태 → member_consent_latest 뷰.
+-- 동의 종류는 docs/legal/consent-texts-2026-10-07.md 1번. 지금 받는 것: tos·privacy·eligibility(필수, 가입·재동의),
+-- deal_alert_ad·kakao_marketing(선택). 아직 받지 않음: night_ad(예약), seller_terms(판매 신청, 커밋 E), biz_info(사업자 인증, 공개 후).
+-- 2026-09-30 대표 운영 DB 실행 완료 (tables 2 · RLS true · policy 1 · security_invoker=true · rows 0).
+--    (sendDealPush·sendNoticePush가 이 뷰를 조회 — 없으면 consent_error로 발송이 멈춤).
+create table if not exists public.member_consents (
+  id bigint generated always as identity primary key,
+  member_id uuid not null references public.members(id) on delete cascade,
+  consent_type text not null check (consent_type in ('tos','privacy','eligibility','deal_alert_ad','night_ad','kakao_marketing','seller_terms','biz_info')),
+  agreed boolean not null,
+  terms_version text not null,
+  source text not null check (source in ('signup','push_enable','reconsent','mypage')),
+  user_agent text,
+  created_at timestamptz not null default now()
+);
+create index if not exists member_consents_member_type_created_idx
+  on public.member_consents (member_id, consent_type, created_at desc);
+
+-- RLS: 본인 조회만. insert/update/delete 정책 없음 → 서버(service role, /api/consents)만 기록.
+alter table public.member_consents enable row level security;
+drop policy if exists "member_consents_self_select" on public.member_consents;
+create policy "member_consents_self_select" on public.member_consents
+  for select using (auth.uid() = member_id);
+
+-- 타입별 최신 상태. security_invoker라 조회하는 사람의 RLS가 그대로 적용(회원은 본인 것만, service role은 전체).
+create or replace view public.member_consent_latest
+with (security_invoker = true) as
+select distinct on (member_id, consent_type)
+  member_id, consent_type, agreed, terms_version, source, created_at
+from public.member_consents
+order by member_id, consent_type, created_at desc, id desc;
+
+-- 확인용 (실행 후):
+--   select table_name from information_schema.tables where table_schema = 'public' and table_name in ('member_consents','member_consent_latest');
+--   select relname, relrowsecurity from pg_class where relname = 'member_consents';            -- relrowsecurity = true
+--   select policyname, cmd, qual from pg_policies where tablename = 'member_consents';          -- member_consents_self_select · SELECT 1개만
+--   select reloptions from pg_class where relname = 'member_consent_latest';                   -- {security_invoker=true}
+--   select pg_get_constraintdef(oid) from pg_constraint
+--    where conrelid = 'public.member_consents'::regclass and contype = 'c';                    -- consent_type 8개 · source 4개
+--   select count(*) from public.member_consents;                                               -- 0 (기존 회원은 로그인 시 재동의 시트)
+
+-- 2026-09-30: 비회원 폼 개인정보 수집·이용 동의 기록 — 매물 상세 "번호만 남기기"(quick_leads)·구매 희망 등록(buy_requests).
+-- 비회원이라 member_consents(members FK)에 못 남겨서 각 행에 동의 시각·문구 버전을 붙인다.
+-- 화면·API는 이미 동의(privacyConsent=true)를 필수로 받음. API가 이 컬럼을 채우는 건 후속 커밋.
+-- 2026-09-30 대표 운영 DB 실행 완료 (consent 컬럼 4개 확인).
+alter table public.quick_leads  add column if not exists privacy_consented_at timestamptz;
+alter table public.quick_leads  add column if not exists privacy_consent_version text;
+alter table public.buy_requests add column if not exists privacy_consented_at timestamptz;
+alter table public.buy_requests add column if not exists privacy_consent_version text;
+-- 확인:
+--   select table_name, column_name, data_type from information_schema.columns
+--    where table_schema = 'public' and table_name in ('quick_leads','buy_requests')
+--      and column_name in ('privacy_consented_at','privacy_consent_version');           -- 4행
