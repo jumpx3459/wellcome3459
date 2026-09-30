@@ -8,6 +8,12 @@
 
 - **정식 공개: 2026-10-07** (2026-09-30 대표 결정으로 10/1 → 10/7 연기). 아래 백로그의 "공개 후 작업"은 10/7 기준.
 
+## 결정 기록 (2026-09-30)
+
+- **작업 순서: 커밋 H → E → G → F → D.**
+- **비회원 연락처 보관: 수집일로부터 90일 후 자동 삭제** — 커밋 G에서 구현.
+- **기존 회원 재동의 공지는 하지 않음** — 다음 방문 때 재동의 시트(ConsentGate)로만 받음.
+
 ## 용어 기준 (2026-09-29)
 
 - **소비기한**: "유통기한"은 쓰지 않는다 (2023년 식품 표시제 변경). 재고 유형 near_expiry 라벨은 "소비기한 임박"(값은 그대로),
@@ -435,8 +441,9 @@ curl로 확인. 단, 이 세션엔 브라우저 접근이 없어 육안 확인�
   (예: notification_logs 기준 미발송 구독자만 재시도)
 - [ ] **할인율 근거 검수** (2026-09-30 백로그): 푸시·카드의 할인율(예: 36%↓)은 판매자가 입력한 정상가(original_price) 기준 —
   관리자 검수(매물 등록 확정) 때 정상가 근거(견적서·납품가 등)를 확인하는 절차/체크 항목 추가
-- [ ] **admin/page.tsx:306 린트 에러 (기존)** (2026-09-30 백로그): `SessionCountdown`의 `useState(expiresAt - Date.now())`가
-  `react-hooks/purity` 에러(렌더 중 Date.now 호출). 빌드는 통과, eslint만 실패 — 초기값을 useEffect에서 계산하는 식으로 정리
+- [ ] **admin/page.tsx `SessionCountdown` 린트 에러 (기존, 리디자인 이전부터)** (2026-09-30 백로그, 예전 :246 항목과 합침 — 지금 305행):
+  `useState(expiresAt - Date.now())`가 `react-hooks/purity` 에러(렌더 중 Date.now 호출). 빌드는 통과, eslint만 실패 —
+  초기값을 useEffect에서 계산하거나 mypage `dealUrgencyState()`처럼 `Date.now()`를 헬퍼로 감싸서 정리
 - [ ] **deploy.yml `paths-ignore` (`*.md`, `docs/**`)** (2026-09-30 백로그): 지금은 PROGRESS.md 같은 문서만 바뀐 push도
   운영 배포가 한 번 더 돎 → 문서만 바뀐 push는 배포 생략
 - [ ] **`.gitattributes` 줄바꿈 통일 (`* text=auto eol=lf`)** (보류, 2026-09-30 백로그): 저장소는 LF인데 이 PC는
@@ -451,7 +458,7 @@ curl로 확인. 단, 이 세션엔 브라우저 접근이 없어 육안 확인�
   카운터를 줄이도록 보완(`32e2d3e`). 앞으로가기도 감소로 처리되는 등 어긋나도 항상 "홈으로" 쪽으로만 틀려 앱 밖 이탈은 없음
 - [x] `create_admin_user` anon 실행 불가 확인 (2026-09-28, 제약 위반 인자로 안전하게 호출 → 42501)
 - [ ] 인덱스 7개(0012) 생성 여부 — SQL Editor에서 `select indexname from pg_indexes where indexname like '%_idx';`로 확인
-- [ ] 약관 "보기"가 이용약관·개인정보 모두 `/privacy`로 연결됨 — 이용약관 전문이 생기면 `/terms` 분리
+- [x] 약관 "보기"가 이용약관·개인정보 모두 `/privacy`로 연결됨 → PR #21(2026-09-30)에서 이용약관은 `/terms`(약관 전문), 개인정보는 수집·이용 전문 시트로 분리 완료
 - [ ] **`/api/upload`가 로그인 없이 누구나 호출 가능** (2026-09-27): 프로필 사진 업로드 추가하며
   발견 — sell 페이지가 비회원 매물 등록(`memberId` null)을 의도적으로 허용해서 이 API도 비회원이
   씀 → 단순 로그인 필수화는 그 흐름을 깨뜨림. 현재는 위험(익명 업로드 남용) 감수하고 유지하기로
@@ -473,9 +480,6 @@ curl로 확인. 단, 이 세션엔 브라우저 접근이 없어 육안 확인�
   `AppShell.tsx`의 마운트, `signup/page.tsx`·`mypage/page.tsx`의 `debugLog()`
   호출부) 통째로 제거할 것. 현재는 프로덕션(dumpingjumping.com)에서는 hostname
   가드로 패널이 안 보이고, 프리뷰/로컬에서는 계속 보임
-- [ ] `admin/page.tsx:246` `SessionCountdown`의 `useState(expiresAt - Date.now())` —
-  react-hooks/purity 에러 (리디자인 이전부터 있던 기존 버그, design-v2 범위 밖이라
-  손 안 댐). mypage의 `dealUrgencyState()` 헬퍼 패턴처럼 `Date.now()`를 감싸서 고칠 것
 - [x] PR #12 병합됨 (2026-09-14) — `create_admin_user`/`update_admin_password` 함수가 Supabase에 실제로 생성돼 있는지는 git 이력만으론 확인 불가, 관리자 임명 기능 써볼 때 한 번 확인 권장
 - [x] PR #11 병합됨 — `admin_users.phone` 컬럼 추가 + 기존 관리자 계정에 실제 번호 채우기는 여전히 Supabase SQL Editor에서 수동 실행 필요 (schema.sql 해당 주석 참고, 아직 실행 확인 안 됨)
 - [x] Supabase 대시보드 → Storage에 `business-licenses` 버킷 생성 완료 (2026-09-03, 사용자 확인)

@@ -5,7 +5,7 @@ import { getPushState, subscribeToPush, savePushSubscription, fetchPushStatus } 
 import { SITE_URL } from "@/lib/siteUrl";
 import { rem } from "@/lib/rem";
 import PushBlockerNotice from "@/components/PushBlockerNotice";
-import { UI_CARD_TITLE, UI_DESC, UI_LINK } from "@/lib/uiText";
+import { UI_CARD_TITLE, UI_DESC, UI_LINK, BTN_CLASS, btnStyle } from "@/lib/uiText";
 import ConsentSheet from "@/components/ConsentSheet";
 import { CONSENT_TEXT } from "@/lib/consent";
 import { CONSENT_CHANGED_EVENT, announceConsents, fetchMyConsents, saveConsents } from "@/lib/consentClient";
@@ -17,6 +17,8 @@ import { CONSENT_CHANGED_EVENT, announceConsents, fetchMyConsents, saveConsents 
 // 조용한 재저장 실패는 화면에 띄우지 않고(콘솔만), 실패 문구는 [알림 켜기]를 눌렀을 때만.
 // 2026-09-30: 매물 알림 수신 동의(deal_alert_ad) 최신 값이 true가 아니면 [알림 켜기] 전에 동의 시트 →
 // 동의 저장(source push_enable)과 구독을 같은 클릭에서 시작(권한 요청이 클릭 안에 있어야 해서 저장을 기다리지 않음).
+// 2026-09-30: 기기는 구독 중인데 동의가 없으면 "동의 필요" 배지 + [동의하고 알림 받기](source mypage) —
+// 초록 "알림 받는 중"은 구독 + 동의가 모두 있을 때만.
 type CardState = "loading" | "inapp" | "ios_needs_install" | "unsupported" | "noncanonical" | "denied" | "off" | "on" | "optedOut" | "saveFailed";
 
 export default function PushStatusCard() {
@@ -92,6 +94,19 @@ export default function PushStatusCard() {
     else setConsentError("매물 알림 수신 동의 저장에 실패했어요. 다시 시도해주세요.");
   };
 
+  // 구독은 이미 있음 — 동의만 저장
+  const agreeOnly = async () => {
+    if (busy) return;
+    setConsentError(null);
+    setBusy(true);
+    const consents = [{ type: "deal_alert_ad" as const, agreed: true }];
+    const r = await saveConsents(consents, "mypage");
+    setBusy(false);
+    setSheetOpen(false);
+    if (r.ok) announceConsents(consents, r.recordedAt);
+    else setConsentError("매물 알림 수신 동의 저장에 실패했어요. 다시 시도해주세요.");
+  };
+
   const subscribe = async () => {
     setBusy(true);
     try {
@@ -116,6 +131,7 @@ export default function PushStatusCard() {
 
   if (state === "loading") return null;
   const thisDeviceOff = state !== "on";
+  const needsConsent = state === "on" && dealConsent === false;
 
   return (
     <div className="rounded-2xl p-4" style={{ border: "1px solid #E4E7EB", background: "#fff" }}>
@@ -125,9 +141,14 @@ export default function PushStatusCard() {
           {/* 2026-09-29: 배지를 제목 옆으로 — 오른쪽에 두면 설명이 3줄로 꺾였음. 설명은 최대 2줄 */}
           <span className="flex items-center gap-1.5 flex-wrap">
             <span style={UI_CARD_TITLE}>이 기기 푸시 알림</span>
-            {state === "on" && (
+            {state === "on" && dealConsent === true && (
               <span className="rounded-full font-bold whitespace-nowrap" style={{ fontSize: rem(14), padding: "2px 9px", background: "#E8F8EC", color: "#1D8A44" }}>
                 알림 받는 중
+              </span>
+            )}
+            {needsConsent && (
+              <span className="rounded-full font-bold whitespace-nowrap" style={{ fontSize: rem(14), padding: "2px 9px", background: "#FDEEE8", color: "#E25100" }}>
+                동의 필요
               </span>
             )}
           </span>
@@ -156,6 +177,21 @@ export default function PushStatusCard() {
         )}
       </div>
 
+      {needsConsent && (
+        <button
+          type="button"
+          onClick={() => {
+            setConsentError(null);
+            setSheetOpen(true);
+          }}
+          disabled={busy}
+          className={`${BTN_CLASS} w-full mt-3`}
+          style={btnStyle("primary")}
+        >
+          {busy ? "저장 중…" : "동의하고 알림 받기"}
+        </button>
+      )}
+
       {consentError && (
         <p className="mt-3 font-medium" style={{ fontSize: rem(14), color: "var(--color-orange)" }}>{consentError}</p>
       )}
@@ -164,9 +200,10 @@ export default function PushStatusCard() {
         <ConsentSheet
           title={CONSENT_TEXT.deal_alert_ad.pushTitle}
           items={[{ type: "deal_alert_ad", required: true, tag: "선택", label: CONSENT_TEXT.deal_alert_ad.label, desc: CONSENT_TEXT.deal_alert_ad.pushDesc }]}
-          primaryLabel="동의하고 알림 켜기"
-          pendingLabel="알림을 켜려면 동의해주세요"
-          onSubmit={agreeAndEnable}
+          primaryLabel={needsConsent ? "동의하고 알림 받기" : "동의하고 알림 켜기"}
+          pendingLabel={needsConsent ? "알림을 받으려면 동의해주세요" : "알림을 켜려면 동의해주세요"}
+          onSubmit={needsConsent ? agreeOnly : agreeAndEnable}
+          busy={needsConsent && busy}
           onCancel={() => setSheetOpen(false)}
         />
       )}

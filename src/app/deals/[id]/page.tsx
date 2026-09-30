@@ -21,6 +21,7 @@ import GuestPrivacyConsent from "@/components/GuestPrivacyConsent";
 import { isLumpSum } from "@/lib/priceUnit";
 import PhotoCarousel, { type PhotoCarouselHandle } from "@/components/PhotoCarousel";
 import PhotoViewer from "@/components/PhotoViewer";
+import ZoomTip from "@/components/ZoomTip";
 import FloatingCTA, { FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
@@ -331,6 +332,8 @@ function DealDetailPageInner() {
           </div>
         )}
       </div>
+
+      <ZoomTip />
 
       {/* 2026-09-29: 사진이 있으면 화면 폭 전체 1:1 + 옆으로 넘기기 + "1/N", 누르면 전체 화면(핀치 확대).
           사진이 없으면 예전처럼 3:1 자리표시 */}

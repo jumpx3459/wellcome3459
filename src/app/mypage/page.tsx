@@ -13,6 +13,7 @@ import EcosystemGrid, { SECTION_TITLE_STYLE, SERVICES_ANCHOR_ID, scrollToService
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import PushStatusCard from "@/components/PushStatusCard";
 import ConsentToggles from "@/components/ConsentToggles";
+import { CONSENT_CHANGED_EVENT, fetchMyConsents } from "@/lib/consentClient";
 import { MESSAGES_ENABLED, QUOTES_ENABLED } from "@/lib/features";
 import QuotesTeaserCard from "@/components/QuotesTeaserCard";
 import MyBuyRequests from "@/components/MyBuyRequests";
@@ -85,6 +86,9 @@ export default function MyPage() {
   // 막기 위해 기본 꺼짐, 회원이 직접 켜야만 받는다.
   const [noticeAlertsOptIn, setNoticeAlertsOptIn] = useState(false);
   const [noticeAlertsSaving, setNoticeAlertsSaving] = useState(false);
+  // 2026-09-30: 긴급 공지도 sendNoticePush가 deal_alert_ad 동의 회원에게만 보냄 — 동의 없으면 토글을 흐리게(값은 그대로 둠)
+  const [dealConsent, setDealConsent] = useState<boolean | null>(null); // null = 모름(조회 전·실패)
+  const noticeLocked = dealConsent === false;
   const [interests, setInterests] = useState<InterestItem[]>([]);
   const [alertLog, setAlertLog] = useState<AlertLogItem[]>([]);
   const [alertLogCount, setAlertLogCount] = useState(0);
@@ -114,6 +118,16 @@ export default function MyPage() {
   // 별도 테이블/해싱 없이 여기서 설정 → /login에서 signInWithPassword로 사용.
   const [settingPassword, setSettingPassword] = useState(false);
   // 로그인 화면 권유 시트의 [지금 만들기] → /mypage#password: 비밀번호 설정을 바로 펼침
+  useEffect(() => {
+    const load = () =>
+      fetchMyConsents().then((c) => {
+        if (c) setDealConsent(Boolean(c.deal_alert_ad?.agreed));
+      });
+    load();
+    window.addEventListener(CONSENT_CHANGED_EVENT, load);
+    return () => window.removeEventListener(CONSENT_CHANGED_EVENT, load);
+  }, []);
+
   useEffect(() => {
     if (typeof window !== "undefined" && window.location.hash === "#password") setSettingPassword(true);
   }, []);
@@ -1377,8 +1391,8 @@ export default function MyPage() {
           <button
             type="button"
             onClick={toggleNoticeAlerts}
-            disabled={noticeAlertsSaving}
-            className="w-full flex items-center gap-3 disabled:opacity-60"
+            disabled={noticeAlertsSaving || noticeLocked}
+            className={`w-full flex items-center gap-3 ${noticeLocked ? "disabled:opacity-45" : "disabled:opacity-60"}`}
           >
             {/* 2026-09-29: 설명이 토글 밑으로 겹치던 문제 — 글자 영역(flex-1)과 토글(shrink-0) 분리 */}
             <span className="flex-1 min-w-0 text-left">
@@ -1409,6 +1423,11 @@ export default function MyPage() {
               />
             </span>
           </button>
+          {noticeLocked && (
+            <p className="mt-2 font-medium" style={{ fontSize: rem(14), color: "#4B5563" }}>
+              매물 알림 수신 동의 후 받을 수 있어요
+            </p>
+          )}
         </div>
 
         {alertLog.length > 0 && (
