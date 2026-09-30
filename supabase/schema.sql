@@ -1166,7 +1166,9 @@ end $$;
 --     임베드: mypage interests→deals(…)·notification_logs→deals(…)·messages→deals(title, seller_display_name)
 --     realtime 구독 없음. 트리거·RPC(sync_deal_*·admin_category_kpis)는 security definer라 권한 영향 없음. 서버 라우트는 service role.
 
--- 2026-09-30 (커밋 G): 비회원 연락처 — 수집일(created_at)로부터 90일 후 자동 삭제. ⚠ 운영 DB 미실행 (대표 실행).
+-- 2026-09-30 (커밋 G): 비회원 연락처 — 수집일(created_at)로부터 90일 후 자동 삭제.
+-- 2026-09-30 대표 운영 DB 실행 완료: cron purge-nonmember-contacts '10 18 * * *' active · nullable 4 · 함수 실행 권한 anon·authenticated false ·
+--   카운트 합계 변화 없음(interest 3 · quick_lead 2).
 -- 대상: quick_leads 전체(비회원 원클릭 리드), buy_requests 중 member_id가 없는 행(비회원 구매 희망).
 -- 행은 지우지 않고 연락처만 null + anonymized_at 기록 → 관심 수 카운트(interest_count·quick_lead_count)는 그대로.
 --   (카운트 트리거 trg_quick_leads_sync_interest_count·trg_quick_leads_sync_quick_lead_count는 "after insert or delete"만 — update엔 반응 안 함)
