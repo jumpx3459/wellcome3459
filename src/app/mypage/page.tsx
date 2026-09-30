@@ -12,6 +12,7 @@ import BusinessLicenseUploader from "@/components/BusinessLicenseUploader";
 import EcosystemGrid, { SECTION_TITLE_STYLE, SERVICES_ANCHOR_ID, scrollToServicesIfHash } from "@/components/EcosystemGrid";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import PushStatusCard from "@/components/PushStatusCard";
+import ConsentToggles from "@/components/ConsentToggles";
 import { MESSAGES_ENABLED, QUOTES_ENABLED } from "@/lib/features";
 import QuotesTeaserCard from "@/components/QuotesTeaserCard";
 import MyBuyRequests from "@/components/MyBuyRequests";
@@ -1259,6 +1260,7 @@ export default function MyPage() {
 
         <div id="alerts" className="border-t border-gray200 pt-5 flex flex-col gap-3">
           <PushStatusCard />
+          <ConsentToggles />
           <div>
           <button
             type="button"

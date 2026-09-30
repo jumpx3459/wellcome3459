@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import { matchesConditions } from "@/lib/dealMatching";
 import { formatDealPrice } from "@/lib/format";
@@ -13,6 +13,21 @@ if (vapidPublic && vapidPrivate) {
 
 // 2026-09-30: 광고성 정보 표시 — 제목 앞 "(광고)", 본문 끝에 수신거부(알림 끄기) 방법.
 const OPT_OUT_LINE = "알림 끄기: MY > 이 기기 푸시 알림";
+
+// 2026-09-30: 매물 알림 수신 동의(deal_alert_ad) 최신 값이 agreed=true인 회원만 발송 대상 — 기록 없으면 제외.
+// 조회 실패는 null(발송 중단) — 선점(push_sent_at) 전에 불러서, 실패해도 나중에 다시 보낼 수 있게 한다.
+async function fetchDealAlertAgreedIds(supabaseAdmin: SupabaseClient): Promise<Set<string> | null> {
+  const { data, error } = await supabaseAdmin
+    .from("member_consent_latest")
+    .select("member_id")
+    .eq("consent_type", "deal_alert_ad")
+    .eq("agreed", true);
+  if (error) {
+    console.error("[sendPush] consent_error", error);
+    return null;
+  }
+  return new Set((data ?? []).map((r) => (r as { member_id: string }).member_id));
+}
 
 // 2026-09-30: 야간(한국 시간 21:00~07:59) 발송 보류 — 이 시간에 등록된 매물·공지는 push_sent_at을 비워 두고,
 // 아침 8시 /api/cron/morning-push가 모아서 보낸다.
@@ -65,6 +80,9 @@ export async function sendDealPush(dealId: string) {
     console.info(`[sendDealPush] hold deal=${deal.id} — 야간(21~08시), 아침 8시 발송 대기`);
     return { sentCount: 0, total: 0, held: true };
   }
+
+  const agreedIds = await fetchDealAlertAgreedIds(supabaseAdmin);
+  if (!agreedIds) return { sentCount: 0, total: 0, skipped: "consent_error" };
 
   // 먼저 차지한 쪽만 발송 (push_sent_at is null 조건부 update)
   const { data: claimed, error: claimError } = await supabaseAdmin
@@ -125,7 +143,7 @@ export async function sendDealPush(dealId: string) {
         { category: deal.category_id, region: deal.region_id },
         [deal.category_id],
         regionsByMember.get(id) ?? []
-      ) && !optedOut.has(id)
+      ) && !optedOut.has(id) && agreedIds.has(id)
   );
 
   if (memberIds.length === 0) {
@@ -206,6 +224,8 @@ export async function sendNoticePush(noticeId: string) {
     console.info(`[sendNoticePush] hold notice=${notice.id} — 야간(21~08시), 아침 8시 발송 대기`);
     return { sentCount: 0, total: 0, held: true };
   }
+  const agreedIds = await fetchDealAlertAgreedIds(supabaseAdmin);
+  if (!agreedIds) return { sentCount: 0, total: 0, skipped: "consent_error" };
   const { data: claimed, error: claimError } = await supabaseAdmin
     .from("urgent_notices")
     .update({ push_sent_at: new Date().toISOString() })
@@ -226,7 +246,8 @@ export async function sendNoticePush(noticeId: string) {
     .eq("notice_alerts_opt_in", true)
     .eq("push_opt_out", false);
 
-  let memberIds = (optedIn ?? []).map((m) => m.id);
+  // 긴급 공지 opt-in에 더해 매물 알림 수신 동의(광고성 정보)도 있어야 함
+  let memberIds = (optedIn ?? []).map((m) => m.id).filter((id) => agreedIds.has(id));
 
   if (notice.region_id && memberIds.length > 0) {
     const { data: regionRows } = await supabaseAdmin

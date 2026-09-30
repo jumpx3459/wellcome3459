@@ -1053,3 +1053,42 @@ update public.urgent_notices set push_sent_at = coalesce(created_at, now()) wher
 -- 확인: 두 값 모두 0이어야 함
 --   select (select count(*) from public.deals where push_sent_at is null) as deals_null,
 --          (select count(*) from public.urgent_notices where push_sent_at is null) as notices_null;
+
+-- 2026-09-30: 수신·약관 동의 기록 — src/lib/consent.ts(값 목록), /api/consents(기록), sendPush.ts(매물 알림 동의자만 발송).
+-- 한 줄씩 추가만 한다(수정·삭제 없음). 타입별 가장 최근 행이 현재 상태 → member_consent_latest 뷰.
+-- night_ad는 지금 받지 않음(야간 21~08시엔 발송 자체를 하지 않음) — 나중에 야간 발송이 필요할 때를 위한 값.
+-- ⚠️ 아직 실행 안 함 — 대표가 Supabase SQL Editor에서 실행. PR merge(배포) 전에 실행해야 함
+--    (sendDealPush·sendNoticePush가 이 뷰를 조회 — 없으면 consent_error로 발송이 멈춤).
+create table if not exists public.member_consents (
+  id bigint generated always as identity primary key,
+  member_id uuid not null references public.members(id) on delete cascade,
+  consent_type text not null check (consent_type in ('tos','privacy','deal_alert_ad','night_ad','kakao_marketing')),
+  agreed boolean not null,
+  terms_version text not null,
+  source text not null check (source in ('signup','push_enable','reconsent','mypage')),
+  user_agent text,
+  created_at timestamptz not null default now()
+);
+create index if not exists member_consents_member_type_created_idx
+  on public.member_consents (member_id, consent_type, created_at desc);
+
+-- RLS: 본인 조회만. insert/update/delete 정책 없음 → 서버(service role, /api/consents)만 기록.
+alter table public.member_consents enable row level security;
+drop policy if exists "member_consents_self_select" on public.member_consents;
+create policy "member_consents_self_select" on public.member_consents
+  for select using (auth.uid() = member_id);
+
+-- 타입별 최신 상태. security_invoker라 조회하는 사람의 RLS가 그대로 적용(회원은 본인 것만, service role은 전체).
+create or replace view public.member_consent_latest
+with (security_invoker = true) as
+select distinct on (member_id, consent_type)
+  member_id, consent_type, agreed, terms_version, source, created_at
+from public.member_consents
+order by member_id, consent_type, created_at desc, id desc;
+
+-- 확인용 (실행 후):
+--   select table_name from information_schema.tables where table_schema = 'public' and table_name in ('member_consents','member_consent_latest');
+--   select relname, relrowsecurity from pg_class where relname = 'member_consents';            -- relrowsecurity = true
+--   select policyname, cmd, qual from pg_policies where tablename = 'member_consents';          -- member_consents_self_select · SELECT 1개만
+--   select reloptions from pg_class where relname = 'member_consent_latest';                   -- {security_invoker=true}
+--   select count(*) from public.member_consents;                                               -- 0 (기존 회원은 로그인 시 재동의 시트)

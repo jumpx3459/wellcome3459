@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import BottomNav from "./BottomNav";
 import InAppBanner from "./InAppBanner";
 import AuthExpiredNotice from "./AuthExpiredNotice";
+import ConsentGate from "./ConsentGate";
 import DebugPanel from "./DebugPanel"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 import { markAppNavigation, markAppBack } from "@/lib/appNav";
 import { supabase } from "@/lib/supabase";
@@ -99,6 +100,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {!isAdmin && !isPartnerDemo && !isEnglish && <BottomNav />}
       {/* 2026-09-29: 토큰 갱신 후에도 401이면 "다시 로그인해주세요" (authFetch가 이벤트 발생) */}
       <AuthExpiredNotice />
+      {/* 2026-09-30: 기존 회원 약관 재동의 시트 + 동의/철회 직후 안내 */}
+      <ConsentGate />
       <DebugPanel />
     </div>
   );

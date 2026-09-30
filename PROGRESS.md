@@ -61,6 +61,21 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
   카카오 채널 토글 `kakao` 초기값 true), 푸시 본문에 "(광고)"·수신거부 안내 없음, 21~08시 발송 제한 없음.
   → 푸시 쪽 3개는 아래 커밋 B(PR #20)로 해결. **동의 저장(컬럼·시각)은 아직 미착수.**
 
+## 최근 작업 (2026-09-30) — 커밋 C: 수신 동의 기록·가입/알림 켜기·약관 정리 (브랜치 `fix/consent-records`, PR 대기)
+
+- **`member_consents`** (SQL 작성, merge 전 대표 실행 필요): 동의/철회를 한 줄씩 추가만(수정·삭제 없음), 타입별 최신은
+  `member_consent_latest` 뷰(security_invoker). RLS 본인 조회만, 기록은 `/api/consents`(토큰→회원 id, 약관 버전 `2026-10-07` 서버 상수).
+  값: tos·privacy·deal_alert_ad·night_ad(미사용)·kakao_marketing / source: signup·push_enable·reconsent·mypage. 상수는 `src/lib/consent.ts`.
+- **발송 대상**: sendDealPush·sendNoticePush는 `deal_alert_ad` 최신 agreed=true 회원만. 기록 없으면 제외 → **기존 회원은 재동의 전까지 알림 안 감.**
+  동의 조회 실패는 `consent_error`로 발송 중단(push_sent_at 선점 전이라 다시 보낼 수 있음).
+- **가입**: [필수] 이용약관(/terms)·개인정보(/privacy), [선택] 매물 알림 수신(광고성)·카카오톡 채널 소식(광고성), 선택은 기본 false.
+  앱 푸시 토글·필수 조건 제거 — 매물 알림 동의 시 제출 때 권한 요청. 카카오 채널 추가 토글은 동의와 분리(기본 꺼짐). 버튼 "동의하고 시작하기".
+- **알림 켜기**(PushStatusCard): 매물 알림 동의가 없으면 동의 시트 → 저장(push_enable)과 구독을 같은 클릭에서 시작.
+- **재동의**(ConsentGate, AppShell): 회원인데 tos·privacy 기록이 없으면 닫을 수 없는 시트(필수 2 + 선택 2). 거부 시 이용 불가 안내 + 로그아웃·탈퇴.
+  가입·로그인·약관·탈퇴·관리자·/en·/p 화면 제외, 동의 조회 실패 시 띄우지 않음. 동의/철회 직후 안내("…동의하셨어요 (YYYY.MM.DD, 덤핑점핑)")도 여기서.
+- **MY**: "이 기기 푸시 알림" 아래 매물 알림·카카오 소식 동의 토글(변경마다 새 행, mypage). 매물 알림 철회 시 발송만 제외, 구독은 유지.
+- **약관**: `/terms` 틀만(본문은 대표 전달 예정 — 공개 전 채울 것). 개인정보 처리방침: 푸시 구독 정보를 필수→선택, 광고성 정보 수신은 선택.
+
 ## 최근 작업 (2026-09-30) — 커밋 B: 푸시 규칙 (광고)·수신거부·야간 보류 (PR #20, 머지 `1c4e68d`)
 
 - **배포**: GitHub Actions run 36646944955 success, 커밋 `1c4e68d`. 운영 `/api/cron/morning-push` 인증 없이 GET → 401 확인.
