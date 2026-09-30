@@ -2242,6 +2242,7 @@ function ActiveDealCard({
           {editingPhotos && (
             <div className="mt-2.5">
               <ImageUploader
+                adminKey={adminKey}
                 initialUrls={images}
                 onChange={setImages}
                 max={MAX_PHOTO_SLOTS}
@@ -2266,6 +2267,7 @@ function ActiveDealCard({
           {editingVideo && (
             <div className="mt-2.5">
               <VideoUploader
+                adminKey={adminKey}
                 initialUrl={videoUrl}
                 onChange={setVideoUrl}
                 label="매물 영상"
@@ -2757,6 +2759,7 @@ function DealForm({
       <ManifestUploader onChange={setManifestItems} initialRows={prefill?.manifestItems} />
 
       <ImageUploader
+        adminKey={adminKey}
         onChange={setImages}
         label="매물 사진"
         // 2026-09-29: 판매신청은 추천 보너스로 최대 16장까지 올 수 있어 관리자 폼도 최대치로 (src/lib/photoLimit.ts)
@@ -2765,7 +2768,7 @@ function DealForm({
         initialUrls={prefill?.images ?? []}
       />
 
-      <VideoUploader onChange={setVideoUrl} initialUrl={prefill?.videoUrl} />
+      <VideoUploader adminKey={adminKey} onChange={setVideoUrl} initialUrl={prefill?.videoUrl} />
 
       {error && <div className="text-xs text-orange font-medium">{error}</div>}
       <p className="text-xs text-gray500 -mt-1">
@@ -2970,7 +2973,7 @@ function NoticeForm({ adminKey, onDone }: { adminKey: string; onDone: () => void
         </div>
       </div>
 
-      <ImageUploader onChange={setImages} label="사진" hint="부동산·설비 현장 사진" />
+      <ImageUploader adminKey={adminKey} onChange={setImages} label="사진" hint="부동산·설비 현장 사진" />
 
       {error && <div className="text-orange font-medium" style={{ fontSize: rem(15) }}>{error}</div>}
 

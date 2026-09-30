@@ -80,8 +80,12 @@ export async function POST(req: NextRequest) {
   const supabaseAdmin = createClient(supabaseUrl, serviceKey);
 
   // 2026-09-29: 요청한 회원은 access token으로만 확인 — 예전엔 body의 memberId를 그대로 seller_member_id로
-  // 저장해서 다른 회원 id를 넣을 수 있었음. 토큰 유효 → 그 회원 / 토큰 없음·무효 → null(비회원 신청).
+  // 저장해서 다른 회원 id를 넣을 수 있었음.
+  // 2026-09-30: 판매 신청은 회원 전용 — 토큰 없음·무효·회원 행 없음이면 401 (비회원 신청 경로 폐지)
   const member = await getMemberFromToken(supabaseAdmin, accessToken);
+  if (!member) {
+    return NextResponse.json({ error: "판매 신청은 회원만 할 수 있어요. 로그인 후 다시 시도해주세요." }, { status: 401 });
+  }
   // 매물 한 건의 사진 총 장수 — 같은 회원 기준 한도
   const photoLimit = getPhotoLimit(member);
   if ((images?.length ?? 0) > photoLimit) {
@@ -98,7 +102,7 @@ export async function POST(req: NextRequest) {
   const { error } = await supabaseAdmin.from("seller_requests").insert({
     company_name: companyName || null,
     is_anonymous: !!isAnonymous,
-    seller_member_id: member?.id ?? null,
+    seller_member_id: member.id,
     stock_type: stockType ?? "general",
     contact_name: contactName || null,
     contact_phone: contactPhone,

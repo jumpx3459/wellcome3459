@@ -33,6 +33,9 @@ function ZoomableImage({ src, alt, onZoomChange }: { src: string; alt: string; o
     };
     const onStart = (e: TouchEvent) => {
       if (e.touches.length === 2) {
+        // 2026-09-30: 두 번째 손가락이 닿는 순간 막아야 가로 넘기기 스크롤이 먼저 잡혀
+        // 이후 touchmove의 preventDefault가 무시되는(=핀치가 안 먹는) 경우를 피함
+        if (e.cancelable) e.preventDefault();
         pinch = { dist: dist(e.touches[0], e.touches[1]), scale: tRef.current.scale };
         pan = null;
       } else if (e.touches.length === 1 && tRef.current.scale > 1.01) {
@@ -57,12 +60,18 @@ function ZoomableImage({ src, alt, onZoomChange }: { src: string; alt: string; o
         if (tRef.current.scale < 1.05) setT({ scale: 1, x: 0, y: 0 });
       }
     };
-    el.addEventListener("touchstart", onStart, { passive: true });
+    // iOS Safari: 페이지 전체 확대(gesture*)가 사진 확대 대신 잡히지 않게
+    const onGesture = (e: Event) => e.preventDefault();
+    el.addEventListener("touchstart", onStart, { passive: false });
+    el.addEventListener("gesturestart", onGesture, { passive: false });
+    el.addEventListener("gesturechange", onGesture, { passive: false });
     el.addEventListener("touchmove", onMove, { passive: false });
     el.addEventListener("touchend", onEnd, { passive: true });
     el.addEventListener("touchcancel", onEnd, { passive: true });
     return () => {
       el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("gesturestart", onGesture);
+      el.removeEventListener("gesturechange", onGesture);
       el.removeEventListener("touchmove", onMove);
       el.removeEventListener("touchend", onEnd);
       el.removeEventListener("touchcancel", onEnd);
@@ -113,6 +122,12 @@ export default function PhotoViewer({
   const trackRef = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(startIndex);
   const [zoomed, setZoomed] = useState(false);
+  // 2026-09-30: 열 때 2.5초 동안 가운데 흐린 확대 안내 (누르기·확대를 막지 않게 pointer-events 없음)
+  const [hint, setHint] = useState(true);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setHint(false), 2500);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const go = (d: number) => {
     const tr = trackRef.current;
@@ -165,6 +180,22 @@ export default function PhotoViewer({
         >
           ×
         </button>
+      </div>
+      <div
+        aria-hidden
+        data-zoom-hint
+        className="absolute left-1/2 top-1/2 pointer-events-none rounded-full text-white font-bold whitespace-nowrap"
+        style={{
+          transform: "translate(-50%, -50%)",
+          zIndex: 1,
+          fontSize: rem(15),
+          padding: "10px 18px",
+          background: "rgba(0,0,0,0.55)",
+          opacity: hint && !zoomed ? 1 : 0,
+          transition: "opacity 0.4s ease-out",
+        }}
+      >
+        🔍 두 손가락으로 확대
       </div>
       <div
         ref={trackRef}

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { resizeImageForUpload } from "@/lib/resizeImage";
 import { rem } from "@/lib/rem";
-import { getFreshAccessToken } from "@/lib/authFetch";
+import { uploadFormData } from "@/lib/uploadClient";
 import { FieldTag, FORM_LABEL_STYLE, FORM_HINT_STYLE } from "@/components/FormField";
 
 type Item = { preview: string; url?: string; uploading: boolean };
@@ -14,12 +14,14 @@ export default function ImageUploader({
   hint,
   max = 6,
   initialUrls = [],
+  adminKey,
 }: {
   onChange: (urls: string[]) => void;
   label?: string;
   hint?: string;
   max?: number;
   initialUrls?: string[];
+  adminKey?: string; // 관리자 화면에서만 — 있으면 x-admin-key로, 없으면 회원 토큰(authFetch)으로 업로드
 }) {
   const [items, setItems] = useState<Item[]>(() =>
     initialUrls.map((url) => ({ preview: url, url, uploading: false }))
@@ -54,10 +56,8 @@ export default function ImageUploader({
         const resized = await resizeImageForUpload(files[i]);
         const formData = new FormData();
         formData.append("files", resized, files[i].name || "photo.jpg");
-        // 2026-09-29: 로그인 회원이면 토큰도 보냄 — 서버가 회원 사진 한도를 다시 계산 (비회원은 토큰 없이 기본 한도)
-        const token = await getFreshAccessToken().catch(() => null);
-        if (token) formData.append("accessToken", token);
-        const res = await fetch("/api/upload", { method: "POST", body: formData });
+        // 2026-09-30: 회원 토큰 또는 관리자 키 필수 (서버가 회원 사진 한도도 토큰으로 다시 계산)
+        const res = await uploadFormData(formData, adminKey);
         const data = await res.json();
         const url: string | undefined = data.urls?.[0];
         setItems((prev) => {

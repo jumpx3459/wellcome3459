@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { getPhotoLimit, photoLimitError } from "@/lib/photoLimit";
-import { getPhotoLimitForToken } from "@/lib/photoLimitServer";
+import { getPhotoLimit, photoLimitError, MAX_PHOTO_SLOTS } from "@/lib/photoLimit";
+import { getMemberFromToken } from "@/lib/photoLimitServer";
+import { checkAdminAuth } from "@/lib/adminAuth";
 
 const BUCKET = "deal-images";
 const MAX_VIDEO_BYTES = 25 * 1024 * 1024; // 15초 영상은 대체로 이 안에 들어옵니다
+// 2026-09-30: 형식·크기 검사 — 사진은 화면에서 JPEG로 줄여 보내지만(resizeImage) 직접 호출도 막기 위해 서버에서 다시 확인.
+// SVG는 스크립트를 담을 수 있어 제외. 확장자는 파일 이름이 아니라 형식에서 정함. 크기는 마이페이지 사진 한도(20MB) 기준.
+const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
+const IMAGE_EXT: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
+const VIDEO_EXT: Record<string, string> = { "video/webm": "webm", "video/mp4": "mp4", "video/quicktime": "mov", "video/3gpp": "3gp" };
 
 export async function POST(req: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -18,24 +24,44 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "파일이 없습니다." }, { status: 400 });
   }
 
-  // 2026-09-29: 요청한 회원의 사진 한도(6 + 추천 보너스 최대 10 = 최대 16)를 서버에서 다시 계산.
-  // 토큰(accessToken)이 없으면(비회원 매물 등록·관리자) 기본 6장. ImageUploader는 장당 1요청이라
-  // 매물 한 건의 총 장수는 /api/seller-requests에서 한 번 더 막는다.
-  const accessToken = formData.get("accessToken");
-  const photoLimit =
-    supabaseUrl && serviceKey
-      ? await getPhotoLimitForToken(createClient(supabaseUrl, serviceKey), accessToken)
-      : getPhotoLimit(null);
-  if (files.length > photoLimit) {
-    return NextResponse.json({ error: photoLimitError(photoLimit), field: "images" }, { status: 400 });
-  }
-
+  // 2026-09-30: 로그인 회원(토큰) 또는 관리자(x-admin-key)만 업로드 — 판매 신청이 회원 전용이 되면서
+  // 비회원 업로드 경로가 없어짐. 회원 사진 한도(6 + 추천 보너스, 최대 16)는 토큰의 회원 기준으로 서버에서 다시 계산,
+  // 관리자는 최대치. ImageUploader는 장당 1요청이라 매물 한 건의 총 장수는 /api/seller-requests에서 한 번 더 막는다.
   if (!supabaseUrl || !serviceKey) {
     // 데모 모드: 실제 저장 없이 빈 값 반환 (화면에서는 로컬 미리보기만 보임)
     return NextResponse.json({ urls: [], videoUrl: null, demo: true });
   }
-
   const supabaseAdmin = createClient(supabaseUrl, serviceKey);
+  let photoLimit = MAX_PHOTO_SLOTS;
+  if (!checkAdminAuth(req).ok) {
+    const member = await getMemberFromToken(supabaseAdmin, formData.get("accessToken"));
+    if (!member) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+    photoLimit = getPhotoLimit(member);
+  }
+
+  for (const file of files) {
+    if (typeof file === "string" || !IMAGE_EXT[file.type]) {
+      return NextResponse.json({ error: "JPG·PNG·WEBP·GIF 사진만 올릴 수 있어요.", field: "images" }, { status: 400 });
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      return NextResponse.json({ error: "20MB 이하 사진만 올릴 수 있어요.", field: "images" }, { status: 400 });
+    }
+  }
+  if (video) {
+    // MediaRecorder로 자른 영상은 "video/webm;codecs=…"처럼 올 수 있어 ; 앞만 비교
+    const videoType = typeof video === "string" ? "" : video.type.split(";")[0];
+    if (!VIDEO_EXT[videoType]) {
+      return NextResponse.json({ error: "MP4·MOV·WEBM 영상만 올릴 수 있어요.", field: "video" }, { status: 400 });
+    }
+    if (video.size > MAX_VIDEO_BYTES) {
+      return NextResponse.json({ error: "25MB 이하 영상만 올릴 수 있어요.", field: "video" }, { status: 400 });
+    }
+  }
+
+  if (files.length > photoLimit) {
+    return NextResponse.json({ error: photoLimitError(photoLimit), field: "images" }, { status: 400 });
+  }
+
   const urls: string[] = [];
 
   // 2026-09-28: 기본 6장(+추천 리워드로 회원별 bonus_photo_slots만큼 추가, 무제한 아님)
@@ -44,7 +70,7 @@ export async function POST(req: NextRequest) {
   // 우회(개발자도구로 폼에 파일을 더 붙여 보내는 등)해도 과도하게 커지지 않도록 막는
   // 넉넉한 안전판(sanity ceiling) 역할만 함. (2026-09-29: 위에서 회원 한도도 검사, 20장 상한은 그대로 유지)
   for (const file of files.slice(0, 20)) {
-    const ext = file.name.split(".").pop() || "jpg";
+    const ext = IMAGE_EXT[file.type];
     const path = `${crypto.randomUUID()}.${ext}`;
     const arrayBuffer = await file.arrayBuffer();
 
@@ -59,14 +85,14 @@ export async function POST(req: NextRequest) {
   }
 
   let videoUrl: string | null = null;
-  if (video && video.size <= MAX_VIDEO_BYTES) {
-    const ext = video.name.split(".").pop() || "webm";
+  if (video) {
+    const ext = VIDEO_EXT[video.type.split(";")[0]];
     const path = `video-${crypto.randomUUID()}.${ext}`;
     const arrayBuffer = await video.arrayBuffer();
 
     const { error } = await supabaseAdmin.storage
       .from(BUCKET)
-      .upload(path, arrayBuffer, { contentType: video.type || "video/webm", upsert: false });
+      .upload(path, arrayBuffer, { contentType: video.type.split(";")[0], upsert: false });
 
     if (!error) {
       const { data } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path);

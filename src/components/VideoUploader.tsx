@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { FieldTag, FORM_LABEL_STYLE, FORM_HINT_STYLE } from "@/components/FormField";
 import { rem } from "@/lib/rem";
+import { uploadFormData } from "@/lib/uploadClient";
 
 const MAX_SECONDS = 15;
 
@@ -25,11 +26,13 @@ export default function VideoUploader({
   label = "소개 영상 첨부",
   hint = "최대 15초 · 15초보다 길면 원하는 구간을 골라 잘라드려요",
   initialUrl,
+  adminKey,
 }: {
   onChange: (url: string | null) => void;
   label?: string;
   hint?: string;
   initialUrl?: string | null;
+  adminKey?: string; // 관리자 화면에서만 — 있으면 x-admin-key로, 없으면 회원 토큰(authFetch)으로 업로드
 }) {
   const [phase, setPhase] = useState<Phase>(initialUrl ? "done" : "idle");
   const [srcUrl, setSrcUrl] = useState<string | null>(null); // 원본(트림 대상) 미리보기
@@ -57,7 +60,7 @@ export default function VideoUploader({
     try {
       const formData = new FormData();
       formData.append("video", file, filename);
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const res = await uploadFormData(formData, adminKey);
       const data = await res.json();
       if (data.videoUrl) {
         setResultUrl(data.videoUrl);
