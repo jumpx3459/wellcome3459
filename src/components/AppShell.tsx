@@ -6,6 +6,7 @@ import BottomNav from "./BottomNav";
 import InAppBanner from "./InAppBanner";
 import AuthExpiredNotice from "./AuthExpiredNotice";
 import ConsentGate from "./ConsentGate";
+import ActiveDayPing from "./ActiveDayPing";
 import DebugPanel from "./DebugPanel"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 import { markAppNavigation, markAppBack } from "@/lib/appNav";
 import { supabase } from "@/lib/supabase";
@@ -102,6 +103,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <AuthExpiredNotice />
       {/* 2026-09-30: 기존 회원 약관 재동의 시트 + 동의/철회 직후 안내 */}
       <ConsentGate />
+      {/* 2026-09-30 (커밋 K): 회원 방문 기록 — 한국 날짜 하루 1번 (member_active_days) */}
+      {!isAdmin && <ActiveDayPing />}
       <DebugPanel />
     </div>
   );

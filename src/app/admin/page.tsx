@@ -8,6 +8,7 @@ import ImageUploader from "@/components/ImageUploader";
 import VideoUploader from "@/components/VideoUploader";
 import SellerDisplayPicker from "@/components/SellerDisplayPicker";
 import { publicSellerName } from "@/lib/sellerDisplay";
+import { isTestTitle } from "@/lib/categoryAvg";
 import ManifestUploader from "@/components/ManifestUploader";
 import Toast, { useToast } from "@/components/Toast";
 import { formatPriceInput, parsePriceInput, formatMemberNo, formatPriceWithUnit, formatDealPrice } from "@/lib/format";
@@ -22,6 +23,20 @@ import { DEAL_PRICE_UNITS, LUMP_SUM, isDealPriceUnit, isLumpSum, priceUnitSuffix
 import { UI_SECTION, UI_CARD_TITLE, UI_LINK, BTN_CLASS, btnStyle } from "@/lib/uiText";
 import { FieldLabel, FORM_INPUT_FONT_SIZE } from "@/components/FormField";
 import { RatioMetric, DailyBars, FunnelBars, InlineBar, BIG_NUM, LABEL, CARD } from "@/components/admin/DashboardViz";
+
+// 2026-09-30 (커밋 K): /api/admin/kpi-daily 한 줄 (kpi_daily 테이블 일부 컬럼)
+type KpiDailyRow = {
+  snapshot_date: string;
+  members_total: number;
+  push_reachable_members: number;
+  deals_active: number;
+  members_new: number;
+  leads_member_new: number;
+  leads_guest_new: number;
+  notifications_sent: number;
+  notifications_clicked: number;
+  excluded_members: number;
+};
 
 type SellerRequest = {
   stock_type?: string | null; // 2026-09-29 재고 유형
@@ -385,7 +400,20 @@ function AdminDashboard({
     members: { total: number; withPush: number };
     notifications7d: { sent: number; clicked: number };
     daily: { days: string[]; signups: number[]; deals: number[]; leads: number[] };
+    // 2026-09-30 (커밋 K): 목록 개수 대신 DB count — 관리자·테스트 계정·[테스트] 매물 제외
+    counts?: {
+      membersTotal: number;
+      businessVerified: number;
+      todaySignups: number;
+      uncontactedLeads: number;
+      uncontactedBuyRequests: number;
+      pendingSellerRequests: number;
+      todayDeals: number;
+    };
+    excluded?: { members: number; source: "view" | "admin_phones" };
   } | null>(null);
+  // 2026-09-30 (커밋 K): KPI 기록 — kpi_daily 최근 30일 (매일 00:05 KST 스냅샷)
+  const [kpiDaily, setKpiDaily] = useState<KpiDailyRow[] | null>(null);
   const [windowWidth, setWindowWidth] = useState(0);
   useEffect(() => {
     const update = () => setWindowWidth(window.innerWidth);
@@ -472,6 +500,10 @@ function AdminDashboard({
       fetch("/api/admin/notices", { headers: { "x-admin-key": adminKey } })
         .then((r) => r.json())
         .then((d) => setNotices(d.items ?? [])),
+      fetch("/api/admin/kpi-daily", { headers: { "x-admin-key": adminKey } })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => setKpiDaily(d?.missing ? null : d?.items ?? null))
+        .catch(() => setKpiDaily(null)),
       fetch("/api/admin/dashboard-metrics", { headers: { "x-admin-key": adminKey } })
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => setMetrics(d?.members ? d : null))
@@ -826,14 +858,15 @@ function AdminDashboard({
       <div className={isDesktop ? "px-8 pt-5 max-w-[1200px] mx-auto w-full flex flex-col gap-6" : "px-5 pt-5 flex flex-col gap-6"}>
         {(() => {
           const soonDeals = activeDeals.filter((d) => {
+            if (isTestTitle(d.title)) return false; // [테스트] 매물 제외 (커밋 K)
             const remainMs = new Date(d.closes_at).getTime() - new Date().getTime();
             return remainMs > 0 && remainMs <= 6 * 60 * 60 * 1000;
           }).length;
           const actions = [
-            { label: "미연락 리드", value: interests.filter((i) => !i.contacted).length, urgent: true, go: () => { setLeadFilter("uncontacted"); jumpToSection("leads", () => setLeadsOpen(true)); } },
+            { label: "미연락 리드", value: metrics?.counts?.uncontactedLeads ?? interests.filter((i) => !i.contacted).length, urgent: true, go: () => { setLeadFilter("uncontacted"); jumpToSection("leads", () => setLeadsOpen(true)); } },
             { label: "마감임박(6h)", value: soonDeals, urgent: true, go: () => jumpToSection("active-deals") },
-            { label: "대기 판매신청", value: requests.length, urgent: false, go: () => jumpToSection("pending-sellers", () => setSellerReqOpen(true)) },
-            { label: "재고문의 미연락", value: buyRequests.filter((b) => !b.contacted).length, urgent: false, go: () => jumpToSection("buy-requests", () => setBuyReqOpen(true)) },
+            { label: "대기 판매신청", value: metrics?.counts?.pendingSellerRequests ?? requests.length, urgent: false, go: () => jumpToSection("pending-sellers", () => setSellerReqOpen(true)) },
+            { label: "재고문의 미연락", value: metrics?.counts?.uncontactedBuyRequests ?? buyRequests.filter((b) => !b.contacted).length, urgent: false, go: () => jumpToSection("buy-requests", () => setBuyReqOpen(true)) },
           ];
           const hot = actions.filter((a) => a.value > 0);
           const cold = actions.filter((a) => a.value === 0);
@@ -869,10 +902,16 @@ function AdminDashboard({
 
         <section aria-label="핵심 지표">
           <h2 style={UI_SECTION}>📈 핵심 지표</h2>
+          {metrics?.excluded && (
+            <p className="mt-1" style={LABEL}>
+              관리자·테스트 계정 {metrics.excluded.members}명과 [테스트] 매물은 빼고 셌어요
+              {metrics.excluded.source === "admin_phones" ? " (테스트 계정 표시 SQL 실행 전 — 관리자 번호만 제외)" : ""}
+            </p>
+          )}
           <div className={`mt-2.5 grid gap-2 ${isDesktop ? "grid-cols-4" : "grid-cols-1"}`}>
             {metrics ? (
               <>
-                <RatioMetric label="알림 활성 회원 비율" num={metrics.members.withPush} den={metrics.members.total} unit="명" note="푸시 구독이 1개 이상인 회원 / 전체 회원" />
+                <RatioMetric label="알림 활성 회원 비율" num={metrics.members.withPush} den={metrics.members.total} unit="명" note="푸시 구독이 1개 이상이고 알림을 끄지 않은 회원 / 전체 회원" />
                 <RatioMetric label="알림 → 확인 전환율 (최근 7일)" num={metrics.notifications7d.clicked} den={metrics.notifications7d.sent} unit="건" note="알림을 눌러 매물을 연 건 / 발송 건" />
               </>
             ) : (
@@ -908,11 +947,11 @@ function AdminDashboard({
           <h2 style={UI_SECTION}>참고 현황</h2>
           <div className={`mt-2.5 grid gap-2 ${isDesktop ? "grid-cols-4" : "grid-cols-2"}`}>
             {[
-              { label: "오늘 신규가입", value: members.filter((m) => isToday(m.created_at)).length.toLocaleString() },
-              { label: "오늘 등록매물", value: activeDeals.filter((d) => isToday(d.created_at)).length.toLocaleString() },
+              { label: "오늘 신규가입", value: (metrics?.counts?.todaySignups ?? members.filter((m) => isToday(m.created_at)).length).toLocaleString() },
+              { label: "오늘 등록매물", value: (metrics?.counts?.todayDeals ?? activeDeals.filter((d) => isToday(d.created_at)).length).toLocaleString() },
               { label: "오늘 구매희망", value: buyRequests.filter((b) => isToday(b.created_at)).length.toLocaleString() },
-              { label: "전체 회원", value: members.length.toLocaleString() },
-              { label: "사업자 인증", value: members.filter((m) => m.business_verified).length.toLocaleString() },
+              { label: "전체 회원", value: (metrics?.counts?.membersTotal ?? members.length).toLocaleString() },
+              { label: "사업자 인증", value: (metrics?.counts?.businessVerified ?? members.filter((m) => m.business_verified).length).toLocaleString() },
               {
                 label: "리드 성사율",
                 value:
@@ -939,6 +978,42 @@ function AdminDashboard({
               </div>
             ))}
           </div>
+        </section>
+
+        <section aria-label="KPI 기록">
+          <h2 style={UI_SECTION}>🗂️ KPI 기록 <span style={{ ...LABEL, fontWeight: 400 }}>(최근 30일 · 매일 00:05 저장)</span></h2>
+          {kpiDaily === null ? (
+            <div className={`${CARD} mt-2.5`} style={LABEL}>아직 기록이 없어요. KPI 매일 저장 SQL(schema.sql 커밋 K)을 실행하면 다음 날부터 쌓여요.</div>
+          ) : kpiDaily.length === 0 ? (
+            <div className={`${CARD} mt-2.5`} style={LABEL}>아직 저장된 날이 없어요. 매일 00:05에 전날 값이 저장돼요.</div>
+          ) : (
+            <div className="mt-2.5 bg-white border border-gray200 rounded-2xl overflow-x-auto" style={{ fontVariantNumeric: "tabular-nums" }}>
+              <table className="w-full text-left" style={{ fontSize: rem(14), minWidth: 560 }}>
+                <thead>
+                  <tr className="bg-gray100 text-gray500">
+                    {["날짜", "회원", "알림 도달 가능", "진행 매물", "신규 가입", "리드", "알림 발송·클릭"].map((h) => (
+                      <th key={h} className="font-bold px-3 py-2 whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {kpiDaily.map((r) => (
+                    <tr key={r.snapshot_date} style={{ borderTop: "1px solid #F1F3F5" }}>
+                      <td className="px-3 py-2 whitespace-nowrap">{r.snapshot_date.slice(5).replace("-", ".")}</td>
+                      <td className="px-3 py-2">{r.members_total.toLocaleString()}</td>
+                      <td className="px-3 py-2">{r.push_reachable_members.toLocaleString()}</td>
+                      <td className="px-3 py-2">{r.deals_active.toLocaleString()}</td>
+                      <td className="px-3 py-2">{r.members_new.toLocaleString()}</td>
+                      <td className="px-3 py-2">{(r.leads_member_new + r.leads_guest_new).toLocaleString()}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {r.notifications_sent.toLocaleString()} · {r.notifications_clicked.toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
 
         <section aria-label="카테고리별 현황">

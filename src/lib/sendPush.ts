@@ -41,6 +41,23 @@ export function isQuietHoursKST(now = new Date()) {
 // 카테고리·지역을 구독한 회원의 기기에 직접 웹 푸시를 발송합니다.
 // (카카오 알림톡 같은 중간 채널 없이 브라우저/PWA에 바로 전달, 알라미와 동일한 방식)
 // 매물당 1회만 — push_sent_at이 이미 있으면 skip, 발송 직전에 push_sent_at을 조건부로 채워 중복 발송(등록+cron 동시 실행)을 막는다.
+// 2026-09-30 (커밋 K): 발송 결과 410 Gone·404 Not Found = 브라우저에서 구독이 영구 해지됨 → 그 구독 행 삭제.
+// 다른 오류(일시 장애·429·5xx 등)는 다음 발송에서 다시 시도하도록 유지. 예전엔 만료 구독이 남아 "알림 활성"에 계속 잡혔음.
+function isGoneSubscription(e: unknown) {
+  const code = (e as { statusCode?: number } | null)?.statusCode;
+  return code === 410 || code === 404;
+}
+
+async function pruneGoneSubscriptions(supabaseAdmin: SupabaseClient, endpoints: string[], label: string) {
+  if (endpoints.length === 0) return;
+  const { error, count } = await supabaseAdmin
+    .from("push_subscriptions")
+    .delete({ count: "exact" })
+    .in("endpoint", endpoints);
+  if (error) console.error(`[${label}] 만료 구독 삭제 실패 ${endpoints.length}건`, error.message);
+  else console.info(`[${label}] 만료 구독 삭제 ${count ?? endpoints.length}건 (410/404)`);
+}
+
 export async function sendDealPush(dealId: string) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -156,6 +173,7 @@ export async function sendDealPush(dealId: string) {
     .in("member_id", memberIds);
 
   let sentCount = 0;
+  const gone: string[] = [];
 
   for (const sub of subs ?? []) {
     const { data: logRow } = await supabaseAdmin
@@ -180,12 +198,14 @@ export async function sendDealPush(dealId: string) {
         );
       }
       sentCount++;
-    } catch {
+    } catch (e) {
+      if (isGoneSubscription(e)) gone.push(sub.endpoint);
       if (logRow?.id) {
         await supabaseAdmin.from("notification_logs").update({ status: "failed" }).eq("id", logRow.id);
       }
     }
   }
+  await pruneGoneSubscriptions(supabaseAdmin, gone, "sendDealPush");
 
   return { sentCount, total: subs?.length ?? 0 };
 }
@@ -272,6 +292,7 @@ export async function sendNoticePush(noticeId: string) {
     .in("member_id", memberIds);
 
   let sentCount = 0;
+  const gone: string[] = [];
 
   for (const sub of subs ?? []) {
     try {
@@ -288,11 +309,13 @@ export async function sendNoticePush(noticeId: string) {
         );
       }
       sentCount++;
-    } catch {
+    } catch (e) {
       // 구독 만료 등 — deals 알림과 달리 notification_logs에 남기지 않음(공지는
       // North Star 클릭률 측정 대상이 아니라 별도 로그 테이블이 필요 없다고 판단)
+      if (isGoneSubscription(e)) gone.push(sub.endpoint);
     }
   }
+  await pruneGoneSubscriptions(supabaseAdmin, gone, "sendNoticePush");
 
   return { sentCount, total: subs?.length ?? 0 };
 }
@@ -321,14 +344,17 @@ export async function sendAdminPush(title: string, body: string, url: string) {
     .select("endpoint, p256dh, auth_key")
     .in("member_id", adminMemberIds);
 
+  const gone: string[] = [];
   for (const sub of subs ?? []) {
     try {
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
         JSON.stringify({ title, body, url, tag: "admin-lead" })
       );
-    } catch {
-      // 구독 만료 등 — 운영자 알림은 베스트에포트라 조용히 무시
+    } catch (e) {
+      // 운영자 알림은 베스트에포트 — 영구 해지(410/404)만 정리
+      if (isGoneSubscription(e)) gone.push(sub.endpoint);
     }
   }
+  await pruneGoneSubscriptions(supabaseAdmin, gone, "sendAdminPush");
 }

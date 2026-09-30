@@ -1,6 +1,6 @@
 # PROGRESS
 
-마지막 업데이트: 2026-09-30 (PR #25 커밋 G 비회원 동의 기록·90일 자동 삭제 — 병합 `cf6093d`·SQL 실행 완료 / PR #24 커밋 D 사업자 정보 푸터·문의 경로 — 병합 `f24170c` / PR #23 커밋 E 판매자 표시 — 병합 `6dbe813`·SQL ①②③ 실행 완료 / PR #22 커밋 H: 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내 — 병합 `8cf2f41` / PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
+마지막 업데이트: 2026-09-30 (PR #26 커밋 K KPI 매일 저장·방문 기록·지표 정확도 — SQL 실행 완료 / PR #25 커밋 G 비회원 동의 기록·90일 자동 삭제 — 병합 `cf6093d`·SQL 실행 완료 / PR #24 커밋 D 사업자 정보 푸터·문의 경로 — 병합 `f24170c` / PR #23 커밋 E 판매자 표시 — 병합 `6dbe813`·SQL ①②③ 실행 완료 / PR #22 커밋 H: 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내 — 병합 `8cf2f41` / PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
 
 새 세션을 시작할 때 이 파일을 먼저 읽고, 아래 "다음에 할 일"부터 확인하세요.
 
@@ -49,6 +49,21 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
   비공개 옵션 등) — 상세는 아래 "최근 작업 (2026-09-23)" 참고
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
+
+## 최근 작업 (2026-09-30) — 커밋 K: KPI 매일 저장 + 방문 기록 + 지표 정확도 (PR #26)
+
+- **SQL 운영 DB 실행 완료 (2026-09-30, 대표)**: 트리거 members_protect_is_test(protect_member_columns는 그대로), kpi_excluded_phones(설립자 번호는 생략 —
+  is_test로 처리), 테스트 표시 member_no 13·15·17·18·19·20(6명), cron `kpi-daily-snapshot` jobid 3, 첫 저장 2026-09-29(excluded 6 · 회원 0 · 도달 0 · 진행 매물 0).
+- **kpi_daily** — schema.sql 맨 끝 커밋 K 블록: 매일 00:05 KST(`5 15 * * *` UTC) `kpi_snapshot()`이 전날(한국 날짜) 한 줄 저장.
+  상태값(회원·알림 도달 가능·진행 매물·미연락 등, 실행 시점 값)과 그날 흐름값(가입·리드·알림 발송/클릭·방문 회원), 방문 회원 1일/7일.
+- **제외 기준 `kpi_excluded_members`**: `members.is_test`(회원 본인 변경 불가 — 트리거 members_protect_is_test) · admin_users 번호 ·
+  `kpi_excluded_phones`(설립자 번호 — admin_users에 넣으면 관리자 로그인이 생겨 별도 표). 매물은 제목 "[테스트]" 제외. 번호는 `kpi_norm_phone`으로 형식 통일.
+- **방문 기록 `member_active_days`**(member_id, active_date KST, PK 둘): `ActiveDayPing`(AppShell, 관리자 화면 제외)이 로그인 세션이면
+  하루 1번 `/api/active-day` → 토큰으로 회원 판별해 upsert(중복 무시). 비회원·가입 전은 기록 안 함. RLS 정책 없음(서버만), 탈퇴 시 cascade.
+- **대시보드**: `/api/admin/dashboard-metrics`가 관리자·테스트 계정·[테스트] 매물을 빼고 DB count(head, exact)로 전체 회원·사업자 인증·오늘 신규가입·
+  미연락 리드·재고문의 미연락·대기 판매신청·오늘 등록매물 계산. 알림 활성은 구독 + push_opt_out=false(kpi_daily와 같은 기준).
+  뷰가 없으면(SQL 전) 관리자 번호만 제외. 화면 "KPI 기록" 표(kpi_daily 최근 30일, `/api/admin/kpi-daily`).
+- **푸시 만료 구독 정리**: 발송 결과 410·404면 그 push_subscriptions 행 삭제(매물·긴급 공지·관리자 알림), 삭제 건수 로그. 다른 오류는 유지.
 
 ## 최근 작업 (2026-09-30) — 커밋 G: 비회원 동의 기록 · 90일 자동 삭제 · 문구 정리 (PR #25, 머지 `cf6093d`)
 
@@ -547,6 +562,12 @@ curl로 확인. 단, 이 세션엔 브라우저 접근이 없어 육안 확인�
   업로드는 회원 토큰 또는 관리자 키만 허용(401) + 형식·크기 검사
 - [x] **`/unsubscribe` "고객센터(문의하기)"가 `/support`(지원사업 목록)로 잘못 연결** → 커밋 D에서 카카오톡 채널 채팅·070-4006-0890·info@jumpx.co.kr로 수정
 - [x] **/en 연락처 admin@jumpx.co.kr → info@jumpx.co.kr** (2026-09-30 대표 결정, 커밋 D). 푸시 VAPID `mailto:admin@`(sendPush.ts)은 기술 설정이라 그대로
+- [ ] **`deals.closed_at`** (커밋 K 백로그): 매물이 실제로 마감된 시각 — 진행 매물 수 과거 재계산·마감 소요 시간 지표용
+- [ ] **대시보드 기간 전환 (오늘/7일/30일/전체)** (커밋 K 백로그)
+- [ ] **연결 지표 컬럼** (커밋 F 이후, 커밋 K 백로그): 연락처 제공 동의·연결 요청·연결 완료 건수를 kpi_daily에
+- [ ] **4주 리텐션·코호트 화면** (커밋 K 백로그): member_active_days 기반
+- [ ] **판매자 재등록률** (커밋 K 백로그): 같은 판매자(seller_member_id)의 두 번째 판매 신청 비율
+- [ ] **매물 첫 관심까지 걸린 시간** (커밋 K 백로그): deals.created_at → 첫 interests/quick_leads created_at
 - [ ] **`ImageUploader` 렌더 중 setState 경고** (2026-09-30 백로그): setItems 갱신 함수 안에서 `emitChange`(부모 onChange) 호출 →
   React 콘솔 경고. 갱신 후 useEffect로 onChange를 부르는 식으로 정리
 

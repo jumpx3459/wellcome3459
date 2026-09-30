@@ -1244,3 +1244,242 @@ select cron.schedule(
 --   select status, return_message, start_time from cron.job_run_details
 --    where jobid = (select jobid from cron.job where jobname = 'purge-nonmember-contacts') order by start_time desc limit 5;
 -- 해제: select cron.unschedule('purge-nonmember-contacts');
+
+-- ============================================================================
+-- 2026-09-30 (커밋 K): KPI 매일 저장(kpi_daily) + 관리자·테스트 계정 제외 + 회원 방문 기록.
+-- 2026-09-30 대표 운영 DB 실행 완료 — 아래는 실제 실행본 기준으로 고친 것:
+--   · protect_member_columns()는 덮어쓰지 않음. 별도 트리거 members_protect_is_test(before insert or update) 추가 — pg_trigger 확인 1
+--   · kpi_excluded_phones 표 생성, 설립자 번호 입력은 생략(해당 계정은 is_test로 처리)
+--   · 테스트 표시: member_no 13, 15, 17, 18, 19, 20 (6명 모두 내부·테스트)
+--   · kpi_daily·kpi_snapshot·member_active_days 생성, cron 'kpi-daily-snapshot' jobid 3 '5 15 * * *'
+--   · 첫 저장 2026-09-29: excluded 6 · members_total 0 · push_reachable 0 · deals_active 0
+-- 코드: /api/admin/dashboard-metrics(제외 적용·DB count), /api/admin/kpi-daily(최근 30일), /api/active-day(방문 기록),
+--       src/lib/kpiExclusion.ts, src/components/ActiveDayPing.tsx.
+-- 실행 순서: 0 확인 → 1 번호 정규화 함수 → 2 is_test + 보호 트리거 → 3 제외 번호 표(설립자) → 4 제외 뷰
+--           → 5 방문 기록 표 → 6 kpi_daily → 7 kpi_snapshot → 8 pg_cron → 9 확인.
+-- SQL Editor는 마지막 결과만 보여주므로 확인은 한 줄로 합친 버전을 쓴다.
+-- ============================================================================
+
+-- 0) 실행 전 확인 — 한 줄 (모두 true여야 함)
+--   select
+--     bool_or(table_name = 'members' and column_name = 'business_verified')        as m_business_verified,
+--     bool_or(table_name = 'members' and column_name = 'is_official_partner')      as m_official_partner,
+--     bool_or(table_name = 'members' and column_name = 'push_opt_out')             as m_push_opt_out,
+--     bool_or(table_name = 'members' and column_name = 'notice_alerts_opt_in')     as m_notice_opt_in,
+--     bool_or(table_name = 'interests' and column_name = 'contacted')              as i_contacted,
+--     bool_or(table_name = 'quick_leads' and column_name = 'contacted')            as q_contacted,
+--     bool_or(table_name = 'buy_requests' and column_name = 'contacted')           as b_contacted,
+--     bool_or(table_name = 'buy_requests' and column_name = 'member_id')           as b_member_id,
+--     bool_or(table_name = 'seller_requests' and column_name = 'seller_member_id') as s_seller_member_id,
+--     bool_or(table_name = 'seller_requests' and column_name = 'status')           as s_status,
+--     bool_or(table_name = 'notification_logs' and column_name = 'status')         as n_status,
+--     bool_or(table_name = 'notification_logs' and column_name = 'sent_at')        as n_sent_at,
+--     bool_or(table_name = 'notification_logs' and column_name = 'clicked_at')     as n_clicked_at,
+--     bool_or(table_name = 'admin_users' and column_name = 'phone')                as a_phone,
+--     bool_or(table_name = 'member_consent_latest' and column_name = 'agreed')     as consent_view,
+--     (select count(*) = 1 from pg_extension where extname = 'pg_cron')             as pg_cron
+--   from information_schema.columns where table_schema = 'public';
+
+-- 1) 번호 정규화 ("+82 10-1234-5678"·"821012345678"·"010-1234-5678" → "01012345678")
+create or replace function public.kpi_norm_phone(p text) returns text
+language sql immutable as $$
+  select case when d like '82%' then '0' || substr(d, 3) else d end
+  from (select regexp_replace(coalesce(p, ''), '[^0-9]', '', 'g') as d) x
+$$;
+
+-- 2) 테스트 계정 표시 — 회원(authenticated·anon)은 못 바꿈. 가입(insert) 때 false, 수정(update) 때 기존 값 유지.
+--    protect_member_columns()는 그대로 두고 별도 트리거로 (실제 실행본 — 함수 본문은 운영 DB의 정의와 같은지 한 번 대조할 것:
+--    select pg_get_functiondef('public.protect_member_is_test()'::regprocedure);)
+alter table public.members add column if not exists is_test boolean not null default false;
+
+create or replace function public.protect_member_is_test()
+returns trigger as $$
+begin
+  if auth.role() in ('authenticated', 'anon') then
+    if tg_op = 'INSERT' then
+      new.is_test := false;
+    else
+      new.is_test := old.is_test;
+    end if;
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+drop trigger if exists members_protect_is_test on public.members;
+create trigger members_protect_is_test before insert or update on public.members
+  for each row execute function public.protect_member_is_test();
+
+-- 테스트 표시 (실행본): update public.members set is_test = true where member_no in (13, 15, 17, 18, 19, 20);
+
+-- 3) 제외 번호 표 — 관리자 로그인 권한 없이 KPI에서만 뺄 번호(설립자 등).
+--    admin_users에 넣으면 관리자 로그인 계정이 생기므로 따로 둠.
+create table if not exists public.kpi_excluded_phones (
+  phone text primary key,          -- kpi_norm_phone 형식
+  reason text not null,            -- 'founder' 등
+  created_at timestamptz not null default now()
+);
+alter table public.kpi_excluded_phones enable row level security;   -- 정책 없음 = service role만
+--   (실행본: 설립자 번호 입력은 생략 — 해당 계정은 is_test로 처리. 나중에 번호로 뺄 때만 아래 사용)
+--   설립자 번호(Vercel 환경변수 FOUNDER_ADMIN_PHONE)가 admin_users에 있는지 — '설립자번호' 자리에 값을 넣어 실행:
+--     select count(*) as in_admin_users from public.admin_users
+--      where public.kpi_norm_phone(phone) = public.kpi_norm_phone('설립자번호');
+--   0이면(또는 확실히 하려면) 제외 번호로 추가 (이미 있으면 무시):
+--     insert into public.kpi_excluded_phones (phone, reason)
+--     values (public.kpi_norm_phone('설립자번호'), 'founder') on conflict (phone) do nothing;
+
+-- 4) 제외 회원 뷰 — is_test · 관리자 번호 · 제외 번호 표
+create or replace view public.kpi_excluded_members with (security_invoker = true) as
+select m.id,
+       case
+         when m.is_test then 'test'
+         when public.kpi_norm_phone(m.phone) in (select public.kpi_norm_phone(a.phone) from public.admin_users a where a.phone is not null) then 'admin'
+         else 'excluded_phone'
+       end as reason
+from public.members m
+where m.is_test
+   or public.kpi_norm_phone(m.phone) in (select public.kpi_norm_phone(a.phone) from public.admin_users a where a.phone is not null)
+   or public.kpi_norm_phone(m.phone) in (select e.phone from public.kpi_excluded_phones e);
+revoke all on public.kpi_excluded_members from anon, authenticated;
+
+-- 5) 회원 방문 기록 — 앱을 연 날(한국 날짜) 하루 1줄. /api/active-day(service role)만 기록. 탈퇴 시 함께 삭제
+create table if not exists public.member_active_days (
+  member_id   uuid not null references public.members(id) on delete cascade,
+  active_date date not null,       -- 한국 날짜
+  created_at  timestamptz not null default now(),
+  primary key (member_id, active_date)
+);
+create index if not exists member_active_days_date_idx on public.member_active_days (active_date);
+alter table public.member_active_days enable row level security;    -- 정책 없음 = service role만
+revoke all on public.member_active_days from anon, authenticated;
+
+-- 6) 스냅샷 테이블 (정책 없음 = service role만)
+create table if not exists public.kpi_daily (
+  snapshot_date              date primary key,          -- 한국 날짜 (그날 24:00 직후 상태)
+  taken_at                   timestamptz not null default now(),
+  excluded_members           int not null,              -- 제외한 관리자·테스트 회원 수
+  -- 상태값 (실행 시점 기준 — 나중에 다시 계산할 수 없음)
+  members_total              int not null,
+  members_business_verified  int not null,
+  members_official_partner   int not null,
+  push_active_members        int not null,              -- 구독 1개 이상 · push_opt_out = false
+  push_subscriptions         int not null,
+  deal_alert_consent_members int not null,              -- deal_alert_ad 최신 동의 true
+  push_reachable_members     int not null,              -- 구독 + 알림 켬 + 동의 = 실제 매물 알림 대상
+  notice_alert_members       int not null,              -- 긴급 공지 신청 + 구독 + 알림 켬 + 동의
+  deals_active               int not null,              -- active · closes_at > now · [테스트] 제외
+  deals_active_raw           int not null,              -- status = active 전체 (마감 지났는데 active 포함)
+  seller_requests_pending    int not null,
+  leads_uncontacted          int not null,              -- interests + quick_leads 미연락
+  buy_requests_uncontacted   int not null,
+  -- 그날 흐름값 (created_at·sent_at·active_date 한국 날짜)
+  members_new                int not null,
+  deals_new                  int not null,
+  leads_member_new           int not null,
+  leads_guest_new            int not null,
+  buy_requests_new           int not null,
+  seller_requests_new        int not null,
+  notifications_sent         int not null,              -- 매물 알림 sent·clicked (공지 알림은 기록 없음)
+  notifications_clicked      int not null,              -- 그날 보낸 것 중 스냅샷 시점까지 클릭된 것
+  notifications_failed       int not null,
+  active_members_day         int not null,              -- 그날 앱을 연 회원
+  active_members_7d          int not null               -- 그날 포함 최근 7일 앱을 연 회원 (서로 다른 회원)
+);
+alter table public.kpi_daily enable row level security;
+revoke all on public.kpi_daily from anon, authenticated;
+
+-- 7) 스냅샷 함수 (같은 날짜를 다시 실행하면 그날 줄을 지우고 새로 저장)
+create or replace function public.kpi_snapshot(p_date date default ((now() at time zone 'Asia/Seoul')::date - 1))
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  d_start timestamptz := (p_date::timestamp at time zone 'Asia/Seoul');
+  d_end   timestamptz := ((p_date + 1)::timestamp at time zone 'Asia/Seoul');
+begin
+  delete from public.kpi_daily where snapshot_date = p_date;
+
+  insert into public.kpi_daily
+  with ex as (select id from public.kpi_excluded_members),
+       m  as (select * from public.members mm where not exists (select 1 from ex where ex.id = mm.id)),
+       consent as (select member_id from public.member_consent_latest where consent_type = 'deal_alert_ad' and agreed),
+       subs as (select distinct member_id from public.push_subscriptions where member_id is not null),
+       rd as (select * from public.deals where position('[테스트]' in title) = 0),
+       act as (select a.member_id, a.active_date from public.member_active_days a
+                where a.active_date between p_date - 6 and p_date
+                  and not exists (select 1 from ex where ex.id = a.member_id))
+  select
+    p_date,
+    now(),
+    (select count(*) from ex),
+    (select count(*) from m),
+    (select count(*) from m where business_verified),
+    (select count(*) from m where is_official_partner),
+    (select count(*) from m where not push_opt_out and id in (select member_id from subs)),
+    (select count(*) from public.push_subscriptions s where s.member_id in (select id from m)),
+    (select count(*) from m where id in (select member_id from consent)),
+    (select count(*) from m where not push_opt_out and id in (select member_id from subs)
+                              and id in (select member_id from consent)),
+    (select count(*) from m where notice_alerts_opt_in and not push_opt_out
+                              and id in (select member_id from subs) and id in (select member_id from consent)),
+    (select count(*) from rd where status = 'active' and closes_at > now()),
+    (select count(*) from rd where status = 'active'),
+    (select count(*) from public.seller_requests s where s.status = 'pending'
+       and not exists (select 1 from ex where ex.id = s.seller_member_id)),
+    (select count(*) from public.interests i where not coalesce(i.contacted, false)
+       and not exists (select 1 from ex where ex.id = i.member_id))
+      + (select count(*) from public.quick_leads q where not coalesce(q.contacted, false)),
+    (select count(*) from public.buy_requests b where not coalesce(b.contacted, false)
+       and not exists (select 1 from ex where ex.id = b.member_id)),
+    (select count(*) from m where created_at >= d_start and created_at < d_end),
+    (select count(*) from rd where created_at >= d_start and created_at < d_end),
+    (select count(*) from public.interests i where i.created_at >= d_start and i.created_at < d_end
+       and not exists (select 1 from ex where ex.id = i.member_id)),
+    (select count(*) from public.quick_leads q where q.created_at >= d_start and q.created_at < d_end),
+    (select count(*) from public.buy_requests b where b.created_at >= d_start and b.created_at < d_end
+       and not exists (select 1 from ex where ex.id = b.member_id)),
+    (select count(*) from public.seller_requests s where s.created_at >= d_start and s.created_at < d_end
+       and not exists (select 1 from ex where ex.id = s.seller_member_id)),
+    (select count(*) from public.notification_logs n where n.sent_at >= d_start and n.sent_at < d_end
+       and n.status in ('sent','clicked') and not exists (select 1 from ex where ex.id = n.member_id)),
+    (select count(*) from public.notification_logs n where n.sent_at >= d_start and n.sent_at < d_end
+       and n.clicked_at is not null and not exists (select 1 from ex where ex.id = n.member_id)),
+    (select count(*) from public.notification_logs n where n.sent_at >= d_start and n.sent_at < d_end
+       and n.status = 'failed' and not exists (select 1 from ex where ex.id = n.member_id)),
+    (select count(*) from act where active_date = p_date),
+    (select count(distinct member_id) from act);
+end;
+$$;
+revoke execute on function public.kpi_snapshot(date) from public, anon, authenticated;
+
+-- 8) 매일 00:05 KST (= UTC 15:05)
+select cron.schedule('kpi-daily-snapshot', '5 15 * * *', $$ select public.kpi_snapshot() $$);
+
+-- 9) 실행 후 — 제외될 계정 목록 (여러 줄):
+--   select e.reason, m.phone, m.company_name, m.name, m.created_at
+--     from public.kpi_excluded_members e join public.members m on m.id = e.id order by e.reason, m.created_at;
+--   테스트 계정 표시:  update public.members set is_test = true  where public.kpi_norm_phone(phone) in ('01000000000');
+--   표시 해제:        update public.members set is_test = false where public.kpi_norm_phone(phone) in ('01000000000');
+--   (선택) 어제 날짜로 바로 한 번 저장(상태값은 지금 값):  select public.kpi_snapshot();
+--
+--   실행 후 확인 — 한 줄:
+--   select
+--     (select count(*) from public.kpi_excluded_members) as excluded,
+--     (select string_agg(reason || ':' || cnt, ', ') from (select reason, count(*) cnt from public.kpi_excluded_members group by reason) r) as excluded_by_reason,
+--     (select count(*) from public.kpi_excluded_phones) as excluded_phones,
+--     (select schedule from cron.job where jobname = 'kpi-daily-snapshot') as cron_schedule,                  -- '5 15 * * *'
+--     (select active from cron.job where jobname = 'kpi-daily-snapshot') as cron_active,                      -- true
+--     has_function_privilege('anon', 'public.kpi_snapshot(date)', 'execute') as anon_exec,                    -- false
+--     has_function_privilege('authenticated', 'public.kpi_snapshot(date)', 'execute') as auth_exec,           -- false
+--     (select relrowsecurity from pg_class where oid = 'public.kpi_daily'::regclass) as kpi_daily_rls,         -- true
+--     (select relrowsecurity from pg_class where oid = 'public.member_active_days'::regclass) as active_rls,   -- true
+--     has_table_privilege('anon', 'public.kpi_excluded_members', 'select') as anon_view_select,               -- false
+--     (select count(*) from pg_trigger where tgname = 'members_protect_is_test') as is_test_trigger,                -- 1
+--     (select count(*) from public.member_active_days) as active_rows,
+--     (select count(*) from public.kpi_daily) as kpi_rows,
+--     (select max(snapshot_date) from public.kpi_daily) as last_snapshot;
+--   (다음 날) cron 실행 기록:
+--     select status, return_message, start_time from cron.job_run_details
+--      where jobid = (select jobid from cron.job where jobname = 'kpi-daily-snapshot') order by start_time desc limit 3;
+--   해제: select cron.unschedule('kpi-daily-snapshot');
