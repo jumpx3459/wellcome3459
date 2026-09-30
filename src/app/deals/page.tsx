@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import BusinessFooter from "@/components/BusinessFooter";
 import { useSearchParams } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockDeals, mockCategories, mockRegions, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
@@ -432,6 +433,9 @@ function DealsPageInner() {
         <a href="/unsubscribe" className="text-center text-xs text-gray500 underline mt-2 mb-4 py-2">
           알림이 필요 없으신가요? 알림 해지 · 탈퇴
         </a>
+        <div className="pt-4" style={{ borderTop: "1px solid #EEF0F2" }}>
+          <BusinessFooter />
+        </div>
       </div>
     </main>
   );

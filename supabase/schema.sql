@@ -1110,10 +1110,13 @@ alter table public.buy_requests add column if not exists privacy_consent_version
 --      and column_name in ('privacy_consented_at','privacy_consent_version');           -- 4행
 
 -- 2026-09-30 (커밋 E): 판매자 표시 — "비공개 판매자" 통일 · 판매 신청 동의 source 'sell' · seller_member_id 공개 조회 차단.
--- 실행 상태: ② 2026-09-30 대표 운영 DB 실행 완료(check 제약 2개 확인 — consent_type 8개 · source 5개). ①·③ 미실행.
+-- 실행 상태: ①②③ 모두 2026-09-30 대표 운영 DB 실행 완료.
+--   ② check 제약 2개 확인(consent_type 8개 · source 5개) — PR #23 merge 전
+--   ① 대상 5건(모두 closed) → 그룹 결과 1줄(비공개 판매자 · true · 5)
+--   ③ has_column_privilege false · false · true · true, 이후 운영 읽기 점검 이상 없음
 -- ②는 코드 배포 "전"에 실행해야 판매 신청이 막히지 않음(동의 기록 실패 → 500).
 --
--- ① 예전 임의 이름("{카테고리} 판매자 #NNNN") → "비공개 판매자"
+-- ① 예전 임의 이름("{카테고리} 판매자 #NNNN") → "비공개 판매자" — 2026-09-30 대표 실행 완료(5건)
 --   실행 전 확인:
 --     select id, title, seller_display_name, is_anonymous from public.deals
 --      where seller_display_name ~ ' 판매자 #[0-9]{4}$' order by created_at desc;
@@ -1136,7 +1139,7 @@ alter table public.member_consents add constraint member_consents_source_check
   check (source in ('signup','push_enable','reconsent','mypage','sell'));
 --   확인: 위 조회에서 source 제약에 'sell' 포함, consent_type 제약은 그대로(8개)
 --
--- ③ deals.seller_member_id 공개 조회 차단 — 컬럼 단위 권한(anon·authenticated는 이 컬럼만 못 읽음).
+-- ③ deals.seller_member_id 공개 조회 차단 — 컬럼 단위 권한(anon·authenticated는 이 컬럼만 못 읽음). 2026-09-30 대표 실행 완료
 --   service role(관리자 API·푸시·서버 라우트)은 권한과 무관하게 계속 읽힘. RLS 정책(deals_public_select)은 그대로.
 --   화면 코드는 커밋 E부터 이 컬럼을 조회하지 않음. select=* 로 deals를 읽는 화면 코드 없음.
 --   주의: 이후 deals에 새 컬럼을 추가하면 anon·authenticated에 select 권한을 따로 줘야 화면에서 읽힘.

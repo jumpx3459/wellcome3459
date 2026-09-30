@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import BusinessFooter from "@/components/BusinessFooter";
 import { mockCategories, mockDeals, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { formatPrice, formatRelativeTime, formatDealPrice } from "@/lib/format";
@@ -500,11 +501,9 @@ export default function Home() {
           <div className="mb-2.5" style={SECTION_TITLE_STYLE}>점핑 서비스</div>
           <EcosystemGrid />
         </div>
-        {/* 2026-09-29: 해외 투자자·파트너용 영문 소개(/en)로 가는 작은 링크 */}
-        <div className="text-center mt-6">
-          <Link href="/en" hrefLang="en" lang="en" className="underline underline-offset-4" style={{ fontSize: rem(14), color: "#6B7480" }}>
-            English
-          </Link>
+        {/* 2026-09-30 (커밋 D): 사업자 정보 푸터 — English(/en) 링크도 푸터 링크 줄로 이동 */}
+        <div className="mt-6 pt-4" style={{ borderTop: "1px solid #EEF0F2" }}>
+          <BusinessFooter />
         </div>
       </div>
 

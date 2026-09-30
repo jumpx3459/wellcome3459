@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { readFileSync } from "fs";
 import path from "path";
+import BusinessFooter from "@/components/BusinessFooter";
 
 export const metadata: Metadata = {
   title: "서비스 이용약관",
@@ -51,6 +52,9 @@ export default function TermsPage() {
           )
         )}
       </section>
+      <div className="mt-8 pt-5" style={{ borderTop: "1px solid #EEF0F2" }}>
+        <BusinessFooter />
+      </div>
     </main>
   );
 }

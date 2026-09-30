@@ -1,6 +1,6 @@
 # PROGRESS
 
-마지막 업데이트: 2026-09-30 (커밋 E 판매자 표시 — 브랜치 `fix/seller-display`, SQL 대표 실행 대기 / PR #22 커밋 H: 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내 — 병합 `8cf2f41` / PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
+마지막 업데이트: 2026-09-30 (PR #24 커밋 D 사업자 정보 푸터·문의 경로 / PR #23 커밋 E 판매자 표시 — 병합 `6dbe813`·SQL ①②③ 실행 완료 / PR #22 커밋 H: 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내 — 병합 `8cf2f41` / PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
 
 새 세션을 시작할 때 이 파일을 먼저 읽고, 아래 "다음에 할 일"부터 확인하세요.
 
@@ -37,7 +37,7 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 ## 현재 상태
 
 - 기본 브랜치: `main` (로컬/GitHub 모두 일치, `origin/HEAD -> origin/main`)
-- 열려 있는 PR: 없음 (**PR #22 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내는 2026-09-30 병합 · 머지 커밋 `8cf2f41`** · **PR #21 수신 동의 기록·약관·처리방침은 2026-09-30 병합 · 머지 커밋 `b10a9c8`** · **PR #20 푸시 규칙((광고)·수신거부·야간 보류)은 2026-09-30 병합 · 머지 커밋 `1c4e68d`** · **PR #19 푸시 발송 보안·매물 상태 검증은 2026-09-30 병합 · 머지 커밋 `957620f`** · **PR #18 로그인 비밀번호 유도 후속은 2026-09-29 병합 · `b7be300`** · **PR #17 선택적 비밀번호 로그인은 2026-09-28 병합 완료 · 머지 커밋 `6465faa`** —
+- 열려 있는 PR: 없음 (**PR #23 판매자 표시는 2026-09-30 병합 · 머지 커밋 `6dbe813`** · **PR #22 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내는 2026-09-30 병합 · 머지 커밋 `8cf2f41`** · **PR #21 수신 동의 기록·약관·처리방침은 2026-09-30 병합 · 머지 커밋 `b10a9c8`** · **PR #20 푸시 규칙((광고)·수신거부·야간 보류)은 2026-09-30 병합 · 머지 커밋 `1c4e68d`** · **PR #19 푸시 발송 보안·매물 상태 검증은 2026-09-30 병합 · 머지 커밋 `957620f`** · **PR #18 로그인 비밀번호 유도 후속은 2026-09-29 병합 · `b7be300`** · **PR #17 선택적 비밀번호 로그인은 2026-09-28 병합 완료 · 머지 커밋 `6465faa`** —
   사용자가 Supabase "Secure password change" 설정 후 병합 승인. 실제 설정→로그아웃→비밀번호 로그인 흐름은
   프로덕션에서 한 번 직접 확인 권장. PR #16 회원가입 3단계→2단계 통합은 2026-09-25 병합 · `5fb0375`)
 - 병합 완료 (기본 브랜치에 모두 반영됨): PR #1~#14 (견적함 메뉴+Toast, 회원가입 개선,
@@ -50,7 +50,17 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
-## 최근 작업 (2026-09-30) — 커밋 E: 판매자 표시 (브랜치 `fix/seller-display`, push·PR 전)
+## 최근 작업 (2026-09-30) — 커밋 D: 운영 사업자 정보 푸터 + 문의 경로 정리 (PR #24)
+
+- **`src/lib/businessInfo.ts`**: 상호·대표·사업자등록번호·주소·고객센터(070-4006-0890 / info@jumpx.co.kr / 카카오톡 채널 `/chat`, 검색 ID @덤핑점핑)·
+  개인정보 보호책임자·호스팅. 통신판매업 신고번호 `mailOrderNo`는 null → 푸터에서 줄 숨김(신고 후 값만 넣으면 표시). 계좌·법인번호·팩스 없음.
+- **`BusinessFooter`**: 기본 접힘 "점프엑스 주식회사 사업자 정보 ▾" + 항상 보이는 "이용약관 · **개인정보처리방침** · English", 펼치면 전체 항목 +
+  "덤핑점핑은 판매자와 구매자를 연결하는 서비스로, 거래 당사자가 아닙니다." 1280px 이상(xl)만 채널 QR(api.qrserver.com — 추천 QR과 같은 방식). 글자 13px.
+  위치: 회원 홈·비회원 홈·/deals·MY 맨 아래, /terms·/privacy 하단. 회원·비회원 홈의 단독 English 링크는 푸터로 이동(제거).
+- **문의 경로 통일 (`ContactLinks`)**: 카카오톡 채널 채팅·전화·이메일. `/unsubscribe`(예전 /support 오연결)·`/sell` 비회원 안내에 적용.
+  채널 추가(공지 소식)용 `/friend` 링크(KakaoChannelButton·가입 화면)는 문의 목적이 아니라 그대로.
+- **확인 (Playwright·가짜 응답)**: 390px·1280px 6개 화면 — 접힘/펼침 문구, 신고번호 줄 숨김, 최소 13px, 하단 탭·고정 버튼과 겹침 없음, QR은 1280px만.
+## 최근 작업 (2026-09-30) — 커밋 E: 판매자 표시 (PR #23, 머지 `6dbe813`)
 
 - **기준**: 약관 제2조 7호·제10조 3항·제12조 4항, consent-texts 7-2. 공개 시점 매물은 모두 중개(대리 게시) — "회사 직접 판매" 선택지 없음.
   상수·판정은 `src/lib/sellerDisplay.ts` (`resolveSellerDisplay`·`publicSellerName`·`isReservedSellerName`).
@@ -64,8 +74,15 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - **seller_member_id 공개 조회 차단**: 매물 상세·MY 쪽지 조회에서 컬럼 제거, 컬럼 권한 SQL(블록 ③). service role(관리자 API·푸시·서버)은 영향 없음.
   쪽지(`MESSAGES_ENABLED=false`)를 다시 켤 땐 판매자 판별·보내기를 서버 API로(주석의 messages_insert_valid 정책도 이 컬럼을 읽음).
 - **본문 없는 요청 401**: `/api/upload`·`/api/seller-requests`가 본문 없음·형식 오류에 500 → 401 (운영 확인에서 발견, 별도 커밋).
-- **SQL (운영 DB 미실행, 대표 실행)** — schema.sql 맨 끝 커밋 E 블록: ① 임의 이름 → "비공개 판매자"(+선택: 빈 값) ② `member_consents.source`에 `sell`
-  ③ `deals` select 권한을 seller_member_id 제외 컬럼만. **②는 배포 전 필수**(없으면 판매 신청이 동의 기록 실패로 500).
+- **배포**: GitHub Actions run 36695104244 success, 커밋 `6dbe813`. 운영 확인(읽기만): 본문 없는 비로그인 POST `/api/upload`·`/api/seller-requests` → 401,
+  마감 매물 상세 판매자 칸 "비공개 판매자 · 점핑매니저가 연결해드려요".
+- **SQL — 운영 DB 실행 완료 (2026-09-30, 대표)** — schema.sql 맨 끝 커밋 E 블록:
+  ② `member_consents.source`에 `sell` (merge 전 실행, check 제약 2개 확인)
+  ① 임의 이름 → "비공개 판매자": 대상 5건(모두 closed) → 그룹 결과 1줄(비공개 판매자·true·5)
+  ③ `deals` select 권한을 seller_member_id 제외 컬럼만: has_column_privilege false·false·true·true.
+  ③ 이후 운영 읽기 점검(비로그인): 비회원 홈·/deals(진행 중·지난 매물)·지난 매물 상세·공유 미리보기(og:title 정상)·sitemap.xml 모두 200,
+  Supabase 조회 오류·permission denied 없음. 되돌리기: `grant select on public.deals to anon, authenticated;`
+  **주의: deals에 새 컬럼을 추가하면 anon·authenticated에 select 권한을 따로 줘야 화면에서 읽힘.**
 - **확인 (Playwright 390px·가짜 응답)**: 상세 판매자 칸 4경우, 판매 폼(기본 비공개·7-2 전문·미동의 차단·전송값), 관리자 새 매물·수정 PATCH·승인 prefill,
   로컬 서버 본문 없음·토큰 없음 401.
 
@@ -506,8 +523,8 @@ curl로 확인. 단, 이 세션엔 브라우저 접근이 없어 육안 확인�
 - [x] 약관 "보기"가 이용약관·개인정보 모두 `/privacy`로 연결됨 → PR #21(2026-09-30)에서 이용약관은 `/terms`(약관 전문), 개인정보는 수집·이용 전문 시트로 분리 완료
 - [x] **`/api/upload`가 로그인 없이 누구나 호출 가능** (2026-09-27 발견) → 2026-09-30 커밋 H: 판매 신청을 회원 전용으로 바꾸고
   업로드는 회원 토큰 또는 관리자 키만 허용(401) + 형식·크기 검사
-- [ ] **`/unsubscribe` "고객센터(문의하기)"가 `/support`(지원사업 목록)로 잘못 연결** (2026-09-30 백로그): 커밋 D에서
-  카카오톡 채널·070-4006-0890·info@jumpx.co.kr로 수정
+- [x] **`/unsubscribe` "고객센터(문의하기)"가 `/support`(지원사업 목록)로 잘못 연결** → 커밋 D에서 카카오톡 채널 채팅·070-4006-0890·info@jumpx.co.kr로 수정
+- [x] **/en 연락처 admin@jumpx.co.kr → info@jumpx.co.kr** (2026-09-30 대표 결정, 커밋 D). 푸시 VAPID `mailto:admin@`(sendPush.ts)은 기술 설정이라 그대로
 - [ ] **`ImageUploader` 렌더 중 setState 경고** (2026-09-30 백로그): setItems 갱신 함수 안에서 `emitChange`(부모 onChange) 호출 →
   React 콘솔 경고. 갱신 후 useEffect로 onChange를 부르는 식으로 정리
 

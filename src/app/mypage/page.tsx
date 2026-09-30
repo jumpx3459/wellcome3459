@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import BusinessFooter from "@/components/BusinessFooter";
 import { CheckCircle } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockCategories, mockRegions, categoryIcons, categoryColors } from "@/lib/mockData";
@@ -1637,6 +1638,9 @@ export default function MyPage() {
         <Link href="/unsubscribe" className="text-center underline py-2" style={{ ...UI_LINK, fontWeight: 500, color: "#6B7480" }}>
           알림이 필요 없으신가요? 알림 해지 · 탈퇴
         </Link>
+        <div className="pt-4" style={{ borderTop: "1px solid #EEF0F2" }}>
+          <BusinessFooter />
+        </div>
       </div>
 
       <Toast message={toastMessage} />

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import ContactLinks from "@/components/ContactLinks";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { authFetch } from "@/lib/authFetch";
 import { clearReturningMember } from "@/lib/returningMember";
@@ -95,9 +96,11 @@ export default function UnsubscribePage() {
           >
             로그인하기
           </Link>
+          {/* 2026-09-30 (커밋 D): 예전엔 /support(지원사업 목록)로 잘못 연결 → 카카오톡 채널·전화·이메일 */}
           <p className="text-sm mt-3 leading-relaxed" style={{ color: "#6B7480" }}>
-            로그인이 어려우면 고객센터(<Link href="/support" className="underline">문의하기</Link>)로 삭제를 요청해주세요.
+            로그인이 어려우면 고객센터로 삭제를 요청해주세요.
           </p>
+          <ContactLinks className="mt-2" />
         </div>
       ) : (
         <>
