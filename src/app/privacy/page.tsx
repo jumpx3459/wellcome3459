@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import PrivacyBody from "./PrivacyBody";
+import BusinessFooter from "@/components/BusinessFooter";
 
 export const metadata: Metadata = {
   title: "개인정보 처리방침",
@@ -13,6 +14,9 @@ export default function PrivacyPage() {
   return (
     <main className="min-h-screen px-5 py-8">
       <PrivacyBody />
+      <div className="mt-8 pt-5" style={{ borderTop: "1px solid #EEF0F2" }}>
+        <BusinessFooter />
+      </div>
     </main>
   );
 }

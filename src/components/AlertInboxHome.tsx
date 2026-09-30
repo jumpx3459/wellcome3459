@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import BusinessFooter from "@/components/BusinessFooter";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockDeals, mockRegions, type Deal } from "@/lib/mockData";
 import { formatPrice, formatDealPrice } from "@/lib/format";
@@ -492,10 +493,9 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
         </div>
       )}
 
-      <div className="text-center" style={{ padding: "0 20px 24px" }}>
-        <Link href="/en" hrefLang="en" lang="en" className="underline underline-offset-4" style={{ fontSize: rem(14), color: "#6B7480" }}>
-          English
-        </Link>
+      {/* 2026-09-30 (커밋 D): 단독 English 링크 → 사업자 정보 푸터의 링크 줄로 이동 */}
+      <div style={{ padding: "8px 20px 28px", borderTop: "1px solid #EEF0F2" }}>
+        <BusinessFooter className="pt-4" />
       </div>
 
       {viewer && (
