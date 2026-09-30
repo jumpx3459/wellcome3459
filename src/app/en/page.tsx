@@ -126,7 +126,7 @@ export default function EnglishPage() {
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <a
-              href="mailto:admin@jumpx.co.kr"
+              href="mailto:info@jumpx.co.kr"
               className="inline-flex items-center justify-center font-black rounded-xl text-white"
               style={{ minHeight: 52, padding: "0 24px", fontSize: rem(17), background: ORANGE }}
             >
@@ -260,7 +260,7 @@ export default function EnglishPage() {
               <div className="flex flex-wrap gap-x-3">
                 <dt style={{ color: "rgba(255,255,255,.7)" }}>Email</dt>
                 <dd className="m-0">
-                  <a href="mailto:admin@jumpx.co.kr" className="font-bold underline underline-offset-4">admin@jumpx.co.kr</a>
+                  <a href="mailto:info@jumpx.co.kr" className="font-bold underline underline-offset-4">info@jumpx.co.kr</a>
                 </dd>
               </div>
               <div className="flex flex-wrap gap-x-3">

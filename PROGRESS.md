@@ -499,7 +499,7 @@ curl로 확인. 단, 이 세션엔 브라우저 접근이 없어 육안 확인�
 - [x] **`/api/upload`가 로그인 없이 누구나 호출 가능** (2026-09-27 발견) → 2026-09-30 커밋 H: 판매 신청을 회원 전용으로 바꾸고
   업로드는 회원 토큰 또는 관리자 키만 허용(401) + 형식·크기 검사
 - [x] **`/unsubscribe` "고객센터(문의하기)"가 `/support`(지원사업 목록)로 잘못 연결** → 커밋 D에서 카카오톡 채널 채팅·070-4006-0890·info@jumpx.co.kr로 수정
-- [ ] **/en 연락처가 admin@jumpx.co.kr** (2026-09-30): 고객센터 이메일(info@)과 다름 — 영문 투자자용 연락처로 유지할지 대표 확인
+- [x] **/en 연락처 admin@jumpx.co.kr → info@jumpx.co.kr** (2026-09-30 대표 결정, 커밋 D). 푸시 VAPID `mailto:admin@`(sendPush.ts)은 기술 설정이라 그대로
 - [ ] **`ImageUploader` 렌더 중 setState 경고** (2026-09-30 백로그): setItems 갱신 함수 안에서 `emitChange`(부모 onChange) 호출 →
   React 콘솔 경고. 갱신 후 useEffect로 onChange를 부르는 식으로 정리
 
