@@ -1,0 +1,36 @@
+name: CI
+
+# PR용 확인 (2026-10-01) — main 대상 PR마다 build 필수, lint는 참고(기존 SessionCountdown 에러가 남아 있어 실패해도 통과).
+# 비밀값은 쓰지 않음. Supabase 등 env가 없으면 앱이 데모 모드로 빌드됨(isSupabaseConfigured 가드).
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Lint (참고용)
+        run: npm run lint
+        continue-on-error: true
