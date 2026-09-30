@@ -12,10 +12,17 @@ import { debugLog } from "./debugLog"; // TEMP DEBUG — "Invalid API key" 원�
 // Phone에서 SMS 프로바이더(Twilio 등)를 먼저 연결해야 합니다. 연결 전에는
 // signInWithOtp() 호출이 에러를 반환합니다.
 
-/** "010-1234-5678" / "01012345678" 등 다양한 입력을 "+821012345678" 형태로 정규화 */
+/** 휴대폰 번호 공용 정규화 (2026-10-01) — 로그인(OTP·비밀번호)·가입이 모두 이 함수를 거친다.
+ * 하이픈·공백 등 숫자 외 글자를 지우고, "+82 10-…"·"8210…"(자동완성·붙여넣기)은 국내 형식 "010…"으로 바꾼다. */
+export function normalizeKoreanPhone(input: string | null | undefined): string {
+  const raw = (input ?? "").replace(/[^0-9]/g, "");
+  const intl = (input ?? "").trim().startsWith("+82") || /^82\d{9,10}$/.test(raw);
+  return intl ? `0${raw.slice(2).replace(/^0+/, "")}` : raw;
+}
+
+/** "010-1234-5678" / "01012345678" / "+82 10-…" 등 다양한 입력을 "+821012345678" 형태로 정규화 */
 export function toE164Phone(input: string): string {
-  const digitsOnly = input.replace(/[^0-9]/g, "");
-  const withoutLeadingZero = digitsOnly.replace(/^0/, "");
+  const withoutLeadingZero = normalizeKoreanPhone(input).replace(/^0/, "");
   return `+82${withoutLeadingZero}`;
 }
 
@@ -62,9 +69,12 @@ export function formatContactPhone(input: string | null | undefined): string {
   return d;
 }
 
-/** 휴대폰 번호 입력칸용 — 치는 동안 "010-1234-5678"로 하이픈을 넣어줌 (숫자 11자리까지). */
+/** 휴대폰 번호 입력칸용 — 치는 동안 "010-1234-5678"로 하이픈을 넣어줌 (숫자 11자리까지).
+ * 2026-10-01: "+82 10-3441-3459"가 들어오면 예전엔 앞 11자리만 잘라 "821-0344-1345"가 됐음 → 공용 정규화 후 자름 */
+// 입력칸에 maxLength를 두지 않음 — "+82 10-1234-5678"(16글자) 붙여넣기·자동완성이 브라우저에서 먼저 잘려 정규화가 안 됨.
+// 길이 제한은 여기서 숫자 11자리로.
 export function formatPhoneTyping(input: string): string {
-  const d = input.replace(/[^0-9]/g, "").slice(0, 11);
+  const d = normalizeKoreanPhone(input).slice(0, 11);
   if (d.length <= 3) return d;
   if (d.length <= 7) return `${d.slice(0, 3)}-${d.slice(3)}`;
   if (d.length === 10) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
@@ -74,11 +84,10 @@ export function formatPhoneTyping(input: string): string {
 /** @deprecated toLocalPhone 사용. 기존 호출부 호환용. */
 export const fromE164Phone = toLocalPhone;
 
-/** 국내 휴대폰 번호 형식 검증 (01[0-9] + 8~9자리, 총 10~11자리). sendOtp()의 형식
- * 검증과 동일 규칙을 공유해서, 폼 입력 단계의 UI 검증과 실제 API 게이트가 어긋나지
- * 않게 한다. */
+/** 국내 휴대폰 번호 형식 검증 — 공용 정규화 후 01[016789]로 시작하는 10~11자리. sendOtp()의 형식
+ * 검증과 동일 규칙을 공유해서, 폼 입력 단계의 UI 검증과 실제 API 게이트가 어긋나지 않게 한다. */
 export function isValidKoreanPhone(input: string): boolean {
-  return /^01[0-9]{8,9}$/.test(input.replace(/[^0-9]/g, ""));
+  return /^01[016789]\d{7,8}$/.test(normalizeKoreanPhone(input));
 }
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };

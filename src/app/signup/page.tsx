@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { sendOtp, verifyOtp, isValidKoreanPhone, toLocalPhone } from "@/lib/auth";
+import { sendOtp, verifyOtp, isValidKoreanPhone, toLocalPhone, formatPhoneTyping } from "@/lib/auth";
 import { mockCategories, mockRegions, categoryIcons, categoryColors } from "@/lib/mockData";
 import { subscribeToPush, savePushSubscription } from "@/lib/pushClient";
 import { generateRefCode } from "@/lib/refCode";
@@ -196,13 +196,16 @@ function SignupPageInner() {
   };
 
   const handleSendOtp = async () => {
-    if (!isValidKoreanPhone(phone)) {
+    // 2026-10-01: 자동완성이 입력 이벤트 없이 값만 채운 경우까지 — 누르는 순간 칸의 실제 값을 다시 읽음 (login과 같은 방식)
+    const typed = formatPhoneTyping(phoneInputRef.current?.value || phone);
+    if (typed !== phone) setPhone(typed);
+    if (!isValidKoreanPhone(typed)) {
       setOtpError("휴대폰 번호를 정확히 입력해주세요.");
       return;
     }
     setOtpError(null);
     setOtpSending(true);
-    const result = await sendOtp(phone);
+    const result = await sendOtp(typed);
     setOtpSending(false);
     if (!result.ok) {
       setOtpError(result.error);
@@ -713,13 +716,16 @@ function SignupPageInner() {
             <div className="flex gap-2">
               <input
                 ref={phoneInputRef}
+                type="tel"
+                name="username"
+                autoComplete="username"
                 className="flex-1 min-w-0 rounded-xl outline-none"
                 style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: rem(15), fontVariantNumeric: "tabular-nums" }}
                 placeholder="010-0000-0000"
                 inputMode="numeric"
                 value={phone}
                 disabled={verified}
-                onChange={(e) => setPhone(e.target.value.replace(/[^\d-]/g, "").slice(0, 13))}
+                onChange={(e) => setPhone(formatPhoneTyping(e.target.value))}
               />
               {/* 2026-09-27: 형식이 안 맞을 때 버튼을 disabled로 막아버리면 클릭이
                   안 먹혀서 handleSendOtp의 "정확히 입력해주세요" 에러 메시지가 뜰
