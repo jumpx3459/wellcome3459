@@ -6,12 +6,16 @@ import { PRICE_UNITS } from "@/lib/format";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { productName, category, region, quantity, hopePrice, hopePriceUnit, contactPhone, description, accessToken } = body;
+  const { productName, category, region, quantity, hopePrice, hopePriceUnit, contactPhone, description, accessToken, privacyConsent } = body;
   // 희망 단가 기준 단위(2026-09-29) — 정해진 값만 저장
   const priceUnit = typeof hopePriceUnit === "string" && (PRICE_UNITS as readonly string[]).includes(hopePriceUnit) ? hopePriceUnit : null;
 
   if (!productName || !contactPhone) {
     return NextResponse.json({ error: "필수 항목이 누락되었습니다." }, { status: 400 });
+  }
+  // 2026-09-30: [필수] 개인정보 수집·이용 동의 (화면 GuestPrivacyConsent). 동의 시각 저장은 consented_at 컬럼 SQL 실행 후
+  if (privacyConsent !== true) {
+    return NextResponse.json({ error: "개인정보 수집·이용에 동의해주세요.", field: "privacyConsent" }, { status: 400 });
   }
   // 2026-09-29: 사무실 번호도 허용 (휴대폰 전용 검증은 로그인 OTP에만)
   if (!isValidContactPhone(contactPhone)) {

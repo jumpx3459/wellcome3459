@@ -1095,3 +1095,16 @@ order by member_id, consent_type, created_at desc, id desc;
 --   select pg_get_constraintdef(oid) from pg_constraint
 --    where conrelid = 'public.member_consents'::regclass and contype = 'c';                    -- consent_type 8개 · source 4개
 --   select count(*) from public.member_consents;                                               -- 0 (기존 회원은 로그인 시 재동의 시트)
+
+-- 2026-09-30 (제안): 비회원 폼 개인정보 수집·이용 동의 기록 — 매물 상세 "번호만 남기기"(quick_leads)·구매 희망 등록(buy_requests).
+-- 비회원이라 member_consents(members FK)에 못 남겨서 각 행에 동의 시각·문구 버전을 붙인다.
+-- 화면·API는 이미 동의(privacyConsent=true)를 필수로 받음. 아래 SQL 실행 후 API가 이 컬럼을 채우도록 후속 커밋 필요.
+-- ⚠️ 아직 실행 안 함 — 대표가 Supabase SQL Editor에서 실행.
+alter table public.quick_leads  add column if not exists privacy_consented_at timestamptz;
+alter table public.quick_leads  add column if not exists privacy_consent_version text;
+alter table public.buy_requests add column if not exists privacy_consented_at timestamptz;
+alter table public.buy_requests add column if not exists privacy_consent_version text;
+-- 확인:
+--   select table_name, column_name, data_type from information_schema.columns
+--    where table_schema = 'public' and table_name in ('quick_leads','buy_requests')
+--      and column_name in ('privacy_consented_at','privacy_consent_version');           -- 4행

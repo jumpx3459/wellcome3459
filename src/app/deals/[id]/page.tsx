@@ -17,6 +17,7 @@ import { rem } from "@/lib/rem";
 import { getFreshAccessToken } from "@/lib/authFetch";
 import { SECTION_TITLE_STYLE, SERVICES_ANCHOR_ID, ServiceTilesCompact } from "@/components/EcosystemGrid";
 import StockTypeBadge from "@/components/StockTypeBadge";
+import GuestPrivacyConsent from "@/components/GuestPrivacyConsent";
 import { isLumpSum } from "@/lib/priceUnit";
 import PhotoCarousel, { type PhotoCarouselHandle } from "@/components/PhotoCarousel";
 import PhotoViewer from "@/components/PhotoViewer";
@@ -48,6 +49,9 @@ function DealDetailPageInner() {
   const [interested, setInterested] = useState(false);
   const [showQuickForm, setShowQuickForm] = useState(false);
   const [quickPhone, setQuickPhone] = useState("");
+  // 2026-09-30: 비회원 [필수] 개인정보 수집·이용 동의 (GuestPrivacyConsent)
+  const [quickConsent, setQuickConsent] = useState(false);
+  const [quickConsentError, setQuickConsentError] = useState(false);
   const [quickSubmitting, setQuickSubmitting] = useState(false);
   const [quickError, setQuickError] = useState<string | null>(null);
   // 2026-09-29: 히어로 사진 넘기기(PhotoCarousel) + 전체 화면(PhotoViewer)
@@ -254,6 +258,11 @@ function DealDetailPageInner() {
       setQuickError("휴대폰 번호를 정확히 입력해주세요.");
       return;
     }
+    if (!quickConsent) {
+      setQuickConsentError(true);
+      setQuickError("개인정보 수집·이용에 동의해주세요.");
+      return;
+    }
     setQuickSubmitting(true);
     try {
       if (!isSupabaseConfigured) {
@@ -262,7 +271,7 @@ function DealDetailPageInner() {
         const res = await fetch("/api/quick-interest", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dealId: deal.id, phone: digits }),
+          body: JSON.stringify({ dealId: deal.id, phone: digits, privacyConsent: quickConsent }),
         });
         if (!res.ok) throw new Error();
       }
@@ -773,6 +782,16 @@ function DealDetailPageInner() {
                   >
                     {quickSubmitting ? "전송 중..." : "전달하기"}
                   </button>
+                </div>
+                <div className="mt-2.5">
+                  <GuestPrivacyConsent
+                    checked={quickConsent}
+                    onChange={(v) => {
+                      setQuickConsent(v);
+                      setQuickConsentError(false);
+                    }}
+                    error={quickConsentError}
+                  />
                 </div>
                 {quickError && <div className="text-xs text-orange font-medium mt-2">{quickError}</div>}
                 <Link

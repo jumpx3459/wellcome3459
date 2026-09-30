@@ -9,6 +9,7 @@ import { mockRegions, categoryIcons, quantityUnits, guessCategory, logUnmatchedP
 import { formatPriceInput, parsePriceInput, PRICE_UNITS, formatPriceWithUnit } from "@/lib/format";
 import { isValidContactPhone, formatContactPhone } from "@/lib/auth";
 import ContactPhoneInput from "@/components/ContactPhoneInput";
+import GuestPrivacyConsent from "@/components/GuestPrivacyConsent";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import { rem } from "@/lib/rem";
@@ -50,6 +51,9 @@ export default function BuyPage() {
   const [priceUnit, setPriceUnit] = useState<string>(quantityUnits[0]);
   const [priceUnitTouched, setPriceUnitTouched] = useState(false);
   const [contactPhone, setContactPhone] = useState("");
+  // 2026-09-30: [필수] 개인정보 수집·이용 동의 — 비회원도 쓰는 폼이라 회원 여부와 관계없이 받음
+  const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [privacyConsentError, setPrivacyConsentError] = useState(false);
   const [autofilledPhone, setAutofilledPhone] = useState<string | null>(null);
   const [contactError, setContactError] = useState<string | null>(null);
   const [description, setDescription] = useState("");
@@ -111,6 +115,11 @@ export default function BuyPage() {
       document.getElementById("contact-phone")?.focus();
       return;
     }
+    if (!privacyConsent) {
+      setPrivacyConsentError(true);
+      setError("개인정보 수집·이용에 동의해주세요.");
+      return;
+    }
     setSubmitting(true);
     try {
       // 로그인 회원이면 토큰을 함께 보내 서버가 회원 연결(member_id) — 연락처를 바꿔도 연결 유지
@@ -128,6 +137,7 @@ export default function BuyPage() {
           accessToken,
           contactPhone: formatContactPhone(contactPhone),
           description,
+          privacyConsent,
         }),
       });
       if (!res.ok) {
@@ -292,6 +302,16 @@ export default function BuyPage() {
             autofilledValue={autofilledPhone}
             error={contactError}
           />
+          <div className="mt-2.5">
+            <GuestPrivacyConsent
+              checked={privacyConsent}
+              onChange={(v) => {
+                setPrivacyConsent(v);
+                setPrivacyConsentError(false);
+              }}
+              error={privacyConsentError}
+            />
+          </div>
         </div>
 
         <div>
