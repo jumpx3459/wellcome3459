@@ -1246,7 +1246,13 @@ select cron.schedule(
 -- 해제: select cron.unschedule('purge-nonmember-contacts');
 
 -- ============================================================================
--- 2026-09-30 (커밋 K): KPI 매일 저장(kpi_daily) + 관리자·테스트 계정 제외 + 회원 방문 기록. ⚠ 운영 DB 미실행 (대표 실행).
+-- 2026-09-30 (커밋 K): KPI 매일 저장(kpi_daily) + 관리자·테스트 계정 제외 + 회원 방문 기록.
+-- 2026-09-30 대표 운영 DB 실행 완료 — 아래는 실제 실행본 기준으로 고친 것:
+--   · protect_member_columns()는 덮어쓰지 않음. 별도 트리거 members_protect_is_test(before insert or update) 추가 — pg_trigger 확인 1
+--   · kpi_excluded_phones 표 생성, 설립자 번호 입력은 생략(해당 계정은 is_test로 처리)
+--   · 테스트 표시: member_no 13, 15, 17, 18, 19, 20 (6명 모두 내부·테스트)
+--   · kpi_daily·kpi_snapshot·member_active_days 생성, cron 'kpi-daily-snapshot' jobid 3 '5 15 * * *'
+--   · 첫 저장 2026-09-29: excluded 6 · members_total 0 · push_reachable 0 · deals_active 0
 -- 코드: /api/admin/dashboard-metrics(제외 적용·DB count), /api/admin/kpi-daily(최근 30일), /api/active-day(방문 기록),
 --       src/lib/kpiExclusion.ts, src/components/ActiveDayPing.tsx.
 -- 실행 순서: 0 확인 → 1 번호 정규화 함수 → 2 is_test + 보호 트리거 → 3 제외 번호 표(설립자) → 4 제외 뷰
@@ -1281,36 +1287,29 @@ language sql immutable as $$
   from (select regexp_replace(coalesce(p, ''), '[^0-9]', '', 'g') as d) x
 $$;
 
--- 2) 테스트 계정 표시 — 회원 본인은 못 바꿈(service role만). 기존 protect_member_columns에 is_test 추가 + 가입(insert) 때도 false 고정
+-- 2) 테스트 계정 표시 — 회원(authenticated·anon)은 못 바꿈. 가입(insert) 때 false, 수정(update) 때 기존 값 유지.
+--    protect_member_columns()는 그대로 두고 별도 트리거로 (실제 실행본 — 함수 본문은 운영 DB의 정의와 같은지 한 번 대조할 것:
+--    select pg_get_functiondef('public.protect_member_is_test()'::regprocedure);)
 alter table public.members add column if not exists is_test boolean not null default false;
 
-create or replace function public.protect_member_columns()
+create or replace function public.protect_member_is_test()
 returns trigger as $$
 begin
-  if auth.role() <> 'service_role' then
-    new.referred_by := old.referred_by;
-    new.member_no := old.member_no;
-    new.phone := old.phone;
-    new.business_license_path := old.business_license_path;
-    new.is_test := old.is_test;
-    if old.ref_code is not null then new.ref_code := old.ref_code; end if;
+  if auth.role() in ('authenticated', 'anon') then
+    if tg_op = 'INSERT' then
+      new.is_test := false;
+    else
+      new.is_test := old.is_test;
+    end if;
   end if;
   return new;
 end;
 $$ language plpgsql security definer set search_path = public;
+drop trigger if exists members_protect_is_test on public.members;
+create trigger members_protect_is_test before insert or update on public.members
+  for each row execute function public.protect_member_is_test();
 
-create or replace function public.protect_member_is_test_insert()
-returns trigger as $$
-begin
-  if auth.role() <> 'service_role' then
-    new.is_test := false;
-  end if;
-  return new;
-end;
-$$ language plpgsql security definer set search_path = public;
-drop trigger if exists members_protect_is_test_insert on public.members;
-create trigger members_protect_is_test_insert before insert on public.members
-  for each row execute function public.protect_member_is_test_insert();
+-- 테스트 표시 (실행본): update public.members set is_test = true where member_no in (13, 15, 17, 18, 19, 20);
 
 -- 3) 제외 번호 표 — 관리자 로그인 권한 없이 KPI에서만 뺄 번호(설립자 등).
 --    admin_users에 넣으면 관리자 로그인 계정이 생기므로 따로 둠.
@@ -1320,6 +1319,7 @@ create table if not exists public.kpi_excluded_phones (
   created_at timestamptz not null default now()
 );
 alter table public.kpi_excluded_phones enable row level security;   -- 정책 없음 = service role만
+--   (실행본: 설립자 번호 입력은 생략 — 해당 계정은 is_test로 처리. 나중에 번호로 뺄 때만 아래 사용)
 --   설립자 번호(Vercel 환경변수 FOUNDER_ADMIN_PHONE)가 admin_users에 있는지 — '설립자번호' 자리에 값을 넣어 실행:
 --     select count(*) as in_admin_users from public.admin_users
 --      where public.kpi_norm_phone(phone) = public.kpi_norm_phone('설립자번호');
@@ -1475,8 +1475,7 @@ select cron.schedule('kpi-daily-snapshot', '5 15 * * *', $$ select public.kpi_sn
 --     (select relrowsecurity from pg_class where oid = 'public.kpi_daily'::regclass) as kpi_daily_rls,         -- true
 --     (select relrowsecurity from pg_class where oid = 'public.member_active_days'::regclass) as active_rls,   -- true
 --     has_table_privilege('anon', 'public.kpi_excluded_members', 'select') as anon_view_select,               -- false
---     (select count(*) from pg_trigger where tgname = 'members_protect_is_test_insert') as is_test_insert_trigger,  -- 1
---     (position('is_test' in pg_get_functiondef('public.protect_member_columns()'::regprocedure)) > 0) as protect_has_is_test, -- true
+--     (select count(*) from pg_trigger where tgname = 'members_protect_is_test') as is_test_trigger,                -- 1
 --     (select count(*) from public.member_active_days) as active_rows,
 --     (select count(*) from public.kpi_daily) as kpi_rows,
 --     (select max(snapshot_date) from public.kpi_daily) as last_snapshot;

@@ -1,6 +1,6 @@
 # PROGRESS
 
-마지막 업데이트: 2026-09-30 (커밋 K KPI 매일 저장·방문 기록·지표 정확도 — 브랜치 `fix/kpi-daily`, SQL 대표 실행 대기 / PR #25 커밋 G 비회원 동의 기록·90일 자동 삭제 — 병합 `cf6093d`·SQL 실행 완료 / PR #24 커밋 D 사업자 정보 푸터·문의 경로 — 병합 `f24170c` / PR #23 커밋 E 판매자 표시 — 병합 `6dbe813`·SQL ①②③ 실행 완료 / PR #22 커밋 H: 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내 — 병합 `8cf2f41` / PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
+마지막 업데이트: 2026-09-30 (PR #26 커밋 K KPI 매일 저장·방문 기록·지표 정확도 — SQL 실행 완료 / PR #25 커밋 G 비회원 동의 기록·90일 자동 삭제 — 병합 `cf6093d`·SQL 실행 완료 / PR #24 커밋 D 사업자 정보 푸터·문의 경로 — 병합 `f24170c` / PR #23 커밋 E 판매자 표시 — 병합 `6dbe813`·SQL ①②③ 실행 완료 / PR #22 커밋 H: 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내 — 병합 `8cf2f41` / PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
 
 새 세션을 시작할 때 이 파일을 먼저 읽고, 아래 "다음에 할 일"부터 확인하세요.
 
@@ -50,11 +50,13 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
-## 최근 작업 (2026-09-30) — 커밋 K: KPI 매일 저장 + 방문 기록 + 지표 정확도 (브랜치 `fix/kpi-daily`, PR 전)
+## 최근 작업 (2026-09-30) — 커밋 K: KPI 매일 저장 + 방문 기록 + 지표 정확도 (PR #26)
 
-- **kpi_daily (SQL 미실행, 대표 실행)** — schema.sql 맨 끝 커밋 K 블록: 매일 00:05 KST(`5 15 * * *` UTC) `kpi_snapshot()`이 전날(한국 날짜) 한 줄 저장.
+- **SQL 운영 DB 실행 완료 (2026-09-30, 대표)**: 트리거 members_protect_is_test(protect_member_columns는 그대로), kpi_excluded_phones(설립자 번호는 생략 —
+  is_test로 처리), 테스트 표시 member_no 13·15·17·18·19·20(6명), cron `kpi-daily-snapshot` jobid 3, 첫 저장 2026-09-29(excluded 6 · 회원 0 · 도달 0 · 진행 매물 0).
+- **kpi_daily** — schema.sql 맨 끝 커밋 K 블록: 매일 00:05 KST(`5 15 * * *` UTC) `kpi_snapshot()`이 전날(한국 날짜) 한 줄 저장.
   상태값(회원·알림 도달 가능·진행 매물·미연락 등, 실행 시점 값)과 그날 흐름값(가입·리드·알림 발송/클릭·방문 회원), 방문 회원 1일/7일.
-- **제외 기준 `kpi_excluded_members`**: `members.is_test`(회원 본인 변경 불가 — protect_member_columns + insert 트리거) · admin_users 번호 ·
+- **제외 기준 `kpi_excluded_members`**: `members.is_test`(회원 본인 변경 불가 — 트리거 members_protect_is_test) · admin_users 번호 ·
   `kpi_excluded_phones`(설립자 번호 — admin_users에 넣으면 관리자 로그인이 생겨 별도 표). 매물은 제목 "[테스트]" 제외. 번호는 `kpi_norm_phone`으로 형식 통일.
 - **방문 기록 `member_active_days`**(member_id, active_date KST, PK 둘): `ActiveDayPing`(AppShell, 관리자 화면 제외)이 로그인 세션이면
   하루 1번 `/api/active-day` → 토큰으로 회원 판별해 upsert(중복 무시). 비회원·가입 전은 기록 안 함. RLS 정책 없음(서버만), 탈퇴 시 cascade.
