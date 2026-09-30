@@ -7,8 +7,14 @@ import { isDealPriceUnit, isLumpSum } from "@/lib/priceUnit";
 import { getPhotoLimit, photoLimitError } from "@/lib/photoLimit";
 import { getMemberFromToken } from "@/lib/photoLimitServer";
 
+const LOGIN_REQUIRED = "판매 신청은 회원만 할 수 있어요. 로그인 후 다시 시도해주세요.";
+
 export async function POST(req: NextRequest) {
-  const body = await req.json();
+  // 2026-09-30: 본문이 없거나 JSON이 아니면 토큰도 없는 것 — 예전엔 여기서 예외가 나 500이었음
+  const body = await req.json().catch(() => null);
+  if (!body || typeof body !== "object" || typeof body.accessToken !== "string" || !body.accessToken) {
+    return NextResponse.json({ error: LOGIN_REQUIRED }, { status: 401 });
+  }
   const {
     companyName,
     isAnonymous,
@@ -84,7 +90,7 @@ export async function POST(req: NextRequest) {
   // 2026-09-30: 판매 신청은 회원 전용 — 토큰 없음·무효·회원 행 없음이면 401 (비회원 신청 경로 폐지)
   const member = await getMemberFromToken(supabaseAdmin, accessToken);
   if (!member) {
-    return NextResponse.json({ error: "판매 신청은 회원만 할 수 있어요. 로그인 후 다시 시도해주세요." }, { status: 401 });
+    return NextResponse.json({ error: LOGIN_REQUIRED }, { status: 401 });
   }
   // 매물 한 건의 사진 총 장수 — 같은 회원 기준 한도
   const photoLimit = getPhotoLimit(member);
