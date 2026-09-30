@@ -1058,7 +1058,7 @@ update public.urgent_notices set push_sent_at = coalesce(created_at, now()) wher
 -- 한 줄씩 추가만 한다(수정·삭제 없음). 타입별 가장 최근 행이 현재 상태 → member_consent_latest 뷰.
 -- 동의 종류는 docs/legal/consent-texts-2026-10-07.md 1번. 지금 받는 것: tos·privacy·eligibility(필수, 가입·재동의),
 -- deal_alert_ad·kakao_marketing(선택). 아직 받지 않음: night_ad(예약), seller_terms(판매 신청, 커밋 E), biz_info(사업자 인증, 공개 후).
--- ⚠️ 아직 실행 안 함 — 대표가 Supabase SQL Editor에서 실행. PR merge(배포) 전에 실행해야 함
+-- 2026-09-30 대표 운영 DB 실행 완료 (tables 2 · RLS true · policy 1 · security_invoker=true · rows 0).
 --    (sendDealPush·sendNoticePush가 이 뷰를 조회 — 없으면 consent_error로 발송이 멈춤).
 create table if not exists public.member_consents (
   id bigint generated always as identity primary key,
@@ -1096,10 +1096,10 @@ order by member_id, consent_type, created_at desc, id desc;
 --    where conrelid = 'public.member_consents'::regclass and contype = 'c';                    -- consent_type 8개 · source 4개
 --   select count(*) from public.member_consents;                                               -- 0 (기존 회원은 로그인 시 재동의 시트)
 
--- 2026-09-30 (제안): 비회원 폼 개인정보 수집·이용 동의 기록 — 매물 상세 "번호만 남기기"(quick_leads)·구매 희망 등록(buy_requests).
+-- 2026-09-30: 비회원 폼 개인정보 수집·이용 동의 기록 — 매물 상세 "번호만 남기기"(quick_leads)·구매 희망 등록(buy_requests).
 -- 비회원이라 member_consents(members FK)에 못 남겨서 각 행에 동의 시각·문구 버전을 붙인다.
--- 화면·API는 이미 동의(privacyConsent=true)를 필수로 받음. 아래 SQL 실행 후 API가 이 컬럼을 채우도록 후속 커밋 필요.
--- ⚠️ 아직 실행 안 함 — 대표가 Supabase SQL Editor에서 실행.
+-- 화면·API는 이미 동의(privacyConsent=true)를 필수로 받음. API가 이 컬럼을 채우는 건 후속 커밋.
+-- 2026-09-30 대표 운영 DB 실행 완료 (consent 컬럼 4개 확인).
 alter table public.quick_leads  add column if not exists privacy_consented_at timestamptz;
 alter table public.quick_leads  add column if not exists privacy_consent_version text;
 alter table public.buy_requests add column if not exists privacy_consented_at timestamptz;
