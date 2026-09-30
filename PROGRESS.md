@@ -1,6 +1,6 @@
 # PROGRESS
 
-마지막 업데이트: 2026-09-30 (PR #24 커밋 D 사업자 정보 푸터·문의 경로 — 병합 `f24170c` / PR #23 커밋 E 판매자 표시 — 병합 `6dbe813`·SQL ①②③ 실행 완료 / PR #22 커밋 H: 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내 — 병합 `8cf2f41` / PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
+마지막 업데이트: 2026-09-30 (PR #25 커밋 G 비회원 동의 기록·90일 자동 삭제 — SQL 실행 완료 / PR #24 커밋 D 사업자 정보 푸터·문의 경로 — 병합 `f24170c` / PR #23 커밋 E 판매자 표시 — 병합 `6dbe813`·SQL ①②③ 실행 완료 / PR #22 커밋 H: 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내 — 병합 `8cf2f41` / PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
 
 새 세션을 시작할 때 이 파일을 먼저 읽고, 아래 "다음에 할 일"부터 확인하세요.
 
@@ -49,6 +49,22 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
   비공개 옵션 등) — 상세는 아래 "최근 작업 (2026-09-23)" 참고
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
+
+## 최근 작업 (2026-09-30) — 커밋 G: 비회원 동의 기록 · 90일 자동 삭제 · 문구 정리 (PR #25)
+
+- **비회원 동의 기록**: `/api/quick-interest`·`/api/buy-requests`가 `privacy_consented_at = now()`, `privacy_consent_version = TERMS_VERSION('2026-10-07')` 저장
+  (컬럼은 운영 DB에 이미 있음).
+- **90일 자동 삭제 — 운영 DB 실행 완료 (2026-09-30, 대표)**: cron `purge-nonmember-contacts` active · nullable 4 · 함수 실행 권한 anon·authenticated false ·
+  카운트 합계 변화 없음(interest 3 · quick_lead 2). schema.sql 맨 끝 커밋 G 블록: quick_leads 전체·buy_requests 중 member_id 없는 행의 연락처를
+  수집일(created_at) 90일 후 null + `anonymized_at`. 행·구매 희망 내용·동의 기록은 남김. `purge_nonmember_contacts()`(security definer,
+  anon/authenticated 실행 불가) + pg_cron `purge-nonmember-contacts` 매일 03:10 KST(`10 18 * * *` UTC). phone·contact_phone NOT NULL 해제 포함.
+  - 카운트 트리거(interest_count·quick_lead_count)는 `after insert or delete`만 → update(연락처 비우기)로는 줄지 않음.
+  - admin_category_kpis의 actor_key('q:'‖phone·'b:'‖contact_phone)는 최근 7일 활동자 수에만 쓰여 90일 지난 행 영향 없음.
+  - 탈퇴 시 번호 마스킹(`/api/unsubscribe`)은 like 조회라 null 행은 자연히 제외.
+  - 관리자 화면: 비운 행은 "연락처 삭제됨 (수집 90일 경과)" 표시(구매 희망 카드·관심 표시 목록).
+- **문구 90일 통일**: 비회원 폼 동의 "보유: 수집일로부터 90일", 처리방침 "수집일로부터 90일 후 자동 삭제", consent-texts 6-4에 같은 줄.
+- **처리방침 국외 이전**: 표에 "비고" 열 — Vercel "서버 실행 지역은 대한민국(서울)이며, 운영 기록 등 일부 처리는 미국에서 이뤄질 수 있어요".
+- **비로그인 MY "로그인이 필요해요" 화면**에 BusinessFooter.
 
 ## 최근 작업 (2026-09-30) — 커밋 D: 운영 사업자 정보 푸터 + 문의 경로 정리 (PR #24, 머지 `f24170c`)
 

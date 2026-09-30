@@ -678,6 +678,10 @@ export default function MyPage() {
         >
           처음이신가요? 알림 신청하기
         </Link>
+        {/* 2026-09-30 (커밋 G): 비로그인 화면에도 사업자 정보 푸터 */}
+        <div className="w-full max-w-md mt-10 pt-4 text-left" style={{ borderTop: "1px solid #EEF0F2" }}>
+          <BusinessFooter />
+        </div>
       </main>
     );
   }

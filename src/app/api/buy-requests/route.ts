@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { isValidContactPhone } from "@/lib/auth";
 import { sendAdminPush } from "@/lib/sendPush";
 import { PRICE_UNITS } from "@/lib/format";
+import { TERMS_VERSION } from "@/lib/consent";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -57,6 +58,9 @@ export async function POST(req: NextRequest) {
     member_id: memberId,
     contact_phone: contactPhone,
     description: description || null,
+    // 2026-09-30: [필수] 개인정보 수집·이용 동의 시각·문구 버전 (비회원은 member_consents에 못 남겨 행에 기록)
+    privacy_consented_at: new Date().toISOString(),
+    privacy_consent_version: TERMS_VERSION,
   });
 
   if (error) {

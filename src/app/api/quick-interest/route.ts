@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendAdminPush } from "@/lib/sendPush";
+import { TERMS_VERSION } from "@/lib/consent";
 
 // 비회원이 "관심있어요"를 누를 때, 전체 회원가입 없이 전화번호만으로 바로
 // 점핑매니저에게 리드를 넘기기 위한 경량 엔드포인트입니다.
@@ -11,7 +12,7 @@ export async function POST(req: NextRequest) {
   if (!dealId || digits.length < 9) {
     return NextResponse.json({ error: "휴대폰 번호를 확인해주세요." }, { status: 400 });
   }
-  // 2026-09-30: [필수] 개인정보 수집·이용 동의 (화면 GuestPrivacyConsent). 동의 시각 저장은 consented_at 컬럼 SQL 실행 후
+  // 2026-09-30: [필수] 개인정보 수집·이용 동의 (화면 GuestPrivacyConsent) — 동의 시각·문구 버전을 행에 같이 저장
   if (privacyConsent !== true) {
     return NextResponse.json({ error: "개인정보 수집·이용에 동의해주세요.", field: "privacyConsent" }, { status: 400 });
   }
@@ -28,6 +29,8 @@ export async function POST(req: NextRequest) {
   const { error } = await supabaseAdmin.from("quick_leads").insert({
     deal_id: dealId,
     phone: digits,
+    privacy_consented_at: new Date().toISOString(),
+    privacy_consent_version: TERMS_VERSION,
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
