@@ -1,6 +1,6 @@
 # PROGRESS
 
-마지막 업데이트: 2026-09-30 (PR #22 커밋 H: 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내 — 병합 `8cf2f41` / PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
+마지막 업데이트: 2026-09-30 (커밋 E 판매자 표시 — 브랜치 `fix/seller-display`, SQL 대표 실행 대기 / PR #22 커밋 H: 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내 — 병합 `8cf2f41` / PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
 
 새 세션을 시작할 때 이 파일을 먼저 읽고, 아래 "다음에 할 일"부터 확인하세요.
 
@@ -49,6 +49,25 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
   비공개 옵션 등) — 상세는 아래 "최근 작업 (2026-09-23)" 참고
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
+
+## 최근 작업 (2026-09-30) — 커밋 E: 판매자 표시 (브랜치 `fix/seller-display`, push·PR 전)
+
+- **기준**: 약관 제2조 7호·제10조 3항·제12조 4항, consent-texts 7-2. 공개 시점 매물은 모두 중개(대리 게시) — "회사 직접 판매" 선택지 없음.
+  상수·판정은 `src/lib/sellerDisplay.ts` (`resolveSellerDisplay`·`publicSellerName`·`isReservedSellerName`).
+- **매물 상세 판매자 칸 항상 표시**: 상호 공개면 상호, 그 외(비공개·값 없음·예전 임의 이름) "비공개 판매자 · 점핑매니저가 연결해드려요".
+- **임의 번호 이름 폐지**: `maskedSellerName`("{카테고리} 판매자 #NNNN") 삭제 → "비공개 판매자". 기존 값 바꾸는 SQL은 schema.sql 커밋 E 블록 ①.
+- **관리자 "판매자 표시"**(`SellerDisplayPicker`): 대리 게시(비공개, 기본) / 대리 게시(상호 공개 + 상호 입력). 새 매물·판매신청 승인
+  (신청서가 공개+업체명이면 상호 공개로 시작)·진행 중 매물 수정(manage PATCH `sellerPublic`·`sellerCompanyName`). 관리자 입력은 사칭 검사 예외.
+- **판매 신청 폼**: 업체명·"업체명 공개 설정 (기본: 비공개)"을 "상세 정보 추가" 밖으로, [필수] 판매자 확인 사항(7-2 전문) 체크.
+  `/api/seller-requests`는 `sellerTermsAgreed` 필수(400 `sellerTerms`) → `member_consents`에 seller_terms(source `sell`) 기록 후 신청 저장,
+  `is_anonymous`는 명시적 공개(false)만 공개. 상호에 점프엑스·jumpx·덤핑점핑·dumpingjumping(대소문자·공백 무시) → 400 `companyName`.
+- **seller_member_id 공개 조회 차단**: 매물 상세·MY 쪽지 조회에서 컬럼 제거, 컬럼 권한 SQL(블록 ③). service role(관리자 API·푸시·서버)은 영향 없음.
+  쪽지(`MESSAGES_ENABLED=false`)를 다시 켤 땐 판매자 판별·보내기를 서버 API로(주석의 messages_insert_valid 정책도 이 컬럼을 읽음).
+- **본문 없는 요청 401**: `/api/upload`·`/api/seller-requests`가 본문 없음·형식 오류에 500 → 401 (운영 확인에서 발견, 별도 커밋).
+- **SQL (운영 DB 미실행, 대표 실행)** — schema.sql 맨 끝 커밋 E 블록: ① 임의 이름 → "비공개 판매자"(+선택: 빈 값) ② `member_consents.source`에 `sell`
+  ③ `deals` select 권한을 seller_member_id 제외 컬럼만. **②는 배포 전 필수**(없으면 판매 신청이 동의 기록 실패로 500).
+- **확인 (Playwright 390px·가짜 응답)**: 상세 판매자 칸 4경우, 판매 폼(기본 비공개·7-2 전문·미동의 차단·전송값), 관리자 새 매물·수정 PATCH·승인 prefill,
+  로컬 서버 본문 없음·토큰 없음 401.
 
 ## 최근 작업 (2026-09-30) — 커밋 H: 동의 상태 표시·확대 안내·판매 신청 회원 전용·업로드 인증 (PR #22, 머지 `8cf2f41`)
 

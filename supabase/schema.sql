@@ -1108,3 +1108,50 @@ alter table public.buy_requests add column if not exists privacy_consent_version
 --   select table_name, column_name, data_type from information_schema.columns
 --    where table_schema = 'public' and table_name in ('quick_leads','buy_requests')
 --      and column_name in ('privacy_consented_at','privacy_consent_version');           -- 4행
+
+-- 2026-09-30 (커밋 E): 판매자 표시 — "비공개 판매자" 통일 · 판매 신청 동의 source 'sell' · seller_member_id 공개 조회 차단.
+-- ⚠ 아직 운영 DB 미실행 (대표 실행). ②는 코드 배포 "전"에 실행해야 판매 신청이 막히지 않음(동의 기록 실패 → 500).
+--
+-- ① 예전 임의 이름("{카테고리} 판매자 #NNNN") → "비공개 판매자"
+--   실행 전 확인:
+--     select id, title, seller_display_name, is_anonymous from public.deals
+--      where seller_display_name ~ ' 판매자 #[0-9]{4}$' order by created_at desc;
+update public.deals
+   set seller_display_name = '비공개 판매자', is_anonymous = true
+ where seller_display_name ~ ' 판매자 #[0-9]{4}$';
+--   (선택) 판매자 표시가 비어 있는 매물(관리자 직접 등록 등)도 같은 값으로 — 화면은 비어 있어도 "비공개 판매자"로 보임
+update public.deals
+   set seller_display_name = '비공개 판매자', is_anonymous = true
+ where seller_display_name is null or btrim(seller_display_name) = '';
+--   실행 후 확인 (0이어야 함):
+--     select count(*) from public.deals where seller_display_name ~ ' 판매자 #[0-9]{4}$';
+--     select seller_display_name, is_anonymous, count(*) from public.deals group by 1, 2 order by 3 desc;
+--
+-- ② member_consents.source에 'sell'(판매 신청) 추가
+--   제약 이름 확인: select conname, pg_get_constraintdef(oid) from pg_constraint
+--                   where conrelid = 'public.member_consents'::regclass and contype = 'c';
+alter table public.member_consents drop constraint if exists member_consents_source_check;
+alter table public.member_consents add constraint member_consents_source_check
+  check (source in ('signup','push_enable','reconsent','mypage','sell'));
+--   확인: 위 조회에서 source 제약에 'sell' 포함, consent_type 제약은 그대로(8개)
+--
+-- ③ deals.seller_member_id 공개 조회 차단 — 컬럼 단위 권한(anon·authenticated는 이 컬럼만 못 읽음).
+--   service role(관리자 API·푸시·서버 라우트)은 권한과 무관하게 계속 읽힘. RLS 정책(deals_public_select)은 그대로.
+--   화면 코드는 커밋 E부터 이 컬럼을 조회하지 않음. select=* 로 deals를 읽는 화면 코드 없음.
+--   주의: 이후 deals에 새 컬럼을 추가하면 anon·authenticated에 select 권한을 따로 줘야 화면에서 읽힘.
+revoke select on public.deals from anon, authenticated;
+do $$
+declare cols text;
+begin
+  select string_agg(quote_ident(column_name), ', ' order by ordinal_position) into cols
+    from information_schema.columns
+   where table_schema = 'public' and table_name = 'deals' and column_name <> 'seller_member_id';
+  execute format('grant select (%s) on public.deals to anon, authenticated', cols);
+end $$;
+--   확인:
+--     select has_column_privilege('anon', 'public.deals', 'seller_member_id', 'select') as anon_seller,          -- false
+--            has_column_privilege('authenticated', 'public.deals', 'seller_member_id', 'select') as auth_seller, -- false
+--            has_column_privilege('anon', 'public.deals', 'title', 'select') as anon_title,                      -- true
+--            has_column_privilege('anon', 'public.deals', 'seller_display_name', 'select') as anon_display;      -- true
+--     select count(*) from information_schema.column_privileges
+--      where table_schema = 'public' and table_name = 'deals' and grantee = 'anon' and privilege_type = 'SELECT'; -- 전체 컬럼 수 - 1

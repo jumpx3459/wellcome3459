@@ -5,11 +5,7 @@ import { sanitizeManifest, sanitizePid } from "@/lib/parseCsv";
 import { checkAdminAuth } from "@/lib/adminAuth";
 import { isStockType } from "@/lib/stockType";
 import { isDealPriceUnit, isLumpSum } from "@/lib/priceUnit";
-
-function maskedSellerName(category: string) {
-  const num = Math.floor(1000 + Math.random() * 9000);
-  return `${category} 판매자 #${num}`;
-}
+import { resolveSellerDisplay } from "@/lib/sellerDisplay";
 
 export async function POST(req: NextRequest) {
   const auth = checkAdminAuth(req);
@@ -40,6 +36,8 @@ export async function POST(req: NextRequest) {
     manifestItems,
     stockType,
     priceUnit,
+    sellerPublic, // 2026-09-30: 판매자 표시 — true면 상호 공개(sellerCompanyName), 아니면 "비공개 판매자"
+    sellerCompanyName,
   } = body;
 
   // 2026-09-28: 관리자 폼(DealForm)과 같은 필수 규칙 — field로 어느 칸인지 알려준다.
@@ -85,9 +83,10 @@ export async function POST(req: NextRequest) {
   if (!catRow) return bad("없는 카테고리예요.", "category");
   if (!regRow) return bad("없는 지역이에요.", "region");
 
+  // 2026-09-30: 판매자 표시는 관리자 폼의 "판매자 표시" 선택이 기준(모두 대리 게시 = 중개).
+  // 예전 폼처럼 값이 안 오면 판매 신청의 공개 설정·업체명을 따름. 임의 이름("… 판매자 #NNNN")은 폐지.
   let sellerMemberId: string | null = null;
-  let isAnonymous = false;
-  let sellerDisplayName: string | null = null;
+  let seller = resolveSellerDisplay(sellerPublic === true, sellerCompanyName);
   if (requestId) {
     const { data: sr } = await supabaseAdmin
       .from("seller_requests")
@@ -96,8 +95,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
     if (sr) {
       sellerMemberId = sr.seller_member_id ?? null;
-      isAnonymous = sr.is_anonymous ?? false;
-      sellerDisplayName = isAnonymous || !sr.company_name ? maskedSellerName(category) : sr.company_name;
+      if (typeof sellerPublic !== "boolean") seller = resolveSellerDisplay(sr.is_anonymous === false, sr.company_name);
     }
   }
 
@@ -128,8 +126,8 @@ export async function POST(req: NextRequest) {
       manifest_items: sanitizeManifest(manifestItems),
       stock_type: stockType ?? "general",
       seller_member_id: sellerMemberId,
-      is_anonymous: isAnonymous,
-      seller_display_name: sellerDisplayName,
+      is_anonymous: seller.is_anonymous,
+      seller_display_name: seller.seller_display_name,
     })
     .select()
     .single();
