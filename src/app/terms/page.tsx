@@ -52,9 +52,7 @@ export default function TermsPage() {
           )
         )}
       </section>
-      <div className="mt-8 pt-5" style={{ borderTop: "1px solid #EEF0F2" }}>
-        <BusinessFooter />
-      </div>
+      <BusinessFooter className="-mx-5 -mb-8 mt-8" />
     </main>
   );
 }

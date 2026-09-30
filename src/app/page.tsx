@@ -442,7 +442,7 @@ export default function Home() {
           — 판매 등록(공급 유입)이 플랫폼 성립의 병목이라 시각적으로 가장 강조.
           정보성 pill을 맨 아래 두면 하단 고정 CTA(무료 알림받기, 총 높이 약 160px)에
           가려질 수 있어 액션 카드보다 위로 옮기고, 안전 여백도 108→132px로 늘림. */}
-      <div className="mt-9 px-5 flex flex-col gap-3" style={{ paddingBottom: FLOATING_CTA_SPACE }}>
+      <div className="mt-9 px-5 flex flex-col gap-3">
         <Link
           href="/deals"
           className="text-center text-sm font-bold text-gray500 underline underline-offset-4"
@@ -502,9 +502,8 @@ export default function Home() {
           <EcosystemGrid />
         </div>
         {/* 2026-09-30 (커밋 D): 사업자 정보 푸터 — English(/en) 링크도 푸터 링크 줄로 이동 */}
-        <div className="mt-6 pt-4" style={{ borderTop: "1px solid #EEF0F2" }}>
-          <BusinessFooter />
-        </div>
+        {/* 2026-10-01: 회색 배경을 폭 전체에(-mx-5), 고정 CTA 높이만큼 푸터 아래 여백 */}
+        <BusinessFooter className="-mx-5 mt-6" bottomSpace={FLOATING_CTA_SPACE} />
       </div>
 
       {/* 메인 CTA — 항상 화면 하단에 고정.

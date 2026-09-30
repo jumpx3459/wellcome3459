@@ -1,81 +1,91 @@
 "use client";
 
 import { useState } from "react";
-/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { rem } from "@/lib/rem";
 import { BUSINESS_INFO, SERVICE_ROLE_NOTICE, mailHref, telHref } from "@/lib/businessInfo";
 
-// 운영 사업자 정보 푸터 (2026-09-30, 커밋 D) — 기본 접힘, 링크 줄(이용약관 · 개인정보처리방침 · English)은 항상 보임.
-// 페이지 본문 흐름 맨 아래에 두므로 하단 탭·FloatingCTA 여백은 각 페이지의 기존 하단 여백이 맡는다.
-export default function BusinessFooter({ className = "" }: { className?: string }) {
+// 운영 사업자 정보 푸터 (2026-09-30 커밋 D → 2026-10-01 커밋 J 당근 스타일).
+//   1줄 "점프엑스 주식회사 사업자 정보 >"(누르면 펼침, 펼치면 화살표가 아래로) · 펼침: 대표·주소·사업자등록번호·
+//   통신판매업 신고번호(null이면 숨김)·고객센터(+카카오톡 채널)·이메일·개인정보 보호책임자·호스팅 서비스 제공자 ·
+//   항상 보임: 통신판매중개자 고지 · 링크 줄. 값은 businessInfo.ts에서만. 상호는 첫 줄로 충분, QR 없음.
+// 2026-10-01: 옅은 회색 배경을 콘텐츠 폭 전체에 + 상단 구분선 + 위아래 24px. 부모의 좌우 여백은 부르는 쪽이 음수 여백(className)으로 넘김.
+//   bottomSpace = 하단 고정 CTA(비회원 홈 "덤핑매물 무료 알림받기") 높이만큼 아래 여백. 하단 탭·안전 영역은 AppShell이 이미 비워 둠.
+// 글자색: 회색 배경(#F2F4F6) 위 13px라 #5B6470(대비 약 5.6:1) — 예전 #6B7480(약 4.4:1)에서 한 단계 진하게.
+const FOOTER_BG = "#F2F4F6";
+const FOOTER_TEXT = "#5B6470";
+export default function BusinessFooter({ className = "", bottomSpace }: { className?: string; bottomSpace?: number | string }) {
   const [open, setOpen] = useState(false);
   const b = BUSINESS_INFO;
   const rows: [string, React.ReactNode][] = [
-    ["상호", b.companyName],
     ["대표", b.ceo],
+    ["주소", b.address],
     ["사업자등록번호", b.bizRegNo],
     ...(b.mailOrderNo ? ([["통신판매업 신고번호", b.mailOrderNo]] as [string, React.ReactNode][]) : []),
-    ["주소", b.address],
     [
       "고객센터",
       <span key="cs" className="inline-flex flex-wrap gap-x-1.5">
         <a href={telHref(b.tel)} className="underline underline-offset-2">{b.tel}</a>
         <span aria-hidden>|</span>
-        <a href={mailHref(b.email)} className="underline underline-offset-2">{b.email}</a>
-        <span aria-hidden>|</span>
         <a href={b.kakaoChannel.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
-          카카오톡 채널 {b.kakaoChannel.searchId} (채팅 상담)
+          카카오톡 채널 {b.kakaoChannel.searchId}
         </a>
       </span>,
     ],
+    ["이메일", <a key="mail" href={mailHref(b.email)} className="underline underline-offset-2">{b.email}</a>],
+    // 개인정보 보호책임자 연락처는 고객센터·이메일과 같아 이름만
     ["개인정보 보호책임자", b.privacyOfficer],
-    ["호스팅 제공자", b.hosting],
+    // 사이버몰 운영자 표시 항목
+    ["호스팅 서비스 제공자", b.hosting],
   ];
 
   return (
-    <footer className={`w-full ${className}`} style={{ fontSize: rem(13), color: "#6B7480", lineHeight: 1.6 }} data-business-footer>
+    <footer
+      className={className}
+      style={{
+        fontSize: rem(13),
+        color: FOOTER_TEXT,
+        lineHeight: 1.6,
+        background: FOOTER_BG,
+        borderTop: "1px solid #E4E7EB",
+        padding: `24px 20px calc(24px + ${typeof bottomSpace === "number" ? `${bottomSpace}px` : bottomSpace ?? "0px"})`,
+      }}
+      data-business-footer
+    >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="font-bold"
+        className="inline-flex items-center gap-1 font-bold"
         style={{ fontSize: rem(13), color: "#4B5563", padding: "4px 0" }}
       >
-        점프엑스 주식회사 사업자 정보 {open ? "▴" : "▾"}
+        점프엑스 주식회사 사업자 정보
+        <span
+          aria-hidden
+          className="inline-block"
+          style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform 0.15s", fontSize: rem(15), lineHeight: 1 }}
+        >
+          ›
+        </span>
       </button>
 
       {open && (
-        <div className="mt-1.5">
-          <dl className="grid gap-y-0.5" style={{ gridTemplateColumns: "auto 1fr", columnGap: 10 }}>
-            {rows.map(([k, v]) => (
-              <div key={k} className="contents">
-                <dt className="whitespace-nowrap">{k}</dt>
-                <dd className="m-0 min-w-0 break-words" style={{ color: "#4B5563" }}>{v}</dd>
-              </div>
-            ))}
-          </dl>
-          {/* 1280px 이상(xl)에서만 채널 QR — 휴대폰에선 링크를 바로 누르면 되므로 숨김. 기존 추천 QR과 같은 생성 방식 */}
-          <div className="hidden xl:flex items-center gap-2.5 mt-2">
-            <img
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(b.kakaoChannel.url)}`}
-              alt={`카카오톡 채널 ${b.kakaoChannel.searchId} 채팅 상담 QR`}
-              width={80}
-              height={80}
-              loading="lazy"
-              className="rounded-md bg-white"
-              style={{ border: "1px solid #E4E7EB" }}
-            />
-            <span>휴대폰 카메라로 찍으면 카카오톡 채널 채팅 상담으로 연결돼요</span>
-          </div>
-          <p className="mt-2">{SERVICE_ROLE_NOTICE}</p>
-        </div>
+        <dl className="mt-1 flex flex-col gap-0.5">
+          {rows.map(([k, v]) => (
+            <div key={k} className="flex flex-wrap gap-x-1.5">
+              <dt className="whitespace-nowrap">{k}</dt>
+              <dd className="m-0 min-w-0 break-words">{v}</dd>
+            </div>
+          ))}
+        </dl>
       )}
+
+      <p className="mt-2">{SERVICE_ROLE_NOTICE}</p>
 
       <nav className="mt-1.5 flex flex-wrap items-center gap-x-2" aria-label="약관·정책">
         <Link href="/terms" className="underline underline-offset-2">이용약관</Link>
         <span aria-hidden>·</span>
-        <Link href="/privacy" className="font-bold underline underline-offset-2" style={{ color: "#1A1F26" }}>개인정보처리방침</Link>
+        <Link href="/privacy" className="font-bold underline underline-offset-2" style={{ color: "#4B5563" }}>개인정보처리방침</Link>
         <span aria-hidden>·</span>
         <Link href="/en" hrefLang="en" lang="en" className="underline underline-offset-2">English</Link>
       </nav>
