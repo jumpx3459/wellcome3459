@@ -1,14 +1,16 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import PrivacyConsentTextSheet from "@/components/PrivacyConsentTextSheet";
 import { rem } from "@/lib/rem";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 import type { ConsentType } from "@/lib/consent";
 
-// 동의 시트 (2026-09-30) — 알림 켜기(매물 알림 1개)·기존 회원 재동의(필수 2 + 선택 2)가 같이 쓴다.
+// 동의 시트 (2026-09-30) — 알림 켜기(매물 알림 1개)·기존 회원 재동의(필수 3 + 선택 2)가 같이 쓴다.
 // 선택 항목 초기값은 항상 false. 필수 항목을 다 체크해야 주 버튼이 켜진다.
 // tag: 표시용 [필수]/[선택] 덮어쓰기 — 알림 켜기 시트는 광고성 정보라 [선택]으로 보이되, 체크해야 버튼이 켜짐(required)
-export type ConsentItem = { type: ConsentType; required: boolean; label: string; desc?: string; href?: string; tag?: "필수" | "선택" };
+// viewPrivacyText: "보기"를 누르면 개인정보 수집·이용 동의 전문(PrivacyConsentTextSheet)을 띄움 (href 대신)
+export type ConsentItem = { type: ConsentType; required: boolean; label: string; desc?: string; href?: string; viewPrivacyText?: boolean; tag?: "필수" | "선택" };
 
 export default function ConsentSheet({
   title,
@@ -41,6 +43,7 @@ export default function ConsentSheet({
   const allOn = items.every((i) => values[i.type]);
   const requiredOk = items.every((i) => !i.required || values[i.type]);
   const toggle = (t: string) => setValues((v) => ({ ...v, [t]: !v[t] }));
+  const [viewingPrivacy, setViewingPrivacy] = useState(false);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: "rgba(0,0,0,.5)" }} role="dialog" aria-modal="true" aria-label={title}>
@@ -49,7 +52,7 @@ export default function ConsentSheet({
         style={{ maxHeight: "calc(100dvh - var(--sat, 0px) - 24px)", padding: "24px 20px calc(20px + env(safe-area-inset-bottom))" }}
       >
         <p className="font-black" style={{ fontSize: rem(20), color: "#0B2540" }}>{title}</p>
-        {desc && <p className="mt-1.5" style={{ fontSize: rem(15), color: "#4B5563", lineHeight: 1.55 }}>{desc}</p>}
+        {desc && <p className="mt-1.5" style={{ fontSize: rem(15), color: "#4B5563", lineHeight: 1.55, whiteSpace: "pre-line" }}>{desc}</p>}
 
         <div className="mt-4 rounded-2xl overflow-hidden" style={{ border: "1.5px solid #E4E7EB" }}>
           {showAll && (
@@ -72,7 +75,7 @@ export default function ConsentSheet({
                     <b style={{ color: (i.tag ?? (i.required ? "필수" : "선택")) === "필수" ? "#E25100" : "#6B7480" }}>[{i.tag ?? (i.required ? "필수" : "선택")}]</b> {i.label}
                   </span>
                   {i.desc && (
-                    <span className="block mt-1" style={{ fontSize: rem(14), color: "#6B7480", lineHeight: 1.5 }}>
+                    <span className="block mt-1" style={{ fontSize: rem(14), color: "#6B7480", lineHeight: 1.5, whiteSpace: "pre-line" }}>
                       {i.desc}
                     </span>
                   )}
@@ -82,6 +85,11 @@ export default function ConsentSheet({
                 <a href={i.href} target="_blank" rel="noopener noreferrer" className="flex-shrink-0 font-bold" style={{ fontSize: rem(14), color: "#9AA3AD", padding: "12px 15px 12px 4px" }}>
                   보기 ›
                 </a>
+              )}
+              {i.viewPrivacyText && (
+                <button type="button" onClick={() => setViewingPrivacy(true)} className="flex-shrink-0 font-bold" style={{ fontSize: rem(14), color: "#9AA3AD", padding: "12px 15px 12px 4px" }}>
+                  보기 ›
+                </button>
               )}
             </div>
           ))}
@@ -105,6 +113,7 @@ export default function ConsentSheet({
         )}
         {footer}
       </div>
+      {viewingPrivacy && <PrivacyConsentTextSheet onClose={() => setViewingPrivacy(false)} />}
     </div>
   );
 }

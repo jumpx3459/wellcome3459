@@ -1056,13 +1056,14 @@ update public.urgent_notices set push_sent_at = coalesce(created_at, now()) wher
 
 -- 2026-09-30: 수신·약관 동의 기록 — src/lib/consent.ts(값 목록), /api/consents(기록), sendPush.ts(매물 알림 동의자만 발송).
 -- 한 줄씩 추가만 한다(수정·삭제 없음). 타입별 가장 최근 행이 현재 상태 → member_consent_latest 뷰.
--- night_ad는 지금 받지 않음(야간 21~08시엔 발송 자체를 하지 않음) — 나중에 야간 발송이 필요할 때를 위한 값.
+-- 동의 종류는 docs/legal/consent-texts-2026-10-07.md 1번. 지금 받는 것: tos·privacy·eligibility(필수, 가입·재동의),
+-- deal_alert_ad·kakao_marketing(선택). 아직 받지 않음: night_ad(예약), seller_terms(판매 신청, 커밋 E), biz_info(사업자 인증, 공개 후).
 -- ⚠️ 아직 실행 안 함 — 대표가 Supabase SQL Editor에서 실행. PR merge(배포) 전에 실행해야 함
 --    (sendDealPush·sendNoticePush가 이 뷰를 조회 — 없으면 consent_error로 발송이 멈춤).
 create table if not exists public.member_consents (
   id bigint generated always as identity primary key,
   member_id uuid not null references public.members(id) on delete cascade,
-  consent_type text not null check (consent_type in ('tos','privacy','deal_alert_ad','night_ad','kakao_marketing')),
+  consent_type text not null check (consent_type in ('tos','privacy','eligibility','deal_alert_ad','night_ad','kakao_marketing','seller_terms','biz_info')),
   agreed boolean not null,
   terms_version text not null,
   source text not null check (source in ('signup','push_enable','reconsent','mypage')),
@@ -1091,4 +1092,6 @@ order by member_id, consent_type, created_at desc, id desc;
 --   select relname, relrowsecurity from pg_class where relname = 'member_consents';            -- relrowsecurity = true
 --   select policyname, cmd, qual from pg_policies where tablename = 'member_consents';          -- member_consents_self_select · SELECT 1개만
 --   select reloptions from pg_class where relname = 'member_consent_latest';                   -- {security_invoker=true}
+--   select pg_get_constraintdef(oid) from pg_constraint
+--    where conrelid = 'public.member_consents'::regclass and contype = 'c';                    -- consent_type 8개 · source 4개
 --   select count(*) from public.member_consents;                                               -- 0 (기존 회원은 로그인 시 재동의 시트)

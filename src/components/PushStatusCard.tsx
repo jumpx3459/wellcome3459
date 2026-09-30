@@ -162,8 +162,8 @@ export default function PushStatusCard() {
 
       {sheetOpen && (
         <ConsentSheet
-          title="매물 알림을 받으시겠어요?"
-          items={[{ type: "deal_alert_ad", required: true, tag: "선택", label: CONSENT_TEXT.deal_alert_ad.label, desc: CONSENT_TEXT.deal_alert_ad.desc }]}
+          title={CONSENT_TEXT.deal_alert_ad.pushTitle}
+          items={[{ type: "deal_alert_ad", required: true, tag: "선택", label: CONSENT_TEXT.deal_alert_ad.label, desc: CONSENT_TEXT.deal_alert_ad.pushDesc }]}
           primaryLabel="동의하고 알림 켜기"
           pendingLabel="알림을 켜려면 동의해주세요"
           onSubmit={agreeAndEnable}

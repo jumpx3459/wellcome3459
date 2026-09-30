@@ -20,6 +20,7 @@ import FloatingCTA, { FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCta
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 import { CONSENT_TEXT } from "@/lib/consent";
 import { announceConsents, saveConsents } from "@/lib/consentClient";
+import PrivacyConsentTextSheet from "@/components/PrivacyConsentTextSheet";
 
 // "01012345678" -> "010****5678" 형태로 화면에만 일부 가려서 보여줍니다
 function maskPhone(phone: string): string {
@@ -75,6 +76,9 @@ function SignupPageInner() {
   const [kakao, setKakao] = useState(false);
   const [agreeTos, setAgreeTos] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
+  // 2026-09-30: [필수] 사업 목적 이용·만 14세 이상 확인 (eligibility, 약관 제4조)
+  const [agreeEligibility, setAgreeEligibility] = useState(false);
+  const [viewingPrivacyText, setViewingPrivacyText] = useState(false);
   // 2026-09-30: [선택] 광고성 정보 수신 동의 — 기본 false. 매물 알림 동의가 앱 푸시 켜기를 겸함(예전 push 토글 대체)
   const [agreeDealAlert, setAgreeDealAlert] = useState(false);
   const [agreeKakaoMkt, setAgreeKakaoMkt] = useState(false);
@@ -249,7 +253,7 @@ function SignupPageInner() {
       setError("휴대폰 인증을 먼저 완료해주세요.");
       return;
     }
-    if (!agreeTos || !agreePrivacy) {
+    if (!agreeTos || !agreePrivacy || !agreeEligibility) {
       setError("필수 약관에 동의해주세요.");
       return;
     }
@@ -348,6 +352,7 @@ function SignupPageInner() {
       const consents = [
         { type: "tos" as const, agreed: agreeTos },
         { type: "privacy" as const, agreed: agreePrivacy },
+        { type: "eligibility" as const, agreed: agreeEligibility },
         { type: "deal_alert_ad" as const, agreed: agreeDealAlert },
         { type: "kakao_marketing" as const, agreed: agreeKakaoMkt },
       ];
@@ -407,10 +412,10 @@ function SignupPageInner() {
   };
 
   // ---- 파생 값 (Claude Design 원안의 estAlerts/condCats/condRegions 로직과 동일) ----
-  const reqAgreed = agreeTos && agreePrivacy;
-  const allAgreed = agreeTos && agreePrivacy && agreeDealAlert && agreeKakaoMkt;
+  const reqAgreed = agreeTos && agreePrivacy && agreeEligibility;
+  const allAgreed = reqAgreed && agreeDealAlert && agreeKakaoMkt;
   const verified = Boolean(authUserId);
-  // 2026-09-30: 앱 푸시(매물 알림 동의)는 선택 — 필수 약관 2개 + 휴대폰 인증만으로 가입 가능
+  // 2026-09-30: 앱 푸시(매물 알림 동의)는 선택 — 필수 3개(약관·개인정보·이용 대상) + 휴대폰 인증만으로 가입 가능
   const step4Ready = verified && reqAgreed;
   const estAlerts = Math.max(2, categories.length * 4 + (regions.length === 0 ? 6 : regions.length * 2));
   const condCats =
@@ -812,9 +817,10 @@ function SignupPageInner() {
             <div className="mt-5 rounded-2xl overflow-hidden" style={{ border: "1.5px solid #E4E7EB" }}>
               <button
                 onClick={() => {
-                  const all = agreeTos && agreePrivacy && agreeDealAlert && agreeKakaoMkt;
+                  const all = allAgreed;
                   setAgreeTos(!all);
                   setAgreePrivacy(!all);
+                  setAgreeEligibility(!all);
                   setAgreeDealAlert(!all);
                   setAgreeKakaoMkt(!all);
                 }}
@@ -837,8 +843,9 @@ function SignupPageInner() {
               </button>
 
               {[
-                { key: "tos", label: "서비스 이용약관 동의", tag: "필수", on: agreeTos, toggle: () => setAgreeTos(!agreeTos), href: CONSENT_TEXT.tos.href },
-                { key: "privacy", label: "개인정보 수집·이용 동의", tag: "필수", on: agreePrivacy, toggle: () => setAgreePrivacy(!agreePrivacy), href: CONSENT_TEXT.privacy.href },
+                { key: "tos", label: CONSENT_TEXT.tos.label, tag: "필수", on: agreeTos, toggle: () => setAgreeTos(!agreeTos), href: CONSENT_TEXT.tos.href },
+                { key: "privacy", label: CONSENT_TEXT.privacy.label, tag: "필수", on: agreePrivacy, toggle: () => setAgreePrivacy(!agreePrivacy), view: () => setViewingPrivacyText(true) },
+                { key: "eligibility", label: CONSENT_TEXT.eligibility.label, tag: "필수", on: agreeEligibility, toggle: () => setAgreeEligibility(!agreeEligibility) },
                 { key: "deal_alert_ad", label: CONSENT_TEXT.deal_alert_ad.label, desc: CONSENT_TEXT.deal_alert_ad.desc, tag: "선택", on: agreeDealAlert, toggle: () => setAgreeDealAlert(!agreeDealAlert) },
                 { key: "kakao_marketing", label: CONSENT_TEXT.kakao_marketing.label, desc: CONSENT_TEXT.kakao_marketing.desc, tag: "선택", on: agreeKakaoMkt, toggle: () => setAgreeKakaoMkt(!agreeKakaoMkt) },
               ].map((a) => (
@@ -866,9 +873,15 @@ function SignupPageInner() {
                       보기 ›
                     </a>
                   )}
+                  {a.view && (
+                    <button type="button" onClick={a.view} className="flex-shrink-0 font-bold" style={{ fontSize: rem(14), color: "#9AA3AD", padding: "12px 15px 12px 4px" }}>
+                      보기 ›
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
+            {viewingPrivacyText && <PrivacyConsentTextSheet onClose={() => setViewingPrivacyText(false)} />}
 
             {agreeDealAlert && pushBlocker && (
               <div className="mt-2">

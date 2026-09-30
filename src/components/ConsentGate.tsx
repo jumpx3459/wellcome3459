@@ -4,12 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { rem } from "@/lib/rem";
-import { CONSENT_TEXT } from "@/lib/consent";
+import { CONSENT_TEXT, REQUIRED_CONSENTS } from "@/lib/consent";
 import { CONSENT_CHANGED_EVENT, CONSENT_NOTICE_EVENT, announceConsents, fetchMyConsents, saveConsents } from "@/lib/consentClient";
 import { clearReturningMember } from "@/lib/returningMember";
 import ConsentSheet from "@/components/ConsentSheet";
 
-// 2026-09-30: (1) 기존 회원 재동의 — 로그인했는데 tos·privacy 최신 동의 기록이 없으면 시트(필수 2 + 선택 2).
+// 2026-09-30: (1) 기존 회원 재동의 — 로그인했는데 tos·privacy·eligibility 중 하나라도 최신 동의가 없으면 시트(필수 3 + 선택 2).
 // 필수를 동의할 때까지 닫을 수 없고, 동의하지 않으면 서비스 이용 불가 안내 + 로그아웃·탈퇴 경로.
 // (2) 동의/철회 직후 안내 — consentClient.showConsentNotice가 보낸 문구를 잠깐 띄움. AppShell에 있어서
 // 가입 완료 직후 화면이 바뀌어도 안내가 남는다.
@@ -35,7 +35,7 @@ export default function ConsentGate() {
     if (!member) return setNeedsReconsent(false);
     const state = await fetchMyConsents();
     if (!state) return;
-    setNeedsReconsent(!state.tos?.agreed || !state.privacy?.agreed);
+    setNeedsReconsent(REQUIRED_CONSENTS.some((t) => !state[t]?.agreed));
   }, []);
 
   useEffect(() => {
@@ -67,7 +67,7 @@ export default function ConsentGate() {
   const submit = async (values: Record<string, boolean>) => {
     setBusy(true);
     setError(null);
-    const consents = (["tos", "privacy", "deal_alert_ad", "kakao_marketing"] as const).map((type) => ({ type, agreed: Boolean(values[type]) }));
+    const consents = (["tos", "privacy", "eligibility", "deal_alert_ad", "kakao_marketing"] as const).map((type) => ({ type, agreed: Boolean(values[type]) }));
     const r = await saveConsents(consents, "reconsent");
     setBusy(false);
     if (!r.ok) {
@@ -97,7 +97,8 @@ export default function ConsentGate() {
           showAll
           items={[
             { type: "tos", required: true, label: CONSENT_TEXT.tos.label, href: CONSENT_TEXT.tos.href },
-            { type: "privacy", required: true, label: CONSENT_TEXT.privacy.label, href: CONSENT_TEXT.privacy.href },
+            { type: "privacy", required: true, label: CONSENT_TEXT.privacy.label, viewPrivacyText: true },
+            { type: "eligibility", required: true, label: CONSENT_TEXT.eligibility.label },
             { type: "deal_alert_ad", required: false, label: CONSENT_TEXT.deal_alert_ad.label, desc: CONSENT_TEXT.deal_alert_ad.desc },
             { type: "kakao_marketing", required: false, label: CONSENT_TEXT.kakao_marketing.label, desc: CONSENT_TEXT.kakao_marketing.desc },
           ]}
