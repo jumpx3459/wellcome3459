@@ -6,6 +6,8 @@ import { CheckCircle } from "lucide-react";
 import { mockCategories, mockRegions, categoryIcons, quantityUnits } from "@/lib/mockData";
 import ImageUploader from "@/components/ImageUploader";
 import VideoUploader from "@/components/VideoUploader";
+import SellerDisplayPicker from "@/components/SellerDisplayPicker";
+import { publicSellerName } from "@/lib/sellerDisplay";
 import ManifestUploader from "@/components/ManifestUploader";
 import Toast, { useToast } from "@/components/Toast";
 import { formatPriceInput, parsePriceInput, formatMemberNo, formatPriceWithUnit, formatDealPrice } from "@/lib/format";
@@ -25,6 +27,7 @@ type SellerRequest = {
   stock_type?: string | null; // 2026-09-29 재고 유형
   id: string;
   company_name: string | null;
+  is_anonymous?: boolean | null; // 판매 신청의 업체명 공개 설정 (true = 비공개)
   contact_name: string | null;
   contact_phone: string;
   product_name: string;
@@ -86,6 +89,8 @@ type ActiveDeal = {
   video_url: string | null;
   interest_count: number | null;
   quick_lead_count: number | null;
+  is_anonymous?: boolean | null;
+  seller_display_name?: string | null;
 };
 
 // 2026-09-28 (2): 목록/마감 UI 추가하며 함께 정의 — ActiveDeal과 달리 수량/가격
@@ -1576,6 +1581,9 @@ function AdminDashboard({
                   manifestItems: r.manifest_items ?? [],
                   closesInHours: r.hope_duration_hours ?? undefined,
                   stockType: r.stock_type ?? undefined,
+                  // 2026-09-30: 판매자 표시 — 신청서에서 공개를 고르고 업체명이 있을 때만 상호 공개로 시작
+                  sellerPublic: r.is_anonymous === false && !!r.company_name?.trim(),
+                  sellerCompanyName: r.company_name ?? "",
                 }}
                 requestId={r.id}
                 onDone={() => { setOpenFormFor(null); load(); }}
@@ -2076,6 +2084,11 @@ function ActiveDealCard({
   const [images, setImages] = useState<string[]>(deal.images ?? []);
   const [editingVideo, setEditingVideo] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(deal.video_url ?? null);
+  // 2026-09-30: 판매자 표시 수정 — 지금 값에서 시작 (예전 임의 이름·"비공개 판매자"는 비공개)
+  const initialSellerName = publicSellerName(deal);
+  const [seller, setSeller] = useState({ isPublic: initialSellerName !== null, companyName: initialSellerName ?? "" });
+  const sellerChanged =
+    seller.isPublic !== (initialSellerName !== null) || (seller.isPublic && seller.companyName.trim() !== (initialSellerName ?? ""));
   const [deleting, setDeleting] = useState(false);
   const { message: toastMessage, showToast } = useToast();
 
@@ -2108,7 +2121,8 @@ function ActiveDealCard({
   };
 
   const saveAll = async () => {
-    if (!(await patch({ remainingQty: Number(remainingQty), images, videoUrl }))) {
+    const sellerPatch = sellerChanged ? { sellerPublic: seller.isPublic, sellerCompanyName: seller.companyName } : {};
+    if (!(await patch({ remainingQty: Number(remainingQty), images, videoUrl, ...sellerPatch }))) {
       showToast("저장하지 못했어요. 다시 시도해주세요");
       return;
     }
@@ -2276,6 +2290,10 @@ function ActiveDealCard({
             </div>
           )}
 
+          <div className="mt-3">
+            <SellerDisplayPicker idPrefix={`deal-${deal.id}`} isPublic={seller.isPublic} companyName={seller.companyName} onChange={setSeller} />
+          </div>
+
           <button
             onClick={saveAll}
             disabled={saving}
@@ -2337,6 +2355,8 @@ function DealForm({
     manifestItems?: ManifestRow[];
     closesInHours?: number;
     stockType?: string;
+    sellerPublic?: boolean;
+    sellerCompanyName?: string;
   };
   requestId?: string;
   onDone: () => void;
@@ -2374,6 +2394,8 @@ function DealForm({
   const [storageCondition, setStorageCondition] = useState(prefill?.storageCondition ?? "");
   const [pid, setPid] = useState(prefill?.pid ?? "");
   const [manifestItems, setManifestItems] = useState<ManifestRow[]>(prefill?.manifestItems ?? []);
+  // 2026-09-30: 판매자 표시 — 기본 대리 게시(비공개)
+  const [seller, setSeller] = useState({ isPublic: prefill?.sellerPublic ?? false, companyName: prefill?.sellerCompanyName ?? "" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<DealField, string>>>({});
@@ -2452,6 +2474,8 @@ function DealForm({
           storageCondition: storageCondition || null,
           pid: pid || null,
           manifestItems: manifestItems.length ? manifestItems : null,
+          sellerPublic: seller.isPublic,
+          sellerCompanyName: seller.companyName,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -2744,6 +2768,8 @@ function DealForm({
           onChange={(e) => setDescription(e.target.value)}
         />
       </DealFormField>
+
+      <SellerDisplayPicker idPrefix="deal-new" isPublic={seller.isPublic} companyName={seller.companyName} onChange={setSeller} />
 
       {/* 2026-09-26: 혼합매물(리퀴데이션 파렛트 등) — 신청서에서 이미 첨부됐으면 prefill로
           채워지고, 여기서도 직접 추가/수정 가능 (전화 접수 등 신청서 없이 등록하는 경우 대비). */}

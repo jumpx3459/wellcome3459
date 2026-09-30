@@ -16,7 +16,13 @@ export async function POST(req: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  const formData = await req.formData();
+  // 2026-09-30: 본문이 없거나 multipart가 아니면 예전엔 여기서 예외 → 500. 관리자면 400, 아니면(토큰도 없음) 401
+  const formData = await req.formData().catch(() => null);
+  if (!formData) {
+    return checkAdminAuth(req).ok
+      ? NextResponse.json({ error: "파일이 없습니다." }, { status: 400 })
+      : NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+  }
   const files = formData.getAll("files") as File[];
   const video = formData.get("video") as File | null;
 

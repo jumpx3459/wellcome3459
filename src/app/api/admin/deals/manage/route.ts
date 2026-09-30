@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { checkAdminAuth } from "@/lib/adminAuth";
+import { resolveSellerDisplay } from "@/lib/sellerDisplay";
 
 function getAdminClient() {
   return createClient(
@@ -37,7 +38,7 @@ export async function PATCH(req: NextRequest) {
   const auth = checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  const { id, remainingQty, closesAt, status, images, videoUrl } = await req.json();
+  const { id, remainingQty, closesAt, status, images, videoUrl, sellerPublic, sellerCompanyName } = await req.json();
   if (!id) return NextResponse.json({ error: "id가 필요합니다." }, { status: 400 });
   // DB check 제약(deals_status_check)과 같은 값만 허용 — sold_out은 사용처가 없어 제외
   if (status !== undefined && !DEAL_STATUSES.includes(status)) {
@@ -51,6 +52,8 @@ export async function PATCH(req: NextRequest) {
   if (status !== undefined) update.status = status;
   if (images !== undefined) update.images = images;
   if (videoUrl !== undefined) update.video_url = videoUrl;
+  // 2026-09-30: 판매자 표시 수정 — 공개면 상호, 아니면 "비공개 판매자" (sellerDisplay.ts)
+  if (sellerPublic !== undefined) Object.assign(update, resolveSellerDisplay(sellerPublic === true, sellerCompanyName));
 
   const { error } = await supabaseAdmin.from("deals").update(update).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
