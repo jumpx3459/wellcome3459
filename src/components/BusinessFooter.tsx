@@ -71,17 +71,22 @@ export default function BusinessFooter({ className = "", bottomSpace }: { classN
             ›
           </span>
         </button>
-        {/* eslint-disable-next-line @next/next/no-img-element -- 1x/2x 원본 그대로(투명 PNG, 대표 제공), 최적화 불필요한 작은 심볼 */}
-        <img
-          src="/brand/jumpx-symbol-56.png"
-          srcSet="/brand/jumpx-symbol-56.png 1x, /brand/jumpx-symbol-112.png 2x"
-          alt="점프엑스 주식회사"
-          width={38}
-          height={28}
-          className="flex-shrink-0 select-none"
-          style={{ height: 28, width: "auto" }}
-          draggable={false}
-        />
+        {/* 2026-10-01: 심볼 + "JumpX Inc." 한 묶음(높이 28px, 링크 없음). 글자는 로고 파랑 계열, 이미지 속 영문·태그라인 없음 */}
+        <span className="flex-shrink-0 inline-flex items-center gap-1.5 select-none" style={{ height: 28 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- 1x/2x 원본 그대로(투명 PNG, 대표 제공), 최적화 불필요한 작은 심볼 */}
+          <img
+            src="/brand/jumpx-symbol-56.png"
+            srcSet="/brand/jumpx-symbol-56.png 1x, /brand/jumpx-symbol-112.png 2x"
+            alt="점프엑스 주식회사"
+            width={38}
+            height={28}
+            style={{ height: 28, width: "auto" }}
+            draggable={false}
+          />
+          <span aria-hidden className="font-bold whitespace-nowrap" style={{ fontSize: rem(14), color: "#1C5FAE", letterSpacing: "-0.01em" }}>
+            JumpX Inc.
+          </span>
+        </span>
       </div>
 
       {open && (
