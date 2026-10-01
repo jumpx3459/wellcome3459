@@ -55,11 +55,12 @@ export function SuggestInput({
               style={{
                 fontSize: rem(13),
                 padding: "4px 10px",
-                background: picked ? "#FFF1E7" : "#fff",
-                border: picked ? "1.5px solid var(--color-brandOrange)" : "1px solid #E4E7EB",
-                color: picked ? "#C2410C" : "#4B5563",
+                background: picked ? "#E9ECEF" : "#fff",
+                border: picked ? "1.5px solid #6B7480" : "1px solid #E4E7EB",
+                color: picked ? "#1A1F26" : "#4B5563",
               }}
             >
+              {picked ? "✓ " : ""}
               {e}
             </button>
           );
@@ -90,16 +91,17 @@ export function StorageTypeButtons({
             role="radio"
             aria-checked={picked}
             onClick={() => onChange(picked ? "" : t)}
-            className="rounded-xl font-bold"
+            className="rounded-xl font-bold min-w-0 whitespace-nowrap"
             style={{
               fontSize: DEAL_CHIP_FONT_SIZE,
               padding: "11px 0",
-              background: picked ? "#FFF1E7" : "#fff",
-              border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
+              background: picked ? "#E9ECEF" : "#fff",
+              border: picked ? "2px solid #6B7480" : "1.5px solid #E4E7EB",
               color: "#1A1F26",
             }}
           >
-            {STORAGE_ICONS[t]} {t}
+            {picked ? "✓ " : `${STORAGE_ICONS[t]} `}
+            {t}
           </button>
         );
       })}

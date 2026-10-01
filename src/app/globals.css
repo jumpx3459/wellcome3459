@@ -163,3 +163,20 @@ p {
 .animate-onboarding-step {
   animation: onboarding-fade-slide 0.4s ease-out;
 }
+
+/* 2026-10-01 fix/form-overflow: 안드로이드 크롬 date 입력칸은 고유 최소 폭(날짜 글자+달력 아이콘)으로 w-full을 무시하고
+   칸을 넘을 수 있음 — 기본 모양을 끄고 블록·최소 폭 0으로. 누르면 날짜 선택창은 그대로 뜸. */
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+}
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+  min-width: 0;
+}
+input[type="date"]::-webkit-datetime-edit {
+  min-width: 0;
+}
