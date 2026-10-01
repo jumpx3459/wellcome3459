@@ -47,6 +47,9 @@ export async function PATCH(req: NextRequest) {
   }
 
   const supabaseAdmin = getAdminClient();
+  // 2026-10-01: 마감(status closed)은 감사 로그용으로 바꾸기 전 상태를 읽어 둠
+  const before =
+    status === "closed" ? (await supabaseAdmin.from("deals").select("title, status").eq("id", id).maybeSingle()).data : null;
   const update: Record<string, unknown> = {};
   if (remainingQty !== undefined) update.remaining_qty = remainingQty;
   if (closesAt !== undefined) update.closes_at = closesAt;
@@ -58,6 +61,15 @@ export async function PATCH(req: NextRequest) {
 
   const { error } = await supabaseAdmin.from("deals").update(update).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (status === "closed" && before && before.status !== "closed") {
+    await writeAudit(supabaseAdmin, req, {
+      admin: auth.admin,
+      action: "deal_close",
+      targetType: "deal",
+      targetId: id,
+      detail: { title: before.title ?? null, from: before.status ?? null },
+    });
+  }
 
   return NextResponse.json({ ok: true });
 }

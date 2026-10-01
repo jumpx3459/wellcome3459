@@ -1,6 +1,6 @@
 # PROGRESS
 
-마지막 업데이트: 2026-10-01 (VAPID lazy 초기화 — 브랜치 `fix/vapid-lazy-init` / ① 관리자 역할 기반 최소판 — PR #30, SQL 1~5 실행 완료 / PR용 CI(chore/pr-ci) / J-2 사업자정보 푸터·관리자 대시보드 레이아웃 / J-1 로그인·가입 번호 자동완성 버그 / PR #26 커밋 K KPI 매일 저장·방문 기록·지표 정확도 — 병합 `c0c9c8a`·SQL 실행 완료 / PR #25 커밋 G 비회원 동의 기록·90일 자동 삭제 — 병합 `cf6093d`·SQL 실행 완료 / PR #24 커밋 D 사업자 정보 푸터·문의 경로 — 병합 `f24170c` / PR #23 커밋 E 판매자 표시 — 병합 `6dbe813`·SQL ①②③ 실행 완료 / PR #22 커밋 H: 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내 — 병합 `8cf2f41` / PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
+마지막 업데이트: 2026-10-01 (L-8 관리자 매물 [마감] 버튼 — 브랜치 `feat/admin-deal-close` / PR #31 VAPID lazy 초기화 — 병합 `f2dca21` / ① 관리자 역할 기반 최소판 — PR #30, SQL 1~5 실행 완료 / PR용 CI(chore/pr-ci) / J-2 사업자정보 푸터·관리자 대시보드 레이아웃 / J-1 로그인·가입 번호 자동완성 버그 / PR #26 커밋 K KPI 매일 저장·방문 기록·지표 정확도 — 병합 `c0c9c8a`·SQL 실행 완료 / PR #25 커밋 G 비회원 동의 기록·90일 자동 삭제 — 병합 `cf6093d`·SQL 실행 완료 / PR #24 커밋 D 사업자 정보 푸터·문의 경로 — 병합 `f24170c` / PR #23 커밋 E 판매자 표시 — 병합 `6dbe813`·SQL ①②③ 실행 완료 / PR #22 커밋 H: 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내 — 병합 `8cf2f41` / PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
 
 새 세션을 시작할 때 이 파일을 먼저 읽고, 아래 "다음에 할 일"부터 확인하세요.
 
@@ -50,7 +50,20 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
-## 최근 작업 (2026-10-01) — 배포 실패 복구: VAPID 키 lazy 초기화 (브랜치 `fix/vapid-lazy-init`)
+## 최근 작업 (2026-10-01) — L-8: 관리자 진행 중 매물 [마감] 버튼 (브랜치 `feat/admin-deal-close`, PR 전)
+
+- 진행 중 매물 카드: [✏️ 수정] [⏹ 마감] [🗑️ 삭제(최고관리자에게만 보임)]. [마감] → 확인 → `status: "closed"`(manage PATCH 허용값) →
+  진행 중 목록에서 빠짐(매물 상세·/deals 지난 매물에 "마감됨"으로 조회), 안내는 대시보드 토스트(카드가 사라져도 보이게). 관리자·최고관리자 모두 가능.
+  펼친 화면의 "조기 마감"도 같은 동작. 서버가 감사 로그 `deal_close`(제목·이전 상태) 기록 — 이미 closed면 기록 안 함.
+- 삭제 버튼 노출은 로그인 때 받은 역할 기준(화면) — 역할이 바뀌면 다시 로그인해야 버튼이 맞게 보임. 서버는 요청마다 DB 역할로 막음.
+- 확인: 로컬 dev + 가짜 Supabase — 관리자 카드 버튼 [수정·마감], 마감 후 목록에서 빠짐·DB closed·deal_close 1건(관리자), 최고관리자 카드 [수정·마감·삭제].
+
+## 최근 작업 (2026-10-01) — 배포 실패 복구: VAPID 키 lazy 초기화 (PR #31, 머지 `f2dca21`)
+
+- **배포**: Deploy run 36801642439 success, 커밋 `f2dca21` — ① 코드·새 ADMIN_SESSION_SECRET(64자) 이 배포부터 적용(기존 관리자 세션 로그아웃).
+- **운영 확인 (2026-10-01, 대표)**: 번호+비밀번호 관리자 로그인 성공, 감사 로그 login_success·members_list_view·interests_list_view 기록,
+  PC 테스트 푸시 수신 → **Sensitive VAPID 키가 런타임에 주입됨 확인**.
+- **① 마이그레이션 6번 운영 실행 완료**: 예전 `verify_admin_login(text)` 삭제(old_fn false · new_fn true).
 
 - **증상**: PR #30 merge(`727418b`) 후 배포 run 36800475722 build 실패 — `Vapid private key must be a URL safe Base 64`. 운영은 PR #29 배포 그대로 유지.
 - **원인**: 대표가 `VAPID_PRIVATE_KEY`·`ADMIN_SESSION_SECRET`을 Vercel Sensitive로 전환 → GitHub Actions의 `vercel pull`로는 값이 비어 내려옴.
