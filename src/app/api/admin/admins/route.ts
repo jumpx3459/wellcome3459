@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
-import { checkAdminAuth } from "@/lib/adminAuth";
+import { checkAdminAuth, requireRole } from "@/lib/adminAuth";
+import { writeAudit, phoneTail } from "@/lib/adminAudit";
 
 const ROLES = ["최고관리자", "관리자"] as const;
 
@@ -22,10 +23,11 @@ function getAdminClient() {
   );
 }
 
+// 임명·역할 변경으로 지정할 수 있는 역할 — 점핑매니저는 DB 허용값에만 있고 F(거래 연결) 전까지 지정하지 않음
 // 관리자 목록 조회 — 임명/해제 버튼은 최고관리자에게만 보이지만, 목록 자체는
 // 아무 관리자나 봐도 문제없는 정보(비밀번호 해시 제외)라 별도 role 제한은 두지 않음
 export async function GET(req: NextRequest) {
-  const auth = checkAdminAuth(req);
+  const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const supabaseAdmin = getAdminClient();
@@ -41,11 +43,10 @@ export async function GET(req: NextRequest) {
 // 회원을 관리자로 임명 — 최고관리자만 가능. 임시 비밀번호는 이 응답에 한 번만 담겨서
 // 돌아오고 DB에는 해시만 저장되므로, 화면에서 놓치면 "비밀번호 변경"으로 다시 발급받아야 함.
 export async function POST(req: NextRequest) {
-  const auth = checkAdminAuth(req);
+  const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  if (auth.admin.role !== "최고관리자") {
-    return NextResponse.json({ error: "최고관리자만 관리자를 임명할 수 있습니다." }, { status: 403 });
-  }
+  const denied = requireRole(auth.admin, ["최고관리자"]);
+  if (denied) return denied;
 
   const { memberId, name, role } = await req.json();
   if (!memberId || typeof name !== "string" || !name.trim()) {
@@ -87,6 +88,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error?.message ?? "임명에 실패했어요." }, { status: 500 });
   }
 
+  await writeAudit(supabaseAdmin, req, {
+    admin: auth.admin,
+    action: "admin_appoint",
+    targetType: "admin_user",
+    targetId: created.id,
+    detail: { name: created.name, role: created.role, phone: phoneTail(member.phone) },
+  });
+
   return NextResponse.json({
     ok: true,
     admin: { id: created.id, name: created.name, role: created.role, phone: member.phone },
@@ -120,11 +129,10 @@ function isFounderProtected(targetPhone: string | null, requesterId: string, tar
 
 // 관리자 해제 — 최고관리자만 가능, 마지막 남은 최고관리자는 해제 불가
 export async function DELETE(req: NextRequest) {
-  const auth = checkAdminAuth(req);
+  const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  if (auth.admin.role !== "최고관리자") {
-    return NextResponse.json({ error: "최고관리자만 관리자를 해제할 수 있습니다." }, { status: 403 });
-  }
+  const denied = requireRole(auth.admin, ["최고관리자"]);
+  if (denied) return denied;
 
   const { id } = await req.json();
   if (!id) return NextResponse.json({ error: "id가 필요합니다." }, { status: 400 });
@@ -156,6 +164,13 @@ export async function DELETE(req: NextRequest) {
 
   const { error } = await supabaseAdmin.from("admin_users").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  await writeAudit(supabaseAdmin, req, {
+    admin: auth.admin,
+    action: "admin_remove",
+    targetType: "admin_user",
+    targetId: id,
+    detail: { role: target.role, phone: phoneTail(target.phone) },
+  });
 
   return NextResponse.json({ ok: true });
 }
@@ -165,11 +180,10 @@ export async function DELETE(req: NextRequest) {
 // role만 바꾸는 PATCH를 추가해 비밀번호·이력을 그대로 유지. DELETE와 동일하게
 // 최고관리자만 가능, founder 보호, 마지막 최고관리자 강등 방지 적용.
 export async function PATCH(req: NextRequest) {
-  const auth = checkAdminAuth(req);
+  const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  if (auth.admin.role !== "최고관리자") {
-    return NextResponse.json({ error: "최고관리자만 역할을 변경할 수 있습니다." }, { status: 403 });
-  }
+  const denied = requireRole(auth.admin, ["최고관리자"]);
+  if (denied) return denied;
 
   const { id, role } = await req.json();
   if (!id || !ROLES.includes(role)) {
@@ -207,6 +221,13 @@ export async function PATCH(req: NextRequest) {
 
   const { error } = await supabaseAdmin.from("admin_users").update({ role }).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  await writeAudit(supabaseAdmin, req, {
+    admin: auth.admin,
+    action: "admin_role_change",
+    targetType: "admin_user",
+    targetId: id,
+    detail: { from: target.role, to: role, phone: phoneTail(target.phone) },
+  });
 
   return NextResponse.json({ ok: true });
 }

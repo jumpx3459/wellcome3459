@@ -29,7 +29,7 @@ type CategoryKpiRow = {
 // admin_category_kpis() RPC로 DB에서 카테고리별 group by를 직접 하도록 이동 —
 // 결과 행 수가 "카테고리 수"(현재 9개)라 한도 문제가 원천적으로 없음.
 export async function GET(req: NextRequest) {
-  const auth = checkAdminAuth(req);
+  const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {

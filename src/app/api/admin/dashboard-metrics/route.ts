@@ -15,7 +15,7 @@ const KST_MS = 9 * 3600e3;
 const kstDate = (iso: string) => new Date(new Date(iso).getTime() + KST_MS).toISOString().slice(0, 10);
 
 export async function GET(req: NextRequest) {
-  const auth = checkAdminAuth(req);
+  const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

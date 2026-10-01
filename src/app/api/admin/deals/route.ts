@@ -8,7 +8,7 @@ import { isDealPriceUnit, isLumpSum } from "@/lib/priceUnit";
 import { resolveSellerDisplay } from "@/lib/sellerDisplay";
 
 export async function POST(req: NextRequest) {
-  const auth = checkAdminAuth(req);
+  const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const body = await req.json();

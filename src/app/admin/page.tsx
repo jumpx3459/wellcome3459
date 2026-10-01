@@ -9,6 +9,7 @@ import VideoUploader from "@/components/VideoUploader";
 import SellerDisplayPicker from "@/components/SellerDisplayPicker";
 import { publicSellerName } from "@/lib/sellerDisplay";
 import { isTestTitle } from "@/lib/categoryAvg";
+import { formatPhoneTyping } from "@/lib/auth";
 import ManifestUploader from "@/components/ManifestUploader";
 import Toast, { useToast } from "@/components/Toast";
 import { formatPriceInput, parsePriceInput, formatMemberNo, formatPriceWithUnit, formatDealPrice } from "@/lib/format";
@@ -189,10 +190,13 @@ function downloadCsv(filename: string, rows: (string | number | null | undefined
 }
 
 const ADMIN_SESSION_TTL_MS = 6 * 60 * 60 * 1000; // 6시간
+// 2026-10-01: 최고관리자 전용 API(영구 삭제·공식 파트너 승인/거절·긴급 공지)가 403이면 안내 (버튼 숨김은 공개 후)
+const SUPER_ONLY_MESSAGE = "최고관리자만 할 수 있어요";
 
 export default function AdminPage() {
   const [key, setKey] = useState<string | null>(null);
   const [input, setInput] = useState("");
+  const [loginPhone, setLoginPhone] = useState(""); // 2026-10-01: 번호 + 비밀번호 로그인
   const [adminName, setAdminName] = useState<string | null>(null);
   const [adminRole, setAdminRole] = useState<string | null>(null);
   const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null);
@@ -225,7 +229,7 @@ export default function AdminPage() {
       const res = await fetch("/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: input }),
+        body: JSON.stringify({ phone: loginPhone, password: input }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -265,7 +269,20 @@ export default function AdminPage() {
         </div>
         <h1 className="font-display text-xl text-navy mb-4">관리자 로그인</h1>
         <input
+          type="tel"
+          name="username"
+          autoComplete="username"
+          inputMode="numeric"
+          className="w-full max-w-xs border-2 border-gray200 rounded-xl px-4 text-base outline-none focus:border-orange mb-2"
+          style={{ height: "52px" }}
+          value={loginPhone}
+          onChange={(e) => setLoginPhone(formatPhoneTyping(e.target.value))}
+          placeholder="관리자 휴대폰 번호"
+        />
+        <input
           type="password"
+          name="password"
+          autoComplete="current-password"
           className="w-full max-w-xs border-2 border-gray200 rounded-xl px-4 text-base outline-none focus:border-orange"
           style={{ height: "52px" }}
           value={input}
@@ -617,11 +634,15 @@ function AdminDashboard({
   };
 
   async function reviewPartnerRequest(id: string, status: "approved" | "rejected") {
-    await fetch("/api/admin/partner-requests", {
+    const res = await fetch("/api/admin/partner-requests", {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
       body: JSON.stringify({ id, status }),
     });
+    if (res.status === 403) {
+      alert(SUPER_ONLY_MESSAGE);
+      return;
+    }
     setPartnerRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
   }
 
@@ -2292,11 +2313,15 @@ function ActiveDealCard({
     if (!confirm(`"${deal.title}" 매물을 삭제할까요? 되돌릴 수 없고, 이 매물에 달린 관심표시 기록도 함께 삭제돼요.`)) return;
     setDeleting(true);
     try {
-      await fetch("/api/admin/deals/manage", {
+      const res = await fetch("/api/admin/deals/manage", {
         method: "DELETE",
         headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
         body: JSON.stringify({ id: deal.id }),
       });
+      if (res.status === 403) {
+        showToast(SUPER_ONLY_MESSAGE);
+        return;
+      }
       onChanged();
     } finally {
       setDeleting(false);
@@ -3089,6 +3114,10 @@ function NoticeForm({ adminKey, onDone }: { adminKey: string; onDone: () => void
           images,
         }),
       });
+      if (res.status === 403) {
+        setError(SUPER_ONLY_MESSAGE);
+        return;
+      }
       if (!res.ok) throw new Error();
       const data = await res.json();
       const sent = data.push?.sentCount ?? 0;
