@@ -68,7 +68,9 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
   main-protect ruleset 기준으로 고침(메모리의 같은 규칙은 삭제).
 - **확인**: 로컬 dev + 가짜 Supabase 서버(운영 호출 없음)로 31개 시나리오 통과(로그인·잠금·403·역할 즉시 반영·해제 즉시 401·위조 토큰·notify-lead·감사 로그),
   짧은 비밀값 fail-closed, 관리자 화면 번호 칸·403 안내.
-- **배포 전 필수 확인**: 운영 `ADMIN_SESSION_SECRET` 길이 ≥ 32 — 미달이면 배포 즉시 모든 관리자 로그인이 막힘.
+- **운영 env (2026-10-01, 대표)**: `ADMIN_SESSION_SECRET`를 새 64자 값으로 교체·Secret 전환(다음 main 배포부터 적용, 기존 관리자 세션 전부 로그아웃),
+  사용하지 않던 `ADMIN_PASSWORD` 삭제(코드 참조 없음 — README 옛 안내도 이 PR에서 수정).
+- SQL 2번 블록: 실행 권한 회수는 public·anon·authenticated만, service_role은 명시 grant로 유지 — 운영 main 로그인(service_role로 예전 함수 호출)은 ① 배포 전까지 그대로 동작.
 - ① 배포 후 대표가 김현정을 최고관리자로 지정 예정. 관리자 4명(최고관리자 1·관리자 3), phone 누락·형식 오류·중복 0 사전 확인 완료.
 
 ## 최근 작업 (2026-10-01) — PR용 CI (PR #29, 머지 `2b8f107`)
@@ -632,6 +634,7 @@ curl로 확인. 단, 이 세션엔 브라우저 접근이 없어 육안 확인�
 - [ ] **4주 리텐션·코호트 화면** (커밋 K 백로그): member_active_days 기반
 - [ ] **판매자 재등록률** (커밋 K 백로그): 같은 판매자(seller_member_id)의 두 번째 판매 신청 비율
 - [ ] **매물 첫 관심까지 걸린 시간** (커밋 K 백로그): deals.created_at → 첫 interests/quick_leads created_at
+- [ ] **공식 파트너 "해제" 기능** (① 백로그): 지금은 승인·거절만 있음 — is_official_partner를 false로 돌리는 최고관리자 전용 API·감사 로그
 - [ ] **`ImageUploader` 렌더 중 setState 경고** (2026-09-30 백로그): setItems 갱신 함수 안에서 `emitChange`(부모 onChange) 호출 →
   React 콘솔 경고. 갱신 후 useEffect로 onChange를 부르는 식으로 정리
 

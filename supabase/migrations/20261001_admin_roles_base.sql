@@ -38,13 +38,20 @@ as $$
      and a.password_hash = crypt(p_password, a.password_hash)
    limit 1;
 $$;
+-- 회수 대상은 public·anon·authenticated만. service_role(서버 API — 운영 main의 로그인도 service_role로 예전 함수를 부름)은
+-- 아래 grant로 명시해 유지 → 이 SQL을 실행한 뒤 ① 배포 전까지도 운영 관리자 로그인은 끊기지 않음.
 revoke execute on function public.verify_admin_login(text, text) from public, anon, authenticated;
+grant execute on function public.verify_admin_login(text, text) to service_role;
 -- 예전 함수는 실행 권한 회수 표시가 없어 공개 키로도 호출될 수 있었음 → 삭제 전까지 서버(service role)만
 revoke execute on function public.verify_admin_login(text) from public, anon, authenticated;
--- 확인 — 한 행 (new_fn = true, anon_new = false, anon_old = false):
+grant execute on function public.verify_admin_login(text) to service_role;
+-- 확인 — 한 행 (new_fn = true, anon_new = false, anon_old = false, auth_old = false, svc_new = true, svc_old = true):
 --   select to_regprocedure('public.verify_admin_login(text, text)') is not null as new_fn,
 --          has_function_privilege('anon', 'public.verify_admin_login(text, text)', 'execute') as anon_new,
---          has_function_privilege('anon', 'public.verify_admin_login(text)', 'execute') as anon_old;
+--          has_function_privilege('anon', 'public.verify_admin_login(text)', 'execute') as anon_old,
+--          has_function_privilege('authenticated', 'public.verify_admin_login(text)', 'execute') as auth_old,
+--          has_function_privilege('service_role', 'public.verify_admin_login(text, text)', 'execute') as svc_new,
+--          has_function_privilege('service_role', 'public.verify_admin_login(text)', 'execute') as svc_old;
 
 -- 3) 로그인 실패 기록 (같은 번호 15분 안에 5회 실패 → 15분 잠금, 성공하면 그 번호 기록 삭제). 서버만
 create table if not exists public.admin_login_failures (
@@ -87,6 +94,7 @@ revoke all on public.admin_audit_logs from anon, authenticated;
 --   select pg_get_constraintdef((select oid from pg_constraint where conname = 'admin_users_role_check')) like '%점핑매니저%' as role_ok,
 --          to_regprocedure('public.verify_admin_login(text, text)') is not null as new_fn,
 --          not has_function_privilege('anon', 'public.verify_admin_login(text, text)', 'execute') as new_fn_closed,
+--          has_function_privilege('service_role', 'public.verify_admin_login(text)', 'execute') as old_fn_server_ok,
 --          to_regclass('public.admin_login_failures') is not null as failures_tbl,
 --          to_regclass('public.admin_audit_logs') is not null as audit_tbl;
 
