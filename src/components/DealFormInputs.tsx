@@ -90,7 +90,7 @@ export function StorageTypeButtons({
             role="radio"
             aria-checked={picked}
             onClick={() => onChange(picked ? "" : t)}
-            className="rounded-xl font-bold"
+            className="rounded-xl font-bold min-w-0 whitespace-nowrap"
             style={{
               fontSize: DEAL_CHIP_FONT_SIZE,
               padding: "11px 0",

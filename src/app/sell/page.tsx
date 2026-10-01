@@ -520,7 +520,8 @@ export default function SellPage() {
 
       {authState === "member" && draftReady && (
       <>
-      <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: FLOATING_CTA_SPACE }}>
+      {/* 2026-10-01 fix/form-overflow: 배치만 — 폼 폭 기준(@container) 1칸 → 2칸(560px~) → 3칸(840px~), PC 최대 960px */}
+      <div className="@container w-full max-w-[960px] mx-auto flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: FLOATING_CTA_SPACE }}>
         {/* 2026-09-29: 헤더 안 캐릭터 소개(76px/13px) 대신 buy와 같은 "완전 무료" 카드 (판매자용 문구) */}
         <div className="flex items-center gap-3 rounded-2xl" style={{ background: "#fff", border: "1.5px solid #E4E7EB", padding: "15px 16px" }}>
           <img src="/images/manager.png" alt="점핑매니저" className="flex-shrink-0 rounded-xl bg-white" style={{ width: 72, height: 72, objectFit: "contain" }} />
@@ -613,7 +614,8 @@ export default function SellPage() {
 
         {/* 2026-10-01 PR-B: 재고 총수량 → 최소주문수량(단위 표시) → 단가 기준 → 판매 단가(왼쪽)·정상 단가(오른쪽) → 보관·소비기한.
             단가 칸에는 "원"만 두고 기준(kg당 등)은 라벨에 — 375px에서 두 칸을 나란히 둬도 큰 금액이 안 잘림 */}
-        <div>
+        <div className="grid grid-cols-1 gap-4.5 items-start @min-[560px]:grid-cols-2 @min-[560px]:gap-x-3 @min-[840px]:grid-cols-3">
+        <div className="min-w-0">
           <FieldLabel compact need="required" htmlFor="sell-quantity">재고 총수량</FieldLabel>
           <div className="flex rounded-xl overflow-hidden" style={{ border: "1.5px solid #E4E7EB" }}>
             <input
@@ -645,7 +647,7 @@ export default function SellPage() {
 
         {/* 2026-09-29: 일괄(전체 가격) 판매면 최소주문 의미 없음 → 숨김 */}
         {!lumpSum && (
-        <div>
+        <div className="min-w-0">
           <FieldLabel compact need="optional" htmlFor="sell-minOrderQty">최소주문수량(MOQ)</FieldLabel>
           <div className="flex items-center rounded-xl" style={{ border: moqError ? "1.5px solid var(--color-orange)" : "1.5px solid #E4E7EB" }}>
             <input
@@ -667,7 +669,7 @@ export default function SellPage() {
         </div>
         )}
 
-        <div>
+        <div className="min-w-0">
           <FieldLabel compact need="required" htmlFor="sell-priceUnit">단가 기준</FieldLabel>
           {/* 2026-09-29: 단가 단위 — 수량 단위와 따로 (예: 수량은 박스, 가격은 kg당 / 일괄=전체 가격) */}
           <select
@@ -689,8 +691,9 @@ export default function SellPage() {
             ))}
           </select>
         </div>
+        </div>
 
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-2 gap-2.5 items-start @min-[840px]:grid-cols-3 @min-[840px]:gap-3">
           <div className="min-w-0">
             <FieldLabel compact need="required" htmlFor="sell-hopePrice">판매 단가</FieldLabel>
             <div className="flex items-center rounded-xl overflow-hidden" style={{ border: priceError ? "1.5px solid var(--color-orange)" : "1.5px solid var(--color-brandOrange)" }}>
@@ -731,16 +734,20 @@ export default function SellPage() {
               />
               <span className="flex-shrink-0 font-bold" style={{ padding: "0 12px 0 4px", fontSize: DEAL_INPUT_FONT_SIZE, color: "#0B2540" }}>원</span>
             </div>
+          </div>
+          <div className="col-span-2 min-w-0 @min-[840px]:col-span-1" data-field="discount">
+            <p className="hidden mb-2 @min-[840px]:block" style={DEAL_HINT_STYLE}>할인율</p>
             <SellDiscountHint original={parsePriceInput(originalPrice)} deal={parsePriceInput(hopePrice)} />
+            <ConfirmWarnings warnings={priceWarns} onConfirm={titleWarnings.length ? undefined : () => submit(true)} busy={submitting} />
           </div>
         </div>
-        <ConfirmWarnings warnings={priceWarns} onConfirm={titleWarnings.length ? undefined : () => submit(true)} busy={submitting} />
 
-        <div>
+        <div className="grid grid-cols-1 gap-4.5 items-start @min-[560px]:grid-cols-2 @min-[560px]:gap-x-3 @min-[840px]:grid-cols-3">
+        <div className="min-w-0">
           <FieldLabel compact need="optional">보관 조건</FieldLabel>
           <StorageTypeButtons id="sell-storageType" value={storageType} onChange={setStorageType} />
         </div>
-        <div>
+        <div className="min-w-0">
           <FieldLabel compact need={stockType === "near_expiry" ? "required" : "optional"} htmlFor="sell-expiryDate">소비기한</FieldLabel>
           <input
             id="sell-expiryDate"
@@ -761,21 +768,7 @@ export default function SellPage() {
             </p>
           )}
         </div>
-
-        <div>
-          <FieldLabel compact need="required">연락처</FieldLabel>
-          <ContactPhoneInput
-            value={contactPhone}
-            onChange={(v) => {
-              setContactPhone(v);
-              setContactError(null);
-            }}
-            autofilledValue={autofilledPhone}
-            error={contactError}
-          />
-        </div>
-
-        <div>
+        <div className="min-w-0">
           <FieldLabel compact need="optional">마감까지</FieldLabel>
           <div className="flex flex-wrap gap-1.5">
             {[
@@ -808,6 +801,20 @@ export default function SellPage() {
           <p className="mt-2" style={DEAL_HINT_STYLE}>
             여기서 정한 시간이 구매자에게 보이는 마감 카운트다운 기준이 돼요.
           </p>
+        </div>
+        </div>
+
+        <div>
+          <FieldLabel compact need="required">연락처</FieldLabel>
+          <ContactPhoneInput
+            value={contactPhone}
+            onChange={(v) => {
+              setContactPhone(v);
+              setContactError(null);
+            }}
+            autofilledValue={autofilledPhone}
+            error={contactError}
+          />
         </div>
 
         {/* 2026-09-30: 업체명·공개 설정을 "상세 정보 추가" 밖으로 (consent-texts 7-2, 기본 비공개) */}
@@ -1051,7 +1058,7 @@ function priceBasis(unit: string): string {
 
 // 정상 단가 칸 아래 — "○% 할인으로 보여요" / 판매가 ≥ 정상가면 주황 안내 (2026-10-01 PR-B [3])
 function SellDiscountHint({ original, deal }: { original?: number | null; deal?: number | null }) {
-  if (!original || !deal) return <p className="mt-1" style={DEAL_HINT_STYLE}>할인율 표시용</p>;
+  if (!original || !deal) return <p style={DEAL_HINT_STYLE}>판매·정상 단가를 넣으면 할인율이 보여요</p>;
   const pct = discountPercent(original, deal);
   if (pct === null) {
     return <p className="mt-1 font-medium" style={{ fontSize: rem(14), color: WARN_COLOR }}>판매가가 정상가보다 높거나 같아 할인율이 안 보여요.</p>;

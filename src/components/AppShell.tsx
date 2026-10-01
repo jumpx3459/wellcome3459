@@ -52,6 +52,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // 앱 화면이 아니라 단일 랜딩 페이지라 하단 탭바가 어울리지 않음 — admin과
   // 동일하게 숨기되, 모바일 앱 미리보기 느낌은 유지하기 위해 폭 제한(max-w-md)은 유지.
   const isPartnerDemo = (pathname ?? "").startsWith("/p/");
+  const isSellPage = pathname === "/sell";
   // 2026-09-29: 영문 소개 페이지(/en) — 앱 화면이 아닌 1페이지 소개라 하단 탭 없이 전체 폭
   const isEnglish = pathname === "/en" || (pathname ?? "").startsWith("/en/");
   // 인앱 브라우저 안내 배너는 유입이 몰리는 홈·매물 목록·매물 상세에만
@@ -82,12 +83,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // 쓰려면 이 폭 제한을 벗어나야 해서 전체 폭을 주고, 폭 제한은 admin/page.tsx가
   // 화면별로 직접 건다(로그인·모바일 모드는 max-w-md 유지).
   return (
+    // 2026-10-01 fix/form-overflow: overflow-x-hidden은 이 div를 스크롤 영역으로 만들어, 화면보다 넓은 요소가 있으면
+    // 입력칸을 누를 때 브라우저가 이 div를 옆으로 스크롤(왼쪽 흰 띠·오른쪽 잘림·흔들림). clip은 스크롤 영역이 아니라
+    // 옆으로 밀릴 수 없음 — 지원 안 하는 옛 브라우저는 인라인 값이 무시되고 class의 hidden이 적용됨.
+    // /sell은 PC에서 폼을 넓게(최대 960px) 쓰도록 이 칸도 넓힘(sm 680px · lg 1008px). 하단 탭·고정 버튼은 그대로 가운데 448px.
     <div
       className={
         isAdmin || isEnglish
           ? "min-h-screen overflow-x-hidden"
-          : "mx-auto max-w-md min-h-screen bg-white shadow-sm overflow-x-hidden"
+          : `mx-auto max-w-md min-h-screen bg-white shadow-sm overflow-x-hidden${isSellPage ? " sm:max-w-[680px] lg:max-w-[1008px]" : ""}`
       }
+      style={{ overflowX: "clip" }}
     >
       {showInAppBanner && <InAppBanner />}
       {/* iPhone 홈 화면 앱: 상태 표시줄 밑(black-translucent)을 네이비로 칠해 시계·배터리가 보이게 */}

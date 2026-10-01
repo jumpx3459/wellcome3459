@@ -691,12 +691,13 @@ function DealDetailPageInner() {
                 alt="점핑매니저"
                 className="w-20 h-20 rounded-xl object-contain bg-white flex-shrink-0"
               />
-              <div>
+              <div className="min-w-0">
                 <p className="text-base font-bold text-navy leading-snug">
                   점핑매니저가 바로 연락드립니다.
                 </p>
-                {/* 2026-09-29: "당일 연락 원칙" → "빠르게 연락드려요" (지킬 수 있는 표현으로). 390px에서 배지 2개 한 줄 유지 */}
-                <div className="flex items-center gap-1 mt-1.5 flex-nowrap">
+                {/* 2026-09-29: "당일 연락 원칙" → "빠르게 연락드려요" (지킬 수 있는 표현으로). 390px에서 배지 2개 한 줄 유지
+                    2026-10-01: 360px에선 카드 밖으로 22px 넘쳐서 줄바꿈 허용(390px 이상은 그대로 한 줄) */}
+                <div className="flex items-center gap-1 gap-y-1.5 mt-1.5 flex-wrap">
                   <span
                     className="font-bold px-2 py-1 rounded-full whitespace-nowrap"
                     style={{ fontSize: rem(13), background: "#E8F8EC", color: "#1D8A44" }}
