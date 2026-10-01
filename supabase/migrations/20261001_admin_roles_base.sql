@@ -1,5 +1,8 @@
 -- ============================================================================
--- 2026-10-01 ① 관리자 역할 기반 최소판 — 운영 DB 미실행 (대표 실행)
+-- 2026-10-01 ① 관리자 역할 기반 최소판 — 운영 DB 1~5 실행 완료
+-- 2026-10-01 대표 운영 DB 1~5 실행 — 확인 조회 전부 기대값: role_ok true · new_fn true · anon_new/anon_old/auth_old false ·
+--   svc_new/svc_old true · crypt_test 0 · admin_login_failures rls true/anon false · admin_audit_logs rls true/anon false/rows 0 · 전체 확인 7칸 true.
+--   verify_admin_login(p_phone, p_password)의 search_path = public, extensions(운영 pgcrypto). 6번(예전 함수 삭제)은 대표 로그인 확인 후.
 -- 코드: src/lib/adminAuth.ts, src/lib/adminAudit.ts, src/app/api/admin/login/route.ts 외 (브랜치 feat/admin-roles-base)
 --
 -- 배포 순서

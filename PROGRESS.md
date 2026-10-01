@@ -1,6 +1,6 @@
 # PROGRESS
 
-마지막 업데이트: 2026-10-01 (① 관리자 역할 기반 최소판 — 브랜치 `feat/admin-roles-base`, SQL 대표 실행 대기 / PR용 CI(chore/pr-ci) / J-2 사업자정보 푸터·관리자 대시보드 레이아웃 / J-1 로그인·가입 번호 자동완성 버그 / PR #26 커밋 K KPI 매일 저장·방문 기록·지표 정확도 — 병합 `c0c9c8a`·SQL 실행 완료 / PR #25 커밋 G 비회원 동의 기록·90일 자동 삭제 — 병합 `cf6093d`·SQL 실행 완료 / PR #24 커밋 D 사업자 정보 푸터·문의 경로 — 병합 `f24170c` / PR #23 커밋 E 판매자 표시 — 병합 `6dbe813`·SQL ①②③ 실행 완료 / PR #22 커밋 H: 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내 — 병합 `8cf2f41` / PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
+마지막 업데이트: 2026-10-01 (① 관리자 역할 기반 최소판 — PR #30, SQL 1~5 실행 완료 / PR용 CI(chore/pr-ci) / J-2 사업자정보 푸터·관리자 대시보드 레이아웃 / J-1 로그인·가입 번호 자동완성 버그 / PR #26 커밋 K KPI 매일 저장·방문 기록·지표 정확도 — 병합 `c0c9c8a`·SQL 실행 완료 / PR #25 커밋 G 비회원 동의 기록·90일 자동 삭제 — 병합 `cf6093d`·SQL 실행 완료 / PR #24 커밋 D 사업자 정보 푸터·문의 경로 — 병합 `f24170c` / PR #23 커밋 E 판매자 표시 — 병합 `6dbe813`·SQL ①②③ 실행 완료 / PR #22 커밋 H: 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내 — 병합 `8cf2f41` / PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
 
 새 세션을 시작할 때 이 파일을 먼저 읽고, 아래 "다음에 할 일"부터 확인하세요.
 
@@ -50,7 +50,7 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
-## 최근 작업 (2026-10-01) — ① 관리자 역할 기반 최소판 (브랜치 `feat/admin-roles-base`, PR 전)
+## 최근 작업 (2026-10-01) — ① 관리자 역할 기반 최소판 (PR #30)
 
 - **보안**: `ADMIN_SESSION_SECRET` 없거나 32자 미만이면 토큰 발급·검증 모두 거부(fail-closed, "dev-secret" 대체 삭제).
   로그인 = **휴대폰 번호 + 비밀번호**(그 번호의 계정 1건만 검증, 예전엔 비밀번호만으로 맞는 첫 계정). 같은 번호 15분 5회 실패 → 15분 잠금
@@ -62,7 +62,10 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
   관리자 화면은 403이면 "최고관리자만 할 수 있어요"(버튼 숨김은 공개 후). 공식 파트너 "해제" 기능은 원래 없음.
 - **감사 로그 `admin_audit_logs`**: 로그인 성공·실패·잠금, 매물 영구 삭제, 파트너 승인·거절, 긴급 공지, 관리자 임명·해제·역할 변경,
   회원·리드 목록 조회(members·interests API 호출 단위). 번호는 뒤 4자리만, 비밀번호·토큰 없음.
-- **SQL (운영 DB 미실행)**: `supabase/migrations/20261001_admin_roles_base.sql`(schema.sql에도 같은 내용) — 역할 제약, `verify_admin_login(p_phone, p_password)`,
+- **SQL — 1~5 운영 DB 실행 완료 (2026-10-01, 대표)**: 확인 조회 전부 기대값(role_ok · new_fn · anon/authenticated 실행 불가 · service_role 실행 가능 ·
+  crypt_test 0 · 두 표 RLS·anon 차단 · 감사 로그 0행 · 전체 확인 7칸 true). verify 함수 search_path = public, extensions(운영 pgcrypto).
+  **6번(예전 `verify_admin_login(text)` 삭제)은 대표가 ① 배포 후 번호+비밀번호 로그인 확인 뒤 별도 실행.**
+- SQL 파일: `supabase/migrations/20261001_admin_roles_base.sql`(schema.sql에도 같은 내용) — 역할 제약, `verify_admin_login(p_phone, p_password)`,
   예전 `verify_admin_login(text)` 실행 권한 회수(공개 키로 호출될 수 있었음), `admin_login_failures`, `admin_audit_logs`. 배포 순서는 파일 맨 위.
 - **문서**: `docs/ops/admin-emergency.md`(로그인 불가 시 SQL로 잠금 해제·비밀번호 재설정·최고관리자 지정/해제·계정 생성/삭제). CLAUDE.md 규칙 2를
   main-protect ruleset 기준으로 고침(메모리의 같은 규칙은 삭제).
