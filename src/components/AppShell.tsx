@@ -8,7 +8,7 @@ import AuthExpiredNotice from "./AuthExpiredNotice";
 import ConsentGate from "./ConsentGate";
 import ActiveDayPing from "./ActiveDayPing";
 import DebugPanel from "./DebugPanel"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
-import { markAppNavigation, markAppBack } from "@/lib/appNav";
+import { noteRouteChange, consumeReplaceFlag } from "@/lib/appNav";
 import { supabase } from "@/lib/supabase";
 import { markReturningMember } from "@/lib/returningMember";
 
@@ -25,26 +25,28 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // 없어서 popstate 리스너가 먼저 viaPopState 플래그를 세우고, pathname 이펙트가
   // 그 플래그를 보고 증가 대신 감소를 호출 — 그렇지 않으면 depth가 계속 쌓이기만
   // 해서 "뒤로 여러 번 눌러 첫 화면까지 온 뒤 다시 ←" 같은 경우 앱 밖으로 나갈 수 있음.
+  // 2026-10-01 PR-C: 시트·모달 뒤로가기(같은 주소의 popstate)는 pathname이 안 바뀌어 플래그가 남던 문제 —
+  // popstate가 도착한 주소를 기억해 두고, 바뀐 pathname과 같을 때만 "뒤로가기로 온 이동"으로 봄.
+  // replace 이동(navReplace — 하단 탭끼리·해시·홈)은 기록이 안 쌓였으니 세지 않음. (src/lib/appNav.ts)
   const isFirstMount = useRef(true);
-  const viaPopState = useRef(false);
+  const popPath = useRef<string | null>(null);
   useEffect(() => {
     const onPopState = () => {
-      viaPopState.current = true;
+      popPath.current = window.location.pathname;
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
   useEffect(() => {
+    const path = pathname ?? "";
     if (isFirstMount.current) {
       isFirstMount.current = false;
+      noteRouteChange(path, "first");
       return;
     }
-    if (viaPopState.current) {
-      viaPopState.current = false;
-      markAppBack();
-    } else {
-      markAppNavigation();
-    }
+    const viaPop = popPath.current === path;
+    popPath.current = null;
+    noteRouteChange(path, viaPop ? "pop" : consumeReplaceFlag() ? "replace" : "push");
   }, [pathname]);
   // 2026-09-27: 점핑파트너 영업용 데모 스킨(/p/[slug])은 실제 내비게이션이 있는
   // 앱 화면이 아니라 단일 랜딩 페이지라 하단 탭바가 어울리지 않음 — admin과

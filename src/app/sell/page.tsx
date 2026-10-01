@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { hasAppHistory } from "@/lib/appNav";
+import TabLink from "@/components/TabLink";
+import { hasAppHistory, goHome } from "@/lib/appNav";
 import { CheckCircle } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockRegions, categoryIcons, quantityUnits, guessCategory, logUnmatchedProductName } from "@/lib/mockData";
@@ -49,7 +49,7 @@ export default function SellPage() {
     if (hasAppHistory()) {
       router.back();
     } else {
-      router.push("/");
+      goHome(router); // 2026-10-01 PR-C: 홈을 위에 쌓지 않음(replace) — 홈에서 뒤로가기 = 앱 종료
     }
   };
   const [companyName, setCompanyName] = useState("");
@@ -362,7 +362,7 @@ export default function SellPage() {
           </div>
 
           {memberId && (
-            <Link
+            <TabLink
               href="/mypage#referral"
               className="w-full block text-left rounded-2xl mt-4"
               style={{ background: "#FFF9EC", border: "1px solid #F0DCA8", padding: "13px 15px" }}
@@ -373,16 +373,16 @@ export default function SellPage() {
                   : `🎁 친구 추천하면 나도 친구도 사진 슬롯 +2장 (최대 ${MAX_PHOTO_SLOTS}장까지)`}
               </p>
               <p className="text-xs mt-1" style={{ color: "#8A6100" }}>추천 링크 보내러 가기 →</p>
-            </Link>
+            </TabLink>
           )}
 
-          <Link
+          <TabLink
             href="/"
             className={`w-full mt-5 ${BTN_CLASS}`}
             style={btnStyle("primary")}
           >
             홈으로
-          </Link>
+          </TabLink>
         </div>
       </main>
     );
@@ -408,9 +408,9 @@ export default function SellPage() {
             {/* 2026-09-27: buy(찾습니다)·sell(매물등록)은 진입 경로가 다양해
                 로고=홈 링크만으로는 부족하다는 피드백 — 뒤로가기(←)를 복원. */}
             <button type="button" onClick={goBack} style={{ fontSize: rem(19), color: "rgba(255,255,255,0.8)", background: "none", border: "none", padding: 0, cursor: "pointer" }}>←</button>
-            <Link href="/" className="bg-white rounded-lg px-2.5 py-1.5 inline-block shadow-sm">
+            <TabLink href="/" className="bg-white rounded-lg px-2.5 py-1.5 inline-block shadow-sm">
               <img src="/images/logo.png" alt="덤핑점핑" className="h-7 w-auto" />
-            </Link>
+            </TabLink>
             <span
               className="rounded-full font-medium"
               style={{ fontSize: rem(11), color: "rgba(255,255,255,0.6)", padding: "3px 9px", background: "rgba(255,255,255,0.08)" }}

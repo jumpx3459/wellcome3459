@@ -42,3 +42,79 @@ export function hasAppHistory(): boolean {
     return false;
   }
 }
+
+// ---------------------------------------------------------------------------
+// 2026-10-01 PR-C: 안드로이드 뒤로가기 정리
+// - 하단 탭·해시 이동(/mypage#referral 등)·로고(홈)는 기록을 쌓지 않음 — 홈에서 다른 탭으로 갈 때만 push(뒤로 = 홈),
+//   탭끼리는 replace, 홈으로는 쌓인 만큼 되돌아감(history.go) → 홈에서 뒤로가기 = 앱 종료.
+// - 매물 상세 진입 등 화면 "들어가기"는 그대로 push.
+// "마지막 홈 기록 위에 쌓인 기록 수" — 없으면(공유 링크로 바로 들어와 홈을 안 거침) 홈은 replace로 엶.
+const ABOVE_HOME_KEY = "dj_above_home";
+const REPLACE_FLAG_KEY = "dj_nav_replace";
+
+type RouterLike = { push: (href: string) => void; replace: (href: string) => void };
+
+function getNum(key: string): number | null {
+  try {
+    const v = sessionStorage.getItem(key);
+    return v === null ? null : Number(v);
+  } catch {
+    return null;
+  }
+}
+function setNum(key: string, n: number) {
+  try {
+    sessionStorage.setItem(key, String(Math.max(0, n)));
+  } catch {}
+}
+
+// AppShell이 pathname이 바뀔 때마다 호출 — kind: push(링크·router.push) / pop(뒤로·앞으로) / replace(navReplace)
+export function noteRouteChange(pathname: string, kind: "push" | "pop" | "replace" | "first") {
+  if (kind === "push") markAppNavigation();
+  if (kind === "pop") markAppBack();
+  const above = getNum(ABOVE_HOME_KEY);
+  if (pathname === "/") setNum(ABOVE_HOME_KEY, 0);
+  else if (above !== null && kind === "push") setNum(ABOVE_HOME_KEY, above + 1);
+  else if (above !== null && kind === "pop") setNum(ABOVE_HOME_KEY, above - 1);
+}
+
+// navReplace로 바뀐 이동인지(한 번만 읽음)
+export function consumeReplaceFlag(): boolean {
+  try {
+    const v = sessionStorage.getItem(REPLACE_FLAG_KEY) === "1";
+    sessionStorage.removeItem(REPLACE_FLAG_KEY);
+    return v;
+  } catch {
+    return false;
+  }
+}
+
+// 기록을 쌓지 않는 이동 — 경로가 바뀔 때만 표시(같은 화면 해시 이동은 AppShell이 모름)
+export function navReplace(router: RouterLike, href: string) {
+  try {
+    if (new URL(href, window.location.href).pathname !== window.location.pathname) sessionStorage.setItem(REPLACE_FLAG_KEY, "1");
+  } catch {}
+  router.replace(href);
+}
+
+// 홈으로 — 홈 기록이 아래에 있으면 그만큼 되돌아가고, 없으면 지금 기록을 홈으로 바꿈
+export function goHome(router: RouterLike) {
+  if (typeof window === "undefined") return;
+  if (window.location.pathname === "/") return;
+  const above = getNum(ABOVE_HOME_KEY);
+  if (above !== null && above > 0) {
+    // popstate는 한 번만 오니(AppShell이 1 줄임) 나머지만큼 미리 줄여 둠
+    try {
+      sessionStorage.setItem(KEY, String(Math.max(0, Number(sessionStorage.getItem(KEY) || "0") - (above - 1))));
+    } catch {}
+    window.history.go(-above);
+  } else navReplace(router, "/");
+}
+
+// 하단 탭·해시 링크 공통 — 홈에서 나갈 때만 push, 탭끼리는 replace, 홈은 goHome
+export function navTab(router: RouterLike, href: string) {
+  if (typeof window === "undefined") return;
+  if (href === "/") return goHome(router);
+  if (window.location.pathname === "/" && !href.startsWith("/#")) router.push(href);
+  else navReplace(router, href);
+}

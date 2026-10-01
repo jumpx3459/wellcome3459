@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import TabLink from "@/components/TabLink";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { sendOtp, verifyOtp, isValidKoreanPhone, toE164Phone, formatPhoneTyping } from "@/lib/auth";
 import { fmtLeft } from "@/lib/format";
@@ -266,9 +267,9 @@ function LoginPageInner() {
             >
               ←
             </button>
-            <Link href="/" className="bg-white rounded-lg px-2.5 py-1.5 inline-block shadow-sm">
+            <TabLink href="/" className="bg-white rounded-lg px-2.5 py-1.5 inline-block shadow-sm">
               <img src="/images/logo.png" alt="덤핑점핑" className="h-7 w-auto" />
-            </Link>
+            </TabLink>
           </div>
           {/* 2026-09-28: 다른 헤더(buy/sell/signup/홈)와 통일감을 맞추기 위해 브랜드
               표기(Powered by JumpX)를 추가. 로테이션 긴급성 문구는 비회원 전환

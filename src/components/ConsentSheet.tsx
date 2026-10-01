@@ -5,6 +5,7 @@ import PrivacyConsentTextSheet from "@/components/PrivacyConsentTextSheet";
 import { rem } from "@/lib/rem";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 import type { ConsentType } from "@/lib/consent";
+import { useBackToClose } from "@/lib/useBackToClose";
 
 // 동의 시트 (2026-09-30) — 알림 켜기(매물 알림 1개)·기존 회원 재동의(필수 3 + 선택 2)가 같이 쓴다.
 // 선택 항목 초기값은 항상 false. 필수 항목을 다 체크해야 주 버튼이 켜진다.
@@ -44,6 +45,8 @@ export default function ConsentSheet({
   const requiredOk = items.every((i) => !i.required || values[i.type]);
   const toggle = (t: string) => setValues((v) => ({ ...v, [t]: !v[t] }));
   const [viewingPrivacy, setViewingPrivacy] = useState(false);
+  // 2026-10-01 PR-C: 닫을 수 있는 시트(onCancel 있음 — 알림 켜기)만 뒤로가기 = 닫기. 재동의 시트(ConsentGate)는 닫을 수 없어 그대로
+  useBackToClose(!!onCancel, () => onCancel?.());
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: "rgba(0,0,0,.5)" }} role="dialog" aria-modal="true" aria-label={title}>

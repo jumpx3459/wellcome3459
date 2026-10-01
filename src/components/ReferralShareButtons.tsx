@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CheckCircle } from "lucide-react";
 import { UI_DESC, UI_LINK, UI_META, BTN_CLASS, btnStyle } from "@/lib/uiText";
+import { useBackToClose } from "@/lib/useBackToClose";
 
 // 추천 링크 [링크 복사] [링크 공유] [QR 코드] (2026-09-29) — MY 점핑파트너·"내 추천 회원" 화면 공용.
 // 공유: 기기 공유창(navigator.share)이 있으면 그걸로, 없으면 링크 복사로 대신.
@@ -18,6 +19,8 @@ export default function ReferralShareButtons({
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
+  // 2026-10-01 PR-C: 열려 있으면 안드로이드 뒤로가기 = 이것만 닫기 (src/lib/useBackToClose.ts)
+  useBackToClose(qrOpen, () => setQrOpen(false));
 
   const copy = async () => {
     try {

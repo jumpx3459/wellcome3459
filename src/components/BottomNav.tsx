@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import TabLink from "@/components/TabLink";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Flame } from "lucide-react";
@@ -89,7 +89,7 @@ export default function BottomNav() {
         }
         const active = isActive(tab);
         return (
-          <Link
+          <TabLink
             key={tab.href}
             href={tab.href}
             onClick={() => setHash(tab.href.includes("#") ? `#${tab.href.split("#")[1]}` : "")}
@@ -113,7 +113,7 @@ export default function BottomNav() {
             >
               {tab.label}
             </span>
-          </Link>
+          </TabLink>
         );
       })}
     </nav>

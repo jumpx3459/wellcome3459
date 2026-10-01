@@ -2,9 +2,10 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import TabLink from "@/components/TabLink";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { hasAppHistory } from "@/lib/appNav";
+import { hasAppHistory, goHome } from "@/lib/appNav";
 import { mockDeals, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import CountdownBadge from "@/components/CountdownBadge";
 import { formatPrice, percentOff, formatDealPrice } from "@/lib/format";
@@ -89,7 +90,7 @@ function DealDetailPageInner() {
     if (hasAppHistory()) {
       router.back();
     } else {
-      router.push("/");
+      goHome(router); // 2026-10-01 PR-C: 홈을 위에 쌓지 않음(replace) — 홈에서 뒤로가기 = 앱 종료
     }
   };
 
@@ -330,10 +331,10 @@ function DealDetailPageInner() {
               <path d="M15 18l-6-6 6-6" />
             </svg>
           </button>
-          <Link href="/" className="flex items-center gap-2 min-w-0">
+          <TabLink href="/" className="flex items-center gap-2 min-w-0">
             <img src="/images/logo.png" alt="덤핑점핑" className="h-7 w-auto flex-shrink-0" />
             <span className="text-gray500 text-xs tracking-wide truncate">Powered by JumpX</span>
-          </Link>
+          </TabLink>
         </div>
         {remainPct <= 30 && (
           <div className="text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap flex-shrink-0" style={{ background: "#FF6F0F", color: "#fff" }}>

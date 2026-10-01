@@ -3,10 +3,13 @@
 import { rem } from "@/lib/rem";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 import { PRIVACY_CONSENT_TEXT } from "@/lib/consent";
+import { useBackToClose } from "@/lib/useBackToClose";
 
 // 개인정보 수집·이용 동의(필수) 전문 보기 (2026-09-30, consent-texts 3번) — 가입 화면·재동의 시트의 "보기".
 // 동의 시트(z-50) 위에 떠야 해서 z-[60].
 export default function PrivacyConsentTextSheet({ onClose }: { onClose: () => void }) {
+  // 2026-10-01 PR-C: 열려 있으면 안드로이드 뒤로가기 = 이것만 닫기 (src/lib/useBackToClose.ts)
+  useBackToClose(true, onClose);
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center" style={{ background: "rgba(0,0,0,.5)" }} role="dialog" aria-modal="true" aria-label="개인정보 수집·이용 동의">
       <div

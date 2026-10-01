@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import TabLink from "@/components/TabLink";
 import BusinessFooter from "@/components/BusinessFooter";
 import { mockCategories, mockDeals, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -283,7 +284,7 @@ export default function Home() {
             {mockCategories.map((c) => {
               const color = categoryColors[c];
               return (
-                <Link
+                <TabLink
                   key={c}
                   href={`/deals?category=${encodeURIComponent(c)}`}
                   className="flex items-center gap-1.5 rounded-full py-2 pl-2 pr-3.5 bg-white border border-gray200 whitespace-nowrap flex-shrink-0 active:scale-95 transition-transform"
@@ -295,7 +296,7 @@ export default function Home() {
                     {categoryIcons[c]}
                   </span>
                   <span className="text-sm font-bold text-navy">{c}</span>
-                </Link>
+                </TabLink>
               );
             })}
           </CategoryScroller>

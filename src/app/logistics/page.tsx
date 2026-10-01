@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import Link from "next/link";
+import TabLink from "@/components/TabLink";
 import { useSearchParams } from "next/navigation";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
@@ -94,9 +94,9 @@ function LogisticsPageInner() {
         style={{ background: "linear-gradient(135deg, #0B2540, #123A4A)" }}
       >
         <div className="flex items-center gap-2 mb-2.5">
-          <Link href="/" className="bg-white rounded-lg px-3 py-2 inline-block">
+          <TabLink href="/" className="bg-white rounded-lg px-3 py-2 inline-block">
             <img src="/images/logo.png" alt="덤핑점핑" className="h-8 w-auto" />
-          </Link>
+          </TabLink>
           <span className="text-white/70 text-xs tracking-wide">Powered by JumpX</span>
         </div>
         <h1 className="font-display text-[1.2222rem] leading-tight">점핑전국물류</h1>

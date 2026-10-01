@@ -9,6 +9,7 @@ import { isInAppBrowser } from "@/lib/browserEnv";
 import { openExternal } from "@/lib/openExternal";
 import { getFreshAccessToken } from "@/lib/authFetch";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
+import { useBackToClose } from "@/lib/useBackToClose";
 
 // 매물 상세 "점프엑스에서 거래하기 · 오픈 준비 중" 바텀시트 (2026-09-29, JUMPX_PREVIEW_ENABLED).
 // 점프엑스(jumpx.co.kr)는 아직 서비스 구축 중 — 둘러보기 링크 + 오픈 알림 신청(feature_waitlist, feature = "jumpx_open")만.
@@ -52,6 +53,8 @@ export default function JumpxPreviewSheet({
 }) {
   const [joined, setJoined] = useState(false);
   const [busy, setBusy] = useState(false);
+  // 2026-10-01 PR-C: 열려 있으면 안드로이드 뒤로가기 = 이것만 닫기 (src/lib/useBackToClose.ts)
+  useBackToClose(true, onClose);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {

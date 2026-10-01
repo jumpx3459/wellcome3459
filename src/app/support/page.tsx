@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import TabLink from "@/components/TabLink";
 import { mockRegions } from "@/lib/mockData";
 import type { SupportProgram } from "@/lib/support";
 
@@ -39,9 +40,9 @@ function SupportPageInner() {
       >
         <div className="flex items-center justify-between gap-2 mb-2.5">
           <div className="flex items-center gap-2">
-            <Link href="/" className="bg-white rounded-lg px-3 py-2 inline-block">
+            <TabLink href="/" className="bg-white rounded-lg px-3 py-2 inline-block">
               <img src="/images/logo.png" alt="덤핑점핑" className="h-8 w-auto" />
-            </Link>
+            </TabLink>
             <span className="text-white/70 text-xs tracking-wide">Powered by JumpX</span>
           </div>
           <Link href="/deals" className="text-xs text-white/85 font-bold whitespace-nowrap">

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { hasAppHistory, navReplace } from "@/lib/appNav";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { formatMemberNo } from "@/lib/format";
 import { rem } from "@/lib/rem";
@@ -140,7 +141,18 @@ export default function PartnerReferralsPage() {
         }}
       >
         <div className="flex items-center gap-2">
-          <Link href="/mypage#referral" aria-label="뒤로 가기" className="flex items-center justify-center" style={{ width: 36, height: 36, fontSize: rem(20), color: "rgba(255,255,255,.85)", marginLeft: -8 }}>
+          {/* 2026-10-01 PR-C: ←는 앞으로 쌓지 않고 진짜 뒤로(앱 안에서 왔으면), 아니면 MY 추천 칸으로 replace */}
+          <Link
+            href="/mypage#referral"
+            aria-label="뒤로 가기"
+            onClick={(e) => {
+              e.preventDefault();
+              if (hasAppHistory()) router.back();
+              else navReplace(router, "/mypage#referral");
+            }}
+            className="flex items-center justify-center"
+            style={{ width: 36, height: 36, fontSize: rem(20), color: "rgba(255,255,255,.85)", marginLeft: -8 }}
+          >
             ←
           </Link>
           <span className="font-bold tracking-widest" style={{ fontSize: rem(14), color: "#FFD166" }}>내 추천 회원</span>
