@@ -50,6 +50,15 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
+## 백로그 (2026-10-01)
+
+- **공개 후 별도 PR**: 로그인·가입 완료 후 이동(`router.push` — login/page.tsx·signup/page.tsx)을 `router.replace`로 — 지금은 로그인 화면이 기록에 남아
+  홈에서 뒤로가기를 한 번 더 눌러야 종료될 수 있음(PR-C #35 리뷰 포인트). 카카오/로그인 핵심 기능이라 별도 브랜치·PR.
+
+## 배포 기록 (2026-10-01)
+
+- PR #35 PR-C 안드로이드 뒤로가기 — 병합 `5957964` · 배포 run 36821144848 성공.
+
 ## 최근 작업 (2026-10-01) — PR-B: 매물 등록 폼 UX (브랜치 `feat/deal-form-ux`, PR-A 브랜치 위에서 시작)
 
 - 관리자 DealForm·/sell 공통. 순서: 재고 총수량(+단위) → 최소주문수량(오른쪽에 "kg 이상", 일괄이면 숨김) → 단가 기준 → 판매 단가(필수, 왼쪽)·정상 단가(선택, 오른쪽, 아래 "○% 할인으로 보여요").
