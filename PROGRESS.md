@@ -37,7 +37,7 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 ## 현재 상태
 
 - 기본 브랜치: `main` (로컬/GitHub 모두 일치, `origin/HEAD -> origin/main`)
-- 열려 있는 PR: 없음 (**PR #39 매물 폼 재배치 2차 + 푸터 "JumpX Inc."는 2026-10-01 병합 · `0ec592e` · 배포 run 36837013333 성공** · **PR #38 F-1 리드 보안은 2026-10-01 병합 · `ffc23aa` · 배포 run 36834546494 성공** · **PR #37 푸터 심볼·통신판매업 신고번호는 2026-10-01 병합 · `7eb809e` · 배포 run 36829390731 성공** · **PR #36 매물 폼 가로 넘침 + 재구성은 2026-10-01 병합 · `e49b2a6` · 배포 run 36828519187 성공** · **PR #34 PR-B 매물 등록 폼 UX는 2026-10-01 병합 · `56353a0` · 배포 run 36822399761 성공** · **PR #33 PR-A 푸시 구독 관리·매물명 검사는 2026-10-01 병합 · `98ca8f6` · 배포 run 36822109650 성공** · **PR #35 PR-C 안드로이드 뒤로가기는 2026-10-01 병합 · `5957964` · 배포 run 36821144848 성공** · **PR #32 L-8 매물 마감은 2026-10-01 병합 · 머지 커밋 `dde8015` · 배포 run 36808090081 성공** · **PR #31 VAPID lazy 초기화는 2026-10-01 병합 · `f2dca21`** · **PR #30 관리자 역할은 2026-10-01 병합 · `727418b`** · **PR #29 PR용 CI는 2026-10-01 병합 · 머지 커밋 `2b8f107`** · **PR #28 사업자정보 푸터·관리자 대시보드 레이아웃은 2026-10-01 병합 · 머지 커밋 `d0eb5a5`** · **PR #27 로그인 번호 자동완성 버그는 2026-10-01 병합 · 머지 커밋 `829d284`** · **PR #26 KPI 매일 저장·방문 기록은 2026-09-30 병합 · 머지 커밋 `c0c9c8a`** · **PR #25 비회원 동의 기록·90일 자동 삭제는 2026-09-30 병합 · 머지 커밋 `cf6093d`** · **PR #24 사업자 정보 푸터·문의 경로는 2026-09-30 병합 · 머지 커밋 `f24170c`** · **PR #23 판매자 표시는 2026-09-30 병합 · 머지 커밋 `6dbe813`** · **PR #22 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내는 2026-09-30 병합 · 머지 커밋 `8cf2f41`** · **PR #21 수신 동의 기록·약관·처리방침은 2026-09-30 병합 · 머지 커밋 `b10a9c8`** · **PR #20 푸시 규칙((광고)·수신거부·야간 보류)은 2026-09-30 병합 · 머지 커밋 `1c4e68d`** · **PR #19 푸시 발송 보안·매물 상태 검증은 2026-09-30 병합 · 머지 커밋 `957620f`** · **PR #18 로그인 비밀번호 유도 후속은 2026-09-29 병합 · `b7be300`** · **PR #17 선택적 비밀번호 로그인은 2026-09-28 병합 완료 · 머지 커밋 `6465faa`** —
+- 열려 있는 PR: 없음 — `feat/f2-connections`(F-2 거래 연결 DB SQL, push 전) (**PR #39 매물 폼 재배치 2차 + 푸터 "JumpX Inc."는 2026-10-01 병합 · `0ec592e` · 배포 run 36837013333 성공** · **PR #38 F-1 리드 보안은 2026-10-01 병합 · `ffc23aa` · 배포 run 36834546494 성공** · **PR #37 푸터 심볼·통신판매업 신고번호는 2026-10-01 병합 · `7eb809e` · 배포 run 36829390731 성공** · **PR #36 매물 폼 가로 넘침 + 재구성은 2026-10-01 병합 · `e49b2a6` · 배포 run 36828519187 성공** · **PR #34 PR-B 매물 등록 폼 UX는 2026-10-01 병합 · `56353a0` · 배포 run 36822399761 성공** · **PR #33 PR-A 푸시 구독 관리·매물명 검사는 2026-10-01 병합 · `98ca8f6` · 배포 run 36822109650 성공** · **PR #35 PR-C 안드로이드 뒤로가기는 2026-10-01 병합 · `5957964` · 배포 run 36821144848 성공** · **PR #32 L-8 매물 마감은 2026-10-01 병합 · 머지 커밋 `dde8015` · 배포 run 36808090081 성공** · **PR #31 VAPID lazy 초기화는 2026-10-01 병합 · `f2dca21`** · **PR #30 관리자 역할은 2026-10-01 병합 · `727418b`** · **PR #29 PR용 CI는 2026-10-01 병합 · 머지 커밋 `2b8f107`** · **PR #28 사업자정보 푸터·관리자 대시보드 레이아웃은 2026-10-01 병합 · 머지 커밋 `d0eb5a5`** · **PR #27 로그인 번호 자동완성 버그는 2026-10-01 병합 · 머지 커밋 `829d284`** · **PR #26 KPI 매일 저장·방문 기록은 2026-09-30 병합 · 머지 커밋 `c0c9c8a`** · **PR #25 비회원 동의 기록·90일 자동 삭제는 2026-09-30 병합 · 머지 커밋 `cf6093d`** · **PR #24 사업자 정보 푸터·문의 경로는 2026-09-30 병합 · 머지 커밋 `f24170c`** · **PR #23 판매자 표시는 2026-09-30 병합 · 머지 커밋 `6dbe813`** · **PR #22 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내는 2026-09-30 병합 · 머지 커밋 `8cf2f41`** · **PR #21 수신 동의 기록·약관·처리방침은 2026-09-30 병합 · 머지 커밋 `b10a9c8`** · **PR #20 푸시 규칙((광고)·수신거부·야간 보류)은 2026-09-30 병합 · 머지 커밋 `1c4e68d`** · **PR #19 푸시 발송 보안·매물 상태 검증은 2026-09-30 병합 · 머지 커밋 `957620f`** · **PR #18 로그인 비밀번호 유도 후속은 2026-09-29 병합 · `b7be300`** · **PR #17 선택적 비밀번호 로그인은 2026-09-28 병합 완료 · 머지 커밋 `6465faa`** —
   사용자가 Supabase "Secure password change" 설정 후 병합 승인. 실제 설정→로그아웃→비밀번호 로그인 흐름은
   프로덕션에서 한 번 직접 확인 권장. PR #16 회원가입 3단계→2단계 통합은 2026-09-25 병합 · `5fb0375`)
 - 병합 완료 (기본 브랜치에 모두 반영됨): PR #1~#14 (견적함 메뉴+Toast, 회원가입 개선,
@@ -106,6 +106,25 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 푸터: X 심볼 오른쪽 "JumpX Inc."(#1C5FAE, 14px 굵게) 한 묶음 28px, 링크 없음, 글자는 aria-hidden(이미지 alt가 상호).
 - `.gitignore`에 `public/Claude outputs/`(대표 측 앱이 잘못 만든 문서 폴더 — public/이라 서빙 경로, 커밋 금지. 파일 2개는 대표가 저장소 밖으로 옮김, .gitignore 유지).
 - 확인: 360·390·1280 가로 넘침 0, 동작 29/32(나머지 3건은 /sell 입력칸 자체에 min-w-0가 있어 검사식이 칸 단위 비교를 못 한 것 — 실제 순서 입력→단위 정상), 승인 이어받기·푸터 확인.
+
+## 최근 작업 (2026-10-01) — F-2 거래 연결 DB (브랜치 `feat/f2-connections`, SQL 파일만 · 운영 미실행)
+
+- 파일: `supabase/migrations/20261001_f2_connections.sql`(실행, 블록 A→B→C→D→E1→E2→F, 맨 아래 되돌리기) · `20261001_f2_connections_check.sql`(블록별 확인 조회, 한 행씩) · schema.sql에 같은 내용(E2는 주석).
+- A `deal_connections`(연결 1건 = 1행): deal_id on delete **set null** + deal_title_snapshot(매물 삭제가 실제 행 삭제라 기록 3년 보관),
+  buyer_member_id(set null)/buyer_phone(010… 숫자), source interest·quick_lead·admin + source_id(FK 없음), 7-1 동의 consent_at·version,
+  status requested→accepted→seller_confirmed→buyer_confirmed→contact_sent→closed, closed ⇔ result(success·failed·cancelled), result_amount·reason,
+  단계별 시각, assigned_admin_id → admin_users(set null), retention_until(칸만), updated_at 트리거. 진행 중 (deal, 회원)/(deal, 번호) 부분 unique, (status, updated_at)·담당자 인덱스.
+  "구매자 회원 또는 번호 필수"는 check 대신 insert 트리거(check면 회원 탈퇴 set null이 막힘). contact_sent_at은 동의가 있어야 함.
+- B `deal_connection_events`(단계 이력: step·method phone·sms·kakao·app·alimtalk·system·actor person·system·template_key·memo).
+- C `deal_seller_private`(매물 1개당 판매자 비공개 정보: seller_request_id(set null)·source seller_request·admin_direct·상호·담당자·연락처(숫자 8~11자리)·memo·상호 안내 허락·만든 관리자·retention_until).
+- D A·B·C RLS 켜고 정책 없음 + anon·authenticated 권한 회수(관리자 API는 service role).
+- E1 members.phone = 인증 번호(auth.users.phone) 정규화("010…" = kpi_norm_phone): 가입은 새 트리거 `members_enforce_phone`(인증 번호 없으면 거부),
+  수정은 기존 `protect_member_columns`의 `phone := old.phone` 한 줄을 "인증 번호(없으면 기존)"로. `member_auth_phone()`은 RPC로 못 부르게 실행 권한 회수.
+  E2 기존 행 형식 통일은 따로 — E2-0(형식 분포·불일치·정규화 뒤 겹침 dup_after 0) 먼저.
+- F interests 정책 "interests_self"(for all)를 동작별로 나누고 insert에만 "deals.status = 'active' · closes_at > now()" — 확인 파일에 rollback 테스트.
+  quick_leads는 공개 insert 정책 없음 + /api/quick-interest가 같은 검사(F-1) → 코드 변경 없음. 상세 화면은 RLS 거부(42501)를 "이미 마감된 매물이에요"로.
+- 조사에서 나온 것(이번엔 안 고침): `seller_requests.linked_deal_id` FK에 on delete가 없어 승인된 매물은 최고관리자 삭제가 FK 오류로 실패할 수 있음 →
+  `on delete set null`로 바꾸는 SQL 제안(별도). 관리자 지정(/api/admin/admins)의 admin_users.phone = members.phone 그대로 비교 → E2 뒤 정규화 비교로(다음 코드 PR).
 
 ## 백로그 (2026-10-01)
 

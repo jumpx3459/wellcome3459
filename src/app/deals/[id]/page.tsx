@@ -260,6 +260,9 @@ function DealDetailPageInner() {
       if (error.code === "23503") {
         setInterestNeedsReauth(true);
         setInterestError("계정 정보가 완전하지 않아요. 알림받기를 다시 진행해주세요.");
+      } else if (error.code === "42501") {
+        // 2026-10-01 F-2: interests insert 정책이 마감 매물을 거부(RLS) — 화면에서 못 막은 경우(방금 마감 등)
+        setInterestError("이미 마감된 매물이에요.");
       } else {
         setInterestError("처리 중 문제가 발생했어요. 새로고침 후 다시 시도해주세요.");
       }
