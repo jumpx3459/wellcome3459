@@ -20,14 +20,19 @@ import { type StockType } from "@/lib/stockType";
 import StockTypePicker from "@/components/StockTypePicker";
 import { getPhotoLimit, isPhotoLimitMaxed, MAX_PHOTO_SLOTS } from "@/lib/photoLimit";
 import { authFetch } from "@/lib/authFetch";
-import { FieldLabel, FieldTag, FORM_INPUT_FONT_SIZE, FORM_HINT_STYLE, FORM_CHIP_FONT_SIZE } from "@/components/FormField";
+import { FieldLabel, FieldTag, DEAL_INPUT_FONT_SIZE, DEAL_HINT_STYLE, DEAL_CHIP_FONT_SIZE } from "@/components/FormField";
+import {
+  isStorageType, isValidExpiryDate, discountPercent, priceWarnings, HIGH_DISCOUNT_PCT, formatExpiry, EXPIRY_REQUIRED_MESSAGE,
+  PACKAGE_UNIT_EXAMPLES, SPEC_EXAMPLES, ORIGIN_EXAMPLES, type StorageType,
+} from "@/lib/dealFields";
+import { SuggestInput, StorageTypeButtons } from "@/components/DealFormInputs";
 import { DEAL_PRICE_UNITS, LUMP_SUM, isDealPriceUnit, isLumpSum, priceUnitSuffix, type DealPriceUnit } from "@/lib/priceUnit";
 import CategoryChips from "@/components/CategoryChips";
 import FloatingCTA, { FloatingCTANote, FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 import SellGuestNotice from "@/components/SellGuestNotice";
 import { normalizeTitle, checkTitle, checkDescription } from "@/lib/titleGuard";
-import ConfirmWarnings, { BLOCK_COLOR } from "@/components/ConfirmWarnings";
+import ConfirmWarnings, { BLOCK_COLOR, WARN_COLOR } from "@/components/ConfirmWarnings";
 import { COMPANY_DISCLOSURE_TEXT, CONSENT_TEXT } from "@/lib/consent";
 
 // 2026-09-30: 작성 중 내용 (sessionStorage) — 사진·영상은 이미 올라간 URL만 보관, 매니페스트 표는 제외
@@ -35,8 +40,8 @@ const SELL_DRAFT_KEY = "dj_sell_draft";
 type SellDraft = {
   companyName: string; isAnonymous: boolean; contactName: string; contactPhone: string; category: string;
   categoryTouched: boolean; stockType: string; region: string; productName: string; quantity: string; quantityUnit: string;
-  minOrderQty: string; hopePrice: string; priceUnit: string; priceUnitTouched: boolean; hopeDurationHours: string;
-  description: string; packageUnit: string; origin: string; spec: string; storageCondition: string; pid: string;
+  minOrderQty: string; hopePrice: string; originalPrice: string; priceUnit: string; priceUnitTouched: boolean; hopeDurationHours: string;
+  description: string; packageUnit: string; origin: string; spec: string; storageType: string; expiryDate: string; pid: string;
   images: string[]; videoUrl: string | null; showDetails: boolean;
 };
 
@@ -144,6 +149,8 @@ export default function SellPage() {
     el?.focus({ preventScroll: true });
   };
   const [hopePrice, setHopePrice] = useState("");
+  const [originalPrice, setOriginalPrice] = useState(""); // 2026-10-01 PR-B [3]: 정상 단가(선택) — 할인율 표시
+  const [priceWarns, setPriceWarns] = useState<string[]>([]); // [12] 할인율 80% 이상
   // 2026-09-29: 단가 단위 — 수량 단위와 따로. 기본은 수량 단위를 따라가고, 직접 고르면 그 값 유지
   const [priceUnit, setPriceUnit] = useState<DealPriceUnit>(quantityUnits[0] as DealPriceUnit);
   const [priceUnitTouched, setPriceUnitTouched] = useState(false);
@@ -154,7 +161,10 @@ export default function SellPage() {
   const [packageUnit, setPackageUnit] = useState("");
   const [origin, setOrigin] = useState("");
   const [spec, setSpec] = useState("");
-  const [storageCondition, setStorageCondition] = useState("");
+  // 2026-10-01 PR-B [6]: 보관 조건(상온·냉장·냉동)과 소비기한(날짜) 분리 — 재고 유형 "소비기한 임박"이면 소비기한 필수
+  const [storageType, setStorageType] = useState<StorageType | "">("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [expiryError, setExpiryError] = useState<string | null>(null);
   const [pid, setPid] = useState(""); // 2026-09-26: 리퀴데이션 파렛트 등의 매니페스트/PID 번호 (선택)
   const [manifestItems, setManifestItems] = useState<ManifestRow[]>([]);
   const [images, setImages] = useState<string[]>([]);
@@ -192,6 +202,7 @@ export default function SellPage() {
       if (typeof d.quantityUnit === "string") setQuantityUnit(d.quantityUnit);
       if (typeof d.minOrderQty === "string") setMinOrderQty(d.minOrderQty);
       if (typeof d.hopePrice === "string") setHopePrice(d.hopePrice);
+      if (typeof d.originalPrice === "string") setOriginalPrice(d.originalPrice);
       if (typeof d.priceUnit === "string" && isDealPriceUnit(d.priceUnit)) setPriceUnit(d.priceUnit);
       if (typeof d.priceUnitTouched === "boolean") setPriceUnitTouched(d.priceUnitTouched);
       if (typeof d.hopeDurationHours === "string") setHopeDurationHours(d.hopeDurationHours);
@@ -199,7 +210,8 @@ export default function SellPage() {
       if (typeof d.packageUnit === "string") setPackageUnit(d.packageUnit);
       if (typeof d.origin === "string") setOrigin(d.origin);
       if (typeof d.spec === "string") setSpec(d.spec);
-      if (typeof d.storageCondition === "string") setStorageCondition(d.storageCondition);
+      if (isStorageType(d.storageType)) setStorageType(d.storageType);
+      if (isValidExpiryDate(d.expiryDate)) setExpiryDate(d.expiryDate);
       if (typeof d.pid === "string") setPid(d.pid);
       if (Array.isArray(d.images)) setImages(d.images.filter((u): u is string => typeof u === "string"));
       if (typeof d.videoUrl === "string") setVideoUrl(d.videoUrl);
@@ -211,16 +223,16 @@ export default function SellPage() {
     if (!draftReady || done) return;
     const d: SellDraft = {
       companyName, isAnonymous, contactName, contactPhone, category, categoryTouched, stockType, region, productName,
-      quantity, quantityUnit, minOrderQty, hopePrice, priceUnit, priceUnitTouched, hopeDurationHours, description,
-      packageUnit, origin, spec, storageCondition, pid, images, videoUrl, showDetails,
+      quantity, quantityUnit, minOrderQty, hopePrice, originalPrice, priceUnit, priceUnitTouched, hopeDurationHours, description,
+      packageUnit, origin, spec, storageType, expiryDate, pid, images, videoUrl, showDetails,
     };
     try {
       window.sessionStorage.setItem(SELL_DRAFT_KEY, JSON.stringify(d));
     } catch {}
   }, [
     draftReady, done, companyName, isAnonymous, contactName, contactPhone, category, categoryTouched, stockType, region,
-    productName, quantity, quantityUnit, minOrderQty, hopePrice, priceUnit, priceUnitTouched, hopeDurationHours,
-    description, packageUnit, origin, spec, storageCondition, pid, images, videoUrl, showDetails,
+    productName, quantity, quantityUnit, minOrderQty, hopePrice, originalPrice, priceUnit, priceUnitTouched, hopeDurationHours,
+    description, packageUnit, origin, spec, storageType, expiryDate, pid, images, videoUrl, showDetails,
   ]);
 
   // 2026-10-01 PR-A [11]: 매물명 막기(빨강)·확인 후 저장(주황) — 관리자 폼과 같은 규칙(src/lib/titleGuard.ts), 서버도 다시 검사
@@ -232,20 +244,22 @@ export default function SellPage() {
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
     (el as HTMLInputElement | null)?.focus?.({ preventScroll: true });
   };
-  const showWarnings = (t: string[], d: string[]) => {
+  const showWarnings = (t: string[], d: string[], pr: string[] = []) => {
     setTitleWarnings(t);
     setDescWarnings(d);
+    setPriceWarns(pr);
     setError("주황 안내를 확인하고 \"그대로 저장\"을 눌러주세요.");
-    if (!t.length && d.length) setShowDetails(true);
-    setTimeout(() => scrollTo(t.length ? "sell-productName" : "sell-description"), 50);
+    if (!t.length && !pr.length && d.length) setShowDetails(true);
+    setTimeout(() => scrollTo(t.length ? "sell-productName" : pr.length ? "sell-originalPrice" : "sell-description"), 50);
   };
 
   const submit = async (confirmWarnings = false) => {
     setError(null);
     setMoqError(null);
     setPriceError(null);
+    setExpiryError(null);
     if (!productName || !quantity || !contactPhone) {
-      setError("매물명 · 수량 · 희망 단가 · 연락처는 꼭 입력해주세요.");
+      setError("매물명 · 재고 총수량 · 판매 단가 · 연락처는 꼭 입력해주세요.");
       return;
     }
     const cleanName = normalizeTitle(productName);
@@ -257,22 +271,31 @@ export default function SellPage() {
       scrollTo("sell-productName");
       return;
     }
+    // 2026-09-29: 판매(희망) 단가 필수 — 서버(/api/seller-requests)도 같은 검증
+    const price = parsePriceInput(hopePrice);
+    if (!price || price <= 0) {
+      setPriceError("판매 단가를 입력해주세요");
+      scrollTo("sell-hopePrice");
+      return;
+    }
+    const orig = parsePriceInput(originalPrice);
+    // 2026-10-01 PR-B: 소비기한 임박 재고는 소비기한 필수 (서버도 같은 규칙)
+    if (stockType === "near_expiry" && !expiryDate) {
+      setExpiryError(EXPIRY_REQUIRED_MESSAGE);
+      scrollTo("sell-expiryDate");
+      return;
+    }
     if (!confirmWarnings) {
       const d = checkDescription(description);
-      if (nameCheck.warnings.length || d.length) {
-        showWarnings(nameCheck.warnings, d);
+      const pr = priceWarnings(orig, price);
+      if (nameCheck.warnings.length || d.length || pr.length) {
+        showWarnings(nameCheck.warnings, d, pr);
         return;
       }
     }
     setTitleWarnings([]);
     setDescWarnings([]);
-    // 2026-09-29: 희망 단가 필수 — 서버(/api/seller-requests)도 같은 검증
-    const price = parsePriceInput(hopePrice);
-    if (!price || price <= 0) {
-      setPriceError("희망 단가를 입력해주세요");
-      document.getElementById("sell-hopePrice")?.focus();
-      return;
-    }
+    setPriceWarns([]);
     // 2026-09-29: 사무실 번호(02-, 031-…, 대표번호 15xx 등)도 허용 — 서버도 같은 isValidContactPhone
     if (!isValidContactPhone(contactPhone)) {
       setContactError("휴대폰 또는 사무실 번호를 정확히 입력해주세요");
@@ -281,7 +304,7 @@ export default function SellPage() {
     }
     // 2026-09-28: 수량 100kg·MOQ 1000kg 같은 신청이 그대로 들어온 사례 — 서버(/api/seller-requests)도 같은 검증
     if (!lumpSum && minOrderQty && quantity && Number(minOrderQty) > Number(quantity)) {
-      showMoqError("최소주문량은 총수량보다 클 수 없어요.");
+      showMoqError("최소주문량은 재고 총수량보다 클 수 없어요.");
       return;
     }
     if (!sellerTermsAgreed) {
@@ -308,12 +331,14 @@ export default function SellPage() {
           minOrderQty: !lumpSum && minOrderQty ? Number(minOrderQty) : null, // 일괄 판매면 최소주문 없음
           priceUnit,
           hopePrice: parsePriceInput(hopePrice) ?? null,
+          originalPrice: orig ?? null,
           hopeDurationHours: hopeDurationHours ? Number(hopeDurationHours) : null,
           description,
           packageUnit: packageUnit || null,
           origin: origin || null,
           spec: spec || null,
-          storageCondition: storageCondition || null,
+          storageType: storageType || null,
+          expiryDate: expiryDate || null,
           pid: pid || null,
           manifestItems: manifestItems.length ? manifestItems : null,
           images,
@@ -330,7 +355,17 @@ export default function SellPage() {
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         if (res.status === 422 && data.needsConfirm) {
-          showWarnings(data.warnings?.title ?? [], data.warnings?.description ?? []);
+          showWarnings(data.warnings?.title ?? [], data.warnings?.description ?? [], data.warnings?.price ?? []);
+          return;
+        }
+        if (data.field === "expiryDate") {
+          setExpiryError(data.error ?? EXPIRY_REQUIRED_MESSAGE);
+          scrollTo("sell-expiryDate");
+          return;
+        }
+        if (data.field === "originalPrice") {
+          setError(data.error ?? "정상 단가를 확인해주세요.");
+          scrollTo("sell-originalPrice");
           return;
         }
         if (data.field === "title") {
@@ -344,12 +379,12 @@ export default function SellPage() {
           return;
         }
         if (data.field === "hopePrice") {
-          setPriceError(data.error ?? "희망 단가를 입력해주세요");
+          setPriceError(data.error ?? "판매 단가를 입력해주세요");
           document.getElementById("sell-hopePrice")?.focus();
           return;
         }
         if (data.field === "minOrderQty") {
-          showMoqError(data.error ?? "최소주문량은 총수량보다 클 수 없어요.");
+          showMoqError(data.error ?? "최소주문량은 재고 총수량보다 클 수 없어요.");
           return;
         }
         if (data.field === "images") {
@@ -499,16 +534,16 @@ export default function SellPage() {
 
         {/* 2026-09-29: 재고 유형(선택) — 매물 카드·상세·푸시 앞에 배지로 표시 (일반 재고는 배지 없음) */}
         <div>
-          <FieldLabel need="optional">재고 유형</FieldLabel>
+          <FieldLabel compact need="optional">재고 유형</FieldLabel>
           <StockTypePicker value={stockType} onChange={setStockType} />
         </div>
 
         <div>
-          <FieldLabel need="required">매물 상품명</FieldLabel>
+          <FieldLabel compact need="required">매물 상품명</FieldLabel>
           <input
             id="sell-productName"
             className="w-full rounded-xl outline-none"
-            style={{ border: `1.5px solid ${titleError ? BLOCK_COLOR : "#E4E7EB"}`, padding: 14, fontSize: FORM_INPUT_FONT_SIZE }}
+            style={{ border: `1.5px solid ${titleError ? BLOCK_COLOR : "#E4E7EB"}`, padding: 14, fontSize: DEAL_INPUT_FONT_SIZE }}
             value={productName}
             onChange={(e) => {
               setProductName(e.target.value);
@@ -518,21 +553,21 @@ export default function SellPage() {
             onBlur={() => logUnmatchedProductName("sell", productName)}
             placeholder={stockType === "closure" ? "예: 사무집기 일괄 (책상·의자·캐비닛)" : "예: 국내산 갈치 20kg 박스"}
           />
-          {titleError && <p className="font-medium mt-1.5" style={{ fontSize: rem(15), color: BLOCK_COLOR }}>{titleError}</p>}
+          {titleError && <p className="font-medium mt-1.5" style={{ fontSize: rem(14), color: BLOCK_COLOR }}>{titleError}</p>}
           <ConfirmWarnings warnings={titleWarnings} onConfirm={() => submit(true)} busy={submitting} />
         </div>
 
         <div>
-          <FieldLabel need="optional">카테고리</FieldLabel>
+          <FieldLabel compact need="optional">카테고리</FieldLabel>
           {stockType === "closure" && (
-            <p className="mb-2" style={FORM_HINT_STYLE}>
+            <p className="mb-2" style={DEAL_HINT_STYLE}>
               여러 품목이 섞였으면 &apos;혼합재고&apos;를 골라주세요
             </p>
           )}
           {categoryEditing ? (
             <>
             {!category && !categoryTouched && (
-              <p className="mb-2" style={FORM_HINT_STYLE}>💡 상품명을 입력하면 카테고리를 자동으로 골라드려요</p>
+              <p className="mb-2" style={DEAL_HINT_STYLE}>💡 상품명을 입력하면 카테고리를 자동으로 골라드려요</p>
             )}
             {/* 2026-09-29: 기본 2줄 + "더보기" (CategoryChips) */}
             <CategoryChips
@@ -576,76 +611,159 @@ export default function SellPage() {
           )}
         </div>
 
-        {/* 2026-09-29: "원 / 파렛트"처럼 단위가 길면 나란히 두면 단가 칸이 70px대로 좁아져 큰 금액이 잘림 → 모바일은 위아래 */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:gap-2.5">
-          <div className="flex-1 min-w-0">
-            <FieldLabel need="required">수량</FieldLabel>
-            <div className="flex rounded-xl overflow-hidden" style={{ border: "1.5px solid #E4E7EB" }}>
-              <input
-                type="number"
-                className="flex-1 min-w-0 outline-none"
-                style={{ border: "none", padding: "14px 10px", fontSize: FORM_INPUT_FONT_SIZE }}
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                placeholder="55"
-              />
-              <select
-                className="flex-shrink-0 outline-none"
-                style={{ width: 74, border: "none", borderLeft: "1px solid #E4E7EB", padding: "14px 6px", fontSize: FORM_INPUT_FONT_SIZE, fontWeight: 700, color: "#0B2540", background: "#FAFBFC", textAlign: "center" }}
-                value={quantityUnit}
-                onChange={(e) => {
-                  setQuantityUnit(e.target.value);
-                  if (!priceUnitTouched && isDealPriceUnit(e.target.value)) setPriceUnit(e.target.value);
-                }}
-              >
-                {quantityUnits.map((u) => (
-                  <option key={u} value={u}>{u}</option>
-                ))}
-              </select>
-            </div>
+        {/* 2026-10-01 PR-B: 재고 총수량 → 최소주문수량(단위 표시) → 단가 기준 → 판매 단가(왼쪽)·정상 단가(오른쪽) → 보관·소비기한.
+            단가 칸에는 "원"만 두고 기준(kg당 등)은 라벨에 — 375px에서 두 칸을 나란히 둬도 큰 금액이 안 잘림 */}
+        <div>
+          <FieldLabel compact need="required" htmlFor="sell-quantity">재고 총수량</FieldLabel>
+          <div className="flex rounded-xl overflow-hidden" style={{ border: "1.5px solid #E4E7EB" }}>
+            <input
+              id="sell-quantity"
+              type="number"
+              inputMode="numeric"
+              className="flex-1 min-w-0 outline-none"
+              style={{ border: "none", padding: "13px 12px", fontSize: DEAL_INPUT_FONT_SIZE }}
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              placeholder="55"
+            />
+            <select
+              aria-label="재고 총수량 단위"
+              className="flex-shrink-0 outline-none"
+              style={{ width: 86, border: "none", borderLeft: "1px solid #E4E7EB", padding: "13px 6px", fontSize: DEAL_INPUT_FONT_SIZE, fontWeight: 700, color: "#0B2540", background: "#FAFBFC", textAlign: "center" }}
+              value={quantityUnit}
+              onChange={(e) => {
+                setQuantityUnit(e.target.value);
+                if (!priceUnitTouched && isDealPriceUnit(e.target.value)) setPriceUnit(e.target.value);
+              }}
+            >
+              {quantityUnits.map((u) => (
+                <option key={u} value={u}>{u}</option>
+              ))}
+            </select>
           </div>
-          <div className="flex-1 min-w-0">
-            <FieldLabel need="required">희망 단가</FieldLabel>
+        </div>
+
+        {/* 2026-09-29: 일괄(전체 가격) 판매면 최소주문 의미 없음 → 숨김 */}
+        {!lumpSum && (
+        <div>
+          <FieldLabel compact need="optional" htmlFor="sell-minOrderQty">최소주문수량(MOQ)</FieldLabel>
+          <div className="flex items-center rounded-xl" style={{ border: moqError ? "1.5px solid var(--color-orange)" : "1.5px solid #E4E7EB" }}>
+            <input
+              id="sell-minOrderQty"
+              type="number"
+              inputMode="numeric"
+              className="flex-1 min-w-0 outline-none"
+              style={{ border: "none", padding: "13px 0 13px 12px", fontSize: DEAL_INPUT_FONT_SIZE }}
+              value={minOrderQty}
+              onChange={(e) => {
+                setMinOrderQty(e.target.value);
+                setMoqError(null);
+              }}
+              placeholder="예: 5"
+            />
+            <span className="flex-shrink-0 font-bold" style={{ color: "#0B2540", padding: "0 14px", fontSize: DEAL_INPUT_FONT_SIZE }}>{quantityUnit} 이상</span>
+          </div>
+          {moqError && <p className="font-medium mt-1.5" style={{ fontSize: rem(14), color: "var(--color-orange)" }}>{moqError}</p>}
+        </div>
+        )}
+
+        <div>
+          <FieldLabel compact need="required" htmlFor="sell-priceUnit">단가 기준</FieldLabel>
+          {/* 2026-09-29: 단가 단위 — 수량 단위와 따로 (예: 수량은 박스, 가격은 kg당 / 일괄=전체 가격) */}
+          <select
+            id="sell-priceUnit"
+            className="w-full rounded-xl outline-none"
+            style={{ border: "1.5px solid #E4E7EB", padding: "13px 10px", fontSize: DEAL_INPUT_FONT_SIZE, fontWeight: 700, color: "#0B2540", background: "#FAFBFC" }}
+            value={priceUnit}
+            onChange={(e) => {
+              if (!isDealPriceUnit(e.target.value)) return;
+              setPriceUnit(e.target.value);
+              setPriceUnitTouched(true);
+              if (e.target.value === LUMP_SUM) setMinOrderQty("");
+            }}
+          >
+            {DEAL_PRICE_UNITS.map((u) => (
+              <option key={u} value={u}>
+                {priceUnitSuffix(u)}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2.5">
+          <div className="min-w-0">
+            <FieldLabel compact need="required" htmlFor="sell-hopePrice">판매 단가</FieldLabel>
             <div className="flex items-center rounded-xl overflow-hidden" style={{ border: priceError ? "1.5px solid var(--color-orange)" : "1.5px solid var(--color-brandOrange)" }}>
               <input
                 id="sell-hopePrice"
                 type="text"
                 inputMode="numeric"
                 className="flex-1 min-w-0 outline-none"
-                style={{ border: "none", padding: "14px 0 14px 10px", fontSize: FORM_INPUT_FONT_SIZE }}
+                style={{ border: "none", padding: "13px 0 13px 12px", fontSize: DEAL_INPUT_FONT_SIZE }}
                 value={formatPriceInput(hopePrice)}
                 onChange={(e) => {
                   setHopePrice(e.target.value);
                   setPriceError(null);
+                  setPriceWarns([]);
                 }}
                 placeholder={lumpSum ? "5,000,000" : "219,000"}
               />
-              {/* 2026-09-29: 단가 단위 — 수량 단위와 따로 (예: 수량은 박스, 가격은 kg당 / 일괄=전체 가격) */}
-              <select
-                aria-label="희망 단가 기준"
-                className="flex-shrink-0 outline-none"
-                style={{ width: 128, border: "none", borderLeft: "1px solid #E4E7EB", padding: "14px 4px", fontSize: FORM_INPUT_FONT_SIZE, fontWeight: 700, color: "#0B2540", background: "#FAFBFC", textAlign: "center" }}
-                value={priceUnit}
-                onChange={(e) => {
-                  if (!isDealPriceUnit(e.target.value)) return;
-                  setPriceUnit(e.target.value);
-                  setPriceUnitTouched(true);
-                  if (e.target.value === LUMP_SUM) setMinOrderQty("");
-                }}
-              >
-                {DEAL_PRICE_UNITS.map((u) => (
-                  <option key={u} value={u}>
-                    {priceUnitSuffix(u)}
-                  </option>
-                ))}
-              </select>
+              <span className="flex-shrink-0 font-bold" style={{ padding: "0 12px 0 4px", fontSize: DEAL_INPUT_FONT_SIZE, color: "#0B2540" }}>원</span>
             </div>
-            {priceError && <p className="font-medium mt-1.5" style={{ fontSize: rem(15), color: "var(--color-orange)" }}>{priceError}</p>}
+            <p className="mt-1" style={DEAL_HINT_STYLE}>{priceBasis(priceUnit)}</p>
+            {priceError && <p className="font-medium mt-1" style={{ fontSize: rem(14), color: "var(--color-orange)" }}>{priceError}</p>}
           </div>
+          <div className="min-w-0">
+            <FieldLabel compact need="optional" htmlFor="sell-originalPrice">정상 단가</FieldLabel>
+            <div className="flex items-center rounded-xl overflow-hidden" style={{ border: "1.5px solid #E4E7EB" }}>
+              <input
+                id="sell-originalPrice"
+                type="text"
+                inputMode="numeric"
+                className="flex-1 min-w-0 outline-none"
+                style={{ border: "none", padding: "13px 0 13px 12px", fontSize: DEAL_INPUT_FONT_SIZE }}
+                value={formatPriceInput(originalPrice)}
+                onChange={(e) => {
+                  setOriginalPrice(e.target.value);
+                  setPriceWarns([]);
+                }}
+                placeholder={lumpSum ? "8,000,000" : "300,000"}
+              />
+              <span className="flex-shrink-0 font-bold" style={{ padding: "0 12px 0 4px", fontSize: DEAL_INPUT_FONT_SIZE, color: "#0B2540" }}>원</span>
+            </div>
+            <SellDiscountHint original={parsePriceInput(originalPrice)} deal={parsePriceInput(hopePrice)} />
+          </div>
+        </div>
+        <ConfirmWarnings warnings={priceWarns} onConfirm={titleWarnings.length ? undefined : () => submit(true)} busy={submitting} />
+
+        <div>
+          <FieldLabel compact need="optional">보관 조건</FieldLabel>
+          <StorageTypeButtons id="sell-storageType" value={storageType} onChange={setStorageType} />
+        </div>
+        <div>
+          <FieldLabel compact need={stockType === "near_expiry" ? "required" : "optional"} htmlFor="sell-expiryDate">소비기한</FieldLabel>
+          <input
+            id="sell-expiryDate"
+            type="date"
+            className="w-full rounded-xl outline-none bg-white"
+            style={{ border: `1.5px solid ${expiryError ? BLOCK_COLOR : "#E4E7EB"}`, padding: "12px", fontSize: DEAL_INPUT_FONT_SIZE, minHeight: 50 }}
+            value={expiryDate}
+            onChange={(e) => {
+              setExpiryDate(e.target.value);
+              setExpiryError(null);
+            }}
+          />
+          {expiryError ? (
+            <p className="font-medium mt-1.5" style={{ fontSize: rem(14), color: BLOCK_COLOR }}>{expiryError}</p>
+          ) : (
+            <p className="mt-1.5" style={DEAL_HINT_STYLE}>
+              {expiryDate ? `구매자에게 "${formatExpiry(expiryDate)}"로 보여요.` : stockType === "near_expiry" ? "소비기한 임박 재고는 꼭 입력해주세요." : "식품이면 입력해주세요."}
+            </p>
+          )}
         </div>
 
         <div>
-          <FieldLabel need="required">연락처</FieldLabel>
+          <FieldLabel compact need="required">연락처</FieldLabel>
           <ContactPhoneInput
             value={contactPhone}
             onChange={(v) => {
@@ -657,31 +775,8 @@ export default function SellPage() {
           />
         </div>
 
-        {/* 2026-09-29: 일괄(전체 가격) 판매면 최소주문 의미 없음 → 숨김 */}
-        {!lumpSum && (
         <div>
-          <FieldLabel need="optional">최소주문수량(MOQ)</FieldLabel>
-          <div className="flex items-center rounded-xl" style={{ border: moqError ? "1.5px solid var(--color-orange)" : "1.5px solid #E4E7EB" }}>
-            <input
-              id="sell-minOrderQty"
-              type="number"
-              className="flex-1 min-w-0 outline-none"
-              style={{ border: "none", padding: "14px 0 14px 14px", fontSize: FORM_INPUT_FONT_SIZE }}
-              value={minOrderQty}
-              onChange={(e) => {
-                setMinOrderQty(e.target.value);
-                setMoqError(null);
-              }}
-              placeholder="예: 5"
-            />
-            <span className="flex-shrink-0 font-medium" style={{ color: "#6B7480", padding: "0 14px", fontSize: FORM_INPUT_FONT_SIZE }}>{quantityUnit} 이상</span>
-          </div>
-          {moqError && <p className="font-medium mt-1.5" style={{ fontSize: rem(15), color: "var(--color-orange)" }}>{moqError}</p>}
-        </div>
-        )}
-
-        <div>
-          <FieldLabel need="optional">마감까지</FieldLabel>
+          <FieldLabel compact need="optional">마감까지</FieldLabel>
           <div className="flex flex-wrap gap-1.5">
             {[
               { v: "3", l: "3시간" },
@@ -699,7 +794,7 @@ export default function SellPage() {
                   className="font-bold rounded-xl"
                   style={{
                     padding: "12px 14px",
-                    fontSize: FORM_CHIP_FONT_SIZE,
+                    fontSize: DEAL_CHIP_FONT_SIZE,
                     background: "#fff",
                     border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
                     color: "#1A1F26",
@@ -710,18 +805,18 @@ export default function SellPage() {
               );
             })}
           </div>
-          <p className="mt-2" style={FORM_HINT_STYLE}>
+          <p className="mt-2" style={DEAL_HINT_STYLE}>
             여기서 정한 시간이 구매자에게 보이는 마감 카운트다운 기준이 돼요.
           </p>
         </div>
 
         {/* 2026-09-30: 업체명·공개 설정을 "상세 정보 추가" 밖으로 (consent-texts 7-2, 기본 비공개) */}
         <div>
-          <FieldLabel need="optional">업체명</FieldLabel>
+          <FieldLabel compact need="optional">업체명</FieldLabel>
           <input
             id="sell-companyName"
             className="w-full border-2 rounded-xl px-4 outline-none focus:border-orange"
-            style={{ height: "52px", fontSize: FORM_INPUT_FONT_SIZE, borderColor: companyError ? "var(--color-orange)" : "#E4E7EB" }}
+            style={{ height: "52px", fontSize: DEAL_INPUT_FONT_SIZE, borderColor: companyError ? "var(--color-orange)" : "#E4E7EB" }}
             value={companyName}
             onChange={(e) => {
               setCompanyName(e.target.value);
@@ -729,7 +824,7 @@ export default function SellPage() {
             }}
             placeholder="예: 웰컴코리아(주)"
           />
-          {companyError && <p className="font-medium mt-1.5" style={{ fontSize: rem(15), color: "var(--color-orange)" }}>{companyError}</p>}
+          {companyError && <p className="font-medium mt-1.5" style={{ fontSize: rem(14), color: "var(--color-orange)" }}>{companyError}</p>}
           <div className="mt-3 font-bold text-navy" style={{ fontSize: rem(15) }}>{COMPANY_DISCLOSURE_TEXT.title}</div>
           <div className="flex flex-col gap-2 mt-2" role="radiogroup" aria-label="업체명 공개 설정">
             {([true, false] as const).map((anon) => {
@@ -775,13 +870,13 @@ export default function SellPage() {
             </span>
           </label>
           {sellerTermsError && (
-            <p className="font-medium mt-1.5" style={{ fontSize: rem(15), color: "var(--color-orange)" }}>판매자 확인 사항에 동의해주세요.</p>
+            <p className="font-medium mt-1.5" style={{ fontSize: rem(14), color: "var(--color-orange)" }}>판매자 확인 사항에 동의해주세요.</p>
           )}
         </div>
 
         <div className="flex items-center gap-2.5 rounded-2xl" style={{ background: "#F5F6F8", padding: "14px 16px" }}>
           <span style={{ fontSize: rem(18) }}>🔔</span>
-          <span className="flex-1" style={{ ...FORM_HINT_STYLE, color: "#0B2540", fontWeight: 500 }}>
+          <span className="flex-1" style={{ ...DEAL_HINT_STYLE, color: "#0B2540", fontWeight: 500 }}>
             점핑매니저 검토 후, 이 조건 알림을 받는 회원들에게 빠르게 발송돼요.
           </span>
         </div>
@@ -790,13 +885,13 @@ export default function SellPage() {
           type="button"
           onClick={() => setShowDetails((v) => !v)}
           className="flex items-center justify-between border-2 border-gray200 rounded-xl px-4 font-bold text-navy"
-          style={{ height: "52px", fontSize: rem(17) }}
+          style={{ height: "52px", fontSize: rem(15) }}
         >
-          <span className="flex items-center gap-1.5">상세 정보 추가 <FieldTag need="optional" /></span>
+          <span className="flex items-center gap-1.5">상세 정보 추가 <FieldTag compact need="optional" /></span>
           <span className="text-gray500">{showDetails ? "접기 ▴" : "펼치기 ▾"}</span>
         </button>
         {!showDetails && (
-          <p className="-mt-3" style={FORM_HINT_STYLE}>
+          <p className="-mt-3" style={DEAL_HINT_STYLE}>
             없어도 등록돼요, 매니저가 통화로 확인해요.
           </p>
         )}
@@ -808,10 +903,10 @@ export default function SellPage() {
             <VideoUploader onChange={setVideoUrl} initialUrl={videoUrl} />
 
             <div>
-              <FieldLabel need="optional">담당자명</FieldLabel>
+              <FieldLabel compact need="optional">담당자명</FieldLabel>
               <input
                 className="w-full border-2 border-gray200 rounded-xl px-4 outline-none focus:border-orange"
-                style={{ height: "52px", fontSize: FORM_INPUT_FONT_SIZE }}
+                style={{ height: "52px", fontSize: DEAL_INPUT_FONT_SIZE }}
                 value={contactName}
                 onChange={(e) => setContactName(e.target.value)}
                 placeholder="홍길동"
@@ -819,8 +914,8 @@ export default function SellPage() {
             </div>
 
             <div>
-              <FieldLabel need="optional" className="mb-1">재고 위치(지역)</FieldLabel>
-              <p className="mb-2" style={FORM_HINT_STYLE}>
+              <FieldLabel compact need="optional" className="mb-1">재고 위치(지역)</FieldLabel>
+              <p className="mb-2" style={DEAL_HINT_STYLE}>
                 물건이 실제로 있는 지역이에요 — 이 지역 알림을 신청한 회원에게 알림이 가요.
               </p>
               <div className="grid grid-cols-4 gap-2">
@@ -828,7 +923,7 @@ export default function SellPage() {
                   <button
                     key={r}
                     onClick={() => setRegion(region === r ? "" : r)}
-                    style={{ fontSize: FORM_CHIP_FONT_SIZE }}
+                    style={{ fontSize: DEAL_CHIP_FONT_SIZE }}
                     className={`py-2.5 rounded-full border-2 font-bold text-center ${
                       region === r ? "bg-[#FF6F0F] text-white border-[#FF6F0F]" : "border-gray200 text-gray500"
                     }`}
@@ -840,56 +935,52 @@ export default function SellPage() {
             </div>
 
             <div>
-              <FieldLabel need="optional">상품 상세 스펙</FieldLabel>
+              <FieldLabel compact need="optional">상품 상세 스펙</FieldLabel>
               <div className="flex flex-col gap-3">
                 <div>
-                  <label className="mb-1 block" style={FORM_HINT_STYLE}>포장 단위 (예: 20kg 박스)</label>
-                  <input
+                  <label htmlFor="sell-packageUnit" className="mb-1 block" style={DEAL_HINT_STYLE}>포장 단위</label>
+                  <SuggestInput
+                    id="sell-packageUnit"
                     className="w-full border-2 border-gray200 rounded-xl px-4 outline-none focus:border-orange"
-                    style={{ height: "52px", fontSize: FORM_INPUT_FONT_SIZE }}
+                    style={{ height: "50px", fontSize: DEAL_INPUT_FONT_SIZE }}
                     value={packageUnit}
-                    onChange={(e) => setPackageUnit(e.target.value)}
+                    onChange={setPackageUnit}
+                    examples={PACKAGE_UNIT_EXAMPLES}
                     placeholder="20kg 박스"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block" style={FORM_HINT_STYLE}>규격/사이즈 (예: 500ml)</label>
-                  <input
+                  <label htmlFor="sell-spec" className="mb-1 block" style={DEAL_HINT_STYLE}>규격/사이즈</label>
+                  <SuggestInput
+                    id="sell-spec"
                     className="w-full border-2 border-gray200 rounded-xl px-4 outline-none focus:border-orange"
-                    style={{ height: "52px", fontSize: FORM_INPUT_FONT_SIZE }}
+                    style={{ height: "50px", fontSize: DEAL_INPUT_FONT_SIZE }}
                     value={spec}
-                    onChange={(e) => setSpec(e.target.value)}
+                    onChange={setSpec}
+                    examples={SPEC_EXAMPLES}
                     placeholder="500ml, S~L 혼합"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block" style={FORM_HINT_STYLE}>원산지</label>
-                  <input
+                  <label htmlFor="sell-origin" className="mb-1 block" style={DEAL_HINT_STYLE}>원산지</label>
+                  <SuggestInput
+                    id="sell-origin"
                     className="w-full border-2 border-gray200 rounded-xl px-4 outline-none focus:border-orange"
-                    style={{ height: "52px", fontSize: FORM_INPUT_FONT_SIZE }}
+                    style={{ height: "50px", fontSize: DEAL_INPUT_FONT_SIZE }}
                     value={origin}
-                    onChange={(e) => setOrigin(e.target.value)}
+                    onChange={setOrigin}
+                    examples={ORIGIN_EXAMPLES}
                     placeholder="국내산, 중국산 등"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block" style={FORM_HINT_STYLE}>보관조건 · 소비기한</label>
-                  <input
-                    className="w-full border-2 border-gray200 rounded-xl px-4 outline-none focus:border-orange"
-                    style={{ height: "52px", fontSize: FORM_INPUT_FONT_SIZE }}
-                    value={storageCondition}
-                    onChange={(e) => setStorageCondition(e.target.value)}
-                    placeholder="냉동보관, 소비기한 5일"
                   />
                 </div>
               </div>
             </div>
 
             <div>
-              <FieldLabel need="optional">추가 설명</FieldLabel>
+              <FieldLabel compact need="optional">추가 설명</FieldLabel>
               <textarea
                 className="w-full border-2 border-gray200 rounded-xl px-4 py-3 outline-none focus:border-orange"
-                style={{ fontSize: FORM_INPUT_FONT_SIZE }}
+                style={{ fontSize: DEAL_INPUT_FONT_SIZE }}
                 rows={3}
                 id="sell-description"
                 value={description}
@@ -905,10 +996,10 @@ export default function SellPage() {
             {/* 2026-09-26: 폐업 정리 등으로 여러 품목이 한 파렛트에 섞인 "혼합매물" 대응 —
                 개별 사진 없이 PID/매니페스트 번호 + CSV 목록만으로도 등록할 수 있게. */}
             <div>
-              <FieldLabel need="optional">PID / 매니페스트 번호</FieldLabel>
+              <FieldLabel compact need="optional">PID / 매니페스트 번호</FieldLabel>
               <input
                 className="w-full border-2 border-gray200 rounded-xl px-4 py-3 outline-none focus:border-orange"
-                style={{ fontSize: FORM_INPUT_FONT_SIZE }}
+                style={{ fontSize: DEAL_INPUT_FONT_SIZE }}
                 value={pid}
                 onChange={(e) => setPid(e.target.value)}
                 placeholder="예: P809200159651 (리퀴데이션 파렛트라면 적어주세요)"
@@ -951,4 +1042,19 @@ export default function SellPage() {
       )}
     </main>
   );
+}
+
+// "kg당" / 일괄은 "전체 가격" (2026-10-01 PR-B — 단가 칸엔 "원"만, 기준은 칸 아래)
+function priceBasis(unit: string): string {
+  return isLumpSum(unit) ? "전체 가격" : `${unit}당`;
+}
+
+// 정상 단가 칸 아래 — "○% 할인으로 보여요" / 판매가 ≥ 정상가면 주황 안내 (2026-10-01 PR-B [3])
+function SellDiscountHint({ original, deal }: { original?: number | null; deal?: number | null }) {
+  if (!original || !deal) return <p className="mt-1" style={DEAL_HINT_STYLE}>할인율 표시용</p>;
+  const pct = discountPercent(original, deal);
+  if (pct === null) {
+    return <p className="mt-1 font-medium" style={{ fontSize: rem(14), color: WARN_COLOR }}>판매가가 정상가보다 높거나 같아 할인율이 안 보여요.</p>;
+  }
+  return <p className="mt-1 font-bold" style={{ fontSize: rem(14), color: pct >= HIGH_DISCOUNT_PCT ? WARN_COLOR : "#0B7A3E" }}>{pct}% 할인으로 보여요</p>;
 }

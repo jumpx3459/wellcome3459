@@ -4,6 +4,7 @@ import { formatDealPrice } from "@/lib/format";
 import DealCardMedia from "@/components/DealCardMedia";
 import StockTypeBadge from "@/components/StockTypeBadge";
 import { isLumpSum } from "@/lib/priceUnit";
+import { formatExpiry, isStorageType, STORAGE_ICONS } from "@/lib/dealFields";
 
 // /deals 목록 카드 — 실매물·예시 공용 (2026-09-29, 예전엔 예시 카드가 따로 있어서 배지 위치가 달랐음).
 // 예시는 레이아웃 동일, 회색 톤 + "예시" 라벨로만 구분.
@@ -27,6 +28,8 @@ export default function DealListCard({
   const discountPct = d.original_price ? Math.round(((d.original_price - d.deal_price) / d.original_price) * 100) : 0;
   const unit = d.quantity_unit || "개";
   const lump = isLumpSum(d.price_unit); // 일괄 판매면 MOQ 의미 없음
+  const expiry = formatExpiry(d.expiry_date); // 2026-10-01 PR-B: "~2026.10.20까지"
+  const storage = isStorageType(d.storage_type) ? d.storage_type : null;
 
   return (
     <Link
@@ -70,6 +73,13 @@ export default function DealListCard({
         <div className="text-sm font-medium mt-1" style={{ color: "#495057" }}>
           {closed ? d.location : `잔여 ${d.remaining_qty}${unit} · ${d.location}`}
         </div>
+        {(storage || expiry) && (
+          <div className="text-xs font-bold mt-1 flex items-center gap-1.5 flex-wrap" style={{ color: gray ? "#6B7480" : "#C2410C" }}>
+            {storage && <span>{STORAGE_ICONS[storage]} {storage}</span>}
+            {storage && expiry ? <span style={{ color: "#C7CBD1" }}>·</span> : null}
+            {expiry && <span>⏰ 소비기한 {expiry}</span>}
+          </div>
+        )}
         {(d.origin || (d.min_order_qty && !lump)) && (
           <div className="text-xs font-medium mt-1 flex items-center gap-1.5 flex-wrap" style={{ color: "#495057" }}>
             {d.origin && <span>🌍 {d.origin}</span>}

@@ -1,5 +1,6 @@
 "use client";
 
+import { DEAL_NEW_COLS, isMissingNewColumn, type DealRowLoose, isStorageType, STORAGE_ICONS, formatExpiry } from "@/lib/dealFields";
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import TabLink from "@/components/TabLink";
@@ -141,13 +142,17 @@ function DealDetailPageInner() {
     if (isExampleId) return;
 
     (async () => {
-      const { data } = await supabase
-        .from("deals")
-        .select(
-          "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, location, images, video_url, description, status, package_unit, origin, spec, storage_condition, quantity_unit, price_unit, min_order_qty, interest_count, pid, manifest_items, is_anonymous, seller_display_name, stock_type, categories(name), regions(name)"
-        )
-        .eq("id", params.id)
-        .single();
+      // 2026-10-01 PR-B: 보관 조건·소비기한(expiry_date·storage_type) — SQL 전이면 빼고 다시 조회
+      const run = (extra: string) =>
+        supabase!
+          .from("deals")
+          .select<string, DealRowLoose>(
+            `id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, location, images, video_url, description, status, package_unit, origin, spec, storage_condition, quantity_unit, price_unit, min_order_qty, interest_count, pid, manifest_items, is_anonymous, seller_display_name, stock_type, categories(name), regions(name)${extra}`
+          )
+          .eq("id", params.id)
+          .single();
+      let { data, error } = await run(DEAL_NEW_COLS);
+      if (isMissingNewColumn(error)) ({ data, error } = await run(""));
 
       if (data) {
         setDeal({
@@ -170,6 +175,8 @@ function DealDetailPageInner() {
           origin: data.origin ?? null,
           spec: data.spec ?? null,
           storage_condition: data.storage_condition ?? null,
+          storage_type: data.storage_type ?? null,
+          expiry_date: data.expiry_date ?? null,
           quantity_unit: data.quantity_unit ?? "개",
           price_unit: data.price_unit ?? null,
           min_order_qty: data.min_order_qty ?? null,
@@ -504,7 +511,12 @@ function DealDetailPageInner() {
               hasText(deal.package_unit) ? { k: "포장 단위", v: deal.package_unit! } : null,
               hasText(deal.spec) ? { k: "규격", v: deal.spec! } : null,
               hasText(deal.origin) ? { k: "원산지", v: deal.origin! } : null,
-              hasText(deal.storage_condition) ? { k: "보관조건", v: deal.storage_condition! } : null,
+              // 2026-10-01 PR-B: 새 칸(보관·소비기한) 우선, 둘 다 비면 예전 자유 입력
+              isStorageType(deal.storage_type) ? { k: "보관", v: `${STORAGE_ICONS[deal.storage_type]} ${deal.storage_type}` } : null,
+              formatExpiry(deal.expiry_date) ? { k: "소비기한", v: formatExpiry(deal.expiry_date)! } : null,
+              !isStorageType(deal.storage_type) && !formatExpiry(deal.expiry_date) && hasText(deal.storage_condition)
+                ? { k: "보관조건", v: deal.storage_condition! }
+                : null,
               {
                 k: "수량",
                 v: `${deal.total_qty}${deal.quantity_unit || "개"} 중 ${deal.remaining_qty}${deal.quantity_unit || "개"} 남음`,
