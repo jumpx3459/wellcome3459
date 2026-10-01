@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import TabLink from "@/components/TabLink";
 import BusinessFooter from "@/components/BusinessFooter";
 import { useSearchParams } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -15,6 +16,7 @@ import { avgDiscountByCategory, hotGapPct, type AvgSampleRow } from "@/lib/categ
 import { EXAMPLE_DEALS, shouldShowExamples } from "@/lib/exampleDeals";
 import { rem } from "@/lib/rem";
 import { SECTION_TITLE_STYLE } from "@/components/EcosystemGrid";
+import { useBackToClose } from "@/lib/useBackToClose";
 
 // design-v2: 헤더 우측의 "정부지원금" 링크를 마이페이지로 옮기고, 그 자리를
 // 이 화면이 다루는 매물 성격을 보여주는 순수 카피 로테이션으로 채움 (클릭 동작 없음).
@@ -47,6 +49,11 @@ function DealsPageInner() {
   // 목록이 이질적으로 튀어나오는 문제 — 버튼+커스텀 드롭다운 패널로 교체.
   const [catOpen, setCatOpen] = useState(false);
   const [regionOpen, setRegionOpen] = useState(false);
+  // 2026-10-01 PR-C: 카테고리·지역 펼침 패널 — 뒤로가기 = 패널만 닫기 (둘 사이 전환은 기록 1개 유지)
+  useBackToClose(catOpen || regionOpen, () => {
+    setCatOpen(false);
+    setRegionOpen(false);
+  });
   // 2026-09-28: 빈 결과 화면의 CTA가 로그인 여부와 상관없이 무조건 /signup(신규
   // 가입 위저드)으로 보내던 문제 — 이미 가입된 회원도 다시 가입하라는 셈이라
   // 회원이면 마이페이지 알림 조건으로 보내도록 분기하기 위해 필요.
@@ -208,9 +215,9 @@ function DealsPageInner() {
         }}
       >
         <div className="flex items-center gap-2 mb-3">
-          <Link href="/" className="bg-white rounded-lg px-2.5 py-1.5 inline-block shadow-sm">
+          <TabLink href="/" className="bg-white rounded-lg px-2.5 py-1.5 inline-block shadow-sm">
             <img src="/images/logo.png" alt="덤핑점핑" className="h-7 w-auto" />
-          </Link>
+          </TabLink>
           <span
             className="rounded-full font-medium"
             style={{ fontSize: rem(11), color: "rgba(255,255,255,0.6)", padding: "3px 9px", background: "rgba(255,255,255,0.08)" }}
@@ -496,13 +503,13 @@ function EmptyState({
           마이페이지 "내 알림 조건"(#alerts)으로, 비회원만 지금처럼 강조된
           가입 유도 버튼을 보게 분기. 회원용은 위계를 낮춘 톤(연한 배경)으로. */}
       {isMember ? (
-        <Link
+        <TabLink
           href="/mypage#alerts"
           className="mt-4 text-sm font-bold rounded-xl px-5 py-2.5"
           style={{ background: "#F5F6F8", color: "#6B7480" }}
         >
           내 조건 보기 ›
-        </Link>
+        </TabLink>
       ) : (
         <Link
           href="/signup"

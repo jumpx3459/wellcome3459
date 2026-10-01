@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { rem } from "@/lib/rem";
+import { useBackToClose } from "@/lib/useBackToClose";
 
 // 매물 사진 전체 화면 보기 (2026-09-29) — 옆으로 넘기기, "1/N", 두 손가락 확대(최대 4배)·확대 중 끌어서 이동,
 // 두 번 탭하면 2.5배/원래대로, 닫기 버튼·Esc. 확대 중에는 옆 넘기기를 잠가 사진이 밀리지 않게.
@@ -122,6 +123,8 @@ export default function PhotoViewer({
   const trackRef = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(startIndex);
   const [zoomed, setZoomed] = useState(false);
+  // 2026-10-01 PR-C: 열려 있으면 안드로이드 뒤로가기 = 이것만 닫기 (src/lib/useBackToClose.ts)
+  useBackToClose(true, onClose);
   // 2026-09-30: 열 때 2.5초 동안 가운데 흐린 확대 안내 (누르기·확대를 막지 않게 pointer-events 없음)
   const [hint, setHint] = useState(true);
   useEffect(() => {

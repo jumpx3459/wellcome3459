@@ -5,6 +5,7 @@ import { isInAppBrowser, isKakaoInApp, isStandalone } from "@/lib/browserEnv";
 import { openExternal, copyCurrentUrl, externalTarget, type ExternalTarget } from "@/lib/openExternal";
 import { rem } from "@/lib/rem";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
+import { useBackToClose } from "@/lib/useBackToClose";
 
 // 2026-09-28: 카카오 채널 링크 등으로 인앱 브라우저에서 홈·/deals·매물 상세에 들어오면 안내.
 // 인앱에선 웹푸시가 안 되므로 크롬/사파리로 유도. 매물 내용은 막지 않는다.
@@ -35,6 +36,8 @@ export default function InAppBanner() {
   const [target, setTarget] = useState<ExternalTarget>(null);
   const [kakao, setKakao] = useState(false);
   const [copied, setCopied] = useState(false);
+  // 2026-10-01 PR-C: 열려 있으면 안드로이드 뒤로가기 = 이것만 닫기 (src/lib/useBackToClose.ts)
+  useBackToClose(mode === "sheet", () => setMode(readFlag(BAND_DISMISS_KEY) ? "none" : "band"));
 
   useEffect(() => {
     if (!isInAppBrowser() || isStandalone()) return;

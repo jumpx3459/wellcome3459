@@ -5,6 +5,7 @@ import { rem } from "@/lib/rem";
 import { isInAppBrowser, isIOS as detectIOS, isStandalone as detectStandalone, getManualInstallBrowser, type ManualInstallBrowser } from "@/lib/browserEnv";
 import IosInstallSteps, { IOS_INSTALL_TITLE } from "@/components/IosInstallSteps";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
+import { useBackToClose } from "@/lib/useBackToClose";
 
 // 표준 타입에 없는 크로미움 전용 PWA 설치 이벤트.
 type InstallPromptEvent = Event & {
@@ -117,6 +118,11 @@ export default function InstallAppButton({
 }) {
   const [showIOSGuide, setShowIOSGuide] = useState(false);
   const [showManualGuide, setShowManualGuide] = useState(false);
+  // 2026-10-01 PR-C: 열려 있으면 안드로이드 뒤로가기 = 이것만 닫기 (src/lib/useBackToClose.ts)
+  useBackToClose(showIOSGuide || showManualGuide, () => {
+    setShowIOSGuide(false);
+    setShowManualGuide(false);
+  });
   const [isIOSDevice, setIsIOSDevice] = useState(false);
   const [browser, setBrowser] = useState<ManualInstallBrowser>("other");
   useEffect(() => {

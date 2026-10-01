@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import TabLink from "@/components/TabLink";
 import BusinessFooter from "@/components/BusinessFooter";
 import { CheckCircle } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -699,9 +700,9 @@ export default function MyPage() {
             마이페이지는 프로필 요약 카드라 caption(내 정보)만 맞추고
             아바타·상호명·배지·통계 블록은 그대로 유지(이 화면의 "타이틀" 역할). */}
         <div className="flex items-center gap-2 mb-3">
-          <Link href="/" className="bg-white rounded-lg px-2.5 py-1.5 inline-block shadow-sm">
+          <TabLink href="/" className="bg-white rounded-lg px-2.5 py-1.5 inline-block shadow-sm">
             <img src="/images/logo.png" alt="덤핑점핑" className="h-7 w-auto" />
-          </Link>
+          </TabLink>
           <span
             className="rounded-full font-medium"
             style={{ fontSize: rem(11), color: "rgba(255,255,255,0.6)", padding: "3px 9px", background: "rgba(255,255,255,0.08)" }}

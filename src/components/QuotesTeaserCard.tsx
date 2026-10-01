@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { rem } from "@/lib/rem";
 import { UI_CARD_TITLE, UI_DESC } from "@/lib/uiText";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
+import { useBackToClose } from "@/lib/useBackToClose";
 
 // 2026-09-29: "견적함 · 준비중" 자리를 "곧 오픈" 예고 카드로. 실제 견적함은 아직 없음
 // (features.ts QUOTES_ENABLED = false). 오픈 알림 신청은 feature_waitlist에 기록
@@ -23,6 +24,8 @@ const POINTS = [
 export default function QuotesTeaserCard({ memberId }: { memberId: string | null }) {
   const [open, setOpen] = useState(false);
   const [joined, setJoined] = useState(false);
+  // 2026-10-01 PR-C: 열려 있으면 안드로이드 뒤로가기 = 이것만 닫기 (src/lib/useBackToClose.ts)
+  useBackToClose(open, () => setOpen(false));
   const [busy, setBusy] = useState<Role | null>(null);
   const [error, setError] = useState<string | null>(null);
 

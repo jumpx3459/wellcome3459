@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import TabLink from "@/components/TabLink";
 import BusinessFooter from "@/components/BusinessFooter";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockDeals, mockRegions, type Deal } from "@/lib/mockData";
@@ -19,6 +20,7 @@ import DealCardMedia from "@/components/DealCardMedia";
 import { SECTION_TITLE_STYLE } from "@/components/EcosystemGrid";
 import { isLumpSum } from "@/lib/priceUnit";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
+import { useBackToClose } from "@/lib/useBackToClose";
 
 // 헤더(점핑매니저 안내줄)의 실측 높이 — 아래 콘텐츠의 paddingTop 보정에 사용.
 // 2026-09-26 로컬 Playwright 실측 77.3px(360/390/430px 폭 동일) → 78로 올림.
@@ -176,6 +178,8 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
   const myCondText = `${condCats} · ${condRegions}`;
 
   const [viewer, setViewer] = useState<{ images: string[]; video: string | null; index: number } | null>(null);
+  // 2026-10-01 PR-C: 열려 있으면 안드로이드 뒤로가기 = 이것만 닫기 (src/lib/useBackToClose.ts)
+  useBackToClose(viewer !== null, () => setViewer(null));
 
   const groups = bucketDeals(deals);
   // 매물 수 적을 땐 큰 카드(임팩트), 많아지면 촘촘한 리스트로 자동 전환
@@ -230,9 +234,9 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
               오히려 로고 배지보다 폭이 넓어서(9.5px 텍스트가 로고보다 김) 제목
               공간을 깎아먹고 있었음 — 빼고 로고를 키움(h-5→h-6). 세로 스택이
               아니게 돼 flex-col도 제거. */}
-          <Link href="/" className="bg-white rounded-md inline-flex items-center flex-shrink-0" style={{ padding: "4px 7px" }}>
+          <TabLink href="/" className="bg-white rounded-md inline-flex items-center flex-shrink-0" style={{ padding: "4px 7px" }}>
             <img src="/images/logo.png" alt="덤핑점핑" className="h-6 w-auto block" />
-          </Link>
+          </TabLink>
           <div className="flex items-center gap-2.5 min-w-0">
             {/* 2026-09-27: 캐릭터 아이콘에 스플래시와 동일한 바운스 애니메이션 적용. */}
             <img
@@ -279,7 +283,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
         </Link>
       </div>
 
-      <Link
+      <TabLink
         href="/mypage#alerts"
         className="flex items-center gap-2 w-full text-left"
         style={{ borderBottom: "1px solid #F1F3F5", padding: "9px 20px" }}
@@ -287,7 +291,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
         <span style={{ fontSize: rem(12) }}>⚙️</span>
         <span className="flex-1 min-w-0 truncate" style={{ fontSize: rem(12.5), color: "#6B7480" }}>{myCondText}</span>
         <span className="flex-shrink-0 font-bold" style={{ fontSize: rem(12), color: "#E25100" }}>조건 수정</span>
-      </Link>
+      </TabLink>
 
       {showInstall && canInstall && (
         <div className="flex items-center gap-2.5" style={{ borderBottom: "1px solid #F1F3F5", padding: "12px 20px", background: "#FAFBFC" }}>
@@ -410,13 +414,13 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
             조건에 맞는 매물이 올라오면 가장 먼저 알려드릴게요.
           </p>
           <div className="flex justify-center gap-2 mt-4">
-            <Link
+            <TabLink
               href="/mypage#alerts"
               className={`flex-1 ${BTN_CLASS}`}
               style={btnStyle("secondary")}
             >
               조건 넓히기
-            </Link>
+            </TabLink>
             <Link
               href="/deals"
               className={`flex-1 ${BTN_CLASS}`}
