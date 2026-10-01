@@ -8,6 +8,7 @@ import { getPhotoLimit, photoLimitError } from "@/lib/photoLimit";
 import { getMemberFromToken } from "@/lib/photoLimitServer";
 import { isReservedSellerName } from "@/lib/sellerDisplay";
 import { TERMS_VERSION } from "@/lib/consent";
+import { normalizeTitle, checkTitle, checkDescription, DUPLICATE_TITLE_WARNING } from "@/lib/titleGuard";
 
 const LOGIN_REQUIRED = "판매 신청은 회원만 할 수 있어요. 로그인 후 다시 시도해주세요.";
 
@@ -44,11 +45,16 @@ export async function POST(req: NextRequest) {
     priceUnit,
     accessToken,
     sellerTermsAgreed,
+    confirmWarnings, // 2026-10-01: 매물명·설명 경고를 확인하고 "그대로 저장"
   } = body;
 
   if (!contactPhone || !productName || !quantity) {
     return NextResponse.json({ error: "필수 항목이 누락되었습니다." }, { status: 400 });
   }
+  // 2026-10-01 PR-A [11]: 매물명 정리·검사(회원 — "[테스트]" 불가) — src/lib/titleGuard.ts
+  const cleanName = normalizeTitle(productName);
+  const nameCheck = checkTitle(cleanName);
+  if (nameCheck.block) return NextResponse.json({ error: nameCheck.block, field: "title" }, { status: 400 });
   // 2026-09-30 (커밋 E): [필수] 판매자 확인 사항 (consent-texts 7-2) — 아래에서 member_consents(seller_terms)에 기록
   if (sellerTermsAgreed !== true) {
     return NextResponse.json({ error: "판매자 확인 사항에 동의해주세요.", field: "sellerTerms" }, { status: 400 });
@@ -103,6 +109,23 @@ export async function POST(req: NextRequest) {
   if (!member) {
     return NextResponse.json({ error: LOGIN_REQUIRED }, { status: 401 });
   }
+  // 확인 후 저장 경고 — 이 회원의 같은 이름 진행 중 매물 포함
+  if (confirmWarnings !== true) {
+    const { count: dupCount } = await supabaseAdmin
+      .from("deals")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "active")
+      .eq("seller_member_id", member.id)
+      .eq("title", cleanName);
+    const titleWarnings = [...nameCheck.warnings, ...((dupCount ?? 0) > 0 ? [DUPLICATE_TITLE_WARNING] : [])];
+    const descriptionWarnings = checkDescription(description);
+    if (titleWarnings.length || descriptionWarnings.length) {
+      return NextResponse.json(
+        { needsConfirm: true, field: titleWarnings.length ? "title" : "description", warnings: { title: titleWarnings, description: descriptionWarnings } },
+        { status: 422 }
+      );
+    }
+  }
   // 매물 한 건의 사진 총 장수 — 같은 회원 기준 한도
   const photoLimit = getPhotoLimit(member);
   if ((images?.length ?? 0) > photoLimit) {
@@ -141,7 +164,7 @@ export async function POST(req: NextRequest) {
     contact_phone: contactPhone,
     category_id: catRow?.id ?? null,
     region_id: regRow?.id ?? null,
-    product_name: productName,
+    product_name: cleanName,
     quantity,
     quantity_unit: quantityUnit || "개",
     min_order_qty: lumpSum ? null : minOrderQty || null, // 일괄 판매면 최소주문 없음

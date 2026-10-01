@@ -1617,3 +1617,14 @@ revoke all on public.admin_audit_logs from anon, authenticated;
 -- 감사 로그 보기 (최근 20건):
 --   select created_at, admin_name, admin_role, action, target_type, target_id, detail, ip
 --     from public.admin_audit_logs order by created_at desc limit 20;
+
+-- ============================================================================
+-- 2026-10-01 PR-A [10] 푸시 구독 관리 — 미실행 (실행 파일: supabase/migrations/20261001_push_tracking.sql, 확인 조회도 그 파일)
+-- ============================================================================
+alter table public.push_subscriptions add column if not exists user_agent text;
+alter table public.push_subscriptions add column if not exists last_success_at timestamptz;
+alter table public.notification_logs add column if not exists subscription_id uuid
+  references public.push_subscriptions(id) on delete set null;
+alter table public.notification_logs add column if not exists error_code int;
+alter table public.notification_logs add column if not exists error_message text;
+create index if not exists notification_logs_subscription_idx on public.notification_logs (subscription_id);

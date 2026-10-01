@@ -129,3 +129,57 @@ export async function fetchPushStatus(
     return null;
   }
 }
+
+// ── 2026-10-01 PR-A [10] ─────────────────────────────────────────────────────
+// 브라우저 구독이 지금 VAPID 공개키로 만든 것인지. 키가 바뀐 뒤 예전 키 구독은 푸시 서비스가 403으로 거부함
+// (9/28 구독 사례: 발송 failed인데 화면은 "알림 받는 중"). 판단할 수 없으면(옛 브라우저) true로 둠.
+function sameKey(sub: PushSubscription, vapidKey: string) {
+  const current = sub.options?.applicationServerKey;
+  if (!current) return true;
+  const a = new Uint8Array(current);
+  const b = urlBase64ToUint8Array(vapidKey);
+  return a.length === b.length && a.every((v, i) => v === b[i]);
+}
+
+/** 앱을 열 때 1회 — 권한이 있고 구독이 예전 키로 묶여 있으면 지금 키로 다시 구독해 저장(조용히). 바꿨으면 true */
+export async function refreshPushSubscriptionIfStale(): Promise<boolean> {
+  if (typeof window === "undefined" || getPushBlocker() || !isCanonicalHost(window.location.hostname)) return false;
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return false;
+  if (Notification.permission !== "granted") return false;
+  const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  if (!vapidKey) return false;
+  try {
+    const registration = await navigator.serviceWorker.getRegistration("/");
+    const old = await registration?.pushManager.getSubscription();
+    if (!registration || !old || sameKey(old, vapidKey)) return false;
+    const oldEndpoint = old.endpoint;
+    await old.unsubscribe();
+    const fresh = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidKey),
+    });
+    // 알림을 끈 회원이면 서버가 저장을 건너뜀(opted_out) — 그대로 둠
+    await savePushSubscription(fresh.toJSON());
+    await authFetch("/api/push/unsubscribe", { json: { endpoint: oldEndpoint } }).catch(() => null);
+    console.info("[push] VAPID 키가 바뀐 구독을 새 키로 다시 구독함");
+    return true;
+  } catch (e) {
+    console.warn("[push] 재구독 실패", (e as Error).message);
+    return false;
+  }
+}
+
+/** MY [이 기기 알림 끄기] — 브라우저 구독 해지 + 서버의 이 기기 구독 행 삭제. 다른 기기·회원 설정은 그대로 */
+export async function unsubscribeThisDevice(): Promise<"off" | "failed"> {
+  try {
+    const registration = await navigator.serviceWorker.getRegistration("/");
+    const sub = await registration?.pushManager.getSubscription();
+    if (!sub) return "off";
+    const endpoint = sub.endpoint;
+    await sub.unsubscribe();
+    const res = await authFetch("/api/push/unsubscribe", { json: { endpoint } });
+    return res.ok ? "off" : "failed";
+  } catch {
+    return "failed";
+  }
+}
