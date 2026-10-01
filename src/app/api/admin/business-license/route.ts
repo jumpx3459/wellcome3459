@@ -14,7 +14,7 @@ function getAdminClient() {
 
 // 사업자등록증 열람 — 요청할 때마다 만료 시간이 짧은 서명 URL을 새로 발급합니다(공개 URL 없음).
 export async function GET(req: NextRequest) {
-  const auth = checkAdminAuth(req);
+  const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const memberId = req.nextUrl.searchParams.get("memberId");
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
 
 // 사업자등록증 확인 후 인증 완료 처리
 export async function PATCH(req: NextRequest) {
-  const auth = checkAdminAuth(req);
+  const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const { memberId } = await req.json();

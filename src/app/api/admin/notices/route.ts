@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendNoticePush } from "@/lib/sendPush";
-import { checkAdminAuth } from "@/lib/adminAuth";
+import { checkAdminAuth, requireRole } from "@/lib/adminAuth";
+import { writeAudit } from "@/lib/adminAudit";
 
 // 2026-09-28: 긴급 공지(부동산·설비 처분 등) 등록 API — deals(재고 매물)와 별개의
 // 가벼운 공지판. src/app/api/admin/deals/route.ts와 동일한 관리자 인증/service_role
 // 패턴을 그대로 따른다.
 export async function POST(req: NextRequest) {
-  const auth = checkAdminAuth(req);
+  const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  // 2026-10-01: 긴급 공지 등록(= 푸시 발송)은 최고관리자만
+  const denied = requireRole(auth.admin, ["최고관리자"]);
+  if (denied) return denied;
 
   const body = await req.json();
   const { category, title, noticeBody, region, contactName, contactPhone, images } = body;
@@ -50,6 +54,13 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const pushResult = await sendNoticePush(notice.id);
+  await writeAudit(supabaseAdmin, req, {
+    admin: auth.admin,
+    action: "notice_send",
+    targetType: "urgent_notice",
+    targetId: notice.id,
+    detail: { title, category: category || "부동산", push: pushResult },
+  });
 
   return NextResponse.json({ ok: true, id: notice.id, push: pushResult });
 }
@@ -59,7 +70,7 @@ export async function POST(req: NextRequest) {
 // (직전 코멘트의 "anon 키로 공개 조회" 계획은 이 파일 전체가 admin-key 인증 +
 // service_role 경로로 통일된 패턴과 맞지 않아 폐기하고 GET을 추가하는 쪽으로 정정.)
 export async function GET(req: NextRequest) {
-  const auth = checkAdminAuth(req);
+  const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -83,7 +94,7 @@ export async function GET(req: NextRequest) {
 
 // 마감 처리(status → closed) — 등록은 POST, 목록은 GET, 마감은 이 PATCH.
 export async function PATCH(req: NextRequest) {
-  const auth = checkAdminAuth(req);
+  const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const { id, status } = await req.json();

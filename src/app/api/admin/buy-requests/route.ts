@@ -11,7 +11,7 @@ function getAdminClient() {
 
 // "이런 재고 찾습니다" 등록 목록 — 점핑매니저가 확인하고 맞는 판매자를 연결할 리드
 export async function GET(req: NextRequest) {
-  const auth = checkAdminAuth(req);
+  const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
 
 // 연락 완료 체크 / 매칭 성사·불발 처리
 export async function PATCH(req: NextRequest) {
-  const auth = checkAdminAuth(req);
+  const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const { id, contacted, outcome } = await req.json();

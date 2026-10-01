@@ -212,11 +212,17 @@ function DealDetailPageInner() {
     );
     if (!error) {
       setInterested(true);
-      fetch("/api/admin/notify-lead", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dealId: deal.id }),
-      }).catch(() => {});
+      // 2026-10-01: 토큰을 같이 보내 서버가 회원 기준 호출 제한·관심 표시 확인 (notify-lead)
+      getFreshAccessToken()
+        .catch(() => null)
+        .then((accessToken) =>
+          fetch("/api/admin/notify-lead", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ dealId: deal.id, accessToken }),
+          })
+        )
+        .catch(() => {});
     } else {
       console.error("interest upsert failed:", error);
       if (error.code === "23503") {

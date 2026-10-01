@@ -5,7 +5,7 @@ import { checkAdminAuth } from "@/lib/adminAuth";
 // 기능 오픈 알림 신청 수 (feature_waitlist, RLS상 본인 행만 보이므로 service_role로 집계).
 // 2026-09-29: 현재는 "quotes"(내 견적함)만 — 전체 / 받은 견적 보관(receiver) / 보낸 견적 관리(sender).
 export async function GET(req: NextRequest) {
-  const auth = checkAdminAuth(req);
+  const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

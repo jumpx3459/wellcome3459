@@ -17,7 +17,7 @@ type PartnerReferralStatRow = {
 // admin_partner_referral_stats() RPC로 DB에서 파트너별 group by + KST 기준
 // 월 비교를 직접 하도록 수정 — 결과 행 수가 "파트너 수"라 한도 문제가 없음.
 export async function GET(req: NextRequest) {
-  const auth = checkAdminAuth(req);
+  const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
