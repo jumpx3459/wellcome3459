@@ -1533,7 +1533,7 @@ create or replace function public.verify_admin_login(p_phone text, p_password te
 returns table (id uuid, name text, role text)
 language sql
 security definer
-set search_path = public
+set search_path = public, extensions   -- 운영 pgcrypto(crypt)가 extensions 스키마에 있음
 as $$
   select a.id, a.name, a.role
     from public.admin_users a
@@ -1548,13 +1548,14 @@ grant execute on function public.verify_admin_login(text, text) to service_role;
 -- 예전 함수는 실행 권한 회수 표시가 없어 공개 키로도 호출될 수 있었음 → 삭제 전까지 서버(service role)만
 revoke execute on function public.verify_admin_login(text) from public, anon, authenticated;
 grant execute on function public.verify_admin_login(text) to service_role;
--- 확인 — 한 행 (new_fn = true, anon_new = false, anon_old = false, auth_old = false, svc_new = true, svc_old = true):
+-- 확인 — 한 행 (new_fn = true, anon_new = false, anon_old = false, auth_old = false, svc_new = true, svc_old = true, crypt_test = 0):
 --   select to_regprocedure('public.verify_admin_login(text, text)') is not null as new_fn,
 --          has_function_privilege('anon', 'public.verify_admin_login(text, text)', 'execute') as anon_new,
 --          has_function_privilege('anon', 'public.verify_admin_login(text)', 'execute') as anon_old,
 --          has_function_privilege('authenticated', 'public.verify_admin_login(text)', 'execute') as auth_old,
 --          has_function_privilege('service_role', 'public.verify_admin_login(text, text)', 'execute') as svc_new,
---          has_function_privilege('service_role', 'public.verify_admin_login(text)', 'execute') as svc_old;
+--          has_function_privilege('service_role', 'public.verify_admin_login(text)', 'execute') as svc_old,
+--          (select count(*) from public.verify_admin_login('01000000000', 'crypt-test')) as crypt_test;   -- 0 (없는 번호, crypt 호출 오류 없음)
 
 -- 3) 로그인 실패 기록 (같은 번호 15분 안에 5회 실패 → 15분 잠금, 성공하면 그 번호 기록 삭제). 서버만
 create table if not exists public.admin_login_failures (
