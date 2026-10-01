@@ -4,11 +4,28 @@ import { matchesConditions } from "@/lib/dealMatching";
 import { formatDealPrice } from "@/lib/format";
 import { stockTypeBadge } from "@/lib/stockType";
 
-const vapidPublic = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-const vapidPrivate = process.env.VAPID_PRIVATE_KEY;
-
-if (vapidPublic && vapidPrivate) {
-  webpush.setVapidDetails("mailto:admin@jumpx.co.kr", vapidPublic, vapidPrivate);
+// 2026-10-01: VAPID 키는 모듈 로드 때가 아니라 실제 발송 직전에 1회 설정(lazy).
+// 예전엔 파일을 불러오는 순간 setVapidDetails가 돌아, build(GitHub Actions의 vercel build — Sensitive env는 비어 있음) 중
+// "Vapid private key must be a URL safe Base 64"로 build 전체가 실패했음. 이제 키가 없거나 형식이 틀리면 발송만 실패
+// (에러 로그 + 매물 알림은 notification_logs에 failed), build와 다른 기능은 영향 없음.
+let vapidReady: boolean | null = null; // null = 아직 시도 안 함
+function ensureVapid(): boolean {
+  if (vapidReady !== null) return vapidReady;
+  const pub = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const priv = process.env.VAPID_PRIVATE_KEY;
+  if (!pub || !priv) {
+    console.error("[sendPush] VAPID 키 없음 — 푸시 발송 안 함");
+    vapidReady = false;
+    return false;
+  }
+  try {
+    webpush.setVapidDetails("mailto:admin@jumpx.co.kr", pub, priv);
+    vapidReady = true;
+  } catch (e) {
+    console.error("[sendPush] VAPID 키 형식 오류 — 푸시 발송 안 함", (e as Error).message);
+    vapidReady = false;
+  }
+  return vapidReady;
 }
 
 // 2026-09-30: 광고성 정보 표시 — 제목 앞 "(광고)", 본문 끝에 수신거부(알림 끄기) 방법.
@@ -183,7 +200,8 @@ export async function sendDealPush(dealId: string) {
       .single();
 
     try {
-      if (vapidPublic && vapidPrivate) {
+      if (!ensureVapid()) throw new Error("vapid_unavailable"); // → catch에서 notification_logs failed
+      {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
           JSON.stringify({
@@ -296,7 +314,8 @@ export async function sendNoticePush(noticeId: string) {
 
   for (const sub of subs ?? []) {
     try {
-      if (vapidPublic && vapidPrivate) {
+      if (!ensureVapid()) throw new Error("vapid_unavailable");
+      {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
           JSON.stringify({
@@ -323,7 +342,7 @@ export async function sendNoticePush(noticeId: string) {
 export async function sendAdminPush(title: string, body: string, url: string) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceKey || !vapidPublic || !vapidPrivate) return;
+  if (!supabaseUrl || !serviceKey || !ensureVapid()) return;
 
   const supabaseAdmin = createClient(supabaseUrl, serviceKey);
 

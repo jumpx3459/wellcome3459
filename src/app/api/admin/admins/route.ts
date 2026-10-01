@@ -108,7 +108,8 @@ export async function POST(req: NextRequest) {
 // 최고관리자가 원래 계정을 해제할 수 있냐"는 지적. FOUNDER_ADMIN_PHONE(Vercel
 // 환경변수, 코드에 실제 번호를 남기지 않음)으로 지정한 계정만 "본인 스스로만
 // 자신을 해제/강등 가능"하도록 예외 처리. 변수 미설정 시 이 보호는 그냥 꺼짐.
-const FOUNDER_ADMIN_PHONE = process.env.FOUNDER_ADMIN_PHONE || null;
+// 2026-10-01: 모듈 로드 때가 아니라 요청 때 읽음(env는 런타임 기준)
+const founderAdminPhone = () => process.env.FOUNDER_ADMIN_PHONE || null;
 
 // admin_users.phone은 "01012345678"(국내형식)로 저장된 행과 "+8210..."(E.164) 행이
 // 섞일 수 있어서, 문자열 그대로 비교하면 형식만 달라도 보호가 조용히 꺼짐 —
@@ -119,10 +120,11 @@ function normalizePhone(p: string) {
 }
 
 function isFounderProtected(targetPhone: string | null, requesterId: string, targetId: string) {
+  const founder = founderAdminPhone();
   return (
-    Boolean(FOUNDER_ADMIN_PHONE) &&
+    Boolean(founder) &&
     Boolean(targetPhone) &&
-    normalizePhone(targetPhone!) === normalizePhone(FOUNDER_ADMIN_PHONE!) &&
+    normalizePhone(targetPhone!) === normalizePhone(founder!) &&
     requesterId !== targetId
   );
 }
