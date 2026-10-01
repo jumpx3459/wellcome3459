@@ -1,6 +1,6 @@
 # PROGRESS
 
-마지막 업데이트: 2026-10-01 (① 관리자 역할 기반 최소판 — PR #30, SQL 1~5 실행 완료 / PR용 CI(chore/pr-ci) / J-2 사업자정보 푸터·관리자 대시보드 레이아웃 / J-1 로그인·가입 번호 자동완성 버그 / PR #26 커밋 K KPI 매일 저장·방문 기록·지표 정확도 — 병합 `c0c9c8a`·SQL 실행 완료 / PR #25 커밋 G 비회원 동의 기록·90일 자동 삭제 — 병합 `cf6093d`·SQL 실행 완료 / PR #24 커밋 D 사업자 정보 푸터·문의 경로 — 병합 `f24170c` / PR #23 커밋 E 판매자 표시 — 병합 `6dbe813`·SQL ①②③ 실행 완료 / PR #22 커밋 H: 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내 — 병합 `8cf2f41` / PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
+마지막 업데이트: 2026-10-01 (VAPID lazy 초기화 — 브랜치 `fix/vapid-lazy-init` / ① 관리자 역할 기반 최소판 — PR #30, SQL 1~5 실행 완료 / PR용 CI(chore/pr-ci) / J-2 사업자정보 푸터·관리자 대시보드 레이아웃 / J-1 로그인·가입 번호 자동완성 버그 / PR #26 커밋 K KPI 매일 저장·방문 기록·지표 정확도 — 병합 `c0c9c8a`·SQL 실행 완료 / PR #25 커밋 G 비회원 동의 기록·90일 자동 삭제 — 병합 `cf6093d`·SQL 실행 완료 / PR #24 커밋 D 사업자 정보 푸터·문의 경로 — 병합 `f24170c` / PR #23 커밋 E 판매자 표시 — 병합 `6dbe813`·SQL ①②③ 실행 완료 / PR #22 커밋 H: 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내 — 병합 `8cf2f41` / PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
 
 새 세션을 시작할 때 이 파일을 먼저 읽고, 아래 "다음에 할 일"부터 확인하세요.
 
@@ -50,7 +50,18 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
-## 최근 작업 (2026-10-01) — ① 관리자 역할 기반 최소판 (PR #30)
+## 최근 작업 (2026-10-01) — 배포 실패 복구: VAPID 키 lazy 초기화 (브랜치 `fix/vapid-lazy-init`)
+
+- **증상**: PR #30 merge(`727418b`) 후 배포 run 36800475722 build 실패 — `Vapid private key must be a URL safe Base 64`. 운영은 PR #29 배포 그대로 유지.
+- **원인**: 대표가 `VAPID_PRIVATE_KEY`·`ADMIN_SESSION_SECRET`을 Vercel Sensitive로 전환 → GitHub Actions의 `vercel pull`로는 값이 비어 내려옴.
+  Vercel 문서: Sensitive 값은 "Vercel build 컨테이너 안의 build와 런타임"에서만 쓰임 — 우리 build는 Actions(컨테이너 밖)라 비고, 배포된 함수(런타임)엔 주입됨.
+  sendPush.ts가 모듈 로드 때 `setVapidDetails`를 호출해 build 중 페이지 데이터 수집에서 예외.
+- **수정**: VAPID는 실제 발송 직전에 1회 설정(lazy). 키가 없거나 형식이 틀리면 발송만 실패(에러 로그, 매물 알림은 notification_logs failed), build·다른 기능 영향 없음.
+  `FOUNDER_ADMIN_PHONE`도 요청 때 읽게. 모듈 로드 때 예외를 내는 비밀 env는 이 둘 말고 없음(ADMIN_SESSION_SECRET·CRON_SECRET·SERVICE_ROLE·BIZINFO·JUMPX_*는 이미 요청 때 읽음).
+- **확인**: 잘못된 형식·빈 값 VAPID로 로컬 build 통과, 수정 전 코드는 같은 오류로 실패(재현).
+- **VAPID 키는 재생성 금지**(구독 끊김). 예전 값은 Vercel에서 다시 볼 수 없지만 런타임에는 그대로 주입됨. 로컬 `.env.local`의 키 쌍은 운영과 다름(공개키 앞자리 비교) — 복구용으로 못 씀.
+
+## 최근 작업 (2026-10-01) — ① 관리자 역할 기반 최소판 (PR #30, 머지 `727418b` — 첫 배포 실패, 위 VAPID 수정으로 재배포)
 
 - **보안**: `ADMIN_SESSION_SECRET` 없거나 32자 미만이면 토큰 발급·검증 모두 거부(fail-closed, "dev-secret" 대체 삭제).
   로그인 = **휴대폰 번호 + 비밀번호**(그 번호의 계정 1건만 검증, 예전엔 비밀번호만으로 맞는 첫 계정). 같은 번호 15분 5회 실패 → 15분 잠금
