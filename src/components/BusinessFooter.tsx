@@ -52,22 +52,37 @@ export default function BusinessFooter({ className = "", bottomSpace }: { classN
       }}
       data-business-footer
     >
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="inline-flex items-center gap-1 font-bold"
-        style={{ fontSize: rem(13), color: "#4B5563", padding: "4px 0" }}
-      >
-        점프엑스 주식회사 사업자 정보
-        <span
-          aria-hidden
-          className="inline-block"
-          style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform 0.15s", fontSize: rem(15), lineHeight: 1 }}
+      {/* 2026-10-01: 첫 줄 오른쪽 끝에 점프엑스 심볼(높이 28px, 링크 없음) — 펼치기 버튼은 글자 폭만큼만이라 터치 영역이 로고와 안 겹침.
+          좁은 화면에서 상호 줄이 길어지면 버튼 글자가 줄바꿈되고 로고는 오른쪽에 그대로(겹치지 않음) */}
+      <div className="flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="flex items-center gap-1 font-bold text-left min-w-0"
+          style={{ fontSize: rem(13), color: "#4B5563", padding: "4px 0" }}
         >
-          ›
-        </span>
-      </button>
+          <span className="min-w-0">점프엑스 주식회사 사업자 정보</span>
+          <span
+            aria-hidden
+            className="inline-block flex-shrink-0"
+            style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform 0.15s", fontSize: rem(15), lineHeight: 1 }}
+          >
+            ›
+          </span>
+        </button>
+        {/* eslint-disable-next-line @next/next/no-img-element -- 1x/2x 원본 그대로(투명 PNG, 대표 제공), 최적화 불필요한 작은 심볼 */}
+        <img
+          src="/brand/jumpx-symbol-56.png"
+          srcSet="/brand/jumpx-symbol-56.png 1x, /brand/jumpx-symbol-112.png 2x"
+          alt="점프엑스 주식회사"
+          width={38}
+          height={28}
+          className="flex-shrink-0 select-none"
+          style={{ height: 28, width: "auto" }}
+          draggable={false}
+        />
+      </div>
 
       {open && (
         <dl className="mt-1 flex flex-col gap-0.5">
