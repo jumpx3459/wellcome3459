@@ -1,5 +1,5 @@
 -- ============================================================================
--- 2026-10-01 PR-B 매물 등록 폼 — 보관 조건·소비기한 분리 + 판매 신청 정상 단가 — 운영 DB 미실행 (대표 실행)
+-- 2026-10-01 PR-B 매물 등록 폼 — 보관 조건·소비기한 분리 + 판매 신청 정상 단가 — 2026-10-01 대표 운영 DB 실행 완료 (확인 new_cols 5 · checks 2 · anon_expiry/storage true · anon_seller false)
 -- 지금: 보관조건·소비기한이 deals/seller_requests.storage_condition(text) 한 칸에 자유 입력("냉동 · 26.12").
 -- 바뀜: storage_type(상온·냉장·냉동) + expiry_date(date) 따로. 예전 storage_condition은 지우지 않고 그대로 —
 --       새 칸이 비어 있는 행은 화면에서 storage_condition을 보여줌(src/lib/dealFields.ts storageSummary). backfill 없음.
