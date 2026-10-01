@@ -1,5 +1,6 @@
 "use client";
 
+import { DEAL_NEW_COLS, isMissingNewColumn, type DealRowLoose } from "@/lib/dealFields";
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import BusinessFooter from "@/components/BusinessFooter";
@@ -65,14 +66,17 @@ function DealsPageInner() {
     if (!isSupabaseConfigured || !supabase) return; // 데모 모드: mockDeals 사용
 
     (async () => {
-      const { data, error } = await supabase
+      // 2026-10-01 PR-B: 카드에 소비기한 — SQL 전이면 새 컬럼 빼고 다시 조회
+      const run = (extra: string) => supabase!
         .from("deals")
-        .select(
-          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, price_unit, closes_at, location, images, video_url, origin, min_order_qty, interest_count, stock_type, categories(name), regions(name)"
+        .select<string, DealRowLoose>(
+          `id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, price_unit, closes_at, location, images, video_url, origin, min_order_qty, interest_count, stock_type, categories(name), regions(name)${extra}`
         )
         .eq("status", "active")
         .gt("closes_at", new Date().toISOString()) // 마감 지난 매물은 애초에 가져오지 않음
         .order("closes_at", { ascending: true });
+      let { data, error } = await run(DEAL_NEW_COLS);
+      if (isMissingNewColumn(error)) ({ data, error } = await run(""));
 
       if (!error && data) {
         setDeals(
@@ -94,6 +98,8 @@ function DealsPageInner() {
             video_url: d.video_url ?? null,
             origin: d.origin ?? null,
             min_order_qty: d.min_order_qty ?? null,
+            storage_type: d.storage_type ?? null,
+            expiry_date: d.expiry_date ?? null,
             interest_count: d.interest_count ?? 0,
           }))
         );
@@ -106,14 +112,17 @@ function DealsPageInner() {
     if (view !== "closed" || closedLoaded || !isSupabaseConfigured || !supabase) return;
 
     (async () => {
-      const { data, error } = await supabase
+      // 2026-10-01 PR-B: 카드에 소비기한 — SQL 전이면 새 컬럼 빼고 다시 조회
+      const run = (extra: string) => supabase!
         .from("deals")
-        .select(
-          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, price_unit, closes_at, location, images, video_url, origin, min_order_qty, interest_count, stock_type, categories(name), regions(name)"
+        .select<string, DealRowLoose>(
+          `id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, price_unit, closes_at, location, images, video_url, origin, min_order_qty, interest_count, stock_type, categories(name), regions(name)${extra}`
         )
         .or(`status.eq.closed,closes_at.lte.${new Date().toISOString()}`)
         .order("closes_at", { ascending: false })
         .limit(30);
+      let { data, error } = await run(DEAL_NEW_COLS);
+      if (isMissingNewColumn(error)) ({ data, error } = await run(""));
 
       if (!error && data) {
         setClosedDeals(
@@ -135,6 +144,8 @@ function DealsPageInner() {
             video_url: d.video_url ?? null,
             origin: d.origin ?? null,
             min_order_qty: d.min_order_qty ?? null,
+            storage_type: d.storage_type ?? null,
+            expiry_date: d.expiry_date ?? null,
             status: "closed",
           }))
         );

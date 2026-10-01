@@ -1628,3 +1628,16 @@ alter table public.notification_logs add column if not exists subscription_id uu
 alter table public.notification_logs add column if not exists error_code int;
 alter table public.notification_logs add column if not exists error_message text;
 create index if not exists notification_logs_subscription_idx on public.notification_logs (subscription_id);
+
+-- ============================================================================
+-- 2026-10-01 PR-B 매물 등록 폼 — 보관 조건·소비기한 분리 + 판매 신청 정상 단가 — 미실행
+-- (실행 파일·확인 조회: supabase/migrations/20261001_deal_form_fields.sql) — 예전 storage_condition은 그대로 둠(새 칸이 비면 화면에 표시)
+-- ============================================================================
+alter table public.deals add column if not exists expiry_date date;
+alter table public.deals add column if not exists storage_type text
+  check (storage_type is null or storage_type in ('상온','냉장','냉동'));
+alter table public.seller_requests add column if not exists expiry_date date;
+alter table public.seller_requests add column if not exists storage_type text
+  check (storage_type is null or storage_type in ('상온','냉장','냉동'));
+alter table public.seller_requests add column if not exists original_price numeric;
+grant select (expiry_date, storage_type) on public.deals to anon, authenticated;

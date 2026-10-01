@@ -7,6 +7,7 @@ import { isStockType } from "@/lib/stockType";
 import { isDealPriceUnit, isLumpSum } from "@/lib/priceUnit";
 import { resolveSellerDisplay } from "@/lib/sellerDisplay";
 import { normalizeTitle, checkTitle, checkDescription, DUPLICATE_TITLE_WARNING } from "@/lib/titleGuard";
+import { isStorageType, isValidExpiryDate, storageSummary, priceWarnings, isMissingNewColumn, EXPIRY_REQUIRED_MESSAGE } from "@/lib/dealFields";
 
 export async function POST(req: NextRequest) {
   const auth = await checkAdminAuth(req);
@@ -32,7 +33,9 @@ export async function POST(req: NextRequest) {
     packageUnit,
     origin,
     spec,
-    storageCondition,
+    storageCondition, // 예전 자유 입력(판매 신청 승인 시 신청서 값 그대로) — 새 칸(storageType·expiryDate)이 있으면 그걸로 만듦
+    storageType, // 2026-10-01 PR-B: 상온·냉장·냉동
+    expiryDate, // 2026-10-01 PR-B: 소비기한 "YYYY-MM-DD" — 재고 유형 "소비기한 임박"이면 필수
     pid,
     manifestItems,
     stockType,
@@ -55,16 +58,22 @@ export async function POST(req: NextRequest) {
   if (dealPrice == null || dealPrice === "") return bad("판매가를 입력해주세요.", "dealPrice");
   if (!isPositive(dealPrice)) return bad("판매가는 0보다 커야 해요.", "dealPrice");
   if (originalPrice != null && !isPositive(originalPrice)) return bad("정상가는 0보다 커야 해요.", "originalPrice");
-  if (totalQty == null || totalQty === "") return bad("수량을 입력해주세요.", "totalQty");
-  if (!isPositive(totalQty)) return bad("수량은 0보다 커야 해요.", "totalQty");
+  if (totalQty == null || totalQty === "") return bad("재고 총수량을 입력해주세요.", "totalQty");
+  if (!isPositive(totalQty)) return bad("재고 총수량은 0보다 커야 해요.", "totalQty");
   // 2026-09-29: 단가 단위 — DB check와 같은 값만, 안 보내면 null(= 수량 단위 기준). 일괄이면 최소주문 없음
   if (priceUnit != null && !isDealPriceUnit(priceUnit)) return bad("단가 단위가 올바르지 않아요.", "priceUnit");
   const lumpSum = isLumpSum(priceUnit);
   if (!lumpSum && minOrderQty != null && !isPositive(minOrderQty)) return bad("최소 주문량은 0보다 커야 해요.", "minOrderQty");
-  if (!lumpSum && minOrderQty != null && minOrderQty > totalQty) return bad("최소주문량은 총수량보다 클 수 없어요.", "minOrderQty");
+  if (!lumpSum && minOrderQty != null && minOrderQty > totalQty) return bad("최소주문량은 재고 총수량보다 클 수 없어요.", "minOrderQty");
   if (!closesAt || Number.isNaN(Date.parse(closesAt))) return bad("마감 시간이 올바르지 않아요.", "closesAt");
   // 2026-09-29: 재고 유형 — 10개 값만 (DB check와 같음), 안 보내면 general
   if (stockType != null && !isStockType(stockType)) return bad("재고 유형이 올바르지 않아요.", "stockType");
+  // 2026-10-01 PR-B: 보관 조건·소비기한 (src/lib/dealFields.ts)
+  if (storageType != null && storageType !== "" && !isStorageType(storageType)) return bad("보관 조건이 올바르지 않아요.", "storageType");
+  if (expiryDate != null && expiryDate !== "" && !isValidExpiryDate(expiryDate)) return bad("소비기한 날짜가 올바르지 않아요.", "expiryDate");
+  if (stockType === "near_expiry" && !expiryDate) return bad(EXPIRY_REQUIRED_MESSAGE, "expiryDate");
+  const storage_type = isStorageType(storageType) ? storageType : null;
+  const expiry_date = isValidExpiryDate(expiryDate) ? expiryDate : null;
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return NextResponse.json({ ok: true, demo: true, id: "demo-deal" });
@@ -112,46 +121,62 @@ export async function POST(req: NextRequest) {
     const { count: dupCount } = await dup;
     const titleWarnings = [...titleCheck.warnings, ...((dupCount ?? 0) > 0 ? [DUPLICATE_TITLE_WARNING] : [])];
     const descriptionWarnings = checkDescription(description);
-    if (titleWarnings.length || descriptionWarnings.length) {
+    const priceWarns = priceWarnings(originalPrice, dealPrice); // 할인율 80% 이상
+    if (titleWarnings.length || descriptionWarnings.length || priceWarns.length) {
       return NextResponse.json(
-        { needsConfirm: true, field: titleWarnings.length ? "title" : "description", warnings: { title: titleWarnings, description: descriptionWarnings } },
+        {
+          needsConfirm: true,
+          field: titleWarnings.length ? "title" : priceWarns.length ? "originalPrice" : "description",
+          warnings: { title: titleWarnings, description: descriptionWarnings, price: priceWarns },
+        },
         { status: 422 }
       );
     }
   }
 
-  const { data: deal, error } = await supabaseAdmin
-    .from("deals")
-    .insert({
-      title: cleanTitle,
-      category_id: catRow?.id,
-      region_id: regRow?.id,
-      original_price: originalPrice || dealPrice,
-      deal_price: dealPrice,
-      total_qty: totalQty,
-      remaining_qty: remainingQty ?? totalQty,
-      quantity_unit: quantityUnit || "개",
-      min_order_qty: lumpSum ? null : minOrderQty || null,
-      price_unit: priceUnit ?? null,
-      location,
-      closes_at: closesAt,
-      status: "active",
-      images: images ?? [],
-      video_url: videoUrl ?? null,
-      description: description || null,
-      package_unit: packageUnit || null,
-      origin: origin || null,
-      spec: spec || null,
-      storage_condition: storageCondition || null,
-      pid: sanitizePid(pid),
-      manifest_items: sanitizeManifest(manifestItems),
-      stock_type: stockType ?? "general",
-      seller_member_id: sellerMemberId,
-      is_anonymous: seller.is_anonymous,
-      seller_display_name: seller.seller_display_name,
-    })
-    .select()
-    .single();
+  const row = {
+    title: cleanTitle,
+    category_id: catRow?.id,
+    region_id: regRow?.id,
+    original_price: originalPrice || dealPrice,
+    deal_price: dealPrice,
+    total_qty: totalQty,
+    remaining_qty: remainingQty ?? totalQty,
+    quantity_unit: quantityUnit || "개",
+    min_order_qty: lumpSum ? null : minOrderQty || null,
+    price_unit: priceUnit ?? null,
+    location,
+    closes_at: closesAt,
+    status: "active",
+    images: images ?? [],
+    video_url: videoUrl ?? null,
+    description: description || null,
+    package_unit: packageUnit || null,
+    origin: origin || null,
+    spec: spec || null,
+    // 새 칸이 있으면 같은 내용을 예전 칸에도 남김(SQL 전 배포·예전 화면 대비), 없으면 신청서의 예전 값 그대로
+    storage_condition: storageSummary({ storage_type, expiry_date }) || (typeof storageCondition === "string" ? storageCondition.trim() : "") || null,
+    storage_type,
+    expiry_date,
+    pid: sanitizePid(pid),
+    manifest_items: sanitizeManifest(manifestItems),
+    stock_type: stockType ?? "general",
+    seller_member_id: sellerMemberId,
+    is_anonymous: seller.is_anonymous,
+    seller_display_name: seller.seller_display_name,
+  };
+  const first = await supabaseAdmin.from("deals").insert(row).select().single();
+  let deal = first.data;
+  let error = first.error;
+  if (error && isMissingNewColumn(error)) {
+    // SQL(20261001_deal_form_fields) 전 — 새 컬럼만 빼고 다시 저장(내용은 storage_condition에 남음)
+    const { storage_type: _st, expiry_date: _ed, ...legacy } = row;
+    void _st;
+    void _ed;
+    const retry = await supabaseAdmin.from("deals").insert(legacy).select().single();
+    deal = retry.data;
+    error = retry.error;
+  }
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

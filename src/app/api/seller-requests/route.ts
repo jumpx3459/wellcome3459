@@ -9,6 +9,7 @@ import { getMemberFromToken } from "@/lib/photoLimitServer";
 import { isReservedSellerName } from "@/lib/sellerDisplay";
 import { TERMS_VERSION } from "@/lib/consent";
 import { normalizeTitle, checkTitle, checkDescription, DUPLICATE_TITLE_WARNING } from "@/lib/titleGuard";
+import { isStorageType, isValidExpiryDate, storageSummary, priceWarnings, isMissingNewColumn, EXPIRY_REQUIRED_MESSAGE } from "@/lib/dealFields";
 
 const LOGIN_REQUIRED = "판매 신청은 회원만 할 수 있어요. 로그인 후 다시 시도해주세요.";
 
@@ -31,12 +32,15 @@ export async function POST(req: NextRequest) {
     quantityUnit,
     minOrderQty,
     hopePrice,
+    originalPrice, // 2026-10-01 PR-B: 정상 단가(선택) — 할인율 표시용, 승인 시 관리자 폼으로 이어받음
     hopeDurationHours,
     description,
     packageUnit,
     origin,
     spec,
-    storageCondition,
+    storageCondition, // 예전 폼 호환 — 새 폼은 storageType·expiryDate
+    storageType, // 2026-10-01 PR-B: 상온·냉장·냉동
+    expiryDate, // 2026-10-01 PR-B: 소비기한 "YYYY-MM-DD" — 재고 유형 "소비기한 임박"이면 필수
     pid,
     manifestItems,
     images,
@@ -65,7 +69,10 @@ export async function POST(req: NextRequest) {
   }
   // 2026-09-29: 희망 단가 필수 (sell 폼과 같은 규칙)
   if (typeof hopePrice !== "number" || !Number.isFinite(hopePrice) || hopePrice <= 0) {
-    return NextResponse.json({ error: "희망 단가를 입력해주세요", field: "hopePrice" }, { status: 400 });
+    return NextResponse.json({ error: "판매 단가를 입력해주세요", field: "hopePrice" }, { status: 400 });
+  }
+  if (originalPrice != null && (typeof originalPrice !== "number" || !Number.isFinite(originalPrice) || originalPrice <= 0)) {
+    return NextResponse.json({ error: "정상 단가는 0보다 커야 해요.", field: "originalPrice" }, { status: 400 });
   }
   // 단가 단위 — DB check와 같은 값만, 안 보내면 null(= 수량 단위 기준)
   if (priceUnit != null && !isDealPriceUnit(priceUnit)) {
@@ -82,8 +89,20 @@ export async function POST(req: NextRequest) {
   }
   // 2026-09-28: 수량보다 큰 MOQ(예: 수량 100kg, MOQ 1000kg)가 그대로 저장된 사례 — 폼(sell)과 같은 규칙
   if (!lumpSum && minOrderQty != null && minOrderQty !== "" && Number(minOrderQty) > Number(quantity)) {
-    return NextResponse.json({ error: "최소주문량은 총수량보다 클 수 없어요.", field: "minOrderQty" }, { status: 400 });
+    return NextResponse.json({ error: "최소주문량은 재고 총수량보다 클 수 없어요.", field: "minOrderQty" }, { status: 400 });
   }
+  // 2026-10-01 PR-B: 보관 조건·소비기한 (src/lib/dealFields.ts)
+  if (storageType != null && storageType !== "" && !isStorageType(storageType)) {
+    return NextResponse.json({ error: "보관 조건이 올바르지 않아요.", field: "storageType" }, { status: 400 });
+  }
+  if (expiryDate != null && expiryDate !== "" && !isValidExpiryDate(expiryDate)) {
+    return NextResponse.json({ error: "소비기한 날짜가 올바르지 않아요.", field: "expiryDate" }, { status: 400 });
+  }
+  if (stockType === "near_expiry" && !expiryDate) {
+    return NextResponse.json({ error: EXPIRY_REQUIRED_MESSAGE, field: "expiryDate" }, { status: 400 });
+  }
+  const storage_type = isStorageType(storageType) ? storageType : null;
+  const expiry_date = isValidExpiryDate(expiryDate) ? expiryDate : null;
 
   if (images != null && !Array.isArray(images)) {
     return NextResponse.json({ error: "사진 목록이 올바르지 않아요.", field: "images" }, { status: 400 });
@@ -119,9 +138,14 @@ export async function POST(req: NextRequest) {
       .eq("title", cleanName);
     const titleWarnings = [...nameCheck.warnings, ...((dupCount ?? 0) > 0 ? [DUPLICATE_TITLE_WARNING] : [])];
     const descriptionWarnings = checkDescription(description);
-    if (titleWarnings.length || descriptionWarnings.length) {
+    const priceWarns = priceWarnings(originalPrice, hopePrice); // 할인율 80% 이상
+    if (titleWarnings.length || descriptionWarnings.length || priceWarns.length) {
       return NextResponse.json(
-        { needsConfirm: true, field: titleWarnings.length ? "title" : "description", warnings: { title: titleWarnings, description: descriptionWarnings } },
+        {
+          needsConfirm: true,
+          field: titleWarnings.length ? "title" : priceWarns.length ? "originalPrice" : "description",
+          warnings: { title: titleWarnings, description: descriptionWarnings, price: priceWarns },
+        },
         { status: 422 }
       );
     }
@@ -154,7 +178,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "신청 처리 중 문제가 발생했어요. 잠시 후 다시 시도해주세요." }, { status: 500 });
   }
 
-  const { error } = await supabaseAdmin.from("seller_requests").insert({
+  const row = {
     company_name: companyName || null,
     // 2026-09-30: 업체명 공개 설정 기본 비공개 — 명시적으로 공개(false)를 고른 경우만 공개
     is_anonymous: isAnonymous !== false,
@@ -170,17 +194,30 @@ export async function POST(req: NextRequest) {
     min_order_qty: lumpSum ? null : minOrderQty || null, // 일괄 판매면 최소주문 없음
     price_unit: priceUnit ?? null,
     hope_price: hopePrice,
+    original_price: originalPrice ?? null,
     hope_duration_hours: hopeDurationHours ?? null,
     description,
     package_unit: packageUnit || null,
     origin: origin || null,
     spec: spec || null,
-    storage_condition: storageCondition || null,
+    // 새 칸 내용을 예전 칸에도 남김(SQL 전 배포·예전 화면 대비)
+    storage_condition: storageSummary({ storage_type, expiry_date }) || (typeof storageCondition === "string" ? storageCondition.trim() : "") || null,
+    storage_type,
+    expiry_date,
     pid: sanitizePid(pid),
     manifest_items: sanitizeManifest(manifestItems),
     images: images ?? [],
     video_url: videoUrl ?? null,
-  });
+  };
+  let { error } = await supabaseAdmin.from("seller_requests").insert(row);
+  if (error && isMissingNewColumn(error)) {
+    // SQL(20261001_deal_form_fields) 전 — 새 컬럼만 빼고 다시 저장(보관·소비기한은 storage_condition에 남음, 정상 단가는 설명 끝에)
+    const { storage_type: _st, expiry_date: _ed, original_price: _op, ...legacy } = row;
+    void _st;
+    void _ed;
+    const desc = _op ? [legacy.description, `정상 단가 ${_op.toLocaleString()}원`].filter(Boolean).join("\n") : legacy.description;
+    ({ error } = await supabaseAdmin.from("seller_requests").insert({ ...legacy, description: desc }));
+  }
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

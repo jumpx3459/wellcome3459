@@ -1,5 +1,6 @@
 "use client";
 
+import { DEAL_NEW_COLS, isMissingNewColumn, type DealRowLoose, formatExpiry } from "@/lib/dealFields";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import BusinessFooter from "@/components/BusinessFooter";
@@ -128,15 +129,21 @@ export default function Home() {
           .select("id", { count: "exact", head: true })
           .eq("status", "active")
           .gte("created_at", todayStart.toISOString()),
-        supabase
-          .from("deals")
-          .select(
-            "id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, created_at, location, images, package_unit, min_order_qty, quantity_unit, price_unit, stock_type, categories(name), regions(name)"
-          )
-          .eq("status", "active")
-          .gt("closes_at", new Date().toISOString())
-          .order("created_at", { ascending: false })
-          .limit(3),
+        // 2026-10-01 PR-B: 카드에 소비기한 — SQL 전이면 새 컬럼 빼고 다시 조회
+        (async () => {
+          const run = (extra: string) =>
+            supabase!
+              .from("deals")
+              .select<string, DealRowLoose>(
+                `id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, created_at, location, images, package_unit, min_order_qty, quantity_unit, price_unit, stock_type, categories(name), regions(name)${extra}`
+              )
+              .eq("status", "active")
+              .gt("closes_at", new Date().toISOString())
+              .order("created_at", { ascending: false })
+              .limit(3);
+          const r = await run(DEAL_NEW_COLS);
+          return isMissingNewColumn(r.error) ? run("") : r;
+        })(),
         // 온보딩 "평균 할인율" — 진행 중 매물 중 정상가가 판매가보다 높은 것만 평균
         supabase
           .from("deals")
@@ -172,6 +179,8 @@ export default function Home() {
             images: d.images ?? [],
             package_unit: d.package_unit ?? null,
             min_order_qty: d.min_order_qty ?? null,
+            storage_type: d.storage_type ?? null,
+            expiry_date: d.expiry_date ?? null,
             quantity_unit: d.quantity_unit ?? null,
             price_unit: d.price_unit ?? null,
           }))
@@ -392,6 +401,9 @@ export default function Home() {
                       {d.category} · {d.location}
                       {d.package_unit && ` · ${d.package_unit}`}
                     </div>
+                    {formatExpiry(d.expiry_date) && (
+                      <div className="text-xs font-bold mt-0.5" style={{ color: "#C2410C" }}>⏰ 소비기한 {formatExpiry(d.expiry_date)}</div>
+                    )}
                     {/* 2026-09-27: 동종업계 문자광고(가격/출고지/물량단위/최소주문 등을
                         항상 함께 표기)를 벤치마킹 — 상세페이지엔 이미 있던 최소주문
                         수량을 미리보기 카드에도 노출해 구매 결정에 필요한 정보 밀도를 높임. */}

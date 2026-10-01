@@ -22,7 +22,9 @@ export type Deal = {
   package_unit?: string | null; // 포장 단위 (예: "20kg 박스")
   origin?: string | null; // 원산지
   spec?: string | null; // 규격/사이즈
-  storage_condition?: string | null; // 보관조건 · 소비기한
+  storage_condition?: string | null; // 보관조건 · 소비기한 (예전 자유 입력 — 새 칸이 비었을 때만 표시)
+  storage_type?: string | null; // 2026-10-01 상온·냉장·냉동 (src/lib/dealFields.ts)
+  expiry_date?: string | null; // 2026-10-01 소비기한 YYYY-MM-DD
   quantity_unit?: string | null; // 수량 단위 (박스/개/kg/톤/파렛트 등) — 없으면 "개"로 표시
   min_order_qty?: number | null; // 최소주문수량(MOQ)
   price_unit?: string | null; // 2026-09-29 단가 단위 (src/lib/priceUnit.ts) — 없으면 수량 단위 기준
