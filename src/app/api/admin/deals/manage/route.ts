@@ -89,6 +89,10 @@ export async function DELETE(req: NextRequest) {
   const supabaseAdmin = getAdminClient();
   const { data: before } = await supabaseAdmin.from("deals").select("title, status").eq("id", id).maybeSingle();
   const { error } = await supabaseAdmin.from("deals").delete().eq("id", id);
+  // 2026-10-01 F-2: deal_connections.deal_id가 on delete restrict — 거래 연결 기록이 있는 매물은 삭제 대신 마감
+  if (error?.code === "23503") {
+    return NextResponse.json({ error: "거래 연결 기록이 있는 매물은 삭제할 수 없어요. 마감 처리해 주세요." }, { status: 409 });
+  }
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   await writeAudit(supabaseAdmin, req, {
     admin: auth.admin,

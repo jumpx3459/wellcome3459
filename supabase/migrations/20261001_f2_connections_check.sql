@@ -29,7 +29,7 @@ select
      and indexname in ('deal_connections_open_member_uniq', 'deal_connections_open_phone_uniq')) as uniq_open,
   (select count(*) from pg_indexes where schemaname = 'public' and indexname = 'deal_connections_status_updated_idx') as idx_status;
 
--- A) FK 삭제 동작 (한 행) — 기대: deal set null(n) · buyer set null(n) · admin set null(n) · events cascade(c) · private cascade(c) · private_request set null(n)
+-- A) FK 삭제 동작 (한 행) — 기대: deal restrict(r) · buyer set null(n) · admin set null(n) · events restrict(r) · private cascade(c) · private_request set null(n)
 select
   (select confdeltype from pg_constraint where conrelid = 'public.deal_connections'::regclass and contype = 'f'
      and confrelid = 'public.deals'::regclass) as conn_deal,
@@ -43,6 +43,13 @@ select
      and confrelid = 'public.deals'::regclass) as private_deal,
   (select confdeltype from pg_constraint where conrelid = 'public.deal_seller_private'::regclass and contype = 'f'
      and confrelid = 'public.seller_requests'::regclass) as private_request;
+
+-- B) 이력 수정·삭제 금지 트리거 (한 행) — 기대: immutable_trigger 1 · deal_id_not_null true
+select
+  (select count(*) from pg_trigger where tgrelid = 'public.deal_connection_events'::regclass
+     and tgname = 'deal_connection_events_immutable' and not tgisinternal) as immutable_trigger,
+  (select is_nullable = 'NO' from information_schema.columns where table_schema = 'public'
+     and table_name = 'deal_connections' and column_name = 'deal_id') as deal_id_not_null;
 
 -- D) 권한 (한 행) — 기대: rls 3 · policies 0 · anon_auth_grants 0 · fn_public_exec 0
 select
@@ -67,6 +74,14 @@ select
   (select count(*) from pg_proc where proname in ('member_auth_phone', 'enforce_member_phone', 'protect_member_columns', 'touch_updated_at')
      and pronamespace = 'public'::regnamespace and proconfig @> array['search_path=public']) as search_path_public,
   (select pg_get_functiondef('public.protect_member_columns()'::regprocedure) like '%member_auth_phone%') as columns_uses_auth;
+
+-- E2-backup) 백업 (한 행) — 기대: backup = members · backup_rls true · backup_anon_grants 0
+select
+  (select count(*) from public.members_phone_backup_20261001) as backup,
+  (select count(*) from public.members) as members,
+  (select relrowsecurity from pg_class where oid = 'public.members_phone_backup_20261001'::regclass) as backup_rls,
+  (select count(*) from information_schema.role_table_grants where table_schema = 'public'
+     and table_name = 'members_phone_backup_20261001' and grantee in ('anon', 'authenticated')) as backup_anon_grants;
 
 -- E2-0) 형식 통일 전 — 영향 행 수 (한 행). dup_after가 0이 아니면 E2 실행 금지(unique 충돌로 통째 실패) → 해당 회원 정리 먼저
 --   fmt_*: 지금 members.phone 형식 분포 / mismatch: 인증 번호와 다른 행(형식 차이 포함) / no_auth_phone: 인증 번호 없는 회원
@@ -124,3 +139,22 @@ insert into public.interests (deal_id, member_id)
             and not exists (select 1 from public.interests i where i.deal_id = d.id and i.member_id = auth.uid())
            order by d.created_at desc limit 1), auth.uid());
 rollback;
+-- (3) 마감 매물 관심 취소 — 기대: DELETE 1 → rollback으로 취소. 관리자 권한(SQL 편집기)으로 마감 매물 관심을 하나 만든 뒤 회원 권한으로 지움
+begin;
+insert into public.interests (deal_id, member_id)
+  values ((select id from public.deals where status = 'closed' order by created_at desc limit 1),
+          (select id from public.members where is_test order by created_at limit 1))
+  on conflict (deal_id, member_id) do nothing;
+select set_config('request.jwt.claims',
+  json_build_object('sub', (select id from public.members where is_test order by created_at limit 1), 'role', 'authenticated')::text, true);
+set local role authenticated;
+delete from public.interests
+ where member_id = auth.uid()
+   and deal_id = (select id from public.deals where status = 'closed' order by created_at desc limit 1);
+rollback;
+
+-- G) seller_requests.linked_deal_id 삭제 동작 (한 행) — 기대: linked_fk 1 · on_delete n(set null)
+select
+  (select count(*) from pg_constraint where conrelid = 'public.seller_requests'::regclass and contype = 'f'
+     and confrelid = 'public.deals'::regclass) as linked_fk,
+  (select confdeltype from pg_constraint where conname = 'seller_requests_linked_deal_id_fkey') as on_delete;

@@ -1644,7 +1644,7 @@ grant select (expiry_date, storage_type) on public.deals to anon, authenticated;
 
 -- ============================================================================
 -- 2026-10-01 F-2 거래 연결 DB — 미실행 (실행 파일·블록 순서·되돌리기: supabase/migrations/20261001_f2_connections.sql,
---   확인 조회: 20261001_f2_connections_check.sql). E2(기존 members.phone 형식 통일)는 데이터 변경이라 여기선 주석.
+--   확인 조회: 20261001_f2_connections_check.sql). 데이터 변경(E2-backup 채우기·E2 형식 통일)은 여기선 주석.
 -- ============================================================================
 -- 공용: updated_at 자동 갱신
 create or replace function public.touch_updated_at()
@@ -1657,14 +1657,15 @@ $$ language plpgsql set search_path = public;
 
 -- ----------------------------------------------------------------------------
 -- A. deal_connections — 연결 1건 = 1행(현재 상태). 단계 이력은 B.
---   · deal_id: 관리자 매물 삭제가 실제 행 삭제(최고관리자, deals/manage DELETE)라 on delete set null + 제목 스냅샷 → 기록 3년 보관
+--   · deal_id: on delete restrict — 연결 기록이 있는 매물은 삭제 못 하고 마감만(관리자 삭제 API가 23503을 안내 문구로 바꿈).
+--     관리자 매물 삭제는 실제 행 삭제(최고관리자, deals/manage DELETE)라, 기록 보관(3년)을 위해 삭제 자체를 막음. 제목 스냅샷은 그대로 저장
 --   · buyer: 회원이면 buyer_member_id(탈퇴 시 set null), 비회원이면 buyer_phone(010… 숫자만)
 --     "둘 중 하나는 있음"은 check 대신 insert 트리거로 — check면 회원 탈퇴 때 set null이 막혀 탈퇴가 실패함
 --   · 판매자에게 구매자 정보를 넘긴 단계(contact_sent_at)는 7-1 동의(consent_at)가 있어야 함
 -- ----------------------------------------------------------------------------
 create table if not exists public.deal_connections (
   id uuid primary key default gen_random_uuid(),
-  deal_id uuid references public.deals(id) on delete set null,
+  deal_id uuid not null references public.deals(id) on delete restrict,
   deal_title_snapshot text not null,
   buyer_member_id uuid references public.members(id) on delete set null,
   buyer_phone text,
@@ -1723,10 +1724,12 @@ create trigger deal_connections_touch before update on public.deal_connections
 
 -- ----------------------------------------------------------------------------
 -- B. deal_connection_events — 단계 이력 (사람·시스템, 나중 자동화 대비)
+--   · 이력은 추가만: service role 포함 누구도 UPDATE·DELETE 못 함(트리거 예외). 연결 행 삭제도 이력이 있으면 막힘(restrict).
+--     보관 기한이 지나 지워야 할 때는 별도 작업에서 트리거를 잠시 끄고 지움(그 작업은 아직 없음).
 -- ----------------------------------------------------------------------------
 create table if not exists public.deal_connection_events (
   id uuid primary key default gen_random_uuid(),
-  connection_id uuid not null references public.deal_connections(id) on delete cascade,
+  connection_id uuid not null references public.deal_connections(id) on delete restrict,
   step text not null
     check (step in ('requested', 'accepted', 'seller_confirmed', 'buyer_confirmed', 'contact_sent', 'closed')),
   method text not null check (method in ('phone', 'sms', 'kakao', 'app', 'alimtalk', 'system')),
@@ -1737,6 +1740,16 @@ create table if not exists public.deal_connection_events (
   created_at timestamptz not null default now()
 );
 create index if not exists deal_connection_events_conn_idx on public.deal_connection_events (connection_id, created_at);
+
+create or replace function public.deal_connection_events_immutable()
+returns trigger as $$
+begin
+  raise exception 'deal_connection_events: 단계 이력은 수정·삭제할 수 없어요 (%)', tg_op using errcode = '42501';
+end;
+$$ language plpgsql set search_path = public;
+drop trigger if exists deal_connection_events_immutable on public.deal_connection_events;
+create trigger deal_connection_events_immutable before update or delete on public.deal_connection_events
+  for each row execute function public.deal_connection_events_immutable();
 
 -- ----------------------------------------------------------------------------
 -- C. deal_seller_private — 매물 1개당 판매자 비공개 정보 1행 (관리자 직접 등록 매물은 지금 판매자 정보가 DB 어디에도 없음)
@@ -1776,11 +1789,14 @@ revoke all on public.deal_connection_events from anon, authenticated;
 revoke all on public.deal_seller_private from anon, authenticated;
 revoke all on function public.touch_updated_at() from public, anon, authenticated;
 revoke all on function public.deal_connections_require_buyer() from public, anon, authenticated;
+revoke all on function public.deal_connection_events_immutable() from public, anon, authenticated;
 
 -- ----------------------------------------------------------------------------
 -- E1. members.phone 고정 — 회원(authenticated·anon)이 넣거나 바꿀 때 phone = 인증 번호(auth.users.phone) 정규화 값
 --   형식: kpi_norm_phone과 같은 "010…" 숫자만 (앱 toLocalPhone·normalizeKoreanPhone 결과와 같음. auth.users.phone은 "8210…")
---   · 가입(insert): 새 트리거 members_enforce_phone — 인증 번호가 없으면 거부
+--   · 가입(insert): 새 트리거 members_enforce_phone — 클라이언트가 보낸 phone 대신 인증 번호로 덮어씀. 인증 번호가 없으면 거부(예외)
+--     근거: 가입은 휴대폰 문자 인증(signInWithOtp phone → verifyOtp sms) 뒤에만 members를 upsert(signup/page.tsx) — 인증 번호가 없는
+--     회원 행이 생길 정상 경로가 없음. null로 두면 phone not null 제약에 막히거나 번호 없는 회원이 생김 → 예외가 맞음
 --   · 수정(update): 기존 protect_member_columns가 phone := old.phone으로 막던 줄을 "인증 번호(없으면 기존 값)"로 바꿈
 --     (함수 전체를 그대로 옮기고 이 한 줄만 다름 — 실행 전 확인 파일 E1-0으로 운영 정의와 대조)
 --   · service role·SQL 편집기(auth.role() 없음)는 그대로 통과 — 탈퇴 마스킹 등 서버 작업 영향 없음
@@ -1829,9 +1845,24 @@ end;
 $$ language plpgsql security definer set search_path = public;
 
 -- ----------------------------------------------------------------------------
+-- E2-backup. E2 직전 번호 백업 — E2 되돌리기용(아래 되돌리기 구역). 서버 전용(RLS·권한 회수). 공개 전 확인 후 삭제
+-- ----------------------------------------------------------------------------
+create table if not exists public.members_phone_backup_20261001 (
+  id uuid primary key,
+  phone text,
+  backed_up_at timestamptz not null default now()
+);
+alter table public.members_phone_backup_20261001 enable row level security;
+revoke all on public.members_phone_backup_20261001 from anon, authenticated;
+-- insert into public.members_phone_backup_20261001 (id, phone)
+-- select id, phone from public.members
+-- on conflict (id) do nothing;
+
+-- ----------------------------------------------------------------------------
 -- E2. 기존 행 번호 형식 통일 — E1과 따로, 확인 파일 E2-0(영향 행 수·겹침 0) 먼저 본 뒤에만.
 --   SQL 편집기 실행은 auth.role()이 없어 보호 트리거를 통과함(번호만 바뀌고 다른 칸은 그대로).
 --   members.phone은 unique — 정규화 뒤 같은 번호가 되는 행이 있으면 이 update가 통째로 실패(아무것도 안 바뀜) → E2-0 dup_after가 0인지 먼저.
+--   E2-backup 확인(backup = members 건수) 뒤에만.
 -- ----------------------------------------------------------------------------
 -- update public.members m
 --    set phone = public.kpi_norm_phone(u.phone)
@@ -1842,7 +1873,7 @@ $$ language plpgsql security definer set search_path = public;
 
 -- ----------------------------------------------------------------------------
 -- F. 마감 매물 관심 차단 — interests는 브라우저가 직접 insert(RLS). 하나였던 "interests_self"(for all)를 동작별로 나누고
---   insert에만 "진행 중 매물(status 'active' · 마감 시각 전)" 조건. 조회·수정·삭제는 예전과 같음(본인 행).
+--   insert에만 "진행 중 매물(status 'active' · 마감 시각 전)" 조건. 조회·수정·삭제는 예전과 같음(본인 행) — 마감 매물도 관심 취소(삭제) 가능.
 --   deals.status 값은 active·closed 두 가지(deals_status_check). 관리자 처리(service role)는 영향 없음.
 --   quick_leads(비회원)는 공개 insert 정책이 이미 없고(2026-09-29) /api/quick-interest가 같은 검사(F-1 #38) → 코드 수정 없음.
 -- ----------------------------------------------------------------------------
@@ -1865,4 +1896,23 @@ create policy "interests_self_update" on public.interests
   for update using (auth.uid() = member_id) with check (auth.uid() = member_id);
 create policy "interests_self_delete" on public.interests
   for delete using (auth.uid() = member_id);
+
+-- ----------------------------------------------------------------------------
+-- G. seller_requests.linked_deal_id — 승인된 매물을 지우면 신청 행의 연결만 비움(set null).
+--   지금은 삭제 동작이 없어(no action) 판매 신청으로 승인된 매물은 최고관리자 삭제가 FK 오류로 실패함. 제약 이름은 실행 시 찾음
+-- ----------------------------------------------------------------------------
+do $$
+declare c text;
+begin
+  for c in
+    select conname from pg_constraint
+     where conrelid = 'public.seller_requests'::regclass and contype = 'f'
+       and confrelid = 'public.deals'::regclass
+       and conkey = array[(select attnum from pg_attribute where attrelid = 'public.seller_requests'::regclass and attname = 'linked_deal_id')]
+  loop
+    execute format('alter table public.seller_requests drop constraint %I', c);
+  end loop;
+end $$;
+alter table public.seller_requests add constraint seller_requests_linked_deal_id_fkey
+  foreign key (linked_deal_id) references public.deals(id) on delete set null;
 

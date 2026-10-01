@@ -109,8 +109,8 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 
 ## 최근 작업 (2026-10-01) — F-2 거래 연결 DB (브랜치 `feat/f2-connections`, SQL 파일만 · 운영 미실행)
 
-- 파일: `supabase/migrations/20261001_f2_connections.sql`(실행, 블록 A→B→C→D→E1→E2→F, 맨 아래 되돌리기) · `20261001_f2_connections_check.sql`(블록별 확인 조회, 한 행씩) · schema.sql에 같은 내용(E2는 주석).
-- A `deal_connections`(연결 1건 = 1행): deal_id on delete **set null** + deal_title_snapshot(매물 삭제가 실제 행 삭제라 기록 3년 보관),
+- 파일: `supabase/migrations/20261001_f2_connections.sql`(실행, 블록 A→B→C→D→E1→E2-backup→E2→F→G, 맨 아래 되돌리기) · `20261001_f2_connections_check.sql`(블록별 확인 조회, 한 행씩) · schema.sql에 같은 내용(E2는 주석).
+- A `deal_connections`(연결 1건 = 1행): deal_id **on delete restrict**(아래 보완) + deal_title_snapshot,
   buyer_member_id(set null)/buyer_phone(010… 숫자), source interest·quick_lead·admin + source_id(FK 없음), 7-1 동의 consent_at·version,
   status requested→accepted→seller_confirmed→buyer_confirmed→contact_sent→closed, closed ⇔ result(success·failed·cancelled), result_amount·reason,
   단계별 시각, assigned_admin_id → admin_users(set null), retention_until(칸만), updated_at 트리거. 진행 중 (deal, 회원)/(deal, 번호) 부분 unique, (status, updated_at)·담당자 인덱스.
@@ -123,8 +123,15 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
   E2 기존 행 형식 통일은 따로 — E2-0(형식 분포·불일치·정규화 뒤 겹침 dup_after 0) 먼저.
 - F interests 정책 "interests_self"(for all)를 동작별로 나누고 insert에만 "deals.status = 'active' · closes_at > now()" — 확인 파일에 rollback 테스트.
   quick_leads는 공개 insert 정책 없음 + /api/quick-interest가 같은 검사(F-1) → 코드 변경 없음. 상세 화면은 RLS 거부(42501)를 "이미 마감된 매물이에요"로.
-- 조사에서 나온 것(이번엔 안 고침): `seller_requests.linked_deal_id` FK에 on delete가 없어 승인된 매물은 최고관리자 삭제가 FK 오류로 실패할 수 있음 →
-  `on delete set null`로 바꾸는 SQL 제안(별도). 관리자 지정(/api/admin/admins)의 admin_users.phone = members.phone 그대로 비교 → E2 뒤 정규화 비교로(다음 코드 PR).
+- 보완(대표 검토): 연결 기록은 지우지 않는다 — `deal_connections.deal_id` **on delete restrict + not null**(연결 기록이 있는 매물은 삭제 대신 마감,
+  관리자 삭제 API가 23503을 "거래 연결 기록이 있는 매물은 삭제할 수 없어요. 마감 처리해 주세요."로, 관리자 화면은 실패 안내를 토스트로 — 예전엔 실패해도 표시 없음).
+  `deal_connection_events`는 restrict + 수정·삭제 금지 트리거(service role 포함). E2 앞 백업 표 `members_phone_backup_20261001`(RLS·권한 회수, 되돌리기 = 백업에서 복원,
+  백업 표 삭제는 공개 전 확인 후 — 주석만). 블록 G: `seller_requests.linked_deal_id` FK를 on delete set null로 다시 만듦(승인된 매물 삭제가 FK 오류로 실패하던 것).
+  E1은 가입(insert)에서 클라이언트 번호 대신 인증 번호로 덮어쓰고, 인증 번호가 없으면 예외(가입은 문자 인증 뒤에만 members를 만들어 정상 경로에선 항상 있음).
+  관심 취소(delete)는 마감 조건 없음 — F-test에 마감 매물 관심 취소 성공 케이스.
+- 남은 것: 관리자 지정(/api/admin/admins)의 admin_users.phone = members.phone 그대로 비교 → E2 뒤 정규화 비교로(다음 코드 PR).
+  members.phone 원문 표시(E2 뒤 "010…" 하이픈 없음): 관리자 회원 목록·리드 목록(tel 링크)·판매 신청 카드·관리자 지정 시트, MY 추천 회원 목록·/mypage/referrals(my-referrals API 원문).
+  MY 내 번호·sell/buy 연락처 자동 입력은 이미 형식 맞춤.
 
 ## 백로그 (2026-10-01)
 
