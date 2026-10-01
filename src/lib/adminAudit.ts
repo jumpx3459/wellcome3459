@@ -18,7 +18,8 @@ export type AuditAction =
   | "admin_remove"
   | "admin_role_change"
   | "members_list_view"
-  | "interests_list_view";
+  | "interests_list_view"
+  | "lead_update"; // 2026-10-01 F-1: 리드 연락완료·성사·불발 변경 (detail: deal_id, before, after)
 
 export const phoneTail = (p: string | null | undefined) => {
   const d = (p ?? "").replace(/[^0-9]/g, "");

@@ -21,6 +21,8 @@ import { SECTION_TITLE_STYLE, SERVICES_ANCHOR_ID, ServiceTilesCompact } from "@/
 import StockTypeBadge from "@/components/StockTypeBadge";
 import GuestPrivacyConsent from "@/components/GuestPrivacyConsent";
 import { isLumpSum } from "@/lib/priceUnit";
+import { isValidKoreanPhone } from "@/lib/auth";
+import { TERMS_VERSION } from "@/lib/consent";
 import PhotoCarousel, { type PhotoCarouselHandle } from "@/components/PhotoCarousel";
 import PhotoViewer from "@/components/PhotoViewer";
 import ZoomTip from "@/components/ZoomTip";
@@ -65,6 +67,8 @@ function DealDetailPageInner() {
   const [shareCopied, setShareCopied] = useState(false);
   const [interestError, setInterestError] = useState<string | null>(null);
   const [interestNeedsReauth, setInterestNeedsReauth] = useState(false);
+  // 2026-10-01 F-1: 이미 접수된 리드(비회원 같은 번호 재접수) 안내
+  const [interestNotice, setInterestNotice] = useState<string | null>(null);
   const [manifestOpen, setManifestOpen] = useState(false);
   const sellerName = publicSellerName(deal);
 
@@ -198,8 +202,28 @@ function DealDetailPageInner() {
   const remainPct = Math.round((deal.remaining_qty / deal.total_qty) * 100);
   const color = categoryColors[deal.category] ?? categoryColors["기타"];
 
+  // 2026-10-01 F-1: 이미 관심 표시한 매물이면 처음부터 "관심 표시 완료" — 회원은 interests(본인 행만 읽힘), 비회원은 이 기기 기록
+  useEffect(() => {
+    if (isExampleId || !params.id) return;
+    if (readQuickInterestIds().includes(params.id)) setInterested(true);
+    if (!isSupabaseConfigured || !supabase) return;
+    (async () => {
+      const { data: userData } = await supabase!.auth.getUser();
+      if (!userData.user) return;
+      const { data } = await supabase!.from("interests").select("id").eq("deal_id", params.id).eq("member_id", userData.user.id).limit(1);
+      if (data?.length) setInterested(true);
+    })();
+  }, [params.id, isExampleId]);
+
+  // 마감 시각이 지난 매물(아직 status는 active일 수 있음) — 관심 접수 막음. 회원 직접 저장은 RLS가 마감을 안 보므로 화면에서 막음(DB 정책은 F-2 SQL)
+  const isPastClose = () => !!deal.closes_at && new Date(deal.closes_at).getTime() <= Date.now();
+
   const handleInterest = async () => {
     setInterestError(null);
+    if (deal.status === "closed" || isPastClose()) {
+      setInterestError("이미 마감된 매물이에요.");
+      return;
+    }
     if (!isSupabaseConfigured || !supabase) {
       // 데모 모드에서도 실제와 동일한 원클릭 흐름을 보여줍니다.
       setShowQuickForm(true);
@@ -272,8 +296,13 @@ function DealDetailPageInner() {
   const submitQuickInterest = async () => {
     setQuickError(null);
     const digits = quickPhone.replace(/[^0-9]/g, "");
-    if (digits.length < 9) {
+    // 2026-10-01 F-1: 서버(/api/quick-interest)와 같은 규칙 — 01[016789] 10~11자리
+    if (!isValidKoreanPhone(quickPhone)) {
       setQuickError("휴대폰 번호를 정확히 입력해주세요.");
+      return;
+    }
+    if (deal.status === "closed" || isPastClose()) {
+      setQuickError("이미 마감된 매물이에요.");
       return;
     }
     if (!quickConsent) {
@@ -289,10 +318,18 @@ function DealDetailPageInner() {
         const res = await fetch("/api/quick-interest", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dealId: deal.id, phone: digits, privacyConsent: quickConsent }),
+          body: JSON.stringify({ dealId: deal.id, phone: digits, privacyConsent: quickConsent, consentVersion: TERMS_VERSION }),
         });
-        if (!res.ok) throw new Error();
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setQuickError(
+            res.status === 409 ? "이미 마감된 매물이에요." : res.status === 429 ? "잠시 후 다시 시도해주세요." : data.error ?? "전송에 실패했어요. 잠시 후 다시 시도해주세요."
+          );
+          return;
+        }
+        if (data.duplicate) setInterestNotice("이미 접수됐어요, 빠르게 연락드려요");
       }
+      rememberQuickInterest(deal.id);
       setInterested(true);
       setShowQuickForm(false);
     } catch {
@@ -840,11 +877,17 @@ function DealDetailPageInner() {
                 <button
                   onClick={handleInterest}
                   disabled={interested}
-                  className={FLOATING_CTA_BUTTON_CLASS}
-                  style={floatingCtaButtonStyle(interested)}
+                  // 2026-10-01 F-1: 완료 상태는 안내라 흐리게(opacity) 두지 않고 불투명 흰 바탕 — 뒤 내용과 섞여 안 읽히던 문제
+                  className={`${FLOATING_CTA_BUTTON_CLASS}${interested ? " disabled:opacity-100" : ""}`}
+                  style={interested ? { ...floatingCtaButtonStyle(true), background: "#fff", color: "#0B2540", border: "1.5px solid #C9CFD6", fontSize: rem(16) } : floatingCtaButtonStyle()}
                 >
-                  {interested ? "점핑매니저에게 전달됐어요" : "관심있어요 · 점핑매니저 연결"}
+                  {interested ? "관심 표시 완료 · 점핑매니저가 빠르게 연락드려요" : "관심있어요 · 점핑매니저 연결"}
                 </button>
+                {interestNotice && (
+                  <div className="mx-auto mt-2 w-fit max-w-full rounded-full bg-white text-center font-bold" style={{ fontSize: rem(14), padding: "6px 12px", color: "#0B2540", boxShadow: "0 4px 12px rgba(11,37,64,.15)" }}>
+                    {interestNotice}
+                  </div>
+                )}
                 {interestError && (
                   <div className="mx-auto mt-2 w-fit max-w-full rounded-full bg-white text-center text-orange" style={{ fontSize: rem(14), padding: "6px 12px", boxShadow: "0 4px 12px rgba(11,37,64,.15)" }}>
                     {interestError}
@@ -881,4 +924,21 @@ function DealDetailPageInner() {
       )}
     </main>
   );
+}
+
+// 2026-10-01 F-1: 비회원이 이 기기에서 관심 접수한 매물 id — 다시 와도 "관심 표시 완료"로 (저장소가 막혀 있으면 조용히 넘어감)
+const QUICK_INTEREST_KEY = "dj_quick_interest_deals";
+function readQuickInterestIds(): string[] {
+  try {
+    const v = JSON.parse(window.localStorage.getItem(QUICK_INTEREST_KEY) ?? "[]");
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+function rememberQuickInterest(dealId: string) {
+  try {
+    const ids = readQuickInterestIds().filter((x) => x !== dealId);
+    window.localStorage.setItem(QUICK_INTEREST_KEY, JSON.stringify([dealId, ...ids].slice(0, 100)));
+  } catch {}
 }
