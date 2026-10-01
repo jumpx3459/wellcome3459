@@ -2644,13 +2644,13 @@ function DealForm({
 
   // 2026-09-28: 필수 = 매물명·카테고리·지역·판매가·수량. 서버(/api/admin/deals)도 같은 규칙으로
   // 400 { error, field }를 돌려준다. 제출 시 첫 누락 칸으로 스크롤·포커스.
-  // 2026-10-01: 묶음 펼침 — ③ 거래 조건 기본 펼침, ④ 상품 상세·⑤ 판매자 정보 기본 접힘. 접힌 칸이면 펼친 뒤(다음 렌더) 스크롤
-  const [openDeal, setOpenDeal] = useState(true);
+  // 2026-10-01 2차: 묶음 펼침 — 제품 상세·거래 조건·판매자 정보 모두 기본 접힘. 접힌 칸이면 펼친 뒤(다음 렌더) 스크롤
+  const [openDeal, setOpenDeal] = useState(false);
   const [openDetail, setOpenDetail] = useState(false);
   const [openSeller, setOpenSeller] = useState(false);
   const focusField = (field: DealField | "description") => {
-    if (field === "category" || field === "originalPrice" || field === "minOrderQty" || field === "expiryDate") setOpenDeal(true);
-    if (field === "description") setOpenDetail(true);
+    if (field === "category") setOpenDeal(true); // 거래 조건
+    if (field === "minOrderQty" || field === "expiryDate" || field === "description") setOpenDetail(true); // 제품 상세
     setTimeout(() => {
       const el = document.getElementById(`deal-${field}`);
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -2658,11 +2658,11 @@ function DealForm({
     }, 30);
   };
   // 묶음 제목 "○개 입력됨" — 기본값(일반 재고·24시간)은 세지 않음
-  const dealCount = [category, stockType !== "general", originalPrice, !lumpSum && minOrderQty, storageType, expiryDate, closesInHours !== "24"].filter(Boolean).length;
-  const detailCount = [packageUnit, spec, origin, description, pid, manifestItems.length > 0].filter(Boolean).length;
-  // 재고 유형 "소비기한 임박"이면 소비기한이 필수라 ③ 거래 조건을 펼쳐 둠
+  const detailCount = [!lumpSum && minOrderQty, closesInHours !== "24", storageType, expiryDate, packageUnit, spec, origin, description].filter(Boolean).length;
+  const dealCount = [category, stockType !== "general", pid, manifestItems.length > 0].filter(Boolean).length;
+  // 재고 유형 "소비기한 임박"이면 소비기한(제품 상세)이 필수라 제품 상세를 펼쳐 둠
   useEffect(() => {
-    if (stockType === "near_expiry") setOpenDeal(true);
+    if (stockType === "near_expiry") setOpenDetail(true);
   }, [stockType]);
 
   const validate = (): Partial<Record<DealField, string>> => {
@@ -2792,6 +2792,10 @@ function DealForm({
     }
   };
 
+  const groupCls = (field: DealField) =>
+    `flex items-stretch w-full min-w-0 border-2 rounded-lg bg-white overflow-hidden focus-within:border-orange ${
+      fieldErrors[field] ? "border-[#DC2626]" : "border-gray200"
+    }`;
   const inputCls = (field?: DealField) =>
     `w-full min-w-0 border-2 rounded-lg px-3 py-2.5 text-[0.8889rem] outline-none focus:border-orange ${
       field && fieldErrors[field] ? "border-[#DC2626]" : "border-gray200"
@@ -2812,8 +2816,8 @@ function DealForm({
         </div>
       )}
 
-      {/* 2026-10-01 fix/form-overflow: 매물 폼 재구성 — 항목·검증·저장 그대로, 순서·묶음·표시만 (/sell과 같은 순서).
-          ① 필수 정보 → ② 사진·영상 → ③ 거래 조건(기본 펼침) → ④ 상품 상세(접힘) → ⑤ 판매자 정보(접힘, 판매자 표시 선택).
+      {/* 2026-10-01 feat/form-order-v2: 매물 폼 재배치 2차 — 항목·검증·저장 그대로, 순서·묶음·표시만 (/sell과 같은 순서).
+          ① 필수 정보 → ② 사진·영상 → ④ 제품 상세(접힘) → ⑤ 거래 조건(접힘, 카테고리 필수 "필수 1개") → ⑥ 판매자 정보(접힘).
           칸 수는 폼 폭 기준(@container) — 관리자 "모바일 보기"에서도 맞게. 접힌 묶음 칸에서 오류 나면 펼치고 그 칸으로 스크롤 */}
       <section>
         <FormSectionTitle>필수 정보</FormSectionTitle>
@@ -2833,16 +2837,84 @@ function DealForm({
             <ConfirmWarnings warnings={titleWarnings} onConfirm={() => submit(true)} busy={submitting} />
           </DealFormField>
 
+          {/* 가격 한 줄: [판매 단가 | 원 / 단위] · 정상 단가(같은 단위) · 할인율 — "단가 기준" 칸을 판매 단가 단위로 합침(price_unit 그대로) */}
           <div className={FORM_ROW3}>
-            {/* 재고 총수량 + 단위 = 한 덩어리 */}
+            <DealFormField label="판매 단가" required error={fieldErrors.dealPrice} htmlFor="deal-dealPrice">
+              <div className={groupCls("dealPrice")}>
+                <input
+                  id="deal-dealPrice"
+                  type="text"
+                  inputMode="numeric"
+                  className={GROUP_INPUT_CLS}
+                  placeholder="예: 30,000"
+                  value={formatPriceInput(dealPrice)}
+                  onChange={(e) => {
+                    setDealPrice(e.target.value);
+                    clearErr("dealPrice");
+                    setPriceWarns([]);
+                  }}
+                />
+                <span className="flex-shrink-0 flex items-center font-bold" style={{ fontSize: rem(15), color: "#0B2540", padding: "0 4px 0 6px" }}>원 /</span>
+                <select
+                  id="deal-priceUnit"
+                  aria-label="판매 단가 단위"
+                  className={GROUP_SELECT_CLS}
+                  value={priceUnit}
+                  onChange={(e) => {
+                    setPriceUnit(e.target.value);
+                    setPriceUnitTouched(true);
+                    if (e.target.value === LUMP_SUM) setMinOrderQty("");
+                  }}
+                >
+                  {DEAL_PRICE_UNITS.map((u) => (
+                    <option key={u} value={u}>
+                      {u === LUMP_SUM ? "일괄(전체)" : u}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }}>
+                목록에 &quot;{formatDealPrice(30000, quantityUnit, priceUnit)}&quot;처럼 보여요 · 창고 출고가(배송비 별도)
+              </p>
+            </DealFormField>
+            <DealFormField label="정상 단가" error={fieldErrors.originalPrice} htmlFor="deal-originalPrice">
+              <div className={groupCls("originalPrice")}>
+                <input
+                  id="deal-originalPrice"
+                  type="text"
+                  inputMode="numeric"
+                  className={GROUP_INPUT_CLS}
+                  placeholder="예: 50,000"
+                  value={formatPriceInput(originalPrice)}
+                  onChange={(e) => {
+                    setOriginalPrice(e.target.value);
+                    clearErr("originalPrice");
+                    setPriceWarns([]);
+                  }}
+                />
+                <span className="flex-shrink-0 flex items-center font-bold whitespace-nowrap" style={{ fontSize: rem(15), color: "#0B2540", padding: "0 12px 0 4px" }}>{priceUnitSuffix(priceUnit)}</span>
+              </div>
+            </DealFormField>
+            <div className="min-w-0" data-field="discount">
+              <p className="font-bold mb-1" style={{ fontSize: rem(15), color: "#374151" }}>할인율</p>
+              <DiscountHint original={parsePriceInput(originalPrice)} deal={parsePriceInput(dealPrice)} />
+              {!(parsePriceInput(originalPrice) && parsePriceInput(dealPrice)) && (
+                <p className="text-gray500" style={{ fontSize: rem(14) }}>판매·정상 단가를 넣으면 보여요</p>
+              )}
+              <ConfirmWarnings warnings={priceWarns} onConfirm={titleWarnings.length ? undefined : () => submit(true)} busy={submitting} />
+            </div>
+          </div>
+
+          {/* 재고 총수량+단위(한 덩어리) · 재고 위치 · 지역 상세 */}
+          <div className={FORM_ROW3}>
             <DealFormField label="재고 총수량" required error={fieldErrors.totalQty} htmlFor="deal-totalQty">
-              <div className="grid grid-cols-[minmax(0,1fr)_88px] gap-2">
+              <div className={groupCls("totalQty")}>
                 <input
                   id="deal-totalQty"
                   type="number"
                   inputMode="numeric"
                   min={1}
-                  className={inputCls("totalQty")}
+                  className={GROUP_INPUT_CLS}
                   placeholder="예: 100"
                   value={totalQty}
                   onChange={(e) => {
@@ -2853,7 +2925,8 @@ function DealForm({
                 <select
                   id="deal-quantityUnit"
                   aria-label="재고 총수량 단위"
-                  className={`${inputCls()} px-2`}
+                  className={GROUP_SELECT_CLS}
+                  style={{ width: 84 }}
                   value={quantityUnit}
                   onChange={(e) => {
                     setQuantityUnit(e.target.value);
@@ -2868,48 +2941,6 @@ function DealForm({
                 </select>
               </div>
             </DealFormField>
-            <DealFormField label="단가 기준 (판매가·정상가 공통)" htmlFor="deal-priceUnit">
-              <select
-                id="deal-priceUnit"
-                className={inputCls()}
-                value={priceUnit}
-                onChange={(e) => {
-                  setPriceUnit(e.target.value);
-                  setPriceUnitTouched(true);
-                  if (e.target.value === LUMP_SUM) setMinOrderQty("");
-                }}
-              >
-                {DEAL_PRICE_UNITS.map((u) => (
-                  <option key={u} value={u}>
-                    {priceUnitSuffix(u)}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }}>
-                목록에 &quot;{formatDealPrice(30000, quantityUnit, priceUnit)}&quot;처럼 표시돼요. 창고 출고가 기준(배송비 별도).
-              </p>
-            </DealFormField>
-            <DealFormField label={`판매 단가 · ${priceBasis(priceUnit)}`} required error={fieldErrors.dealPrice} htmlFor="deal-dealPrice">
-              <div className="relative">
-                <input
-                  id="deal-dealPrice"
-                  type="text"
-                  inputMode="numeric"
-                  className={`${inputCls("dealPrice")} pr-8`}
-                  placeholder="예: 30,000"
-                  value={formatPriceInput(dealPrice)}
-                  onChange={(e) => {
-                    setDealPrice(e.target.value);
-                    clearErr("dealPrice");
-                    setPriceWarns([]);
-                  }}
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 font-bold" style={{ fontSize: rem(15), color: "#0B2540" }}>원</span>
-              </div>
-            </DealFormField>
-          </div>
-
-          <div className={FORM_ROW2}>
             <DealFormField label="재고 위치(지역)" required error={fieldErrors.region} htmlFor="deal-region">
               <select
                 id="deal-region"
@@ -2928,7 +2959,7 @@ function DealForm({
                 ))}
               </select>
               <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }}>
-                물건이 있는 곳(알림 매칭 기준). 상세 주소는 &quot;지역 상세&quot;에.
+                물건이 있는 곳(알림 매칭 기준)
               </p>
             </DealFormField>
             <DealFormField label="지역 상세" htmlFor="deal-location">
@@ -2960,9 +2991,103 @@ function DealForm({
         </div>
       </section>
 
-      <FormAccordion id="deal-sec-deal" title="거래 조건" count={dealCount} open={openDeal} onToggle={() => setOpenDeal((v) => !v)}>
+      <FormAccordion id="deal-sec-detail" title="제품 상세" count={detailCount} open={openDetail} onToggle={() => setOpenDetail((v) => !v)}>
         <div className="flex flex-col gap-3">
+          <div className={FORM_ROW2}>
+            {/* 2026-09-29: 일괄(전체 가격)이면 최소주문 없음 */}
+            {!lumpSum && (
+            <DealFormField label="최소 주문량(MOQ)" error={fieldErrors.minOrderQty} htmlFor="deal-minOrderQty">
+              <div className="relative">
+                <input
+                  id="deal-minOrderQty"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  className={`${inputCls("minOrderQty")} pr-20`}
+                  placeholder="예: 10"
+                  value={minOrderQty}
+                  onChange={(e) => {
+                    setMinOrderQty(e.target.value);
+                    clearErr("minOrderQty");
+                  }}
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 font-bold whitespace-nowrap" style={{ fontSize: rem(15), color: "#0B2540" }}>{quantityUnit} 이상</span>
+              </div>
+            </DealFormField>
+            )}
+            <DealFormField label="마감까지 남은 시간" htmlFor="deal-closesIn">
+              <select
+                id="deal-closesIn"
+                className={inputCls()}
+                value={closesInHours}
+                onChange={(e) => setClosesInHours(e.target.value)}
+              >
+                <option value="3">3시간</option>
+                <option value="12">12시간</option>
+                <option value="24">24시간</option>
+                <option value="72">3일</option>
+                <option value="168">7일</option>
+              </select>
+            </DealFormField>
+          </div>
+
+          <div className={FORM_ROW2}>
+            <DealFormField label="보관 조건" htmlFor="deal-storageType">
+              <StorageTypeButtons id="deal-storageType" value={storageType} onChange={setStorageType} />
+            </DealFormField>
+            <DealFormField label="소비기한" required={stockType === "near_expiry"} error={fieldErrors.expiryDate} htmlFor="deal-expiryDate">
+              <input
+                id="deal-expiryDate"
+                type="date"
+                className={inputCls("expiryDate")}
+                value={expiryDate}
+                onChange={(e) => {
+                  setExpiryDate(e.target.value);
+                  clearErr("expiryDate");
+                }}
+              />
+              <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }}>
+                {expiryDate ? `상세·카드에 "${formatExpiry(expiryDate)}"로 보여요.` : stockType === "near_expiry" ? "소비기한 임박 재고는 꼭 입력해주세요." : "식품이면 입력해주세요."}
+              </p>
+              {legacyStorage && (
+                <p className="mt-1 rounded-lg" style={{ fontSize: rem(14), background: "#F5F6F8", color: "#4B5563", padding: "6px 10px" }}>
+                  신청서 기존 입력: {legacyStorage} (위 칸을 비워 두면 이 내용이 그대로 표시돼요)
+                </p>
+              )}
+            </DealFormField>
+          </div>
+
           <div className={FORM_ROW3}>
+            <DealFormField label="포장 단위" htmlFor="deal-packageUnit">
+              <SuggestInput id="deal-packageUnit" className={inputCls()} value={packageUnit} onChange={setPackageUnit} examples={PACKAGE_UNIT_EXAMPLES} placeholder="예: 5kg 박스" />
+            </DealFormField>
+            <DealFormField label="규격/사이즈" htmlFor="deal-spec">
+              <SuggestInput id="deal-spec" className={inputCls()} value={spec} onChange={setSpec} examples={SPEC_EXAMPLES} placeholder="예: 대 / 30cm" />
+            </DealFormField>
+            <DealFormField label="원산지" htmlFor="deal-origin">
+              <SuggestInput id="deal-origin" className={inputCls()} value={origin} onChange={setOrigin} examples={ORIGIN_EXAMPLES} placeholder="예: 국내산" />
+            </DealFormField>
+          </div>
+          <DealFormField label="상세 설명" htmlFor="deal-description">
+            <textarea
+              id="deal-description"
+              className={`${inputCls()} focus:border-navy`}
+              rows={2}
+              placeholder="예: 소비기한 26년 10월, 냉동 보관 상태 양호"
+              value={description}
+              onChange={(e) => {
+                setDescription(e.target.value);
+                setDescWarnings([]);
+              }}
+            />
+            <ConfirmWarnings warnings={descWarnings} onConfirm={titleWarnings.length || priceWarns.length ? undefined : () => submit(true)} busy={submitting} />
+          </DealFormField>
+        </div>
+      </FormAccordion>
+
+      <FormAccordion id="deal-sec-deal" title="거래 조건" count={dealCount} requiredCount={1} open={openDeal} onToggle={() => setOpenDeal((v) => !v)}>
+        <div className="flex flex-col gap-3">
+          <div className={FORM_ROW2}>
             <DealFormField label="카테고리" required error={fieldErrors.category} htmlFor="deal-category">
               <select
                 id="deal-category"
@@ -2997,128 +3122,11 @@ function DealForm({
                   </option>
                 ))}
               </select>
-            </DealFormField>
-            <DealFormField label="마감까지 남은 시간" htmlFor="deal-closesIn">
-              <select
-                id="deal-closesIn"
-                className={inputCls()}
-                value={closesInHours}
-                onChange={(e) => setClosesInHours(e.target.value)}
-              >
-                <option value="3">3시간</option>
-                <option value="12">12시간</option>
-                <option value="24">24시간</option>
-                <option value="72">3일</option>
-                <option value="168">7일</option>
-              </select>
-            </DealFormField>
-          </div>
-
-          <div className={FORM_ROW3}>
-            <DealFormField label={`정상 단가 · ${priceBasis(priceUnit)}`} error={fieldErrors.originalPrice} htmlFor="deal-originalPrice">
-              <div className="relative">
-                <input
-                  id="deal-originalPrice"
-                  type="text"
-                  inputMode="numeric"
-                  className={`${inputCls("originalPrice")} pr-8`}
-                  placeholder="예: 50,000"
-                  value={formatPriceInput(originalPrice)}
-                  onChange={(e) => {
-                    setOriginalPrice(e.target.value);
-                    clearErr("originalPrice");
-                    setPriceWarns([]);
-                  }}
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 font-bold" style={{ fontSize: rem(15), color: "#0B2540" }}>원</span>
-              </div>
-            </DealFormField>
-            {/* 2026-09-29: 일괄(전체 가격)이면 최소주문 없음 */}
-            {!lumpSum && (
-            <DealFormField label="최소 주문량(MOQ)" error={fieldErrors.minOrderQty} htmlFor="deal-minOrderQty">
-              <div className="relative">
-                <input
-                  id="deal-minOrderQty"
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  className={`${inputCls("minOrderQty")} pr-20`}
-                  placeholder="예: 10"
-                  value={minOrderQty}
-                  onChange={(e) => {
-                    setMinOrderQty(e.target.value);
-                    clearErr("minOrderQty");
-                  }}
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 font-bold whitespace-nowrap" style={{ fontSize: rem(15), color: "#0B2540" }}>{quantityUnit} 이상</span>
-              </div>
-            </DealFormField>
-            )}
-            <div className="min-w-0" data-field="discount">
-              <p className="font-bold mb-1" style={{ fontSize: rem(15), color: "#374151" }}>할인율</p>
-              <DiscountHint original={parsePriceInput(originalPrice)} deal={parsePriceInput(dealPrice)} />
-              {!(parsePriceInput(originalPrice) && parsePriceInput(dealPrice)) && (
-                <p className="text-gray500" style={{ fontSize: rem(14) }}>판매·정상 단가를 넣으면 보여요</p>
-              )}
-              <ConfirmWarnings warnings={priceWarns} onConfirm={titleWarnings.length ? undefined : () => submit(true)} busy={submitting} />
-            </div>
-          </div>
-
-          <div className={FORM_ROW2}>
-            <DealFormField label="보관 조건" htmlFor="deal-storageType">
-              <StorageTypeButtons id="deal-storageType" value={storageType} onChange={setStorageType} />
-            </DealFormField>
-            <DealFormField label="소비기한" required={stockType === "near_expiry"} error={fieldErrors.expiryDate} htmlFor="deal-expiryDate">
-              <input
-                id="deal-expiryDate"
-                type="date"
-                className={inputCls("expiryDate")}
-                value={expiryDate}
-                onChange={(e) => {
-                  setExpiryDate(e.target.value);
-                  clearErr("expiryDate");
-                }}
-              />
-              <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }}>
-                {expiryDate ? `상세·카드에 "${formatExpiry(expiryDate)}"로 보여요.` : stockType === "near_expiry" ? "소비기한 임박 재고는 꼭 입력해주세요." : "식품이면 입력해주세요."}
-              </p>
-              {legacyStorage && (
-                <p className="mt-1 rounded-lg" style={{ fontSize: rem(14), background: "#F5F6F8", color: "#4B5563", padding: "6px 10px" }}>
-                  신청서 기존 입력: {legacyStorage} (위 칸을 비워 두면 이 내용이 그대로 표시돼요)
-                </p>
+              {stockType === "near_expiry" && (
+                <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }}>소비기한은 &quot;제품 상세&quot;에서 꼭 입력해주세요.</p>
               )}
             </DealFormField>
           </div>
-        </div>
-      </FormAccordion>
-
-      <FormAccordion id="deal-sec-detail" title="상품 상세" count={detailCount} open={openDetail} onToggle={() => setOpenDetail((v) => !v)}>
-        <div className="flex flex-col gap-3">
-          <div className={FORM_ROW3}>
-            <DealFormField label="포장 단위" htmlFor="deal-packageUnit">
-              <SuggestInput id="deal-packageUnit" className={inputCls()} value={packageUnit} onChange={setPackageUnit} examples={PACKAGE_UNIT_EXAMPLES} placeholder="예: 5kg 박스" />
-            </DealFormField>
-            <DealFormField label="규격/사이즈" htmlFor="deal-spec">
-              <SuggestInput id="deal-spec" className={inputCls()} value={spec} onChange={setSpec} examples={SPEC_EXAMPLES} placeholder="예: 대 / 30cm" />
-            </DealFormField>
-            <DealFormField label="원산지" htmlFor="deal-origin">
-              <SuggestInput id="deal-origin" className={inputCls()} value={origin} onChange={setOrigin} examples={ORIGIN_EXAMPLES} placeholder="예: 국내산" />
-            </DealFormField>
-          </div>
-          <DealFormField label="상세 설명" htmlFor="deal-description">
-            <textarea
-              id="deal-description"
-              className={`${inputCls()} focus:border-navy`}
-              rows={2}
-              placeholder="예: 소비기한 26년 10월, 냉동 보관 상태 양호"
-              value={description}
-              onChange={(e) => {
-                setDescription(e.target.value);
-                setDescWarnings([]);
-              }}
-            />
-            <ConfirmWarnings warnings={descWarnings} onConfirm={titleWarnings.length || priceWarns.length ? undefined : () => submit(true)} busy={submitting} />
-          </DealFormField>
           {/* 2026-09-26: 혼합매물(리퀴데이션 파렛트 등) — 신청서에서 이미 첨부됐으면 prefill로
               채워지고, 여기서도 직접 추가/수정 가능 (전화 접수 등 신청서 없이 등록하는 경우 대비). */}
           <DealFormField label="PID / 매니페스트 번호" htmlFor="deal-pid">
@@ -3160,13 +3168,12 @@ function DealForm({
 }
 
 type DealField = "title" | "category" | "region" | "originalPrice" | "dealPrice" | "totalQty" | "minOrderQty" | "expiryDate";
-// 화면 위→아래 순서 (첫 누락 칸 포커스용) — 2026-10-01 재구성: ① 매물명·재고 총수량·판매 단가·지역 → ③ 카테고리·정상 단가·MOQ·소비기한
-const DEAL_FIELD_ORDER: DealField[] = ["title", "totalQty", "dealPrice", "region", "category", "originalPrice", "minOrderQty", "expiryDate"];
+// 화면 위→아래 순서 (첫 누락 칸 포커스용) — 2026-10-01 2차: ① 매물명·판매/정상 단가·재고 총수량·지역 → 제품 상세(MOQ·소비기한) → 거래 조건(카테고리)
+const DEAL_FIELD_ORDER: DealField[] = ["title", "dealPrice", "originalPrice", "totalQty", "region", "minOrderQty", "expiryDate", "category"];
 
-// "kg당" / 일괄은 "전체 가격"
-function priceBasis(unit: string): string {
-  return isLumpSum(unit) ? "전체 가격" : `${unit}당`;
-}
+// 붙인 입력 그룹(한 테두리) — [입력 | 원 / 단위] (2026-10-01 2차)
+const GROUP_INPUT_CLS = "flex-1 min-w-0 px-3 py-2.5 text-[0.8889rem] outline-none bg-transparent";
+const GROUP_SELECT_CLS = "flex-shrink-0 outline-none font-bold px-2 border-l border-gray200 bg-[#FAFBFC] text-[0.8889rem] text-navy";
 
 // 정상 단가 칸 아래 — "○% 할인으로 보여요" / 판매가 ≥ 정상가면 주황 안내 (2026-10-01 PR-B [3])
 function DiscountHint({ original, deal }: { original?: number | null; deal?: number | null }) {

@@ -43,3 +43,6 @@ next-env.d.ts
 
 # Claude Design reference export — local implementation reference only, not app source
 /design-reference/
+
+# 2026-10-01: 대표 측 앱이 잘못 만든 폴더(문서 산출물) — public/에 있으면 공개 경로로 서빙되므로 절대 커밋 금지
+public/Claude outputs/

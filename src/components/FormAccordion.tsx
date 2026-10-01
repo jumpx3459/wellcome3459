@@ -24,6 +24,7 @@ export default function FormAccordion({
   id,
   title,
   count,
+  requiredCount = 0,
   open,
   onToggle,
   children,
@@ -31,6 +32,7 @@ export default function FormAccordion({
   id: string;
   title: string;
   count: number; // "○개 입력됨"
+  requiredCount?: number; // 접힌 묶음 안 필수 칸 수 — 제목에 주황 "필수 ○개" (관리자 폼 거래 조건의 카테고리)
   open: boolean;
   onToggle: () => void;
   children: ReactNode;
@@ -48,6 +50,7 @@ export default function FormAccordion({
       >
         <span className="flex items-center gap-2 flex-wrap min-w-0">
           <span style={{ fontSize: rem(17), fontWeight: 800, color: "#0B2540" }}>{title}</span>
+          {requiredCount > 0 && <span style={{ fontSize: rem(14), fontWeight: 800, color: "#E25100" }}>필수 {requiredCount}개</span>}
           {count > 0 && <span style={{ fontSize: rem(14), fontWeight: 600, color: "#6B7480" }}>{count}개 입력됨</span>}
         </span>
         <span aria-hidden className="flex-shrink-0 font-bold" style={{ fontSize: rem(15), color: "#6B7480" }}>
