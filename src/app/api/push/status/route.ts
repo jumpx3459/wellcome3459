@@ -22,9 +22,22 @@ export async function POST(req: NextRequest) {
   ]);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // 2026-10-01: 이 기기 구독의 마지막 발송 성공 시각 — 컬럼이 없으면(SQL 전) null
+  let lastSuccessAt: string | null = null;
+  if (typeof endpoint === "string" && endpoint) {
+    const { data: me } = await supabaseAdmin
+      .from("push_subscriptions")
+      .select("last_success_at")
+      .eq("member_id", memberId)
+      .eq("endpoint", endpoint)
+      .maybeSingle();
+    lastSuccessAt = (me as { last_success_at?: string | null } | null)?.last_success_at ?? null;
+  }
+
   return NextResponse.json({
     count: subs?.length ?? 0,
     thisDeviceSaved: typeof endpoint === "string" && (subs ?? []).some((s) => s.endpoint === endpoint),
     optedOut: Boolean(member?.push_opt_out),
+    lastSuccessAt,
   });
 }

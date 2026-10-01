@@ -26,6 +26,8 @@ import CategoryChips from "@/components/CategoryChips";
 import FloatingCTA, { FloatingCTANote, FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 import SellGuestNotice from "@/components/SellGuestNotice";
+import { normalizeTitle, checkTitle, checkDescription } from "@/lib/titleGuard";
+import ConfirmWarnings, { BLOCK_COLOR } from "@/components/ConfirmWarnings";
 import { COMPANY_DISCLOSURE_TEXT, CONSENT_TEXT } from "@/lib/consent";
 
 // 2026-09-30: 작성 중 내용 (sessionStorage) — 사진·영상은 이미 올라간 URL만 보관, 매니페스트 표는 제외
@@ -221,7 +223,24 @@ export default function SellPage() {
     description, packageUnit, origin, spec, storageCondition, pid, images, videoUrl, showDetails,
   ]);
 
-  const submit = async () => {
+  // 2026-10-01 PR-A [11]: 매물명 막기(빨강)·확인 후 저장(주황) — 관리자 폼과 같은 규칙(src/lib/titleGuard.ts), 서버도 다시 검사
+  const [titleError, setTitleError] = useState<string | null>(null);
+  const [titleWarnings, setTitleWarnings] = useState<string[]>([]);
+  const [descWarnings, setDescWarnings] = useState<string[]>([]);
+  const scrollTo = (id: string) => {
+    const el = document.getElementById(id);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    (el as HTMLInputElement | null)?.focus?.({ preventScroll: true });
+  };
+  const showWarnings = (t: string[], d: string[]) => {
+    setTitleWarnings(t);
+    setDescWarnings(d);
+    setError("주황 안내를 확인하고 \"그대로 저장\"을 눌러주세요.");
+    if (!t.length && d.length) setShowDetails(true);
+    setTimeout(() => scrollTo(t.length ? "sell-productName" : "sell-description"), 50);
+  };
+
+  const submit = async (confirmWarnings = false) => {
     setError(null);
     setMoqError(null);
     setPriceError(null);
@@ -229,6 +248,24 @@ export default function SellPage() {
       setError("매물명 · 수량 · 희망 단가 · 연락처는 꼭 입력해주세요.");
       return;
     }
+    const cleanName = normalizeTitle(productName);
+    if (cleanName !== productName) setProductName(cleanName);
+    const nameCheck = checkTitle(cleanName);
+    if (nameCheck.block) {
+      setTitleError(nameCheck.block);
+      setError("빨간 안내가 있는 칸을 확인해주세요.");
+      scrollTo("sell-productName");
+      return;
+    }
+    if (!confirmWarnings) {
+      const d = checkDescription(description);
+      if (nameCheck.warnings.length || d.length) {
+        showWarnings(nameCheck.warnings, d);
+        return;
+      }
+    }
+    setTitleWarnings([]);
+    setDescWarnings([]);
     // 2026-09-29: 희망 단가 필수 — 서버(/api/seller-requests)도 같은 검증
     const price = parsePriceInput(hopePrice);
     if (!price || price <= 0) {
@@ -265,7 +302,7 @@ export default function SellPage() {
           category: category || null,
           stockType,
           region: region || null,
-          productName,
+          productName: cleanName,
           quantity: Number(quantity),
           quantityUnit,
           minOrderQty: !lumpSum && minOrderQty ? Number(minOrderQty) : null, // 일괄 판매면 최소주문 없음
@@ -282,6 +319,7 @@ export default function SellPage() {
           images,
           videoUrl,
           sellerTermsAgreed,
+          confirmWarnings,
         },
       });
       if (res.status === 401) {
@@ -291,6 +329,15 @@ export default function SellPage() {
       }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
+        if (res.status === 422 && data.needsConfirm) {
+          showWarnings(data.warnings?.title ?? [], data.warnings?.description ?? []);
+          return;
+        }
+        if (data.field === "title") {
+          setTitleError(data.error ?? "매물명을 확인해주세요.");
+          scrollTo("sell-productName");
+          return;
+        }
         if (data.field === "contactPhone") {
           setContactError(data.error ?? "연락처를 확인해주세요.");
           document.getElementById("contact-phone")?.focus();
@@ -459,13 +506,20 @@ export default function SellPage() {
         <div>
           <FieldLabel need="required">매물 상품명</FieldLabel>
           <input
+            id="sell-productName"
             className="w-full rounded-xl outline-none"
-            style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: FORM_INPUT_FONT_SIZE }}
+            style={{ border: `1.5px solid ${titleError ? BLOCK_COLOR : "#E4E7EB"}`, padding: 14, fontSize: FORM_INPUT_FONT_SIZE }}
             value={productName}
-            onChange={(e) => setProductName(e.target.value)}
+            onChange={(e) => {
+              setProductName(e.target.value);
+              setTitleError(null);
+              setTitleWarnings([]);
+            }}
             onBlur={() => logUnmatchedProductName("sell", productName)}
             placeholder={stockType === "closure" ? "예: 사무집기 일괄 (책상·의자·캐비닛)" : "예: 국내산 갈치 20kg 박스"}
           />
+          {titleError && <p className="font-medium mt-1.5" style={{ fontSize: rem(15), color: BLOCK_COLOR }}>{titleError}</p>}
+          <ConfirmWarnings warnings={titleWarnings} onConfirm={() => submit(true)} busy={submitting} />
         </div>
 
         <div>
@@ -837,10 +891,15 @@ export default function SellPage() {
                 className="w-full border-2 border-gray200 rounded-xl px-4 py-3 outline-none focus:border-orange"
                 style={{ fontSize: FORM_INPUT_FONT_SIZE }}
                 rows={3}
+                id="sell-description"
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => {
+                  setDescription(e.target.value);
+                  setDescWarnings([]);
+                }}
                 placeholder="그 밖에 알려주실 내용"
               />
+              <ConfirmWarnings warnings={descWarnings} onConfirm={titleWarnings.length ? undefined : () => submit(true)} busy={submitting} />
             </div>
 
             {/* 2026-09-26: 폐업 정리 등으로 여러 품목이 한 파렛트에 섞인 "혼합매물" 대응 —
@@ -880,7 +939,7 @@ export default function SellPage() {
       <FloatingCTA>
           {error && <FloatingCTANote>{error}</FloatingCTANote>}
           <button
-            onClick={submit}
+            onClick={() => submit()}
             disabled={submitting}
             className={FLOATING_CTA_BUTTON_CLASS}
             style={floatingCtaButtonStyle()}

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getPushState, subscribeToPush, savePushSubscription, fetchPushStatus } from "@/lib/pushClient";
+import { getPushState, subscribeToPush, savePushSubscription, fetchPushStatus, refreshPushSubscriptionIfStale, unsubscribeThisDevice } from "@/lib/pushClient";
+import { deviceLabel } from "@/lib/deviceLabel";
 import { SITE_URL } from "@/lib/siteUrl";
 import { rem } from "@/lib/rem";
 import PushBlockerNotice from "@/components/PushBlockerNotice";
@@ -29,6 +30,10 @@ export default function PushStatusCard() {
   const [dealConsent, setDealConsent] = useState<boolean | null>(null); // null = 모름(조회 전·실패)
   const [sheetOpen, setSheetOpen] = useState(false);
   const [consentError, setConsentError] = useState<string | null>(null);
+  // 2026-10-01: 이 기기 이름·마지막 발송 성공 시각, [이 기기 알림 끄기]
+  const [thisDevice, setThisDevice] = useState<string | null>(null);
+  const [lastSuccessAt, setLastSuccessAt] = useState<string | null>(null);
+  const [turningOff, setTurningOff] = useState(false);
 
   useEffect(() => {
     const load = () =>
@@ -43,6 +48,9 @@ export default function PushStatusCard() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      setThisDevice(deviceLabel(navigator.userAgent));
+      // 예전 VAPID 키로 묶인 구독이면 지금 키로 다시 구독(조용히) — 그 뒤 상태를 읽음
+      await refreshPushSubscriptionIfStale();
       const s = await getPushState();
       if (cancelled) return;
       const endpoint = s.status === "subscribed" ? s.subscription.endpoint ?? null : null;
@@ -67,6 +75,7 @@ export default function PushStatusCard() {
       const st = await fetchPushStatus(endpoint);
       if (cancelled || !st) return;
       setOtherDevices(Math.max(0, st.count - (st.thisDeviceSaved ? 1 : 0)));
+      setLastSuccessAt((st as { lastSuccessAt?: string | null }).lastSuccessAt ?? null);
     })();
     return () => {
       cancelled = true;
@@ -129,6 +138,19 @@ export default function PushStatusCard() {
     }
   };
 
+  const turnOffThisDevice = async () => {
+    if (turningOff) return;
+    setTurningOff(true);
+    const r = await unsubscribeThisDevice();
+    setTurningOff(false);
+    if (r === "off") {
+      setState("off");
+      setLastSuccessAt(null);
+    } else {
+      setConsentError("알림을 끄지 못했어요. 다시 시도해주세요.");
+    }
+  };
+
   if (state === "loading") return null;
   const thisDeviceOff = state !== "on";
   const needsConsent = state === "on" && dealConsent === false;
@@ -176,6 +198,26 @@ export default function PushStatusCard() {
           </button>
         )}
       </div>
+
+      {state === "on" && (
+        <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
+          <span style={{ fontSize: rem(14), color: "#6B7480" }}>
+            이 기기: {thisDevice ?? "이 브라우저"}
+            {lastSuccessAt
+              ? ` · 마지막 알림 ${new Date(lastSuccessAt).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}`
+              : ""}
+          </span>
+          <button
+            type="button"
+            onClick={turnOffThisDevice}
+            disabled={turningOff}
+            className="rounded-full font-bold whitespace-nowrap disabled:opacity-60"
+            style={{ fontSize: rem(14), padding: "6px 12px", border: "1px solid #E4E7EB", background: "#fff", color: "#4B5563" }}
+          >
+            {turningOff ? "끄는 중…" : "이 기기 알림 끄기"}
+          </button>
+        </div>
+      )}
 
       {needsConsent && (
         <button

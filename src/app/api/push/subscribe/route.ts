@@ -59,15 +59,18 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const { error } = await supabaseAdmin.from("push_subscriptions").upsert(
-    {
-      member_id: memberId,
-      endpoint: subscription.endpoint,
-      p256dh: subscription.keys.p256dh,
-      auth_key: subscription.keys.auth,
-    },
-    { onConflict: "endpoint" }
-  );
+  // 2026-10-01: 어떤 기기·브라우저인지 함께 저장(MY "이 기기: 안드로이드 크롬") — 컬럼이 없으면(SQL 전) 그 칸만 빼고 저장
+  const row = {
+    member_id: memberId,
+    endpoint: subscription.endpoint,
+    p256dh: subscription.keys.p256dh,
+    auth_key: subscription.keys.auth,
+  };
+  const userAgent = (req.headers.get("user-agent") ?? "").slice(0, 300) || null;
+  let { error } = await supabaseAdmin.from("push_subscriptions").upsert({ ...row, user_agent: userAgent }, { onConflict: "endpoint" });
+  if (error && /user_agent/.test(error.message)) {
+    ({ error } = await supabaseAdmin.from("push_subscriptions").upsert(row, { onConflict: "endpoint" }));
+  }
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -6,6 +6,7 @@ import { checkAdminAuth } from "@/lib/adminAuth";
 import { isStockType } from "@/lib/stockType";
 import { isDealPriceUnit, isLumpSum } from "@/lib/priceUnit";
 import { resolveSellerDisplay } from "@/lib/sellerDisplay";
+import { normalizeTitle, checkTitle, checkDescription, DUPLICATE_TITLE_WARNING } from "@/lib/titleGuard";
 
 export async function POST(req: NextRequest) {
   const auth = await checkAdminAuth(req);
@@ -36,6 +37,7 @@ export async function POST(req: NextRequest) {
     manifestItems,
     stockType,
     priceUnit,
+    confirmWarnings, // 2026-10-01: 매물명·설명 경고를 확인하고 "그대로 저장"
     sellerPublic, // 2026-09-30: 판매자 표시 — true면 상호 공개(sellerCompanyName), 아니면 "비공개 판매자"
     sellerCompanyName,
   } = body;
@@ -44,6 +46,10 @@ export async function POST(req: NextRequest) {
   const bad = (error: string, field: string) => NextResponse.json({ error, field }, { status: 400 });
   const isPositive = (v: unknown) => typeof v === "number" && Number.isFinite(v) && v > 0;
   if (typeof title !== "string" || !title.trim()) return bad("매물명을 입력해주세요.", "title");
+  // 2026-10-01 PR-A [11]: 매물명 정리·검사(관리자 — "[테스트]" 허용) — src/lib/titleGuard.ts
+  const cleanTitle = normalizeTitle(title, { admin: true });
+  const titleCheck = checkTitle(cleanTitle, { admin: true });
+  if (titleCheck.block) return bad(titleCheck.block, "title");
   if (!category) return bad("카테고리를 선택해주세요.", "category");
   if (!region) return bad("지역을 선택해주세요.", "region");
   if (dealPrice == null || dealPrice === "") return bad("판매가를 입력해주세요.", "dealPrice");
@@ -99,10 +105,25 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // 확인 후 저장 경고 — 같은 판매자(판매 신청 승인이면 그 회원, 직접 등록이면 판매자 없는 매물)의 같은 이름 진행 중 매물
+  if (confirmWarnings !== true) {
+    let dup = supabaseAdmin.from("deals").select("id", { count: "exact", head: true }).eq("status", "active").eq("title", cleanTitle);
+    dup = sellerMemberId ? dup.eq("seller_member_id", sellerMemberId) : dup.is("seller_member_id", null);
+    const { count: dupCount } = await dup;
+    const titleWarnings = [...titleCheck.warnings, ...((dupCount ?? 0) > 0 ? [DUPLICATE_TITLE_WARNING] : [])];
+    const descriptionWarnings = checkDescription(description);
+    if (titleWarnings.length || descriptionWarnings.length) {
+      return NextResponse.json(
+        { needsConfirm: true, field: titleWarnings.length ? "title" : "description", warnings: { title: titleWarnings, description: descriptionWarnings } },
+        { status: 422 }
+      );
+    }
+  }
+
   const { data: deal, error } = await supabaseAdmin
     .from("deals")
     .insert({
-      title,
+      title: cleanTitle,
       category_id: catRow?.id,
       region_id: regRow?.id,
       original_price: originalPrice || dealPrice,

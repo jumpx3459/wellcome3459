@@ -10,6 +10,8 @@ import SellerDisplayPicker from "@/components/SellerDisplayPicker";
 import { publicSellerName } from "@/lib/sellerDisplay";
 import { isTestTitle } from "@/lib/categoryAvg";
 import { formatPhoneTyping } from "@/lib/auth";
+import { normalizeTitle, checkTitle, checkDescription } from "@/lib/titleGuard";
+import ConfirmWarnings, { BLOCK_COLOR } from "@/components/ConfirmWarnings";
 import ManifestUploader from "@/components/ManifestUploader";
 import Toast, { useToast } from "@/components/Toast";
 import { formatPriceInput, parsePriceInput, formatMemberNo, formatPriceWithUnit, formatDealPrice } from "@/lib/format";
@@ -2614,6 +2616,9 @@ function DealForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<DealField, string>>>({});
+  // 2026-10-01 PR-A [11]: 확인 후 저장 경고(매물명·설명) — 서버(/api/admin/deals)도 같은 검사, 같은 판매자 같은 이름 진행 중 매물은 서버에서만
+  const [titleWarnings, setTitleWarnings] = useState<string[]>([]);
+  const [descWarnings, setDescWarnings] = useState<string[]>([]);
 
   // 2026-09-28: 필수 = 매물명·카테고리·지역·판매가·수량. 서버(/api/admin/deals)도 같은 규칙으로
   // 400 { error, field }를 돌려준다. 제출 시 첫 누락 칸으로 스크롤·포커스.
@@ -2629,6 +2634,10 @@ function DealForm({
     const orig = parsePriceInput(originalPrice);
     const qty = Number(totalQty);
     if (!title.trim()) errs.title = "매물명을 입력해주세요.";
+    else {
+      const block = checkTitle(normalizeTitle(title, { admin: true }), { admin: true }).block;
+      if (block) errs.title = block;
+    }
     if (!category) errs.category = "카테고리를 선택해주세요.";
     if (!region) errs.region = "지역을 선택해주세요.";
     if (!dealPrice.trim()) errs.dealPrice = "판매가를 입력해주세요.";
@@ -2644,7 +2653,13 @@ function DealForm({
   const clearErr = (field: DealField) =>
     setFieldErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
 
-  const submit = async () => {
+  const showWarnings = (t: string[], d: string[]) => {
+    setTitleWarnings(t);
+    setDescWarnings(d);
+    setError("주황 안내를 확인하고 \"그대로 저장\"을 눌러주세요.");
+    focusField(t.length ? "title" : ("description" as DealField));
+  };
+  const submit = async (confirmWarnings = false) => {
     setError(null);
     const errs = validate();
     setFieldErrors(errs);
@@ -2654,6 +2669,18 @@ function DealForm({
       focusField(firstMissing);
       return;
     }
+    const cleanTitle = normalizeTitle(title, { admin: true });
+    if (cleanTitle !== title) setTitle(cleanTitle);
+    if (!confirmWarnings) {
+      const t = checkTitle(cleanTitle, { admin: true }).warnings;
+      const d = checkDescription(description);
+      if (t.length || d.length) {
+        showWarnings(t, d);
+        return;
+      }
+    }
+    setTitleWarnings([]);
+    setDescWarnings([]);
     const deal = parsePriceInput(dealPrice) ?? 0;
     const orig = parsePriceInput(originalPrice);
     if (orig && deal > orig && !window.confirm("판매가가 정상가보다 높아요. 할인율이 표시되지 않아요. 그대로 등록할까요?")) {
@@ -2667,7 +2694,8 @@ function DealForm({
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
         body: JSON.stringify({
-          title: title.trim(),
+          title: cleanTitle,
+          confirmWarnings,
           stockType,
           category,
           region,
@@ -2694,6 +2722,10 @@ function DealForm({
         }),
       });
       const data = await res.json().catch(() => ({}));
+      if (res.status === 422 && data.needsConfirm) {
+        showWarnings(data.warnings?.title ?? [], data.warnings?.description ?? []);
+        return;
+      }
       if (!res.ok) {
         const field = data.field as DealField | undefined;
         if (field && DEAL_FIELD_ORDER.includes(field)) {
@@ -2746,8 +2778,10 @@ function DealForm({
           onChange={(e) => {
             setTitle(e.target.value);
             clearErr("title");
+            setTitleWarnings([]);
           }}
         />
+        <ConfirmWarnings warnings={titleWarnings} onConfirm={() => submit(true)} busy={submitting} />
       </DealFormField>
 
       <DealFormField label="재고 유형" htmlFor="deal-stockType">
@@ -2980,8 +3014,12 @@ function DealForm({
           rows={2}
           placeholder="예: 소비기한 26년 10월, 냉동 보관 상태 양호"
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          onChange={(e) => {
+            setDescription(e.target.value);
+            setDescWarnings([]);
+          }}
         />
+        <ConfirmWarnings warnings={descWarnings} onConfirm={titleWarnings.length ? undefined : () => submit(true)} busy={submitting} />
       </DealFormField>
 
       <SellerDisplayPicker idPrefix="deal-new" isPublic={seller.isPublic} companyName={seller.companyName} onChange={setSeller} />
@@ -3021,7 +3059,7 @@ function DealForm({
       </p>
 
       <button
-        onClick={submit}
+        onClick={() => submit()}
         disabled={submitting}
         className="text-white font-bold rounded-lg text-sm disabled:opacity-60"
         style={{ background: "#0B2540", padding: "12px 0" }}
@@ -3056,7 +3094,7 @@ function DealFormField({
         {required && <span className="text-orange ml-0.5">*</span>}
       </label>
       {children}
-      {error && <p className="text-xs text-orange font-medium mt-1">{error}</p>}
+      {error && <p className="text-xs font-medium mt-1" style={{ color: BLOCK_COLOR }}>{error}</p>}
     </div>
   );
 }

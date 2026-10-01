@@ -60,9 +60,25 @@ export function isQuietHoursKST(now = new Date()) {
 // 매물당 1회만 — push_sent_at이 이미 있으면 skip, 발송 직전에 push_sent_at을 조건부로 채워 중복 발송(등록+cron 동시 실행)을 막는다.
 // 2026-09-30 (커밋 K): 발송 결과 410 Gone·404 Not Found = 브라우저에서 구독이 영구 해지됨 → 그 구독 행 삭제.
 // 다른 오류(일시 장애·429·5xx 등)는 다음 발송에서 다시 시도하도록 유지. 예전엔 만료 구독이 남아 "알림 활성"에 계속 잡혔음.
+// 2026-10-01: 403도 죽은 구독 — VAPID 키가 바뀐 뒤 예전 키로 만든 구독은 푸시 서비스가 403(키 불일치)을 돌려줌.
+// (9/28 구독이 키 변경 전 키라 발송은 failed인데 MY는 "알림 받는 중"이었던 사례) 브라우저는 다음 방문 때 새 키로 자동 재구독.
 function isGoneSubscription(e: unknown) {
   const code = (e as { statusCode?: number } | null)?.statusCode;
-  return code === 410 || code === 404;
+  return code === 410 || code === 404 || code === 403;
+}
+
+// 발송 실패 이유(notification_logs.error_code·error_message) — 비밀값 없이 짧게
+function pushErrorInfo(e: unknown) {
+  const err = e as { statusCode?: number; body?: string; message?: string } | null;
+  const message = (err?.body || err?.message || "unknown").toString().replace(/\s+/g, " ").slice(0, 200);
+  return { error_code: typeof err?.statusCode === "number" ? err.statusCode : null, error_message: message };
+}
+
+// 보내기 성공한 구독의 마지막 성공 시각 (MY "이 기기" 표시·죽은 구독 판단용). 컬럼이 없으면(SQL 전) 조용히 넘어감
+async function markDelivered(supabaseAdmin: SupabaseClient, ids: string[], label: string) {
+  if (ids.length === 0) return;
+  const { error } = await supabaseAdmin.from("push_subscriptions").update({ last_success_at: new Date().toISOString() }).in("id", ids);
+  if (error) console.warn(`[${label}] last_success_at 기록 실패`, error.code, error.message);
 }
 
 async function pruneGoneSubscriptions(supabaseAdmin: SupabaseClient, endpoints: string[], label: string) {
@@ -72,7 +88,7 @@ async function pruneGoneSubscriptions(supabaseAdmin: SupabaseClient, endpoints: 
     .delete({ count: "exact" })
     .in("endpoint", endpoints);
   if (error) console.error(`[${label}] 만료 구독 삭제 실패 ${endpoints.length}건`, error.message);
-  else console.info(`[${label}] 만료 구독 삭제 ${count ?? endpoints.length}건 (410/404)`);
+  else console.info(`[${label}] 만료·키 불일치 구독 삭제 ${count ?? endpoints.length}건 (410/404/403)`);
 }
 
 export async function sendDealPush(dealId: string) {
@@ -186,18 +202,28 @@ export async function sendDealPush(dealId: string) {
 
   const { data: subs } = await supabaseAdmin
     .from("push_subscriptions")
-    .select("member_id, endpoint, p256dh, auth_key")
+    .select("id, member_id, endpoint, p256dh, auth_key")
     .in("member_id", memberIds);
 
   let sentCount = 0;
   const gone: string[] = [];
+  const delivered: string[] = [];
 
   for (const sub of subs ?? []) {
-    const { data: logRow } = await supabaseAdmin
+    // 2026-10-01: 어느 구독으로 보냈는지(subscription_id) — 컬럼이 없으면(SQL 전) 예전 칸만으로 다시 기록
+    const first = await supabaseAdmin
       .from("notification_logs")
-      .insert({ deal_id: deal.id, member_id: sub.member_id, channel: "webpush", status: "sent" })
+      .insert({ deal_id: deal.id, member_id: sub.member_id, channel: "webpush", status: "sent", subscription_id: sub.id })
       .select("id")
       .single();
+    let logRow = first.data;
+    if (first.error) {
+      ({ data: logRow } = await supabaseAdmin
+        .from("notification_logs")
+        .insert({ deal_id: deal.id, member_id: sub.member_id, channel: "webpush", status: "sent" })
+        .select("id")
+        .single());
+    }
 
     try {
       if (!ensureVapid()) throw new Error("vapid_unavailable"); // → catch에서 notification_logs failed
@@ -216,13 +242,19 @@ export async function sendDealPush(dealId: string) {
         );
       }
       sentCount++;
+      delivered.push(sub.id);
     } catch (e) {
       if (isGoneSubscription(e)) gone.push(sub.endpoint);
       if (logRow?.id) {
-        await supabaseAdmin.from("notification_logs").update({ status: "failed" }).eq("id", logRow.id);
+        const { error: failError } = await supabaseAdmin
+          .from("notification_logs")
+          .update({ status: "failed", ...pushErrorInfo(e) })
+          .eq("id", logRow.id);
+        if (failError) await supabaseAdmin.from("notification_logs").update({ status: "failed" }).eq("id", logRow.id);
       }
     }
   }
+  await markDelivered(supabaseAdmin, delivered, "sendDealPush");
   await pruneGoneSubscriptions(supabaseAdmin, gone, "sendDealPush");
 
   return { sentCount, total: subs?.length ?? 0 };
@@ -306,11 +338,12 @@ export async function sendNoticePush(noticeId: string) {
 
   const { data: subs } = await supabaseAdmin
     .from("push_subscriptions")
-    .select("member_id, endpoint, p256dh, auth_key")
+    .select("id, member_id, endpoint, p256dh, auth_key")
     .in("member_id", memberIds);
 
   let sentCount = 0;
   const gone: string[] = [];
+  const delivered: string[] = [];
 
   for (const sub of subs ?? []) {
     try {
@@ -328,12 +361,15 @@ export async function sendNoticePush(noticeId: string) {
         );
       }
       sentCount++;
+      delivered.push(sub.id);
     } catch (e) {
       // 구독 만료 등 — deals 알림과 달리 notification_logs에 남기지 않음(공지는
       // North Star 클릭률 측정 대상이 아니라 별도 로그 테이블이 필요 없다고 판단)
       if (isGoneSubscription(e)) gone.push(sub.endpoint);
+      else console.warn("[sendNoticePush] 발송 실패", pushErrorInfo(e));
     }
   }
+  await markDelivered(supabaseAdmin, delivered, "sendNoticePush");
   await pruneGoneSubscriptions(supabaseAdmin, gone, "sendNoticePush");
 
   return { sentCount, total: subs?.length ?? 0 };
@@ -360,20 +396,23 @@ export async function sendAdminPush(title: string, body: string, url: string) {
 
   const { data: subs } = await supabaseAdmin
     .from("push_subscriptions")
-    .select("endpoint, p256dh, auth_key")
+    .select("id, endpoint, p256dh, auth_key")
     .in("member_id", adminMemberIds);
 
   const gone: string[] = [];
+  const delivered: string[] = [];
   for (const sub of subs ?? []) {
     try {
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
         JSON.stringify({ title, body, url, tag: "admin-lead" })
       );
+      delivered.push(sub.id);
     } catch (e) {
       // 운영자 알림은 베스트에포트 — 영구 해지(410/404)만 정리
       if (isGoneSubscription(e)) gone.push(sub.endpoint);
     }
   }
+  await markDelivered(supabaseAdmin, delivered, "sendAdminPush");
   await pruneGoneSubscriptions(supabaseAdmin, gone, "sendAdminPush");
 }
