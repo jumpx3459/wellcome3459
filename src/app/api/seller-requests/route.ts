@@ -67,6 +67,10 @@ export async function POST(req: NextRequest) {
   if (isReservedSellerName(companyName)) {
     return NextResponse.json({ error: "점프엑스·덤핑점핑으로 오인될 수 있는 업체명은 쓸 수 없어요.", field: "companyName" }, { status: 400 });
   }
+  // 2026-10-01: 재고 위치(지역) 필수 — 알림 매칭 기준 (sell 폼과 같은 규칙). 없는 지역 이름은 아래 조회 뒤 다시 막음
+  if (typeof region !== "string" || !region.trim()) {
+    return NextResponse.json({ error: "재고 위치(지역)를 선택해주세요.", field: "region" }, { status: 400 });
+  }
   // 2026-09-29: 희망 단가 필수 (sell 폼과 같은 규칙)
   if (typeof hopePrice !== "number" || !Number.isFinite(hopePrice) || hopePrice <= 0) {
     return NextResponse.json({ error: "판매 단가를 입력해주세요", field: "hopePrice" }, { status: 400 });
@@ -162,6 +166,9 @@ export async function POST(req: NextRequest) {
   const regRow = region
     ? (await supabaseAdmin.from("regions").select("id").eq("name", region).maybeSingle()).data
     : null;
+  if (!regRow) {
+    return NextResponse.json({ error: "없는 지역이에요. 다시 선택해주세요.", field: "region" }, { status: 400 });
+  }
 
   // 판매자 확인 사항 동의 기록 — 신청보다 먼저 남김(기록 없이 신청만 들어가지 않게).
   // source 'sell'은 member_consents.source check에 추가하는 SQL(schema.sql 커밋 E 블록)이 실행돼 있어야 함.

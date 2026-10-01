@@ -4,7 +4,7 @@ import { useState } from "react";
 import { resizeImageForUpload } from "@/lib/resizeImage";
 import { rem } from "@/lib/rem";
 import { uploadFormData } from "@/lib/uploadClient";
-import { FieldTag, FORM_LABEL_STYLE, FORM_HINT_STYLE } from "@/components/FormField";
+import { DEAL_LABEL_STYLE, FORM_HINT_STYLE } from "@/components/FormField";
 
 type Item = { preview: string; url?: string; uploading: boolean };
 
@@ -91,9 +91,9 @@ export default function ImageUploader({
 
   return (
     <div>
-      <label className="mb-2 flex items-center gap-1.5 flex-wrap" style={FORM_LABEL_STYLE}>
+      {/* 2026-10-01: 매물 폼 공통 — (선택) 글자 없음, 라벨 15px */}
+      <label className="mb-2 flex items-center gap-1.5 flex-wrap" style={DEAL_LABEL_STYLE}>
         {label}
-        <FieldTag need="optional" />
         <span className="font-medium text-gray500 bg-gray100 px-2 py-0.5 rounded-full" style={{ fontSize: rem(15) }}>
           {items.length}/{max}
         </span>

@@ -48,7 +48,12 @@ export function FieldLabel({
   return (
     <div className={`flex items-center gap-1.5 flex-wrap ${className}`} style={compact ? DEAL_LABEL_STYLE : FORM_LABEL_STYLE}>
       {htmlFor ? <label htmlFor={htmlFor}>{children}</label> : <span>{children}</span>}
-      <FieldTag need={need} compact={compact} />
+      {/* 2026-10-01: 매물 폼(compact)은 필수만 주황 "*" — 회색 (선택)/(필수) 글자 없음 */}
+      {compact ? (
+        need === "required" && <span aria-label="필수" className="-ml-1" style={{ color: "#E25100", fontWeight: 800 }}>*</span>
+      ) : (
+        <FieldTag need={need} />
+      )}
       {extra && <span className="ml-auto">{extra}</span>}
     </div>
   );
