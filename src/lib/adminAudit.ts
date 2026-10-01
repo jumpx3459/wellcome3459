@@ -10,6 +10,7 @@ export type AuditAction =
   | "login_fail"
   | "login_locked"
   | "deal_delete"
+  | "deal_close"
   | "partner_approve"
   | "partner_reject"
   | "notice_send"

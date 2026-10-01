@@ -104,6 +104,7 @@ revoke all on public.admin_audit_logs from anon, authenticated;
 
 -- ============================================================================
 -- 6. 배포 후 (④ 대표 로그인 확인 뒤) — 예전 비밀번호만 받는 함수 삭제
+-- 2026-10-01 대표 운영 DB 실행 완료 (old_fn false · new_fn true), ① 배포 후 번호+비밀번호 로그인 확인 뒤
 -- ============================================================================
 --   drop function if exists public.verify_admin_login(text);
 --   확인 — 한 행 (old_fn = false, new_fn = true):

@@ -376,6 +376,8 @@ function AdminDashboard({
   onLogout: () => void;
 }) {
   const [requests, setRequests] = useState<SellerRequest[]>([]);
+  // 2026-10-01: 카드가 목록에서 빠진 뒤에도 보이는 안내(매물 마감 등) — 카드 안 토스트는 카드와 함께 사라짐
+  const { message: dashToast, showToast: showDashToast } = useToast();
   const [partnerRequests, setPartnerRequests] = useState<PartnerRequest[]>([]);
   const [partnersOverview, setPartnersOverview] = useState<PartnerOverviewItem[]>([]);
   const [partnersOverviewOpen, setPartnersOverviewOpen] = useState(true);
@@ -1270,7 +1272,14 @@ function AdminDashboard({
         )}
         <div className="flex flex-col gap-3">
           {activeDeals.map((d) => (
-            <ActiveDealCard key={d.id} deal={d} adminKey={adminKey} onChanged={load} />
+            <ActiveDealCard
+              key={d.id}
+              deal={d}
+              adminKey={adminKey}
+              onChanged={load}
+              canDelete={adminRole === "최고관리자"}
+              onClosed={(title) => showDashToast(`"${title}" 마감했어요 · 매물 상세에서 "마감됨"으로 볼 수 있어요`)}
+            />
           ))}
         </div>
       </div>
@@ -2241,6 +2250,7 @@ function AdminDashboard({
           </div>
         </div>
       )}
+      <Toast message={dashToast} />
     </main>
   );
 }
@@ -2249,10 +2259,14 @@ function ActiveDealCard({
   deal,
   adminKey,
   onChanged,
+  canDelete,
+  onClosed,
 }: {
   deal: ActiveDeal;
   adminKey: string;
   onChanged: () => void;
+  canDelete: boolean; // 2026-10-01: 영구 삭제 버튼은 최고관리자에게만 (서버도 최고관리자만 허용)
+  onClosed: (title: string) => void; // 마감 성공 안내는 대시보드에서(카드는 목록에서 빠짐)
 }) {
   const [expanded, setExpanded] = useState(false);
   const [remainingQty, setRemainingQty] = useState(String(deal.remaining_qty));
@@ -2307,6 +2321,13 @@ function ActiveDealCard({
     setEditingVideo(false);
     setExpanded(false);
     showToast("저장했어요");
+  };
+
+  // 2026-10-01: 마감 — 확인 후 status closed(manage PATCH 허용값). 서버가 감사 로그(deal_close) 기록
+  const closeDeal = async () => {
+    if (!confirm(`"${deal.title}" 매물을 지금 마감할까요? 진행 중 목록에서 빠지고 매물 상세에는 "마감됨"으로 보여요.`)) return;
+    if (await patch({ status: "closed" })) onClosed(deal.title);
+    else showToast("마감하지 못했어요. 다시 시도해주세요");
   };
 
   const deleteDeal = async () => {
@@ -2386,15 +2407,26 @@ function ActiveDealCard({
           >
             ✏️ 수정
           </button>
+          {/* 2026-10-01: [마감] — 관리자·최고관리자. 마감되면 이 목록에서 빠지고 매물 상세·지난 매물에 "마감됨"으로 남음 */}
           <button
             type="button"
-            onClick={deleteDeal}
-            disabled={deleting}
-            className="flex-1 text-xs font-bold rounded-lg py-2 disabled:opacity-50"
-            style={{ color: "#C2410C", border: "2px solid #FDEEE8", background: "#FFF9F7" }}
+            onClick={closeDeal}
+            disabled={saving}
+            className="flex-1 text-xs font-bold text-orange border-2 border-orange rounded-lg py-2 disabled:opacity-50"
           >
-            {deleting ? "삭제 중..." : "🗑️ 삭제"}
+            ⏹ 마감
           </button>
+          {canDelete && (
+            <button
+              type="button"
+              onClick={deleteDeal}
+              disabled={deleting}
+              className="flex-1 text-xs font-bold rounded-lg py-2 disabled:opacity-50"
+              style={{ color: "#C2410C", border: "2px solid #FDEEE8", background: "#FFF9F7" }}
+            >
+              {deleting ? "삭제 중..." : "🗑️ 삭제"}
+            </button>
+          )}
         </div>
       ) : (
         <>
@@ -2418,7 +2450,7 @@ function ActiveDealCard({
               +24시간 연장
             </button>
             <button
-              onClick={() => confirm("이 매물을 지금 조기 마감할까요?") && patch({ status: "closed" })}
+              onClick={closeDeal}
               disabled={saving}
               className="flex-1 text-xs font-bold text-orange border-2 border-orange rounded-lg py-2"
             >
@@ -2491,15 +2523,17 @@ function ActiveDealCard({
             >
               접기
             </button>
-            <button
-              type="button"
-              onClick={deleteDeal}
-              disabled={deleting}
-              className="flex-1 text-xs font-bold rounded-lg py-2 disabled:opacity-50"
-              style={{ color: "#C2410C", border: "2px solid #FDEEE8", background: "#FFF9F7" }}
-            >
-              {deleting ? "삭제 중..." : "🗑️ 매물 삭제"}
-            </button>
+            {canDelete && (
+              <button
+                type="button"
+                onClick={deleteDeal}
+                disabled={deleting}
+                className="flex-1 text-xs font-bold rounded-lg py-2 disabled:opacity-50"
+                style={{ color: "#C2410C", border: "2px solid #FDEEE8", background: "#FFF9F7" }}
+              >
+                {deleting ? "삭제 중..." : "🗑️ 매물 삭제"}
+              </button>
+            )}
           </div>
         </>
       )}
