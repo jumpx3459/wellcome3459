@@ -589,8 +589,10 @@ function AdminDashboard({
   // 2026-10-02 (PR-C1): 목록 카드 정렬 — 조치 필요 먼저, 같은 묶음 안은 API 순서(최신순) 그대로(sort는 안정 정렬).
   // 관심 표시: 카드의 "미연락" 배지 기준(미연락 + 결과 진행중). 구매 요청: 미연락 → 연락했지만 매칭 결과 대기 → 끝난 건.
   // 파트너 신청: 심사중 먼저. 판매자 신청은 API가 대기(pending)만 주고, 진행 중 매물은 API가 마감 임박 순이라 그대로.
+  // 카드 제목 "n건 미연락"도 같은 기준으로 셈(배지·정렬과 숫자가 어긋나지 않게)
+  const leadNeedsAction = (i: Interest) => !i.contacted && i.outcome === "pending";
   const sortedInterests = [...filteredInterests].sort(
-    (a, b) => Number(a.contacted || a.outcome !== "pending") - Number(b.contacted || b.outcome !== "pending")
+    (a, b) => Number(!leadNeedsAction(a)) - Number(!leadNeedsAction(b))
   );
   const buyRank = (b: BuyRequest) => (!b.contacted ? 0 : b.outcome === "pending" ? 1 : 2);
   const sortedBuyRequests = [...buyRequests].sort((a, b) => buyRank(a) - buyRank(b));
@@ -1011,7 +1013,7 @@ function AdminDashboard({
         }
         title={
           <span style={UI_SECTION}>
-            관심 표시한 회원 <span style={{ ...LABEL, fontWeight: 400 }}>({interests.filter((i) => !i.contacted).length}건 미연락)</span>
+            관심 표시한 회원 <span style={{ ...LABEL, fontWeight: 400 }}>({interests.filter(leadNeedsAction).length}건 미연락)</span>
           </span>
         }
         open={leadsOpen}
