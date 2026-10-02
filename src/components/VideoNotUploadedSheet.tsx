@@ -20,12 +20,14 @@ export default function VideoNotUploadedSheet({
   onReselect,
   onClose,
   skipLabel = "영상 빼고 등록",
+  description = "고른 영상이 아직 저장되지 않았어요. 영상 없이 진행하거나, 영상을 다시 골라주세요.",
 }: {
   open: boolean;
   onSkip: () => void;
   onReselect: () => void;
   onClose: () => void;
   skipLabel?: string;
+  description?: string;
 }) {
   useBackToClose(open, onClose);
   if (!open) return null;
@@ -43,9 +45,7 @@ export default function VideoNotUploadedSheet({
         onClick={(e) => e.stopPropagation()}
       >
         <div id="video-not-uploaded-title" style={UI_CARD_TITLE}>영상이 올라가지 않았어요</div>
-        <p className="mt-2" style={UI_DESC}>
-          고른 영상이 아직 저장되지 않았어요. 영상 없이 진행하거나, 영상을 다시 골라주세요.
-        </p>
+        <p className="mt-2" style={UI_DESC}>{description}</p>
         <div className="flex flex-col gap-2 mt-5">
           <button type="button" onClick={onReselect} className={`w-full ${BTN_CLASS}`} style={btnStyle("primary")}>
             다시 고르기

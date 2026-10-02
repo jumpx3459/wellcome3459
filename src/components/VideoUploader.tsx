@@ -22,7 +22,7 @@ export type VideoUploaderHandle = {
 };
 
 const TRIM_UNSUPPORTED_MESSAGE =
-  "아이폰에서는 15초 이하 영상만 올릴 수 있어요. 사진 앱 → 편집에서 길이를 줄인 뒤 다시 골라주세요";
+  "이 브라우저에서는 15초 넘는 영상을 자를 수 없어요. 아이폰은 사진 앱 → 편집에서 길이를 줄이고, PC는 크롬에서 올려주세요.";
 
 // 자르기(15초 초과 영상)에 쓰는 기능이 있는지 — UA가 아니라 기능으로 판별.
 // video.captureStream(또는 mozCaptureStream) + MediaRecorder webm 녹화. 아이폰 Safari는 captureStream이 없음.

@@ -2339,14 +2339,15 @@ function ActiveDealCard({
     }
   };
 
-  const saveAll = async (skipVideo = false) => {
+  // skipVideo: 새 영상이 안 올라간 채 저장 — skipVideoUrl(기존 영상 유지면 그 URL, 아니면 null)로 저장
+  const saveAll = async (skipVideo = false, skipVideoUrl: string | null = null) => {
     if (videoStatus === "uploading") return;
     if (!skipVideo && videoNotUploaded(videoStatus)) {
       setVideoSheet(true);
       return;
     }
     const sellerPatch = sellerChanged ? { sellerPublic: seller.isPublic, sellerCompanyName: seller.companyName } : {};
-    const result = await patch({ remainingQty: Number(remainingQty), images, videoUrl: skipVideo ? null : videoUrl, ...sellerPatch });
+    const result = await patch({ remainingQty: Number(remainingQty), images, videoUrl: skipVideo ? skipVideoUrl : videoUrl, ...sellerPatch });
     if (!result.ok) {
       showToast(result.field === "video" && result.error ? result.error : "저장하지 못했어요. 다시 시도해주세요");
       return;
@@ -2555,9 +2556,16 @@ function ActiveDealCard({
           >
             {saving ? "저장 중..." : videoStatus === "uploading" ? VIDEO_UPLOADING_LABEL : "변경사항 저장"}
           </button>
+          {/* 2026-10-02 PR-A2: 기존 영상이 있는 매물에서 새 영상이 안 올라갔으면 기존 영상을 지키고 저장(예전엔 ×로 비운 뒤라 null로 지워짐).
+              기존 영상을 지우는 건 ×로 비우고(새 영상 고르지 않은 채) 저장할 때만 — 그때는 이 시트가 안 뜨고 null 저장 */}
           <VideoNotUploadedSheet
             open={videoSheet}
-            skipLabel="영상 빼고 저장"
+            skipLabel={deal.video_url ? "기존 영상 유지하고 저장" : "영상 빼고 저장"}
+            description={
+              deal.video_url
+                ? "새로 고른 영상이 저장되지 않았어요. 기존 영상을 그대로 두고 저장하거나, 영상을 다시 골라주세요."
+                : undefined
+            }
             onClose={() => setVideoSheet(false)}
             onReselect={() => {
               setEditingVideo(true);
@@ -2565,9 +2573,11 @@ function ActiveDealCard({
               setVideoSheet(false);
             }}
             onSkip={() => {
-              videoUploaderRef.current?.clear();
               setVideoSheet(false);
-              saveAll(true);
+              const keep = deal.video_url ?? null;
+              if (keep) setVideoUrl(keep); // 다음에 펼칠 때도 기존 영상으로 시작
+              else videoUploaderRef.current?.clear();
+              saveAll(true, keep);
             }}
           />
 
