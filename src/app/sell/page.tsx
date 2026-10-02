@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import TabLink from "@/components/TabLink";
 import { hasAppHistory, goHome } from "@/lib/appNav";
@@ -202,13 +202,32 @@ export default function SellPage() {
   // sessionStorage에 보관. 저장소가 막혀 있으면(사생활 보호 모드 등) 조용히 넘어감. 카테고리 자동 추천 effect보다
   // 뒤에 둬야 첫 렌더의 추천 effect가 복원한 카테고리를 비우지 않음.
   const [draftReady, setDraftReady] = useState(false);
-  useEffect(() => {
+  // 측정 전 기본값 = 모바일(하단 고정 버튼). 첫 페인트 전에 한 번 재서 PC형이면 바로 인라인으로 바꿈
+  useLayoutEffect(() => {
     const el = formRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => setWideForm(el.clientWidth - 40 >= 560)); // px-5 좌우 20px씩 뺀 내용 폭 = @container 기준
+    if (!el) return;
+    const measure = () => setWideForm(el.clientWidth - 40 >= 560); // px-5 좌우 20px씩 뺀 내용 폭 = @container 기준
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
   }, [authState, draftReady]);
+  // 모바일 오류 알약 실제 높이(+아래 간격 8px)만큼 본문 아래 여백을 늘려 마지막 칸이 안 가리게
+  const [noteEl, setNoteEl] = useState<HTMLDivElement | null>(null);
+  const [noteH, setNoteH] = useState(0);
+  useLayoutEffect(() => {
+    if (!noteEl) {
+      setNoteH(0);
+      return;
+    }
+    const measure = () => setNoteH(noteEl.offsetHeight + 8);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(noteEl);
+    return () => ro.disconnect();
+  }, [noteEl]);
   useEffect(() => {
     let d: Partial<SellDraft> | null = null;
     try {
@@ -593,7 +612,7 @@ export default function SellPage() {
       {/* 2026-10-01 feat/form-order-v2: 매물 폼 재배치 2차 — 저장 항목·검증 그대로, 순서·묶음·표시만.
           ① 필수 정보 → ② 사진·영상 → ③ 판매자 확인 동의 → ④ 제품 상세(접힘) → ⑤ 거래 조건(접힘) → ⑥ 판매자 정보(접힘).
           칸 수는 폼 폭 기준(@container): 1칸 → 2칸(560px~) → 3칸(840px~), PC 최대 960px. 접힌 묶음 칸에서 오류 나면 펼치고 스크롤 */}
-      <div ref={formRef} className="@container w-full max-w-[720px] mx-auto flex-1 px-5 py-4.5 flex flex-col gap-5" style={{ paddingBottom: wideForm ? 24 : FLOATING_CTA_SPACE + (error ? 44 : 0) }}>
+      <div ref={formRef} className="@container w-full max-w-[720px] mx-auto flex-1 px-5 py-4.5 flex flex-col gap-5" style={{ paddingBottom: wideForm ? 24 : FLOATING_CTA_SPACE + noteH }}>
         {/* 2026-09-29: 헤더 안 캐릭터 소개(76px/13px) 대신 buy와 같은 "완전 무료" 카드 (판매자용 문구) */}
         <div className="flex items-center gap-3 rounded-2xl" style={{ background: "#fff", border: "1.5px solid #E4E7EB", padding: "15px 16px" }}>
           <img src="/images/manager.png" alt="점핑매니저" className="flex-shrink-0 rounded-xl bg-white" style={{ width: 72, height: 72, objectFit: "contain" }} />
@@ -1129,7 +1148,7 @@ export default function SellPage() {
       {/* 2026-09-29: 공용 하단 고정 버튼 — 판·블러 없이 버튼만 띄움 */}
       {!wideForm && (
       <FloatingCTA>
-          {error && <FloatingCTANote>{error}</FloatingCTANote>}
+          {error && <div ref={setNoteEl}><FloatingCTANote>{error}</FloatingCTANote></div>}
           <button
             onClick={() => submit()}
             disabled={submitting || videoStatus === "uploading"}
