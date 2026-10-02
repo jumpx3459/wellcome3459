@@ -2360,6 +2360,12 @@ function ActiveDealCard({
         showToast(SUPER_ONLY_MESSAGE);
         return;
       }
+      // 2026-10-01 F-2: 거래 연결 기록이 있는 매물(409) 등 — 서버 안내를 그대로 (예전엔 실패해도 아무 표시 없었음)
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error ?? "삭제하지 못했어요. 다시 시도해주세요");
+        return;
+      }
       onChanged();
     } finally {
       setDeleting(false);
