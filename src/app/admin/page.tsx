@@ -10,6 +10,7 @@ import SellerDisplayPicker from "@/components/SellerDisplayPicker";
 import { publicSellerName } from "@/lib/sellerDisplay";
 import { isTestTitle } from "@/lib/categoryAvg";
 import { formatPhoneTyping } from "@/lib/auth";
+import { formatPhone, normalizePhone } from "@/lib/phone";
 import { normalizeTitle, checkTitle, checkDescription } from "@/lib/titleGuard";
 import ConfirmWarnings, { BLOCK_COLOR, WARN_COLOR } from "@/components/ConfirmWarnings";
 import {
@@ -658,7 +659,8 @@ function AdminDashboard({
     setPartnerRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
   }
 
-  const adminPhones = new Set(admins.map((a) => a.phone).filter(Boolean));
+  // 2026-10-02: 형식이 달라도("+8210…"·하이픈) 같은 번호면 관리자로 보게 normalizePhone으로 맞춰 비교
+  const adminPhones = new Set(admins.map((a) => normalizePhone(a.phone)).filter(Boolean));
 
   const openAppoint = (member: Member) => {
     setAppointFor(member);
@@ -881,7 +883,7 @@ function AdminDashboard({
                 둘째 줄로 내려가게 해서 카드 폭 안에 항상 들어오도록 수정. */}
             <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
               <div className="text-base font-bold text-gray900">
-                {m.phone}
+                {formatPhone(m.phone)}
                 {m.member_no != null && (
                   <span className="text-xs font-bold text-gray500 ml-1.5">{formatMemberNo(m.member_no)}</span>
                 )}
@@ -960,7 +962,7 @@ function AdminDashboard({
                 })}{" "}
                 가입
               </div>
-              {adminRole === "최고관리자" && !adminPhones.has(m.phone) && (
+              {adminRole === "최고관리자" && !adminPhones.has(normalizePhone(m.phone)) && (
                 <button
                   onClick={() => openAppoint(m)}
                   className="text-xs font-bold rounded-lg px-2.5 py-1 border border-gray200 text-navy"
@@ -1101,7 +1103,7 @@ function AdminDashboard({
                 <div className="mt-1 flex items-center gap-1.5 min-w-0 overflow-hidden" style={{ fontSize: rem(15), color: "#4B5563", fontVariantNumeric: "tabular-nums" }}>
                   {i.members?.phone ?? i.phone ? (
                     <a href={`tel:${i.members?.phone ?? i.phone}`} className="font-bold text-navy whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                      {i.members?.phone ?? i.phone}
+                      {formatPhone(i.members?.phone ?? i.phone)}
                     </a>
                   ) : (
                     <span className="whitespace-nowrap">{i.members ? "번호 없음" : "연락처 삭제됨 (수집 90일 경과)"}</span>
@@ -1332,7 +1334,7 @@ function AdminDashboard({
             {/* 2026-09-29: 재고 유형 배지 (일반 재고는 없음) */}
             <StockTypeBadge value={r.stock_type} className="mt-1" />
             <div className="text-sm text-gray500 mt-1">
-              {[r.company_name, r.contact_name, r.contact_phone].filter(Boolean).join(" · ")}
+              {[r.company_name, r.contact_name, r.contact_phone && formatPhone(r.contact_phone)].filter(Boolean).join(" · ")}
             </div>
             <div className="text-sm text-gray500 mt-1">
               수량 {r.quantity}{r.quantity_unit || "개"}
@@ -1745,7 +1747,7 @@ function AdminDashboard({
                     {a.role}
                   </span>
                 </div>
-                <div className="text-xs text-gray500 mt-1">{a.phone ?? "번호 미연결"}</div>
+                <div className="text-xs text-gray500 mt-1">{a.phone ? formatPhone(a.phone) : "번호 미연결"}</div>
                 <div className="text-xs text-gray500 mt-0.5">
                   {a.last_login_at
                     ? `마지막 로그인 ${new Date(a.last_login_at).toLocaleString("ko-KR", {
@@ -2123,7 +2125,7 @@ function AdminDashboard({
         >
           <div className="bg-white w-full max-w-md rounded-t-3xl p-6" onClick={(e) => e.stopPropagation()}>
             <div className="font-display text-xl text-navy mb-1">관리자로 임명</div>
-            <div className="text-sm text-gray500 mb-5">{appointFor.phone}</div>
+            <div className="text-sm text-gray500 mb-5">{formatPhone(appointFor.phone)}</div>
 
             <label className="text-xs font-bold text-gray500 mb-1 block">이름</label>
             <input

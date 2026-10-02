@@ -52,6 +52,7 @@ select
      and table_name = 'deal_connections' and column_name = 'deal_id') as deal_id_not_null;
 
 -- D) 권한 (한 행) — 기대: rls 3 · policies 0 · anon_auth_grants 0 · fn_public_exec 0
+--   실행 순서: E1 뒤에 (fn_public_exec가 E1에서 만드는 member_auth_phone을 조회 — D 직후엔 함수가 없어 오류)
 select
   (select count(*) from pg_class where relrowsecurity and oid in
      ('public.deal_connections'::regclass, 'public.deal_connection_events'::regclass, 'public.deal_seller_private'::regclass)) as rls,
@@ -76,6 +77,7 @@ select
   (select pg_get_functiondef('public.protect_member_columns()'::regprocedure) like '%member_auth_phone%') as columns_uses_auth;
 
 -- E2-backup) 백업 (한 행) — 기대: backup = members · backup_rls true · backup_anon_grants 0
+-- E2 생략 시 실행 안 함 (백업 표가 없어 오류) — 2026-10-02 운영은 E2-0 mismatch 0으로 E2-backup·E2 생략
 select
   (select count(*) from public.members_phone_backup_20261001) as backup,
   (select count(*) from public.members) as members,
@@ -103,6 +105,7 @@ select
   (select string_agg(distinct left(regexp_replace(coalesce(phone, ''), '[0-9]', '9', 'g'), 16), ' | ') from auth.users) as auth_phone_shapes;
 
 -- E2) 형식 통일 후 (한 행) — 기대: mismatch 0 · fmt_hyphen 0 · fmt_82 0
+-- E2 생략 시 실행 안 함
 select
   (select count(*) from public.members m join auth.users u on u.id = m.id
      where coalesce(public.kpi_norm_phone(u.phone), '') <> '' and m.phone is distinct from public.kpi_norm_phone(u.phone)) as mismatch,
@@ -111,6 +114,7 @@ select
 
 -- 참고(E2 뒤) — 관리자 번호 형식: 관리자 지정 화면(/api/admin/admins)은 admin_users.phone = members.phone을 그대로 비교함.
 --   형식이 달라지면 "이미 관리자" 중복 확인을 놓칠 수 있어 다음 코드 PR에서 정규화 비교로 바꿀 예정 (로그인은 kpi_norm_phone 비교라 영향 없음)
+--   → 완료(2026-10-02, feat/phone-display): /api/admin/admins 중복 확인을 normalizePhone(src/lib/phone.ts) 비교로 바꿈
 select count(*) as admin_phone_not_local from public.admin_users where phone !~ '^01[0-9]{8,9}$';
 
 -- F) interests 정책 (한 행) — 기대: policies 4 · old_policy 0 · insert_check에 status = 'active' 포함

@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from "./supabase";
+import { normalizePhone } from "./phone";
 import { debugLog } from "./debugLog"; // TEMP DEBUG — "Invalid API key" 원인(레이트리밋 vs 실제 키 오류) 확정용, 확인되면 제거
 
 // 카카오 로그인 대신 휴대폰 SMS OTP만 사용합니다 — 애초 supabase/schema.sql
@@ -13,12 +14,9 @@ import { debugLog } from "./debugLog"; // TEMP DEBUG — "Invalid API key" 원�
 // signInWithOtp() 호출이 에러를 반환합니다.
 
 /** 휴대폰 번호 공용 정규화 (2026-10-01) — 로그인(OTP·비밀번호)·가입이 모두 이 함수를 거친다.
- * 하이픈·공백 등 숫자 외 글자를 지우고, "+82 10-…"·"8210…"(자동완성·붙여넣기)은 국내 형식 "010…"으로 바꾼다. */
-export function normalizeKoreanPhone(input: string | null | undefined): string {
-  const raw = (input ?? "").replace(/[^0-9]/g, "");
-  const intl = (input ?? "").trim().startsWith("+82") || /^82\d{9,10}$/.test(raw);
-  return intl ? `0${raw.slice(2).replace(/^0+/, "")}` : raw;
-}
+ * 하이픈·공백 등 숫자 외 글자를 지우고, "+82 10-…"·"8210…"(자동완성·붙여넣기)은 국내 형식 "010…"으로 바꾼다.
+ * 2026-10-02: 본문은 src/lib/phone.ts normalizePhone으로 옮김 — 로그인·가입 호출부는 그대로 두려고 이름만 유지. */
+export const normalizeKoreanPhone = normalizePhone;
 
 /** "010-1234-5678" / "01012345678" / "+82 10-…" 등 다양한 입력을 "+821012345678" 형태로 정규화 */
 export function toE164Phone(input: string): string {
@@ -37,14 +35,6 @@ export function toLocalPhone(input: string | null | undefined): string {
   return digits;
 }
 
-/** 화면 표시용 "010-1234-5678" (10자리는 "011-123-4567"). 형식이 안 맞으면 숫자만 반환. */
-export function formatKoreanPhone(input: string | null | undefined): string {
-  const d = toLocalPhone(input);
-  if (/^01\d{9}$/.test(d)) return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
-  if (/^01\d{8}$/.test(d)) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
-  return d;
-}
-
 /** 연락처(매물 등록·구매 희망) 검증 — 휴대폰 + 사무실 번호 허용 (2026-09-29).
  * 로그인/가입 OTP는 휴대폰만 되므로 계속 isValidKoreanPhone을 쓸 것.
  *   휴대폰 01X + 7~8자리 / 서울 02 + 7~8자리 / 지역번호 031~064 + 7~8자리 /
@@ -58,15 +48,6 @@ export function isValidContactPhone(input: string | null | undefined): boolean {
     /^070\d{8}$/.test(d) ||
     /^1[568]\d{6}$/.test(d)
   );
-}
-
-/** 연락처 표시용: "010-1234-5678" / "02-1234-5678" / "031-123-4567" / "1588-1234" */
-export function formatContactPhone(input: string | null | undefined): string {
-  const d = toLocalPhone(input);
-  if (/^1[568]\d{6}$/.test(d)) return `${d.slice(0, 4)}-${d.slice(4)}`;
-  if (/^02\d{7,8}$/.test(d)) return `02-${d.slice(2, d.length - 4)}-${d.slice(-4)}`;
-  if (/^0\d{2}\d{7,8}$/.test(d)) return `${d.slice(0, 3)}-${d.slice(3, d.length - 4)}-${d.slice(-4)}`;
-  return d;
 }
 
 /** 휴대폰 번호 입력칸용 — 치는 동안 "010-1234-5678"로 하이픈을 넣어줌 (숫자 11자리까지).

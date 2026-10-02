@@ -11,7 +11,8 @@ import ImageUploader from "@/components/ImageUploader";
 import VideoUploader from "@/components/VideoUploader";
 import ManifestUploader from "@/components/ManifestUploader";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
-import { isValidContactPhone, formatContactPhone } from "@/lib/auth";
+import { isValidContactPhone } from "@/lib/auth";
+import { formatPhone } from "@/lib/phone";
 import ContactPhoneInput from "@/components/ContactPhoneInput";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import type { ManifestRow } from "@/lib/parseCsv";
@@ -104,7 +105,7 @@ export default function SellPage() {
       setMemberId(userData.user.id);
       setAuthState("member");
       if (member.phone && !draftPhoneRef.current) {
-        const filled = formatContactPhone(member.phone);
+        const filled = formatPhone(member.phone);
         setContactPhone(filled);
         setAutofilledPhone(filled);
       }
@@ -352,7 +353,7 @@ export default function SellPage() {
           isAnonymous,
           // 회원 연결은 서버가 accessToken으로 결정 (memberId는 보내지 않음)
           contactName: contactName || null,
-          contactPhone: formatContactPhone(contactPhone),
+          contactPhone: formatPhone(contactPhone),
           category: category || null,
           stockType,
           region: region || null,
