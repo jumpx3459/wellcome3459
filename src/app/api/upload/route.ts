@@ -3,14 +3,16 @@ import { createClient } from "@supabase/supabase-js";
 import { getPhotoLimit, photoLimitError, MAX_PHOTO_SLOTS } from "@/lib/photoLimit";
 import { getMemberFromToken } from "@/lib/photoLimitServer";
 import { checkAdminAuth } from "@/lib/adminAuth";
+import { VIDEO_EXT, baseMimeType } from "@/lib/videoUpload";
 
 const BUCKET = "deal-images";
+// 2026-10-02 PR-A: 화면(VideoUploader)은 이제 /api/upload/video-url로 Storage에 직접 올림 — 아래 영상 분기는 예전 클라이언트 호환용으로 남김
+// (이 함수를 거치면 Vercel 요청 한도 4.5MB가 먼저 걸림)
 const MAX_VIDEO_BYTES = 25 * 1024 * 1024; // 15초 영상은 대체로 이 안에 들어옵니다
 // 2026-09-30: 형식·크기 검사 — 사진은 화면에서 JPEG로 줄여 보내지만(resizeImage) 직접 호출도 막기 위해 서버에서 다시 확인.
 // SVG는 스크립트를 담을 수 있어 제외. 확장자는 파일 이름이 아니라 형식에서 정함. 크기는 마이페이지 사진 한도(20MB) 기준.
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 const IMAGE_EXT: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
-const VIDEO_EXT: Record<string, string> = { "video/webm": "webm", "video/mp4": "mp4", "video/quicktime": "mov", "video/3gpp": "3gp" };
 
 export async function POST(req: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -54,8 +56,8 @@ export async function POST(req: NextRequest) {
     }
   }
   if (video) {
-    // MediaRecorder로 자른 영상은 "video/webm;codecs=…"처럼 올 수 있어 ; 앞만 비교
-    const videoType = typeof video === "string" ? "" : video.type.split(";")[0];
+    // MediaRecorder로 자른 영상은 "video/webm;codecs=…"처럼 올 수 있어 기본형으로 비교(videoUpload.ts baseMimeType)
+    const videoType = typeof video === "string" ? "" : baseMimeType(video.type);
     if (!VIDEO_EXT[videoType]) {
       return NextResponse.json({ error: "MP4·MOV·WEBM 영상만 올릴 수 있어요.", field: "video" }, { status: 400 });
     }
@@ -92,13 +94,14 @@ export async function POST(req: NextRequest) {
 
   let videoUrl: string | null = null;
   if (video) {
-    const ext = VIDEO_EXT[video.type.split(";")[0]];
+    const videoType = baseMimeType(video.type);
+    const ext = VIDEO_EXT[videoType];
     const path = `video-${crypto.randomUUID()}.${ext}`;
     const arrayBuffer = await video.arrayBuffer();
 
     const { error } = await supabaseAdmin.storage
       .from(BUCKET)
-      .upload(path, arrayBuffer, { contentType: video.type.split(";")[0], upsert: false });
+      .upload(path, arrayBuffer, { contentType: videoType, upsert: false });
 
     if (!error) {
       const { data } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path);

@@ -6,6 +6,7 @@ import { isStockType } from "@/lib/stockType";
 import { isDealPriceUnit, isLumpSum } from "@/lib/priceUnit";
 import { getPhotoLimit, photoLimitError } from "@/lib/photoLimit";
 import { getMemberFromToken } from "@/lib/photoLimitServer";
+import { checkDealVideoUrl } from "@/lib/videoUploadServer";
 import { isReservedSellerName } from "@/lib/sellerDisplay";
 import { TERMS_VERSION } from "@/lib/consent";
 import { normalizeTitle, checkTitle, checkDescription, DUPLICATE_TITLE_WARNING } from "@/lib/titleGuard";
@@ -159,6 +160,9 @@ export async function POST(req: NextRequest) {
   if ((images?.length ?? 0) > photoLimit) {
     return NextResponse.json({ error: photoLimitError(photoLimit), field: "images" }, { status: 400 });
   }
+  // 2026-10-02 PR-A: 영상은 브라우저가 Storage에 직접 올림 — 우리 버킷의 video-{uuid}.{ext}이고 실제로 있는지 확인(외부 URL 차단)
+  const videoCheck = await checkDealVideoUrl(supabaseAdmin, videoUrl);
+  if (!videoCheck.ok) return NextResponse.json({ error: videoCheck.error, field: "video" }, { status: videoCheck.status });
 
   const catRow = category
     ? (await supabaseAdmin.from("categories").select("id").eq("name", category).maybeSingle()).data

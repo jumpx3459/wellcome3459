@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { checkAdminAuth, requireRole } from "@/lib/adminAuth";
 import { writeAudit } from "@/lib/adminAudit";
 import { resolveSellerDisplay } from "@/lib/sellerDisplay";
+import { checkDealVideoUrl } from "@/lib/videoUploadServer";
 
 function getAdminClient() {
   return createClient(
@@ -50,6 +51,12 @@ export async function PATCH(req: NextRequest) {
   // 2026-10-01: 마감(status closed)은 감사 로그용으로 바꾸기 전 상태를 읽어 둠
   const before =
     status === "closed" ? (await supabaseAdmin.from("deals").select("title, status").eq("id", id).maybeSingle()).data : null;
+  // 2026-10-02 PR-A: 영상 URL 검사 — 이미 저장된 값과 같으면(기존 매물 수정) 그대로 통과, 비우기(null)도 허용
+  if (videoUrl !== undefined && videoUrl !== null && videoUrl !== "") {
+    const { data: current } = await supabaseAdmin.from("deals").select("video_url").eq("id", id).maybeSingle();
+    const videoCheck = await checkDealVideoUrl(supabaseAdmin, videoUrl, { unchanged: current?.video_url ?? null });
+    if (!videoCheck.ok) return NextResponse.json({ error: videoCheck.error, field: "video" }, { status: videoCheck.status });
+  }
   const update: Record<string, unknown> = {};
   if (remainingQty !== undefined) update.remaining_qty = remainingQty;
   if (closesAt !== undefined) update.closes_at = closesAt;
