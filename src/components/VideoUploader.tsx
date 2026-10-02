@@ -3,7 +3,8 @@
 import { useRef, useState } from "react";
 import { DEAL_LABEL_STYLE, FORM_HINT_STYLE } from "@/components/FormField";
 import { rem } from "@/lib/rem";
-import { uploadFormData } from "@/lib/uploadClient";
+import { requestVideoUploadUrl, uploadToSignedUrlWithProgress } from "@/lib/uploadClient";
+import { MAX_VIDEO_BYTES, VIDEO_EXT, VIDEO_TOO_LARGE_MESSAGE, VIDEO_TYPE_MESSAGE, videoContentType } from "@/lib/videoUpload";
 
 const MAX_SECONDS = 15;
 
@@ -40,6 +41,7 @@ export default function VideoUploader({
   const [duration, setDuration] = useState(0);
   const [trimStart, setTrimStart] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0); // 업로드 진행률(%)
 
   const trimVideoRef = useRef<HTMLVideoElement | null>(null);
   const fileRef = useRef<File | null>(null);
@@ -55,29 +57,42 @@ export default function VideoUploader({
     onChange(null);
   };
 
+  const fail = (message: string) => {
+    setError(message);
+    setPhase("error");
+  };
+
+  // 2026-10-02 PR-A: /api/upload(Vercel 함수, 요청 4.5MB 한도)를 거치지 않고 Storage에 직접 올림 —
+  // /api/upload/video-url에서 서명 업로드 URL을 받아 XHR로 PUT(진행률 표시). 저장 URL 형식은 예전과 같은 공개 URL.
+  // 크기(50MB)는 자른 뒤 최종 파일 기준으로 올리기 전에 막는다.
   const uploadFile = async (file: File | Blob, filename: string) => {
+    const contentType = videoContentType(file.type, filename);
+    if (!contentType) return fail(VIDEO_TYPE_MESSAGE);
+    if (file.size > MAX_VIDEO_BYTES) return fail(VIDEO_TOO_LARGE_MESSAGE);
+
+    setProgress(0);
     setPhase("uploading");
     try {
-      const formData = new FormData();
-      formData.append("video", file, filename);
-      const res = await uploadFormData(formData, adminKey);
+      const res = await requestVideoUploadUrl({ contentType, size: file.size, ext: VIDEO_EXT[contentType] }, adminKey);
       const data = await res.json();
-      if (data.videoUrl) {
-        setResultUrl(data.videoUrl);
-        onChange(data.videoUrl);
-        setPhase("done");
-      } else if (data.demo) {
+      if (data.demo) {
         // 로컬 데모 모드: 실제 저장은 안 되지만 미리보기는 그대로 보여줌
         const localUrl = URL.createObjectURL(file);
         setResultUrl(localUrl);
         onChange(localUrl);
         setPhase("done");
-      } else {
-        throw new Error();
+        return;
       }
+      if (!res.ok || !data.signedUrl || !data.publicUrl) {
+        return fail(data.error ?? "영상 업로드에 실패했어요. 잠시 후 다시 시도해주세요.");
+      }
+      const result = await uploadToSignedUrlWithProgress(data.signedUrl, file, contentType, setProgress);
+      if (!result.ok) return fail(result.error);
+      setResultUrl(data.publicUrl);
+      onChange(data.publicUrl);
+      setPhase("done");
     } catch {
-      setError("영상 업로드에 실패했어요. 잠시 후 다시 시도해주세요.");
-      setPhase("error");
+      fail("영상 업로드에 실패했어요. 잠시 후 다시 시도해주세요.");
     }
   };
 
@@ -265,7 +280,18 @@ export default function VideoUploader({
       )}
 
       {phase === "uploading" && (
-        <div className="text-sm text-gray500 py-4 text-center">영상 업로드 중...</div>
+        <div className="py-3">
+          <div className="text-sm text-gray500 text-center mb-2">영상 업로드 중... {progress}%</div>
+          <div
+            className="h-2 rounded-full bg-gray100 overflow-hidden"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={progress}
+          >
+            <div className="h-full rounded-full" style={{ width: `${progress}%`, background: "#FF6F0F", transition: "width 0.2s" }} />
+          </div>
+        </div>
       )}
 
       {phase === "done" && resultUrl && (

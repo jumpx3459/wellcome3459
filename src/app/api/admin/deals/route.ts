@@ -6,6 +6,7 @@ import { checkAdminAuth } from "@/lib/adminAuth";
 import { isStockType } from "@/lib/stockType";
 import { isDealPriceUnit, isLumpSum } from "@/lib/priceUnit";
 import { resolveSellerDisplay } from "@/lib/sellerDisplay";
+import { checkDealVideoUrl } from "@/lib/videoUploadServer";
 import { normalizeTitle, checkTitle, checkDescription, DUPLICATE_TITLE_WARNING } from "@/lib/titleGuard";
 import { isStorageType, isValidExpiryDate, storageSummary, priceWarnings, isMissingNewColumn, EXPIRY_REQUIRED_MESSAGE } from "@/lib/dealFields";
 
@@ -97,6 +98,9 @@ export async function POST(req: NextRequest) {
   // 이름이 DB에 없으면 예전엔 category_id/region_id가 비어서 알림 매칭이 안 되는 매물이 조용히 생겼음
   if (!catRow) return bad("없는 카테고리예요.", "category");
   if (!regRow) return bad("없는 지역이에요.", "region");
+  // 2026-10-02 PR-A: 영상 URL — 우리 버킷의 video-{uuid}.{ext}이고 실제로 있는지(판매 신청 승인으로 넘어온 기존 영상도 같은 검사)
+  const videoCheck = await checkDealVideoUrl(supabaseAdmin, videoUrl);
+  if (!videoCheck.ok) return NextResponse.json({ error: videoCheck.error, field: "video" }, { status: videoCheck.status });
 
   // 2026-09-30: 판매자 표시는 관리자 폼의 "판매자 표시" 선택이 기준(모두 대리 게시 = 중개).
   // 예전 폼처럼 값이 안 오면 판매 신청의 공개 설정·업체명을 따름. 임의 이름("… 판매자 #NNNN")은 폐지.
