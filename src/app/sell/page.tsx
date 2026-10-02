@@ -725,8 +725,8 @@ export default function SellPage() {
               </div>
             </div>
 
-            {/* 재고 총수량+단위 · 재고 위치(지역, 필수 — 알림 매칭 기준) · 연락처 — 2단(lg) 왼쪽에선 3칸 */}
-            <div className={`${FORM_ROW3} lg:grid-cols-3!`}>
+            {/* 재고 총수량+단위 · 재고 위치(지역, 필수 — 알림 매칭 기준) · 연락처 — 2단(lg) 왼쪽은 묶음 내용 680px 이상일 때만 3칸, 미만은 2칸(수량·지역 / 연락처) */}
+            <div className={`${FORM_ROW3} lg:@min-[680px]:grid-cols-3!`}>
               <div className="min-w-0">
                 <FieldLabel compact need="required" htmlFor="sell-quantity">재고 총수량</FieldLabel>
                 <div className="flex rounded-xl overflow-hidden bg-white" style={{ border: `1.5px solid ${quantityError ? BLOCK_COLOR : "#E4E7EB"}` }}>
@@ -783,7 +783,8 @@ export default function SellPage() {
                   <p className="mt-1" style={DEAL_HINT_STYLE}>물건이 있는 곳 — 이 지역 알림 회원에게 알림이 가요.</p>
                 )}
               </div>
-              <div className="min-w-0">
+              {/* 2단 왼쪽 2칸일 땐 연락처를 한 줄 전체로 — 반 칸이면 예시 문구("010-0000-0000 또는 02-000-0000")가 잘림(1024px) */}
+              <div className="min-w-0 lg:col-span-2 lg:@min-[680px]:col-span-1">
                 <FieldLabel compact need="required">연락처</FieldLabel>
                 <ContactPhoneInput
                   value={contactPhone}
@@ -1103,9 +1104,9 @@ export default function SellPage() {
         </div>
       </div>
 
-      {/* 오른쪽 — lg에서 화면에 고정(sticky). 사진·영상·안내가 화면보다 길면 그 부분만 안에서 스크롤, 등록 버튼은 항상 보임 */}
-      <div className="contents lg:@container lg:sticky lg:top-[calc(var(--sat)_+_16px)] lg:flex lg:flex-col lg:gap-4 lg:min-w-0 lg:max-h-[calc(100dvh_-_var(--sat)_-_var(--nav-bottom)_-_32px)]">
-        <div className="contents lg:flex lg:flex-col lg:gap-5 lg:min-h-0 lg:overflow-y-auto">
+      {/* 오른쪽 — lg에서 행 높이만큼 늘어나고(self-stretch) 페이지와 함께 스크롤. 등록 버튼(+ 오류 문구)만 맨 아래(mt-auto)에서 sticky bottom — 하단 탭(--nav-bottom, safe-area 포함) + 12px 위에 고정 */}
+      <div className="contents lg:@container lg:flex lg:flex-col lg:gap-4 lg:min-w-0 lg:self-stretch">
+        <div className="contents lg:flex lg:flex-col lg:gap-5">
           {/* ② 사진·영상 */}
           <section className="order-2">
             <FormSectionTitle hint="사진이 있으면 더 빨리 연결돼요">사진·영상</FormSectionTitle>
@@ -1125,9 +1126,9 @@ export default function SellPage() {
           </div>
         </div>
 
-        {/* 2026-10-02: PC형(폼 폭 2칸 이상)이면 하단 고정 버튼 대신 인라인 버튼(lg 2단에선 오른쪽 맨 아래) — 오류 문구는 버튼 바로 위 */}
+        {/* 2026-10-02: PC형(폼 폭 2칸 이상)이면 하단 고정 버튼 대신 인라인 버튼(lg 2단에선 오른쪽 맨 아래 sticky) — 오류 문구는 버튼 바로 위 */}
         {wideForm && (
-          <div className="order-5 lg:flex-shrink-0">
+          <div className="order-5 lg:mt-auto lg:sticky lg:bottom-[calc(var(--nav-bottom)_+_12px)] lg:z-10">
             {error && <FloatingCTANote>{error}</FloatingCTANote>}
             <button
               onClick={() => submit()}
