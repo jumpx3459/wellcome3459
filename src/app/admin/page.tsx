@@ -33,6 +33,7 @@ import { DEAL_PRICE_UNITS, LUMP_SUM, isDealPriceUnit, isLumpSum, priceUnitSuffix
 import { UI_SECTION, UI_CARD_TITLE, UI_LINK, BTN_CLASS, btnStyle } from "@/lib/uiText";
 import { FieldLabel, FORM_INPUT_FONT_SIZE } from "@/components/FormField";
 import { RatioMetric, DailyBars, FunnelBars, InlineBar, BIG_NUM, LABEL, CARD } from "@/components/admin/DashboardViz";
+import AdminListCard from "@/components/admin/AdminListCard";
 
 // 2026-09-30 (커밋 K): /api/admin/kpi-daily 한 줄 (kpi_daily 테이블 일부 컬럼)
 type KpiDailyRow = {
@@ -585,6 +586,20 @@ function AdminDashboard({
     return true;
   });
 
+  // 2026-10-02 (PR-C1): 목록 카드 정렬 — 조치 필요 먼저, 같은 묶음 안은 API 순서(최신순) 그대로(sort는 안정 정렬).
+  // 관심 표시: 카드의 "미연락" 배지 기준(미연락 + 결과 진행중). 구매 요청: 미연락 → 연락했지만 매칭 결과 대기 → 끝난 건.
+  // 파트너 신청: 심사중 먼저. 판매자 신청은 API가 대기(pending)만 주고, 진행 중 매물은 API가 마감 임박 순이라 그대로.
+  // 카드 제목 "n건 미연락"도 같은 기준으로 셈(배지·정렬과 숫자가 어긋나지 않게)
+  const leadNeedsAction = (i: Interest) => !i.contacted && i.outcome === "pending";
+  const sortedInterests = [...filteredInterests].sort(
+    (a, b) => Number(!leadNeedsAction(a)) - Number(!leadNeedsAction(b))
+  );
+  const buyRank = (b: BuyRequest) => (!b.contacted ? 0 : b.outcome === "pending" ? 1 : 2);
+  const sortedBuyRequests = [...buyRequests].sort((a, b) => buyRank(a) - buyRank(b));
+  const sortedPartnerRequests = [...partnerRequests].sort(
+    (a, b) => Number(a.status !== "pending") - Number(b.status !== "pending")
+  );
+
   const exportMembersCsv = () => {
     downloadCsv(`members_${new Date().toISOString().slice(0, 10)}.csv`, [
       ["전화번호", "회원번호", "상호명", "사업자여부", "사업자인증", "구독여부", "카테고리", "지역", "가입일"],
@@ -814,26 +829,21 @@ function AdminDashboard({
   // 2026-10-01 (커밋 J): 목록 카드를 변수로 — 📱·자동은 기존 1열 순서 그대로, 💻는 세로로 쌓는 3단(CSS columns)에
   // 중요도 순(재고문의(관심 표시) → 판매 신청 → 진행 중 매물 → 파트너 신청 → 실적 → 찾습니다 → 회원 → 관리자)으로 배치.
   // 예전 3칸 격자는 행 높이가 가장 긴 카드에 맞춰져 빈칸이 컸음. 💻에서 0건 카드는 한 줄(제목 + "없어요")로 줄임.
+  // 2026-10-02 (PR-C1): 목록 카드는 AdminListCard — 안쪽 스크롤(maxHeight 480) 없이 기본 5건 + [전체 보기].
+  // 회원 목록만 기존 20건씩 더보기를 그대로 두고 5건 줄이기는 안 씀(limit null).
   const membersBlock = (
     <>
-      <div
+      <AdminListCard
         className={
           isDesktop
-            ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3 overflow-y-auto"
+            ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
             : "px-5 pt-4 flex flex-col gap-3"
         }
-        style={isDesktop ? { maxHeight: 480 } : undefined}
-      >
-        <button
-          type="button"
-          onClick={() => setMembersOpen((v) => !v)}
-          className="w-full flex items-center justify-between"
-        >
-          <span style={UI_SECTION}>최근 가입 회원 ({members.length}명)</span>
-          <span className="text-sm font-bold text-gray500">{membersOpen ? "접기 ▲" : "펼치기 ▼"}</span>
-        </button>
-
-        {membersOpen && (
+        title={<span style={UI_SECTION}>최근 가입 회원 ({members.length}명)</span>}
+        open={membersOpen}
+        onToggle={() => setMembersOpen((v) => !v)}
+        limit={null}
+        toolbar={
         <>
         <input
           value={memberSearch}
@@ -868,13 +878,17 @@ function AdminDashboard({
         <button onClick={exportMembersCsv} className="self-end text-xs font-bold text-navy underline">
           CSV 내보내기 ({filteredMembers.length}건)
         </button>
-
-        {!loading && filteredMembers.length === 0 && (
-          <div className="text-center text-gray500 py-6 text-sm">
-            {members.length === 0 ? "아직 가입한 회원이 없어요." : "검색/필터 결과가 없어요."}
-          </div>
-        )}
-        {filteredMembers.slice(0, memberShowCount).map((m) => (
+        </>
+        }
+        empty={
+          !loading && (
+            <div className="text-center text-gray500 py-6 text-sm">
+              {members.length === 0 ? "아직 가입한 회원이 없어요." : "검색/필터 결과가 없어요."}
+            </div>
+          )
+        }
+        items={filteredMembers.slice(0, memberShowCount)}
+        renderItem={(m) => (
           <div key={m.id} className="bg-white border border-gray200 rounded-2xl px-4 py-3.5">
             {/* 2026-09-28: 데스크톱 3열 레이아웃의 좁은 컬럼 폭에서 전화번호+뱃지가
                 줄바꿈 없이 한 줄로 강제돼 카드 자체가 옆으로 넘쳤음(overflow-y만
@@ -973,45 +987,39 @@ function AdminDashboard({
               )}
             </div>
           </div>
-        ))}
-        {filteredMembers.length > memberShowCount && (
-          <button
-            type="button"
-            onClick={() => setMemberShowCount((n) => n + 20)}
-            className="text-sm font-bold text-navy border-2 border-gray200 rounded-xl py-2.5"
-          >
-            더보기 ({filteredMembers.length - memberShowCount}명 더 있음)
-          </button>
         )}
-        </>
-        )}
-      </div>
+        after={
+          filteredMembers.length > memberShowCount && (
+            <button
+              type="button"
+              onClick={() => setMemberShowCount((n) => n + 20)}
+              className="text-sm font-bold text-navy border-2 border-gray200 rounded-xl py-2.5"
+            >
+              더보기 ({filteredMembers.length - memberShowCount}명 더 있음)
+            </button>
+          )
+        }
+      />
     </>
   );
   const leadsBlock = (
     <>
-      <div
+      <AdminListCard
         id="leads"
         className={
           isDesktop
-            ? "col-span-2 bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3 overflow-y-auto"
+            ? "col-span-2 bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
             : "px-5 pt-4 flex flex-col gap-3"
         }
-        style={isDesktop ? { maxHeight: 480 } : undefined}
-      >
-        <button
-          type="button"
-          onClick={() => setLeadsOpen((v) => !v)}
-          className="w-full flex items-center justify-between"
-        >
+        title={
           <span style={UI_SECTION}>
-            관심 표시한 회원 <span style={{ ...LABEL, fontWeight: 400 }}>({interests.filter((i) => !i.contacted).length}건 미연락)</span>
+            관심 표시한 회원 <span style={{ ...LABEL, fontWeight: 400 }}>({interests.filter(leadNeedsAction).length}건 미연락)</span>
           </span>
-          <span className="text-sm font-bold text-gray500">{leadsOpen ? "접기 ▲" : "펼치기 ▼"}</span>
-        </button>
-        {leadsOpen && (
+        }
+        open={leadsOpen}
+        onToggle={() => setLeadsOpen((v) => !v)}
+        toolbar={
         <>
-
         <input
           value={leadSearch}
           onChange={(e) => setLeadSearch(e.target.value)}
@@ -1068,13 +1076,17 @@ function AdminDashboard({
             {bulkProcessing ? "처리 중..." : `선택 ${selectedLeads.size}건 연락완료 처리`}
           </button>
         )}
-
-        {!loading && filteredInterests.length === 0 && (
-          <div className="text-center text-gray500 py-6 text-sm">
-            {interests.length === 0 ? "아직 관심 표시가 없어요." : "검색/필터 결과가 없어요."}
-          </div>
-        )}
-        {filteredInterests.map((i) => (
+        </>
+        }
+        empty={
+          !loading && (
+            <div className="text-center text-gray500 py-6 text-sm">
+              {interests.length === 0 ? "아직 관심 표시가 없어요." : "검색/필터 결과가 없어요."}
+            </div>
+          )
+        }
+        items={sortedInterests}
+        renderItem={(i) => (
           <div
             key={i.id}
             className="bg-white border rounded-2xl px-4 py-3.5"
@@ -1209,10 +1221,8 @@ function AdminDashboard({
             )}
             </div>
           </div>
-        ))}
-        </>
         )}
-      </div>
+      />
     </>
   );
   const newDealBlock = (
@@ -1268,64 +1278,46 @@ function AdminDashboard({
   );
   const activeDealsBlock = (
     <>
-      <div
+      <AdminListCard
         id="active-deals"
         className={
           isDesktop
-            ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3 overflow-y-auto"
+            ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
             : "px-5 pb-6 flex flex-col gap-3"
         }
-        style={isDesktop ? { maxHeight: 480 } : undefined}
-      >
-        <div className="text-sm font-bold text-gray500">
-          진행 중인 매물 ({activeDeals.length})
-        </div>
-        {!loading && activeDeals.length === 0 && (
-          <div className="text-center text-gray500 py-6 text-sm">진행 중인 매물이 없어요.</div>
+        title={<div className="text-sm font-bold text-gray500">진행 중인 매물 ({activeDeals.length})</div>}
+        empty={!loading && <div className="text-center text-gray500 py-6 text-sm">진행 중인 매물이 없어요.</div>}
+        listClassName="flex flex-col gap-3"
+        items={activeDeals}
+        renderItem={(d) => (
+          <ActiveDealCard
+            key={d.id}
+            deal={d}
+            adminKey={adminKey}
+            onChanged={load}
+            canDelete={adminRole === "최고관리자"}
+            onClosed={(title) => showDashToast(`"${title}" 마감했어요 · 매물 상세에서 "마감됨"으로 볼 수 있어요`)}
+          />
         )}
-        <div className="flex flex-col gap-3">
-          {activeDeals.map((d) => (
-            <ActiveDealCard
-              key={d.id}
-              deal={d}
-              adminKey={adminKey}
-              onChanged={load}
-              canDelete={adminRole === "최고관리자"}
-              onClosed={(title) => showDashToast(`"${title}" 마감했어요 · 매물 상세에서 "마감됨"으로 볼 수 있어요`)}
-            />
-          ))}
-        </div>
-      </div>
+      />
     </>
   );
   const pendingSellersBlock = (
     <>
-      <div
+      <AdminListCard
         id="pending-sellers"
         className={
           isDesktop
-            ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3 overflow-y-auto"
+            ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
             : "px-5 pb-8 flex flex-col gap-3"
         }
-        style={isDesktop ? { maxHeight: 480 } : undefined}
-      >
-        <button
-          type="button"
-          onClick={() => setSellerReqOpen((v) => !v)}
-          className="w-full flex items-center justify-between"
-        >
-          <span className="text-sm font-bold text-gray500">대기 중인 판매자 신청 ({requests.length})</span>
-          <span className="text-sm font-bold text-gray500">{sellerReqOpen ? "접기 ▲" : "펼치기 ▼"}</span>
-        </button>
-        {sellerReqOpen && (
-        <>
-
-        {loading && <div className="text-center text-gray500 py-8">불러오는 중...</div>}
-        {!loading && requests.length === 0 && (
-          <div className="text-center text-gray500 py-8 text-sm">대기 중인 신청이 없어요.</div>
-        )}
-
-        {requests.map((r) => (
+        title={<span className="text-sm font-bold text-gray500">대기 중인 판매자 신청 ({requests.length})</span>}
+        open={sellerReqOpen}
+        onToggle={() => setSellerReqOpen((v) => !v)}
+        toolbar={loading && <div className="text-center text-gray500 py-8">불러오는 중...</div>}
+        empty={!loading && <div className="text-center text-gray500 py-8 text-sm">대기 중인 신청이 없어요.</div>}
+        items={requests}
+        renderItem={(r) => (
           <div key={r.id} className="bg-white border border-gray200 rounded-2xl px-4 py-4">
             <div className="flex items-center gap-1.5 text-xs font-bold text-gray500">
               <span>{categoryIcons[r.categories?.name ?? ""] ?? "🗂️"}</span>
@@ -1450,35 +1442,29 @@ function AdminDashboard({
               />
             )}
           </div>
-        ))}
-        </>
         )}
-      </div>
+      />
     </>
   );
   const partnerReqBlock = (
     <>
-      <section
+      <AdminListCard
+        as="section"
         className={
           isDesktop
-            ? "bg-white border border-gray200 rounded-2xl p-4 overflow-y-auto"
+            ? "bg-white border border-gray200 rounded-2xl p-4"
             : "mt-8 px-5"
         }
-        style={isDesktop ? { maxHeight: 480 } : undefined}
-      >
-        <button
-          type="button"
-          onClick={() => setPartnerReqOpen((v) => !v)}
-          className="w-full flex items-center justify-between"
-        >
+        title={
           <h2 className="text-sm font-bold text-navy">
             🏅 공식 점핑파트너 신청 ({partnerRequests.filter((r) => r.status === "pending").length}건 대기)
           </h2>
-          <span className="text-sm font-bold text-gray500">{partnerReqOpen ? "접기 ▲" : "펼치기 ▼"}</span>
-        </button>
-        {partnerReqOpen && (
-        <div className="mt-3 flex flex-col gap-2">
-          {partnerRequests.map((r) => (
+        }
+        open={partnerReqOpen}
+        onToggle={() => setPartnerReqOpen((v) => !v)}
+        listClassName="mt-3 flex flex-col gap-2"
+        items={sortedPartnerRequests}
+        renderItem={(r) => (
             <div key={r.id} className="bg-white border border-gray200 rounded-2xl px-4 py-4 text-sm">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-bold text-gray900">{r.members?.company_name ?? r.members?.phone ?? r.member_id}</span>
@@ -1516,10 +1502,8 @@ function AdminDashboard({
                 </div>
               )}
             </div>
-          ))}
-        </div>
         )}
-      </section>
+      />
     </>
   );
   const partnersOverviewBlock = (
@@ -1527,30 +1511,24 @@ function AdminDashboard({
       {/* 2026-09-27: 운영자가 승인된 파트너 전원의 추천 실적을 한눈에 보는
           집계 대시보드 — 위 섹션(신청 승인/거절)과는 별개로, 이미 승인된
           파트너들의 성과 비교용. 승인 즉시 여기 0건으로 나타남. */}
-      <section
+      <AdminListCard
+        as="section"
         className={
           isDesktop
-            ? "bg-white border border-gray200 rounded-2xl p-4 overflow-y-auto"
+            ? "bg-white border border-gray200 rounded-2xl p-4"
             : "mt-8 px-5"
         }
-        style={isDesktop ? { maxHeight: 480 } : undefined}
-      >
-        <button
-          type="button"
-          onClick={() => setPartnersOverviewOpen((v) => !v)}
-          className="w-full flex items-center justify-between"
-        >
+        title={
           <h2 className="text-sm font-bold text-navy">
             📊 점핑파트너 실적 ({partnersOverview.length}명)
           </h2>
-          <span className="text-sm font-bold text-gray500">{partnersOverviewOpen ? "접기 ▲" : "펼치기 ▼"}</span>
-        </button>
-        {partnersOverviewOpen && (
-          partnersOverview.length === 0 ? (
-            <p className="mt-3 text-sm text-gray500">아직 승인된 파트너가 없어요.</p>
-          ) : (
-            <div className="mt-3 flex flex-col gap-2">
-              {partnersOverview.map((p, i) => (
+        }
+        open={partnersOverviewOpen}
+        onToggle={() => setPartnersOverviewOpen((v) => !v)}
+        empty={<p className="mt-3 text-sm text-gray500">아직 승인된 파트너가 없어요.</p>}
+        listClassName="mt-3 flex flex-col gap-2"
+        items={partnersOverview}
+        renderItem={(p, i) => (
                 <div key={p.id} className="bg-white border border-gray200 rounded-2xl px-4 py-3.5 text-sm">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-bold text-gray900">
@@ -1582,42 +1560,29 @@ function AdminDashboard({
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )
         )}
-      </section>
+      />
     </>
   );
   const buyRequestsBlock = (
     <>
-      <div
+      <AdminListCard
         id="buy-requests"
         className={
           isDesktop
-            ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3 overflow-y-auto"
+            ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
             : "px-5 pb-8 flex flex-col gap-3"
         }
-        style={isDesktop ? { maxHeight: 480 } : undefined}
-      >
-        <button
-          type="button"
-          onClick={() => setBuyReqOpen((v) => !v)}
-          className="w-full flex items-center justify-between"
-        >
+        title={
           <span className="text-sm font-bold text-gray500">
             🔍 이런 재고 찾습니다 ({buyRequests.filter((b) => !b.contacted).length}건 미연락)
           </span>
-          <span className="text-sm font-bold text-gray500">{buyReqOpen ? "접기 ▲" : "펼치기 ▼"}</span>
-        </button>
-        {buyReqOpen && (
-        <>
-
-        {!loading && buyRequests.length === 0 && (
-          <div className="text-center text-gray500 py-6 text-sm">등록된 구매 희망이 없어요.</div>
-        )}
-
-        {buyRequests.map((b) => (
+        }
+        open={buyReqOpen}
+        onToggle={() => setBuyReqOpen((v) => !v)}
+        empty={!loading && <div className="text-center text-gray500 py-6 text-sm">등록된 구매 희망이 없어요.</div>}
+        items={sortedBuyRequests}
+        renderItem={(b) => (
           <div key={b.id} className="bg-white border border-gray200 rounded-2xl px-4 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-xs font-bold text-gray500">
@@ -1643,7 +1608,7 @@ function AdminDashboard({
                   바로 전화가 걸리게 함. */}
               {b.contact_phone ? (
                 <a href={`tel:${b.contact_phone}`} className="underline font-bold" style={{ color: "#0B2540" }}>
-                  📞 {b.contact_phone}
+                  📞 {formatPhone(b.contact_phone)}
                 </a>
               ) : (
                 <span>연락처 삭제됨 (수집 90일 경과)</span>
@@ -1716,10 +1681,8 @@ function AdminDashboard({
               )}
             </div>
           </div>
-        ))}
-        </>
         )}
-      </div>
+      />
     </>
   );
   const adminsBlock = adminRole === "최고관리자" ? (
@@ -2478,6 +2441,8 @@ function ActiveDealCard({
               type="number"
               inputMode="numeric"
               className="w-20 border-2 border-gray200 rounded-lg px-2 py-1.5 text-sm"
+              // 2026-10-02 (PR-C1): 포커스된 number 칸 위에서 휠을 굴리면 값이 바뀜 → 휠 시 포커스 해제
+              onWheel={(e) => e.currentTarget.blur()}
               value={remainingQty}
               onChange={(e) => setRemainingQty(e.target.value)}
             />
@@ -3071,6 +3036,7 @@ function DealForm({
                   type="number"
                   inputMode="numeric"
                   min={1}
+                  onWheel={(e) => e.currentTarget.blur()} // 휠로 값 바뀜 방지 (재고 칸과 같음)
                   className={`${inputCls("minOrderQty")} pr-20`}
                   placeholder="예: 10"
                   value={minOrderQty}
