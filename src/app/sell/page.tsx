@@ -1104,7 +1104,7 @@ export default function SellPage() {
         </div>
       </div>
 
-      {/* 오른쪽 — lg에서 행 높이만큼 늘어나고(self-stretch) 페이지와 함께 스크롤. 등록 버튼(+ 오류 문구)만 맨 아래(mt-auto)에서 sticky bottom — 하단 탭(--nav-bottom, safe-area 포함) + 12px 위에 고정 */}
+      {/* 오른쪽 — lg에서 행 높이만큼 늘어나고(self-stretch) 페이지와 함께 스크롤. 등록 버튼(+ 오류 문구)만 맨 아래(mt-auto)에서 sticky bottom:0 — 흰 배경 + 아래 padding(--nav-bottom + 12px)으로 버튼은 탭바 12px 위, 그 아래 틈까지 배경이 채워 비침 방지 */}
       <div className="contents lg:@container lg:flex lg:flex-col lg:gap-4 lg:min-w-0 lg:self-stretch">
         <div className="contents lg:flex lg:flex-col lg:gap-5">
           {/* ② 사진·영상 */}
@@ -1128,7 +1128,7 @@ export default function SellPage() {
 
         {/* 2026-10-02: PC형(폼 폭 2칸 이상)이면 하단 고정 버튼 대신 인라인 버튼(lg 2단에선 오른쪽 맨 아래 sticky) — 오류 문구는 버튼 바로 위 */}
         {wideForm && (
-          <div className="order-5 lg:mt-auto lg:sticky lg:bottom-[calc(var(--nav-bottom)_+_12px)] lg:z-10">
+          <div className="order-5 lg:mt-auto lg:sticky lg:bottom-0 lg:z-10 lg:bg-white lg:pt-2 lg:pb-[calc(var(--nav-bottom)_+_12px)]">
             {error && <FloatingCTANote>{error}</FloatingCTANote>}
             <button
               onClick={() => submit()}
