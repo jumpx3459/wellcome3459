@@ -1384,6 +1384,7 @@ function AdminDashboard({
               <video
                 src={r.video_url}
                 controls
+                playsInline
                 className="w-full rounded-lg mt-2 bg-black"
                 style={{ maxHeight: "180px" }}
               />
@@ -2475,6 +2476,7 @@ function ActiveDealCard({
             <label className="text-xs font-bold text-gray500">재고</label>
             <input
               type="number"
+              inputMode="numeric"
               className="w-20 border-2 border-gray200 rounded-lg px-2 py-1.5 text-sm"
               value={remainingQty}
               onChange={(e) => setRemainingQty(e.target.value)}
@@ -2722,7 +2724,7 @@ function DealForm({
     const errs: Partial<Record<DealField, string>> = {};
     const deal = parsePriceInput(dealPrice);
     const orig = parsePriceInput(originalPrice);
-    const qty = Number(totalQty);
+    const qty = parsePriceInput(totalQty) ?? 0;
     if (!title.trim()) errs.title = "매물명을 입력해주세요.";
     else {
       const block = checkTitle(normalizeTitle(title, { admin: true }), { admin: true }).block;
@@ -2800,7 +2802,7 @@ function DealForm({
           region,
           originalPrice: orig,
           dealPrice: deal,
-          totalQty: Number(totalQty),
+          totalQty: parsePriceInput(totalQty),
           quantityUnit,
           priceUnit,
           minOrderQty: !lumpSum && minOrderQty ? Number(minOrderQty) : null,
@@ -2860,7 +2862,7 @@ function DealForm({
     }`;
 
   return (
-    <div className="@container mt-3 bg-gray100 rounded-xl p-3.5 flex flex-col gap-3 w-full max-w-[960px] mx-auto">
+    <div className="@container mt-3 bg-gray100 rounded-xl p-3.5 flex flex-col gap-3 w-full max-w-[720px] mx-auto">
       <p className="text-[0.7778rem] text-gray500">
         <span className="text-orange font-bold">*</span> 필수 항목
       </p>
@@ -2952,8 +2954,9 @@ function DealForm({
                 />
                 <span className="flex-shrink-0 flex items-center font-bold whitespace-nowrap" style={{ fontSize: rem(15), color: "#0B2540", padding: "0 12px 0 4px" }}>{priceUnitSuffix(priceUnit)}</span>
               </div>
+              <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }}>판매 단가와 같은 단위로 적어주세요</p>
             </DealFormField>
-            <div className="min-w-0" data-field="discount">
+            <div className="min-w-0 @min-[560px]:col-span-2" data-field="discount">
               <p className="font-bold mb-1" style={{ fontSize: rem(15), color: "#374151" }}>할인율</p>
               <DiscountHint original={parsePriceInput(originalPrice)} deal={parsePriceInput(dealPrice)} />
               {!(parsePriceInput(originalPrice) && parsePriceInput(dealPrice)) && (
@@ -2969,12 +2972,11 @@ function DealForm({
               <div className={groupCls("totalQty")}>
                 <input
                   id="deal-totalQty"
-                  type="number"
+                  type="text"
                   inputMode="numeric"
-                  min={1}
                   className={GROUP_INPUT_CLS}
                   placeholder="예: 100"
-                  value={totalQty}
+                  value={formatPriceInput(totalQty)}
                   onChange={(e) => {
                     setTotalQty(e.target.value);
                     clearErr("totalQty");

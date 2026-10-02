@@ -23,7 +23,7 @@ export default function Toast({ message }: { message: string | null }) {
       style={{ bottom: "80px", transform: "translateX(-50%)", opacity: message ? 1 : 0 }}
     >
       <div
-        className="text-white text-sm font-bold rounded-full px-5 py-3 shadow-lg text-center whitespace-nowrap"
+        className="text-white text-sm font-bold rounded-full px-5 py-3 shadow-lg text-center max-w-[calc(100vw-32px)] break-keep"
         style={{ background: "rgba(11,37,64,0.92)" }}
       >
         {message || ""}
