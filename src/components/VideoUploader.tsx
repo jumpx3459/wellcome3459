@@ -3,6 +3,7 @@
 import { useEffect, useId, useImperativeHandle, useRef, useState, type Ref } from "react";
 import { DEAL_LABEL_STYLE, FORM_HINT_STYLE } from "@/components/FormField";
 import { rem } from "@/lib/rem";
+import { usePointerFine } from "@/lib/usePointerFine";
 import { requestVideoUploadUrl, uploadToSignedUrlWithProgress } from "@/lib/uploadClient";
 import { MAX_VIDEO_BYTES, VIDEO_EXT, VIDEO_TOO_LARGE_MESSAGE, VIDEO_TYPE_MESSAGE, videoContentType } from "@/lib/videoUpload";
 
@@ -63,6 +64,7 @@ export default function VideoUploader({
   ref?: Ref<VideoUploaderHandle>;
 }) {
   const [phase, setPhase] = useState<Phase>(initialUrl ? "done" : "idle");
+  const pointerFine = usePointerFine();
   const [srcUrl, setSrcUrl] = useState<string | null>(null); // 원본(트림 대상) 미리보기
   const [resultUrl, setResultUrl] = useState<string | null>(initialUrl ?? null); // 업로드 완료된 최종 영상
   const [duration, setDuration] = useState(0);
@@ -287,7 +289,8 @@ export default function VideoUploader({
           className="flex flex-col items-center justify-center border-2 border-dashed border-gray200 rounded-xl text-gray500 text-sm cursor-pointer"
           style={{ minHeight: "72px" }}
         >
-          🎬 탭해서 영상 선택
+          {/* 2026-10-02 PR-B: PC는 "클릭" 문구만(영상 끌어다 놓기는 없음) */}
+          {pointerFine ? "🎬 클릭해서 영상 선택" : "🎬 탭해서 영상 선택"}
         </label>
       )}
 

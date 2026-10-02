@@ -3486,7 +3486,7 @@ function NoticeForm({ adminKey, onDone }: { adminKey: string; onDone: () => void
         </div>
       </div>
 
-      <ImageUploader ref={imageUploaderRef} adminKey={adminKey} onChange={setImages} onStatusChange={setPhotoStatus} label="사진" hint="부동산·설비 현장 사진" />
+      <ImageUploader ref={imageUploaderRef} adminKey={adminKey} onChange={setImages} onStatusChange={setPhotoStatus} max={MAX_PHOTO_SLOTS} label="사진" hint={`부동산·설비 현장 사진, 최대 ${MAX_PHOTO_SLOTS}장`} />
 
       {error && <div className="text-orange font-medium" style={{ fontSize: rem(15) }}>{error}</div>}
 
