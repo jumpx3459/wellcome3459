@@ -86,12 +86,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     // 2026-10-01 fix/form-overflow: overflow-x-hidden은 이 div를 스크롤 영역으로 만들어, 화면보다 넓은 요소가 있으면
     // 입력칸을 누를 때 브라우저가 이 div를 옆으로 스크롤(왼쪽 흰 띠·오른쪽 잘림·흔들림). clip은 스크롤 영역이 아니라
     // 옆으로 밀릴 수 없음 — 지원 안 하는 옛 브라우저는 인라인 값이 무시되고 class의 hidden이 적용됨.
-    // /sell은 PC에서 폼을 넓게(최대 960px) 쓰도록 이 칸도 넓힘(sm 680px · lg 1008px). 하단 탭·고정 버튼은 그대로 가운데 448px.
+    // /sell은 PC에서 폼을 넓게 쓰도록 이 칸도 넓힘(sm 680px · lg 1160px — 2026-10-02 lg 2단, 내용 1120px). 하단 탭·고정 버튼은 그대로 가운데 448px.
     <div
       className={
         isAdmin || isEnglish
           ? "min-h-screen overflow-x-hidden"
-          : `mx-auto max-w-md min-h-screen bg-white shadow-sm overflow-x-hidden${isSellPage ? " sm:max-w-[680px] lg:max-w-[1008px]" : ""}`
+          : `mx-auto max-w-md min-h-screen bg-white shadow-sm overflow-x-hidden${isSellPage ? " sm:max-w-[680px] lg:max-w-[1160px]" : ""}`
       }
       style={{ overflowX: "clip" }}
     >
