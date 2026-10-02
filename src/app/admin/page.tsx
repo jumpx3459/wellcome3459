@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CheckCircle } from "lucide-react";
 import { mockCategories, mockRegions, categoryIcons, quantityUnits } from "@/lib/mockData";
-import ImageUploader from "@/components/ImageUploader";
+import ImageUploader, { type ImageUploadStatus, type ImageUploaderHandle } from "@/components/ImageUploader";
 import VideoUploader, { type VideoUploadStatus, type VideoUploaderHandle } from "@/components/VideoUploader";
-import VideoNotUploadedSheet, { VIDEO_UPLOADING_LABEL, videoNotUploaded } from "@/components/VideoNotUploadedSheet";
+import VideoNotUploadedSheet, { PHOTO_FAILED_DESCRIPTION, uploadingLabel, videoNotUploaded } from "@/components/VideoNotUploadedSheet";
 import SellerDisplayPicker from "@/components/SellerDisplayPicker";
 import { publicSellerName } from "@/lib/sellerDisplay";
 import { isTestTitle } from "@/lib/categoryAvg";
@@ -2263,6 +2263,11 @@ function ActiveDealCard({
   const [videoStatus, setVideoStatus] = useState<VideoUploadStatus>(deal.video_url ? "done" : "idle");
   const [videoSheet, setVideoSheet] = useState(false);
   const videoUploaderRef = useRef<VideoUploaderHandle>(null);
+  // 2026-10-02 PR-B: 새 사진 올리는 중엔 저장 막고, 실패한 새 사진이 있으면 시트로 확인. [빼고 저장]은 실패한 새 사진만 빼고 기존 사진(deal.images)은 그대로
+  const [photoStatus, setPhotoStatus] = useState<ImageUploadStatus>({ uploading: 0, failed: 0 });
+  const [photoSheet, setPhotoSheet] = useState(false);
+  const imageUploaderRef = useRef<ImageUploaderHandle>(null);
+  const busyLabel = uploadingLabel(photoStatus.uploading > 0, videoStatus === "uploading");
   // 2026-09-30: 판매자 표시 수정 — 지금 값에서 시작 (예전 임의 이름·"비공개 판매자"는 비공개)
   const initialSellerName = publicSellerName(deal);
   const [seller, setSeller] = useState({ isPublic: initialSellerName !== null, companyName: initialSellerName ?? "" });
@@ -2304,8 +2309,12 @@ function ActiveDealCard({
   };
 
   // skipVideo: 새 영상이 안 올라간 채 저장 — skipVideoUrl(기존 영상 유지면 그 URL, 아니면 null)로 저장
-  const saveAll = async (skipVideo = false, skipVideoUrl: string | null = null) => {
-    if (videoStatus === "uploading") return;
+  const saveAll = async (skipVideo = false, skipVideoUrl: string | null = null, skipPhotos = false) => {
+    if (busyLabel) return;
+    if (!skipPhotos && photoStatus.failed > 0) {
+      setPhotoSheet(true);
+      return;
+    }
     if (!skipVideo && videoNotUploaded(videoStatus)) {
       setVideoSheet(true);
       return;
@@ -2474,18 +2483,19 @@ function ActiveDealCard({
             {editingPhotos ? "사진 관리 닫기" : `📷 사진 관리 (${images.length}장)`}
           </button>
 
-          {editingPhotos && (
-            <div className="mt-2.5">
+          {/* 2026-10-02 PR-B: 닫아도 업로드·실패 상태가 이어지게 숨기기만(예전엔 닫으면 업로더가 사라져 올리던 사진이 조용히 빠짐) — 영상 관리와 같은 방식 */}
+          <div className="mt-2.5" hidden={!editingPhotos}>
               <ImageUploader
+                ref={imageUploaderRef}
                 adminKey={adminKey}
                 initialUrls={images}
                 onChange={setImages}
+                onStatusChange={setPhotoStatus}
                 max={MAX_PHOTO_SLOTS}
                 label="매물 사진"
                 hint="탭해서 사진 추가 · × 로 삭제 후 아래 '변경사항 저장'으로 반영"
               />
-            </div>
-          )}
+          </div>
 
           {/* 2026-09-26: 영상은 등록 시(DealForm)에만 넣을 수 있고 이후엔 있는지
               없는지조차 알 방법이 없었음 — 사진 관리와 동일한 토글 패턴으로 추가,
@@ -2518,11 +2528,29 @@ function ActiveDealCard({
 
           <button
             onClick={() => saveAll()}
-            disabled={saving || videoStatus === "uploading"}
+            disabled={saving || busyLabel !== null}
             className="w-full text-sm font-bold text-white bg-navy rounded-lg py-2.5 mt-3 disabled:opacity-50"
           >
-            {saving ? "저장 중..." : videoStatus === "uploading" ? VIDEO_UPLOADING_LABEL : "변경사항 저장"}
+            {saving ? "저장 중..." : busyLabel ?? "변경사항 저장"}
           </button>
+          <VideoNotUploadedSheet
+            open={photoSheet}
+            title={`새 사진 ${photoStatus.failed}장이 올라가지 않았어요`}
+            description="기존 사진은 그대로 있어요. 올라가지 않은 새 사진을 다시 올려보거나, 그 사진만 빼고 저장해주세요."
+            reselectLabel="다시 시도"
+            skipLabel="빼고 저장"
+            onClose={() => setPhotoSheet(false)}
+            onReselect={() => {
+              setEditingPhotos(true);
+              imageUploaderRef.current?.retryFailed();
+              setPhotoSheet(false);
+            }}
+            onSkip={() => {
+              setPhotoSheet(false);
+              imageUploaderRef.current?.removeFailed();
+              saveAll(false, null, true);
+            }}
+          />
           {/* 2026-10-02 PR-A2: 기존 영상이 있는 매물에서 새 영상이 안 올라갔으면 기존 영상을 지키고 저장(예전엔 ×로 비운 뒤라 null로 지워짐).
               기존 영상을 지우는 건 ×로 비우고(새 영상 고르지 않은 채) 저장할 때만 — 그때는 이 시트가 안 뜨고 null 저장 */}
           <VideoNotUploadedSheet
@@ -2642,6 +2670,11 @@ function DealForm({
   const [videoStatus, setVideoStatus] = useState<VideoUploadStatus>(prefill?.videoUrl ? "done" : "idle");
   const [videoSheet, setVideoSheet] = useState<{ confirmWarnings: boolean } | null>(null);
   const videoUploaderRef = useRef<VideoUploaderHandle>(null);
+  // 2026-10-02 PR-B: 사진도 같은 규칙 — 올리는 중엔 등록 막고, 실패한 사진이 있으면 시트로 확인(사진 → 영상 순서)
+  const [photoStatus, setPhotoStatus] = useState<ImageUploadStatus>({ uploading: 0, failed: 0 });
+  const [photoSheet, setPhotoSheet] = useState<{ confirmWarnings: boolean } | null>(null);
+  const imageUploaderRef = useRef<ImageUploaderHandle>(null);
+  const busyLabel = uploadingLabel(photoStatus.uploading > 0, videoStatus === "uploading");
   const [description, setDescription] = useState(prefill?.description ?? "");
   const [packageUnit, setPackageUnit] = useState(prefill?.packageUnit ?? "");
   const [origin, setOrigin] = useState(prefill?.origin ?? "");
@@ -2718,7 +2751,7 @@ function DealForm({
     setError("주황 안내를 확인하고 \"그대로 저장\"을 눌러주세요.");
     focusField(t.length ? "title" : pr.length ? "originalPrice" : "description");
   };
-  const submit = async (confirmWarnings = false, skipVideo = false) => {
+  const submit = async (confirmWarnings = false, skipVideo = false, skipPhotos = false) => {
     setError(null);
     const errs = validate();
     setFieldErrors(errs);
@@ -2748,7 +2781,11 @@ function DealForm({
       focusField("dealPrice");
       return;
     }
-    if (videoStatus === "uploading") return;
+    if (busyLabel) return;
+    if (!skipPhotos && photoStatus.failed > 0) {
+      setPhotoSheet({ confirmWarnings });
+      return;
+    }
     if (!skipVideo && videoNotUploaded(videoStatus)) {
       setVideoSheet({ confirmWarnings });
       return;
@@ -3003,15 +3040,19 @@ function DealForm({
       <section>
         <FormSectionTitle hint="사진이 있으면 더 빨리 연결돼요">사진·영상</FormSectionTitle>
         <div className="flex flex-col gap-4">
+          <div id="deal-photos">
           <ImageUploader
+            ref={imageUploaderRef}
             adminKey={adminKey}
             onChange={setImages}
+            onStatusChange={setPhotoStatus}
             label="매물 사진"
             // 2026-09-29: 판매신청은 추천 보너스로 최대 16장까지 올 수 있어 관리자 폼도 최대치로 (src/lib/photoLimit.ts)
             max={MAX_PHOTO_SLOTS}
             hint={`최대 ${MAX_PHOTO_SLOTS}장 (신청서에 첨부된 사진 포함)`}
             initialUrls={prefill?.images ?? []}
           />
+          </div>
           <div id="deal-video">
             <VideoUploader
               ref={videoUploaderRef}
@@ -3191,12 +3232,31 @@ function DealForm({
 
       <button
         onClick={() => submit()}
-        disabled={submitting || videoStatus === "uploading"}
+        disabled={submitting || busyLabel !== null}
         className="text-white font-bold rounded-lg disabled:opacity-60"
         style={{ background: "#0B2540", padding: "12px 0", fontSize: rem(15) }}
       >
-        {submitting ? "등록 중..." : videoStatus === "uploading" ? VIDEO_UPLOADING_LABEL : "매물 등록 확정"}
+        {submitting ? "등록 중..." : busyLabel ?? "매물 등록 확정"}
       </button>
+      <VideoNotUploadedSheet
+        open={photoSheet !== null}
+        title={`사진 ${photoStatus.failed}장이 올라가지 않았어요`}
+        description={PHOTO_FAILED_DESCRIPTION}
+        reselectLabel="다시 시도"
+        skipLabel="빼고 등록"
+        onClose={() => setPhotoSheet(null)}
+        onReselect={() => {
+          imageUploaderRef.current?.retryFailed();
+          document.getElementById("deal-photos")?.scrollIntoView({ behavior: "smooth", block: "center" });
+          setPhotoSheet(null);
+        }}
+        onSkip={() => {
+          const confirmWarnings = photoSheet?.confirmWarnings ?? false;
+          imageUploaderRef.current?.removeFailed();
+          setPhotoSheet(null);
+          submit(confirmWarnings, false, true);
+        }}
+      />
       <VideoNotUploadedSheet
         open={videoSheet !== null}
         onClose={() => setVideoSheet(null)}
@@ -3324,11 +3384,21 @@ function NoticeForm({ adminKey, onDone }: { adminKey: string; onDone: () => void
   const [images, setImages] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 2026-10-02 PR-B: 매물 폼과 같은 사진 규칙(영상 없음)
+  const [photoStatus, setPhotoStatus] = useState<ImageUploadStatus>({ uploading: 0, failed: 0 });
+  const [photoSheet, setPhotoSheet] = useState(false);
+  const imageUploaderRef = useRef<ImageUploaderHandle>(null);
+  const busyLabel = uploadingLabel(photoStatus.uploading > 0, false);
 
-  const submit = async () => {
+  const submit = async (skipPhotos = false) => {
     setError(null);
     if (!title || !noticeBody) {
       setError("제목·내용은 필수예요.");
+      return;
+    }
+    if (busyLabel) return;
+    if (!skipPhotos && photoStatus.failed > 0) {
+      setPhotoSheet(true);
       return;
     }
     setSubmitting(true);
@@ -3416,7 +3486,7 @@ function NoticeForm({ adminKey, onDone }: { adminKey: string; onDone: () => void
         </div>
       </div>
 
-      <ImageUploader adminKey={adminKey} onChange={setImages} label="사진" hint="부동산·설비 현장 사진" />
+      <ImageUploader ref={imageUploaderRef} adminKey={adminKey} onChange={setImages} onStatusChange={setPhotoStatus} max={MAX_PHOTO_SLOTS} label="사진" hint={`부동산·설비 현장 사진, 최대 ${MAX_PHOTO_SLOTS}장`} />
 
       {error && <div className="text-orange font-medium" style={{ fontSize: rem(15) }}>{error}</div>}
 
@@ -3424,9 +3494,26 @@ function NoticeForm({ adminKey, onDone }: { adminKey: string; onDone: () => void
         🌙 밤 9시~아침 8시 등록 공지는 아침 8시에 발송돼요.
       </p>
 
-      <button onClick={submit} disabled={submitting} className={`w-full ${BTN_CLASS}`} style={btnStyle("primary")}>
-        {submitting ? "등록 중..." : "공지 등록 확정"}
+      <button onClick={() => submit()} disabled={submitting || busyLabel !== null} className={`w-full ${BTN_CLASS}`} style={btnStyle("primary")}>
+        {submitting ? "등록 중..." : busyLabel ?? "공지 등록 확정"}
       </button>
+      <VideoNotUploadedSheet
+        open={photoSheet}
+        title={`사진 ${photoStatus.failed}장이 올라가지 않았어요`}
+        description={PHOTO_FAILED_DESCRIPTION}
+        reselectLabel="다시 시도"
+        skipLabel="빼고 등록"
+        onClose={() => setPhotoSheet(false)}
+        onReselect={() => {
+          imageUploaderRef.current?.retryFailed();
+          setPhotoSheet(false);
+        }}
+        onSkip={() => {
+          setPhotoSheet(false);
+          imageUploaderRef.current?.removeFailed();
+          submit(true);
+        }}
+      />
     </div>
   );
 }

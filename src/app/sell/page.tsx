@@ -7,9 +7,9 @@ import { hasAppHistory, goHome } from "@/lib/appNav";
 import { CheckCircle } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockRegions, categoryIcons, quantityUnits, guessCategory, logUnmatchedProductName } from "@/lib/mockData";
-import ImageUploader from "@/components/ImageUploader";
+import ImageUploader, { type ImageUploadStatus, type ImageUploaderHandle } from "@/components/ImageUploader";
 import VideoUploader, { type VideoUploadStatus, type VideoUploaderHandle } from "@/components/VideoUploader";
-import VideoNotUploadedSheet, { VIDEO_UPLOADING_LABEL, videoNotUploaded } from "@/components/VideoNotUploadedSheet";
+import VideoNotUploadedSheet, { PHOTO_FAILED_DESCRIPTION, uploadingLabel, videoNotUploaded } from "@/components/VideoNotUploadedSheet";
 import ManifestUploader from "@/components/ManifestUploader";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
 import { isValidContactPhone } from "@/lib/auth";
@@ -191,6 +191,11 @@ export default function SellPage() {
   const [videoStatus, setVideoStatus] = useState<VideoUploadStatus>("idle");
   const [videoSheet, setVideoSheet] = useState<{ confirmWarnings: boolean } | null>(null);
   const videoUploaderRef = useRef<VideoUploaderHandle>(null);
+  // 2026-10-02 PR-B: 사진도 같은 규칙 — 올리는 중엔 제출 막고, 실패한 사진이 있으면 시트로 확인(사진 → 영상 순서)
+  const [photoStatus, setPhotoStatus] = useState<ImageUploadStatus>({ uploading: 0, failed: 0 });
+  const [photoSheet, setPhotoSheet] = useState<{ confirmWarnings: boolean } | null>(null);
+  const imageUploaderRef = useRef<ImageUploaderHandle>(null);
+  const busyLabel = uploadingLabel(photoStatus.uploading > 0, videoStatus === "uploading");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -312,7 +317,7 @@ export default function SellPage() {
     if (stockType === "near_expiry") setOpenDetail(true);
   }, [stockType]);
 
-  const submit = async (confirmWarnings = false, skipVideo = false) => {
+  const submit = async (confirmWarnings = false, skipVideo = false, skipPhotos = false) => {
     setError(null);
     setMoqError(null);
     setPriceError(null);
@@ -391,7 +396,11 @@ export default function SellPage() {
       document.getElementById("sell-seller-terms")?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
-    if (videoStatus === "uploading") return; // 버튼도 비활성 — 키보드 등으로 들어온 경우
+    if (busyLabel) return; // 버튼도 비활성 — 키보드 등으로 들어온 경우
+    if (!skipPhotos && photoStatus.failed > 0) {
+      setPhotoSheet({ confirmWarnings });
+      return;
+    }
     if (!skipVideo && videoNotUploaded(videoStatus)) {
       setVideoSheet({ confirmWarnings });
       return;
@@ -1111,7 +1120,9 @@ export default function SellPage() {
           <section className="order-2">
             <FormSectionTitle hint="사진이 있으면 더 빨리 연결돼요">사진·영상</FormSectionTitle>
             <div className="flex flex-col gap-5">
-              <ImageUploader onChange={setImages} initialUrls={images} max={getPhotoLimit({ bonus_photo_slots: bonusPhotoSlots })} />
+              <div id="sell-photos">
+                <ImageUploader ref={imageUploaderRef} onChange={setImages} onStatusChange={setPhotoStatus} globalPaste initialUrls={images} max={getPhotoLimit({ bonus_photo_slots: bonusPhotoSlots })} />
+              </div>
               <div id="sell-video">
                 <VideoUploader ref={videoUploaderRef} onChange={setVideoUrl} initialUrl={videoUrl} onStatusChange={setVideoStatus} />
               </div>
@@ -1132,11 +1143,11 @@ export default function SellPage() {
             {error && <FloatingCTANote>{error}</FloatingCTANote>}
             <button
               onClick={() => submit()}
-              disabled={submitting || videoStatus === "uploading"}
+              disabled={submitting || busyLabel !== null}
               className={FLOATING_CTA_BUTTON_CLASS}
               style={floatingCtaButtonStyle()}
             >
-              {submitting ? "처리 중..." : videoStatus === "uploading" ? VIDEO_UPLOADING_LABEL : "무료로 매물 등록하기"}
+              {submitting ? "처리 중..." : busyLabel ?? "무료로 매물 등록하기"}
             </button>
           </div>
         )}
@@ -1165,14 +1176,33 @@ export default function SellPage() {
           {error && <div ref={setNoteEl}><FloatingCTANote>{error}</FloatingCTANote></div>}
           <button
             onClick={() => submit()}
-            disabled={submitting || videoStatus === "uploading"}
+            disabled={submitting || busyLabel !== null}
             className={FLOATING_CTA_BUTTON_CLASS}
             style={floatingCtaButtonStyle()}
           >
-            {submitting ? "처리 중..." : videoStatus === "uploading" ? VIDEO_UPLOADING_LABEL : "무료로 매물 등록하기"}
+            {submitting ? "처리 중..." : busyLabel ?? "무료로 매물 등록하기"}
           </button>
               </FloatingCTA>
       )}
+      <VideoNotUploadedSheet
+        open={photoSheet !== null}
+        title={`사진 ${photoStatus.failed}장이 올라가지 않았어요`}
+        description={PHOTO_FAILED_DESCRIPTION}
+        reselectLabel="다시 시도"
+        skipLabel="빼고 등록"
+        onClose={() => setPhotoSheet(null)}
+        onReselect={() => {
+          imageUploaderRef.current?.retryFailed();
+          document.getElementById("sell-photos")?.scrollIntoView({ behavior: "smooth", block: "center" });
+          setPhotoSheet(null);
+        }}
+        onSkip={() => {
+          const confirmWarnings = photoSheet?.confirmWarnings ?? false;
+          imageUploaderRef.current?.removeFailed();
+          setPhotoSheet(null);
+          submit(confirmWarnings, false, true);
+        }}
+      />
       <VideoNotUploadedSheet
         open={videoSheet !== null}
         onClose={() => setVideoSheet(null)}
