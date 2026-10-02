@@ -8,7 +8,8 @@ import { CheckCircle } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockRegions, categoryIcons, quantityUnits, guessCategory, logUnmatchedProductName } from "@/lib/mockData";
 import ImageUploader from "@/components/ImageUploader";
-import VideoUploader from "@/components/VideoUploader";
+import VideoUploader, { type VideoUploadStatus, type VideoUploaderHandle } from "@/components/VideoUploader";
+import VideoNotUploadedSheet, { VIDEO_UPLOADING_LABEL, videoNotUploaded } from "@/components/VideoNotUploadedSheet";
 import ManifestUploader from "@/components/ManifestUploader";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
 import { isValidContactPhone } from "@/lib/auth";
@@ -185,6 +186,10 @@ export default function SellPage() {
   const [manifestItems, setManifestItems] = useState<ManifestRow[]>([]);
   const [images, setImages] = useState<string[]>([]);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  // 2026-10-02 PR-A2: 영상 올리는 중엔 제출 막고, 안 올라간 채 제출하면 시트로 확인(VideoNotUploadedSheet)
+  const [videoStatus, setVideoStatus] = useState<VideoUploadStatus>("idle");
+  const [videoSheet, setVideoSheet] = useState<{ confirmWarnings: boolean } | null>(null);
+  const videoUploaderRef = useRef<VideoUploaderHandle>(null);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -277,7 +282,7 @@ export default function SellPage() {
     if (stockType === "near_expiry") setOpenDetail(true);
   }, [stockType]);
 
-  const submit = async (confirmWarnings = false) => {
+  const submit = async (confirmWarnings = false, skipVideo = false) => {
     setError(null);
     setMoqError(null);
     setPriceError(null);
@@ -344,6 +349,11 @@ export default function SellPage() {
       document.getElementById("sell-seller-terms")?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
+    if (videoStatus === "uploading") return; // 버튼도 비활성 — 키보드 등으로 들어온 경우
+    if (!skipVideo && videoNotUploaded(videoStatus)) {
+      setVideoSheet({ confirmWarnings });
+      return;
+    }
     setSubmitting(true);
     try {
       // 2026-09-30: 회원 전용 — authFetch가 최신 토큰을 넣고(만료 시 갱신·1회 재시도), 서버는 토큰으로 회원·사진 한도 결정
@@ -374,7 +384,7 @@ export default function SellPage() {
           pid: pid || null,
           manifestItems: manifestItems.length ? manifestItems : null,
           images,
-          videoUrl,
+          videoUrl: skipVideo ? null : videoUrl,
           sellerTermsAgreed,
           confirmWarnings,
         },
@@ -743,7 +753,9 @@ export default function SellPage() {
           <FormSectionTitle hint="사진이 있으면 더 빨리 연결돼요">사진·영상</FormSectionTitle>
           <div className="flex flex-col gap-5">
             <ImageUploader onChange={setImages} initialUrls={images} max={getPhotoLimit({ bonus_photo_slots: bonusPhotoSlots })} />
-            <VideoUploader onChange={setVideoUrl} initialUrl={videoUrl} />
+            <div id="sell-video">
+              <VideoUploader ref={videoUploaderRef} onChange={setVideoUrl} initialUrl={videoUrl} onStatusChange={setVideoStatus} />
+            </div>
           </div>
         </section>
 
@@ -1076,13 +1088,28 @@ export default function SellPage() {
           {error && <FloatingCTANote>{error}</FloatingCTANote>}
           <button
             onClick={() => submit()}
-            disabled={submitting}
+            disabled={submitting || videoStatus === "uploading"}
             className={FLOATING_CTA_BUTTON_CLASS}
             style={floatingCtaButtonStyle()}
           >
-            {submitting ? "처리 중..." : "무료로 매물 등록하기"}
+            {submitting ? "처리 중..." : videoStatus === "uploading" ? VIDEO_UPLOADING_LABEL : "무료로 매물 등록하기"}
           </button>
               </FloatingCTA>
+      <VideoNotUploadedSheet
+        open={videoSheet !== null}
+        onClose={() => setVideoSheet(null)}
+        onReselect={() => {
+          videoUploaderRef.current?.reselect();
+          document.getElementById("sell-video")?.scrollIntoView({ behavior: "smooth", block: "center" });
+          setVideoSheet(null);
+        }}
+        onSkip={() => {
+          const confirmWarnings = videoSheet?.confirmWarnings ?? false;
+          videoUploaderRef.current?.clear();
+          setVideoSheet(null);
+          submit(confirmWarnings, true);
+        }}
+      />
       </>
       )}
     </main>

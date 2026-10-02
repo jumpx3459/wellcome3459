@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useId, useImperativeHandle, useRef, useState, type Ref } from "react";
 import { DEAL_LABEL_STYLE, FORM_HINT_STYLE } from "@/components/FormField";
 import { rem } from "@/lib/rem";
 import { requestVideoUploadUrl, uploadToSignedUrlWithProgress } from "@/lib/uploadClient";
@@ -9,6 +9,29 @@ import { MAX_VIDEO_BYTES, VIDEO_EXT, VIDEO_TOO_LARGE_MESSAGE, VIDEO_TYPE_MESSAGE
 const MAX_SECONDS = 15;
 
 type Phase = "idle" | "loading" | "need-trim" | "trimming" | "uploading" | "done" | "error";
+
+// 2026-10-02 PR-A2: 부모 폼에 알리는 상태 — 제출 막기용
+//   idle 영상 없음 · uploading 길이 확인·자르기·올리는 중 · pending 골랐지만 아직 안 올림(자르기 구간 선택 대기)
+//   done 올라감 · failed 올리기 실패 · rejected 올릴 수 없는 영상(형식·크기·길이, 자르기 미지원 브라우저의 15초 초과)
+export type VideoUploadStatus = "idle" | "uploading" | "pending" | "done" | "failed" | "rejected";
+export type VideoUploaderHandle = {
+  /** 선택을 지우고 파일 고르기 창을 다시 엶 — 버튼 클릭 안에서 불러야 함(브라우저가 사용자 동작일 때만 창을 엶) */
+  reselect: () => void;
+  /** 선택·업로드 결과를 지움(영상 없음) */
+  clear: () => void;
+};
+
+const TRIM_UNSUPPORTED_MESSAGE =
+  "이 브라우저에서는 15초 넘는 영상을 자를 수 없어요. 아이폰은 사진 앱 → 편집에서 길이를 줄이고, PC는 크롬에서 올려주세요.";
+
+// 자르기(15초 초과 영상)에 쓰는 기능이 있는지 — UA가 아니라 기능으로 판별.
+// video.captureStream(또는 mozCaptureStream) + MediaRecorder webm 녹화. 아이폰 Safari는 captureStream이 없음.
+function canTrimInBrowser(): boolean {
+  if (typeof window === "undefined" || typeof MediaRecorder === "undefined") return false;
+  const proto = HTMLMediaElement.prototype as unknown as { captureStream?: unknown; mozCaptureStream?: unknown };
+  if (typeof proto.captureStream !== "function" && typeof proto.mozCaptureStream !== "function") return false;
+  return ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"].some((c) => MediaRecorder.isTypeSupported(c));
+}
 
 function pickMimeType(): string {
   const candidates = [
@@ -28,12 +51,16 @@ export default function VideoUploader({
   hint = "최대 15초 · 15초보다 길면 원하는 구간을 골라 잘라드려요",
   initialUrl,
   adminKey,
+  onStatusChange,
+  ref,
 }: {
   onChange: (url: string | null) => void;
   label?: string;
   hint?: string;
   initialUrl?: string | null;
   adminKey?: string; // 관리자 화면에서만 — 있으면 x-admin-key로, 없으면 회원 토큰(authFetch)으로 업로드
+  onStatusChange?: (status: VideoUploadStatus) => void;
+  ref?: Ref<VideoUploaderHandle>;
 }) {
   const [phase, setPhase] = useState<Phase>(initialUrl ? "done" : "idle");
   const [srcUrl, setSrcUrl] = useState<string | null>(null); // 원본(트림 대상) 미리보기
@@ -42,6 +69,10 @@ export default function VideoUploader({
   const [trimStart, setTrimStart] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0); // 업로드 진행률(%)
+  const [errorKind, setErrorKind] = useState<"failed" | "rejected">("failed");
+  const [trimUnsupported, setTrimUnsupported] = useState(false); // 자르기 미지원 + 15초 초과로 거절됨 → [다시 고르기]
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const inputId = useId();
 
   const trimVideoRef = useRef<HTMLVideoElement | null>(null);
   const fileRef = useRef<File | null>(null);
@@ -53,22 +84,45 @@ export default function VideoUploader({
     setDuration(0);
     setTrimStart(0);
     setError(null);
+    setTrimUnsupported(false);
+    setErrorKind("failed");
     fileRef.current = null;
     onChange(null);
   };
 
-  const fail = (message: string) => {
+  // failed = 올리기 시도 실패(네트워크·서버·Storage), rejected = 올릴 수 없는 영상
+  const fail = (message: string, kind: "failed" | "rejected" = "failed") => {
     setError(message);
+    setErrorKind(kind);
     setPhase("error");
   };
+
+  useImperativeHandle(ref, () => ({
+    reselect: () => {
+      reset();
+      inputRef.current?.click();
+    },
+    clear: reset,
+  }));
+
+  const status: VideoUploadStatus =
+    phase === "idle" ? "idle"
+    : phase === "done" ? "done"
+    : phase === "need-trim" ? "pending"
+    : phase === "error" ? errorKind
+    : "uploading";
+  useEffect(() => {
+    onStatusChange?.(status);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
 
   // 2026-10-02 PR-A: /api/upload(Vercel 함수, 요청 4.5MB 한도)를 거치지 않고 Storage에 직접 올림 —
   // /api/upload/video-url에서 서명 업로드 URL을 받아 XHR로 PUT(진행률 표시). 저장 URL 형식은 예전과 같은 공개 URL.
   // 크기(50MB)는 자른 뒤 최종 파일 기준으로 올리기 전에 막는다.
   const uploadFile = async (file: File | Blob, filename: string) => {
     const contentType = videoContentType(file.type, filename);
-    if (!contentType) return fail(VIDEO_TYPE_MESSAGE);
-    if (file.size > MAX_VIDEO_BYTES) return fail(VIDEO_TOO_LARGE_MESSAGE);
+    if (!contentType) return fail(VIDEO_TYPE_MESSAGE, "rejected");
+    if (file.size > MAX_VIDEO_BYTES) return fail(VIDEO_TOO_LARGE_MESSAGE, "rejected");
 
     setProgress(0);
     setPhase("uploading");
@@ -84,7 +138,8 @@ export default function VideoUploader({
         return;
       }
       if (!res.ok || !data.signedUrl || !data.publicUrl) {
-        return fail(data.error ?? "영상 업로드에 실패했어요. 잠시 후 다시 시도해주세요.");
+        // 400 = 서버가 형식·크기로 거절, 그 밖(401·500 등)은 올리기 실패
+        return fail(data.error ?? "영상 업로드에 실패했어요. 잠시 후 다시 시도해주세요.", res.status === 400 ? "rejected" : "failed");
       }
       const result = await uploadToSignedUrlWithProgress(data.signedUrl, file, contentType, setProgress);
       if (!result.ok) return fail(result.error);
@@ -107,17 +162,29 @@ export default function VideoUploader({
     const probe = document.createElement("video");
     probe.preload = "metadata";
     probe.src = url;
+    // 2026-10-02 PR-A2: 브라우저가 열 수 없는 영상이면 "길이 확인 중"에 멈춰 있었음(제출도 막힘) → 거절로
+    probe.onerror = () => {
+      setSrcUrl(null);
+      fileRef.current = null;
+      fail("이 영상을 열 수 없어요. MP4·MOV 영상으로 다시 골라주세요.", "rejected");
+    };
     probe.onloadedmetadata = () => {
       const dur = probe.duration;
       const afterDuration = (d: number) => {
         if (!isFinite(d) || d <= 0) {
-          setError("영상 길이를 확인하지 못했어요. 다른 파일로 시도해주세요.");
-          setPhase("error");
+          fail("영상 길이를 확인하지 못했어요. 다른 파일로 시도해주세요.", "rejected");
           return;
         }
         if (d <= MAX_SECONDS + 0.3) {
           // 15초 이내면 바로 업로드
           uploadFile(file, file.name);
+        } else if (!canTrimInBrowser()) {
+          // 2026-10-02 PR-A2: 자르기 미지원(아이폰 Safari 등) — 자르기 화면을 띄우면 아무것도 안 올라간 채 제출됐음.
+          // 바로 안내 + [다시 고르기], 선택은 지움(업로드 대기로 남지 않게)
+          setSrcUrl(null);
+          fileRef.current = null;
+          setTrimUnsupported(true);
+          fail(TRIM_UNSUPPORTED_MESSAGE, "rejected");
         } else {
           setDuration(d);
           setTrimStart(0);
@@ -202,21 +269,25 @@ export default function VideoUploader({
       </label>
       <p className="mb-2" style={FORM_HINT_STYLE}>{hint}</p>
 
+      {/* 2026-10-02 PR-A2: 파일 입력은 항상 둠 — 폼의 [다시 고르기](reselect)가 어느 상태에서든 창을 열 수 있게 */}
+      <input
+        id={inputId}
+        ref={inputRef}
+        type="file"
+        accept="video/*"
+        className="hidden"
+        onChange={(e) => {
+          handleSelect(e.target.files?.[0]);
+          e.target.value = "";
+        }}
+      />
       {phase === "idle" && (
         <label
+          htmlFor={inputId}
           className="flex flex-col items-center justify-center border-2 border-dashed border-gray200 rounded-xl text-gray500 text-sm cursor-pointer"
           style={{ minHeight: "72px" }}
         >
           🎬 탭해서 영상 선택
-          <input
-            type="file"
-            accept="video/*"
-            className="hidden"
-            onChange={(e) => {
-              handleSelect(e.target.files?.[0]);
-              e.target.value = "";
-            }}
-          />
         </label>
       )}
 
@@ -314,13 +385,26 @@ export default function VideoUploader({
       {phase === "error" && (
         <div className="flex flex-col gap-2">
           <div className="text-sm text-orange font-medium">{error}</div>
-          <button
-            type="button"
-            onClick={reset}
-            className="self-start text-sm font-bold text-navy underline"
-          >
-            다시 시도
-          </button>
+          {trimUnsupported ? (
+            <button
+              type="button"
+              onClick={() => {
+                reset();
+                inputRef.current?.click();
+              }}
+              className="self-start text-sm font-bold text-navy underline"
+            >
+              다시 고르기
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={reset}
+              className="self-start text-sm font-bold text-navy underline"
+            >
+              다시 시도
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CheckCircle } from "lucide-react";
 import { mockCategories, mockRegions, categoryIcons, quantityUnits } from "@/lib/mockData";
 import ImageUploader from "@/components/ImageUploader";
-import VideoUploader from "@/components/VideoUploader";
+import VideoUploader, { type VideoUploadStatus, type VideoUploaderHandle } from "@/components/VideoUploader";
+import VideoNotUploadedSheet, { VIDEO_UPLOADING_LABEL, videoNotUploaded } from "@/components/VideoNotUploadedSheet";
 import SellerDisplayPicker from "@/components/SellerDisplayPicker";
 import { publicSellerName } from "@/lib/sellerDisplay";
 import { isTestTitle } from "@/lib/categoryAvg";
@@ -2294,6 +2295,10 @@ function ActiveDealCard({
   const [images, setImages] = useState<string[]>(deal.images ?? []);
   const [editingVideo, setEditingVideo] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(deal.video_url ?? null);
+  // 2026-10-02 PR-A2: 영상 올리는 중엔 저장 막고, 안 올라간 채 저장하면 시트로 확인
+  const [videoStatus, setVideoStatus] = useState<VideoUploadStatus>(deal.video_url ? "done" : "idle");
+  const [videoSheet, setVideoSheet] = useState(false);
+  const videoUploaderRef = useRef<VideoUploaderHandle>(null);
   // 2026-09-30: 판매자 표시 수정 — 지금 값에서 시작 (예전 임의 이름·"비공개 판매자"는 비공개)
   const initialSellerName = publicSellerName(deal);
   const [seller, setSeller] = useState({ isPublic: initialSellerName !== null, companyName: initialSellerName ?? "" });
@@ -2334,9 +2339,15 @@ function ActiveDealCard({
     }
   };
 
-  const saveAll = async () => {
+  // skipVideo: 새 영상이 안 올라간 채 저장 — skipVideoUrl(기존 영상 유지면 그 URL, 아니면 null)로 저장
+  const saveAll = async (skipVideo = false, skipVideoUrl: string | null = null) => {
+    if (videoStatus === "uploading") return;
+    if (!skipVideo && videoNotUploaded(videoStatus)) {
+      setVideoSheet(true);
+      return;
+    }
     const sellerPatch = sellerChanged ? { sellerPublic: seller.isPublic, sellerCompanyName: seller.companyName } : {};
-    const result = await patch({ remainingQty: Number(remainingQty), images, videoUrl, ...sellerPatch });
+    const result = await patch({ remainingQty: Number(remainingQty), images, videoUrl: skipVideo ? skipVideoUrl : videoUrl, ...sellerPatch });
     if (!result.ok) {
       showToast(result.field === "video" && result.error ? result.error : "저장하지 못했어요. 다시 시도해주세요");
       return;
@@ -2521,29 +2532,54 @@ function ActiveDealCard({
             {editingVideo ? "영상 관리 닫기" : `🎥 영상 관리 (${videoUrl ? "있음" : "없음"})`}
           </button>
 
-          {editingVideo && (
-            <div className="mt-2.5">
-              <VideoUploader
-                adminKey={adminKey}
-                initialUrl={videoUrl}
-                onChange={setVideoUrl}
-                label="매물 영상"
-                hint="최대 15초 · 탭해서 교체, 아래 '변경사항 저장'으로 반영"
-              />
-            </div>
-          )}
+          {/* 2026-10-02 PR-A2: 닫아도 업로드 상태가 이어지게 숨기기만(예전엔 닫으면 업로더가 사라짐) */}
+          <div className="mt-2.5" hidden={!editingVideo}>
+            <VideoUploader
+              ref={videoUploaderRef}
+              adminKey={adminKey}
+              initialUrl={videoUrl}
+              onChange={setVideoUrl}
+              onStatusChange={setVideoStatus}
+              label="매물 영상"
+              hint="최대 15초 · 탭해서 교체, 아래 '변경사항 저장'으로 반영"
+            />
+          </div>
 
           <div className="mt-3">
             <SellerDisplayPicker idPrefix={`deal-${deal.id}`} isPublic={seller.isPublic} companyName={seller.companyName} onChange={setSeller} />
           </div>
 
           <button
-            onClick={saveAll}
-            disabled={saving}
+            onClick={() => saveAll()}
+            disabled={saving || videoStatus === "uploading"}
             className="w-full text-sm font-bold text-white bg-navy rounded-lg py-2.5 mt-3 disabled:opacity-50"
           >
-            {saving ? "저장 중..." : "변경사항 저장"}
+            {saving ? "저장 중..." : videoStatus === "uploading" ? VIDEO_UPLOADING_LABEL : "변경사항 저장"}
           </button>
+          {/* 2026-10-02 PR-A2: 기존 영상이 있는 매물에서 새 영상이 안 올라갔으면 기존 영상을 지키고 저장(예전엔 ×로 비운 뒤라 null로 지워짐).
+              기존 영상을 지우는 건 ×로 비우고(새 영상 고르지 않은 채) 저장할 때만 — 그때는 이 시트가 안 뜨고 null 저장 */}
+          <VideoNotUploadedSheet
+            open={videoSheet}
+            skipLabel={deal.video_url ? "기존 영상 유지하고 저장" : "영상 빼고 저장"}
+            description={
+              deal.video_url
+                ? "새로 고른 영상이 저장되지 않았어요. 기존 영상을 그대로 두고 저장하거나, 영상을 다시 골라주세요."
+                : undefined
+            }
+            onClose={() => setVideoSheet(false)}
+            onReselect={() => {
+              setEditingVideo(true);
+              videoUploaderRef.current?.reselect();
+              setVideoSheet(false);
+            }}
+            onSkip={() => {
+              setVideoSheet(false);
+              const keep = deal.video_url ?? null;
+              if (keep) setVideoUrl(keep); // 다음에 펼칠 때도 기존 영상으로 시작
+              else videoUploaderRef.current?.clear();
+              saveAll(true, keep);
+            }}
+          />
 
           <div className="flex gap-2 mt-2">
             <button
@@ -2635,6 +2671,10 @@ function DealForm({
   );
   const [images, setImages] = useState<string[]>(prefill?.images ?? []);
   const [videoUrl, setVideoUrl] = useState<string | null>(prefill?.videoUrl ?? null);
+  // 2026-10-02 PR-A2: 영상 올리는 중엔 등록 막고, 안 올라간 채 등록하면 시트로 확인
+  const [videoStatus, setVideoStatus] = useState<VideoUploadStatus>(prefill?.videoUrl ? "done" : "idle");
+  const [videoSheet, setVideoSheet] = useState<{ confirmWarnings: boolean } | null>(null);
+  const videoUploaderRef = useRef<VideoUploaderHandle>(null);
   const [description, setDescription] = useState(prefill?.description ?? "");
   const [packageUnit, setPackageUnit] = useState(prefill?.packageUnit ?? "");
   const [origin, setOrigin] = useState(prefill?.origin ?? "");
@@ -2711,7 +2751,7 @@ function DealForm({
     setError("주황 안내를 확인하고 \"그대로 저장\"을 눌러주세요.");
     focusField(t.length ? "title" : pr.length ? "originalPrice" : "description");
   };
-  const submit = async (confirmWarnings = false) => {
+  const submit = async (confirmWarnings = false, skipVideo = false) => {
     setError(null);
     const errs = validate();
     setFieldErrors(errs);
@@ -2741,6 +2781,11 @@ function DealForm({
       focusField("dealPrice");
       return;
     }
+    if (videoStatus === "uploading") return;
+    if (!skipVideo && videoNotUploaded(videoStatus)) {
+      setVideoSheet({ confirmWarnings });
+      return;
+    }
     setSubmitting(true);
     const closesAt = new Date(Date.now() + Number(closesInHours) * 3600 * 1000).toISOString();
     try {
@@ -2763,7 +2808,7 @@ function DealForm({
           closesAt,
           requestId,
           images,
-          videoUrl,
+          videoUrl: skipVideo ? null : videoUrl,
           description,
           packageUnit: packageUnit || null,
           origin: origin || null,
@@ -3000,7 +3045,15 @@ function DealForm({
             hint={`최대 ${MAX_PHOTO_SLOTS}장 (신청서에 첨부된 사진 포함)`}
             initialUrls={prefill?.images ?? []}
           />
-          <VideoUploader adminKey={adminKey} onChange={setVideoUrl} initialUrl={prefill?.videoUrl} />
+          <div id="deal-video">
+            <VideoUploader
+              ref={videoUploaderRef}
+              adminKey={adminKey}
+              onChange={setVideoUrl}
+              initialUrl={prefill?.videoUrl}
+              onStatusChange={setVideoStatus}
+            />
+          </div>
         </div>
       </section>
 
@@ -3170,12 +3223,27 @@ function DealForm({
 
       <button
         onClick={() => submit()}
-        disabled={submitting}
+        disabled={submitting || videoStatus === "uploading"}
         className="text-white font-bold rounded-lg disabled:opacity-60"
         style={{ background: "#0B2540", padding: "12px 0", fontSize: rem(15) }}
       >
-        {submitting ? "등록 중..." : "매물 등록 확정"}
+        {submitting ? "등록 중..." : videoStatus === "uploading" ? VIDEO_UPLOADING_LABEL : "매물 등록 확정"}
       </button>
+      <VideoNotUploadedSheet
+        open={videoSheet !== null}
+        onClose={() => setVideoSheet(null)}
+        onReselect={() => {
+          videoUploaderRef.current?.reselect();
+          document.getElementById("deal-video")?.scrollIntoView({ behavior: "smooth", block: "center" });
+          setVideoSheet(null);
+        }}
+        onSkip={() => {
+          const confirmWarnings = videoSheet?.confirmWarnings ?? false;
+          videoUploaderRef.current?.clear();
+          setVideoSheet(null);
+          submit(confirmWarnings, true);
+        }}
+      />
     </div>
   );
 }
