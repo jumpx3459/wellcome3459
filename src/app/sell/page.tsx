@@ -158,6 +158,7 @@ export default function SellPage() {
     if (!category) setCategoryEditing(false);
   }, [productName, categoryTouched]);
   const [quantity, setQuantity] = useState("");
+  const [quantityError, setQuantityError] = useState<string | null>(null);
   const [quantityUnit, setQuantityUnit] = useState(quantityUnits[0]);
   const [minOrderQty, setMinOrderQty] = useState("");
   const [moqError, setMoqError] = useState<string | null>(null);
@@ -193,11 +194,21 @@ export default function SellPage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 2026-10-02 layout-cleanup: 폼 폭이 2칸 기준(@container 560px~)이면 PC형 — 하단 고정 버튼 대신 폼 맨 끝 인라인 버튼
+  const formRef = useRef<HTMLDivElement>(null);
+  const [wideForm, setWideForm] = useState(false);
 
   // 2026-09-30: 작성 중 내용 유지 — 제출 중 세션이 끊겨 로그인·가입을 다녀와도(returnTo=/sell) 이어서 쓰게
   // sessionStorage에 보관. 저장소가 막혀 있으면(사생활 보호 모드 등) 조용히 넘어감. 카테고리 자동 추천 effect보다
   // 뒤에 둬야 첫 렌더의 추천 effect가 복원한 카테고리를 비우지 않음.
   const [draftReady, setDraftReady] = useState(false);
+  useEffect(() => {
+    const el = formRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setWideForm(el.clientWidth - 40 >= 560)); // px-5 좌우 20px씩 뺀 내용 폭 = @container 기준
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [authState, draftReady]);
   useEffect(() => {
     let d: Partial<SellDraft> | null = null;
     try {
@@ -288,8 +299,20 @@ export default function SellPage() {
     setPriceError(null);
     setExpiryError(null);
     setRegionError(null);
-    if (!productName || !quantity || !contactPhone) {
-      setError("매물명 · 재고 총수량 · 판매 단가 · 재고 위치 · 연락처는 꼭 입력해주세요.");
+    setQuantityError(null);
+    // 2026-10-02: 첫 누락 칸으로 스크롤·포커스·빨간 테두리 (문구만 뜨던 것 개선)
+    if (!productName || !parsePriceInput(quantity) || !contactPhone) {
+      setError("매물명 · 재고 총수량 · 연락처는 꼭 입력해주세요.");
+      if (!productName) {
+        setTitleError("매물 상품명을 입력해주세요.");
+        scrollTo("sell-productName");
+      } else if (!parsePriceInput(quantity)) {
+        setQuantityError("재고 총수량을 입력해주세요.");
+        scrollTo("sell-quantity");
+      } else {
+        setContactError("연락처를 입력해주세요");
+        scrollTo("contact-phone");
+      }
       return;
     }
     const cleanName = normalizeTitle(productName);
@@ -340,7 +363,7 @@ export default function SellPage() {
       return;
     }
     // 2026-09-28: 수량 100kg·MOQ 1000kg 같은 신청이 그대로 들어온 사례 — 서버(/api/seller-requests)도 같은 검증
-    if (!lumpSum && minOrderQty && quantity && Number(minOrderQty) > Number(quantity)) {
+    if (!lumpSum && minOrderQty && quantity && Number(minOrderQty) > (parsePriceInput(quantity) ?? 0)) {
       showMoqError("최소주문량은 재고 총수량보다 클 수 없어요.");
       return;
     }
@@ -368,7 +391,7 @@ export default function SellPage() {
           stockType,
           region: region || null,
           productName: cleanName,
-          quantity: Number(quantity),
+          quantity: parsePriceInput(quantity),
           quantityUnit,
           minOrderQty: !lumpSum && minOrderQty ? Number(minOrderQty) : null, // 일괄 판매면 최소주문 없음
           priceUnit,
@@ -570,7 +593,7 @@ export default function SellPage() {
       {/* 2026-10-01 feat/form-order-v2: 매물 폼 재배치 2차 — 저장 항목·검증 그대로, 순서·묶음·표시만.
           ① 필수 정보 → ② 사진·영상 → ③ 판매자 확인 동의 → ④ 제품 상세(접힘) → ⑤ 거래 조건(접힘) → ⑥ 판매자 정보(접힘).
           칸 수는 폼 폭 기준(@container): 1칸 → 2칸(560px~) → 3칸(840px~), PC 최대 960px. 접힌 묶음 칸에서 오류 나면 펼치고 스크롤 */}
-      <div className="@container w-full max-w-[960px] mx-auto flex-1 px-5 py-4.5 flex flex-col gap-5" style={{ paddingBottom: FLOATING_CTA_SPACE }}>
+      <div ref={formRef} className="@container w-full max-w-[720px] mx-auto flex-1 px-5 py-4.5 flex flex-col gap-5" style={{ paddingBottom: wideForm ? 24 : FLOATING_CTA_SPACE + (error ? 44 : 0) }}>
         {/* 2026-09-29: 헤더 안 캐릭터 소개(76px/13px) 대신 buy와 같은 "완전 무료" 카드 (판매자용 문구) */}
         <div className="flex items-center gap-3 rounded-2xl" style={{ background: "#fff", border: "1.5px solid #E4E7EB", padding: "15px 16px" }}>
           <img src="/images/manager.png" alt="점핑매니저" className="flex-shrink-0 rounded-xl bg-white" style={{ width: 72, height: 72, objectFit: "contain" }} />
@@ -670,8 +693,9 @@ export default function SellPage() {
                   />
                   <span className="flex-shrink-0 font-bold whitespace-nowrap" style={{ padding: "0 12px 0 4px", fontSize: DEAL_INPUT_FONT_SIZE, color: "#0B2540" }}>{priceUnitSuffix(priceUnit)}</span>
                 </div>
+                <p className="mt-1" style={DEAL_HINT_STYLE}>판매 단가와 같은 단위로 적어주세요</p>
               </div>
-              <div className="min-w-0" data-field="discount">
+              <div className="min-w-0 @min-[560px]:col-span-2" data-field="discount">
                 <p className="mb-2" style={DEAL_LABEL_STYLE}>할인율</p>
                 <SellDiscountHint original={parsePriceInput(originalPrice)} deal={parsePriceInput(hopePrice)} />
                 <ConfirmWarnings warnings={priceWarns} onConfirm={titleWarnings.length ? undefined : () => submit(true)} busy={submitting} />
@@ -682,15 +706,18 @@ export default function SellPage() {
             <div className={FORM_ROW3}>
               <div className="min-w-0">
                 <FieldLabel compact need="required" htmlFor="sell-quantity">재고 총수량</FieldLabel>
-                <div className="flex rounded-xl overflow-hidden bg-white" style={{ border: "1.5px solid #E4E7EB" }}>
+                <div className="flex rounded-xl overflow-hidden bg-white" style={{ border: `1.5px solid ${quantityError ? BLOCK_COLOR : "#E4E7EB"}` }}>
                   <input
                     id="sell-quantity"
-                    type="number"
+                    type="text"
                     inputMode="numeric"
                     className="flex-1 min-w-0 outline-none"
                     style={{ border: "none", padding: "13px 12px", fontSize: DEAL_INPUT_FONT_SIZE }}
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
+                    value={formatPriceInput(quantity)}
+                    onChange={(e) => {
+                      setQuantity(e.target.value);
+                      setQuantityError(null);
+                    }}
                     placeholder="55"
                   />
                   <select
@@ -708,6 +735,7 @@ export default function SellPage() {
                     ))}
                   </select>
                 </div>
+                {quantityError && <p className="font-medium mt-1" style={{ fontSize: rem(14), color: BLOCK_COLOR }}>{quantityError}</p>}
               </div>
               <div className="min-w-0">
                 <FieldLabel compact need="required" htmlFor="sell-region">재고 위치(지역)</FieldLabel>
@@ -1065,6 +1093,21 @@ export default function SellPage() {
             점핑매니저 검토 후, 이 조건 알림을 받는 회원들에게 빠르게 발송돼요.
           </span>
         </div>
+
+        {/* 2026-10-02: PC형(폼 폭 2칸 이상)이면 하단 고정 버튼 대신 폼 맨 끝 인라인 버튼 — 오류 문구는 버튼 바로 위 */}
+        {wideForm && (
+          <div>
+            {error && <FloatingCTANote>{error}</FloatingCTANote>}
+            <button
+              onClick={() => submit()}
+              disabled={submitting || videoStatus === "uploading"}
+              className={FLOATING_CTA_BUTTON_CLASS}
+              style={floatingCtaButtonStyle()}
+            >
+              {submitting ? "처리 중..." : videoStatus === "uploading" ? VIDEO_UPLOADING_LABEL : "무료로 매물 등록하기"}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* design-v2: 필수 항목(제목/수량/연락처)만 채워도 바로 제출할 수 있는데,
@@ -1084,6 +1127,7 @@ export default function SellPage() {
           대신 반투명+블러 카드 + 상단 페이드로, 스크롤 중인 폼 내용이 자연스럽게
           이어지도록 함. */}
       {/* 2026-09-29: 공용 하단 고정 버튼 — 판·블러 없이 버튼만 띄움 */}
+      {!wideForm && (
       <FloatingCTA>
           {error && <FloatingCTANote>{error}</FloatingCTANote>}
           <button
@@ -1095,6 +1139,7 @@ export default function SellPage() {
             {submitting ? "처리 중..." : videoStatus === "uploading" ? VIDEO_UPLOADING_LABEL : "무료로 매물 등록하기"}
           </button>
               </FloatingCTA>
+      )}
       <VideoNotUploadedSheet
         open={videoSheet !== null}
         onClose={() => setVideoSheet(null)}
