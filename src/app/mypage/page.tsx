@@ -23,7 +23,7 @@ import { SITE_URL } from "@/lib/siteUrl";
 import { resizeImageForUpload } from "@/lib/resizeImage";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 import { rem } from "@/lib/rem";
-import { formatKoreanPhone } from "@/lib/auth";
+import { formatPhone } from "@/lib/phone";
 import { authFetch } from "@/lib/authFetch";
 import { isTestTitle } from "@/lib/categoryAvg";
 import { getPhotoLimit, isPhotoLimitMaxed, MAX_PHOTO_SLOTS } from "@/lib/photoLimit";
@@ -176,7 +176,7 @@ export default function MyPage() {
         .eq("id", userId)
         .single();
       if (member) {
-        setPhone(formatKoreanPhone(member.phone)); // 표시 전용 — 저장 형식이 섞여 있어 "010-1234-5678"로 통일
+        setPhone(formatPhone(member.phone)); // 표시 전용 — 저장 형식이 섞여 있어 "010-1234-5678"로 통일
         setMemberNo(member.member_no);
         setCompanyName(member.company_name ?? "");
         setFullName(member.name ?? "");

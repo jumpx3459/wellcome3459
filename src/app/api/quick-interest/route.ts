@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendAdminPush } from "@/lib/sendPush";
 import { TERMS_VERSION } from "@/lib/consent";
-import { normalizeKoreanPhone, toLocalPhone } from "@/lib/auth";
+import { toLocalPhone } from "@/lib/auth";
+import { normalizePhone } from "@/lib/phone";
 import { clientIp } from "@/lib/adminAuth";
 import { overLimit, UUID_RE } from "@/lib/rateLimit";
 
@@ -10,7 +11,7 @@ import { overLimit, UUID_RE } from "@/lib/rateLimit";
 // 점핑매니저에게 리드를 넘기기 위한 경량 엔드포인트입니다.
 // 2026-10-01 F-1 리드 보안:
 //   · dealId uuid 형식 + 실제 매물 + 진행 중(status active, 마감 시각 전)만
-//   · 휴대폰 번호 01[016789] 10~11자리 (normalizeKoreanPhone — "+82 10-…"·하이픈도 허용)
+//   · 휴대폰 번호 01[016789] 10~11자리 (normalizePhone — "+82 10-…"·하이픈도 허용)
 //   · 횟수 제한: IP 10분 10회, 같은 번호 10분 3회 (서버 메모리, src/lib/rateLimit.ts)
 //   · 같은 매물+같은 번호가 이미 있으면 새로 저장·알림 없이 200 { duplicate: true }
 //   · 개인정보 동의 + 동의 문구 버전 필수 — 저장 시각·버전은 서버가 기록
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
   if (typeof dealId !== "string" || !UUID_RE.test(dealId)) {
     return NextResponse.json({ error: "매물 정보가 올바르지 않아요.", field: "dealId" }, { status: 400 });
   }
-  const local = normalizeKoreanPhone(typeof phone === "string" ? phone : "");
+  const local = normalizePhone(typeof phone === "string" ? phone : "");
   if (!PHONE_RE.test(local)) {
     return NextResponse.json({ error: "휴대폰 번호를 정확히 입력해주세요.", field: "phone" }, { status: 400 });
   }

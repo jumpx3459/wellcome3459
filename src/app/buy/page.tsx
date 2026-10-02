@@ -7,7 +7,8 @@ import { hasAppHistory, goHome } from "@/lib/appNav";
 import { CheckCircle } from "lucide-react";
 import { mockRegions, categoryIcons, quantityUnits, guessCategory, logUnmatchedProductName } from "@/lib/mockData";
 import { formatPriceInput, parsePriceInput, PRICE_UNITS, formatPriceWithUnit } from "@/lib/format";
-import { isValidContactPhone, formatContactPhone } from "@/lib/auth";
+import { isValidContactPhone } from "@/lib/auth";
+import { formatPhone } from "@/lib/phone";
 import ContactPhoneInput from "@/components/ContactPhoneInput";
 import GuestPrivacyConsent from "@/components/GuestPrivacyConsent";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -74,7 +75,7 @@ export default function BuyPage() {
         .eq("id", userData.user.id)
         .maybeSingle();
       if (member?.phone) {
-        const filled = formatContactPhone(member.phone);
+        const filled = formatPhone(member.phone);
         setContactPhone(filled);
         setAutofilledPhone(filled);
       }
@@ -135,7 +136,7 @@ export default function BuyPage() {
           hopePrice: parsePriceInput(hopePrice) ?? null,
           hopePriceUnit: parsePriceInput(hopePrice) ? priceUnit : null,
           accessToken,
-          contactPhone: formatContactPhone(contactPhone),
+          contactPhone: formatPhone(contactPhone),
           description,
           privacyConsent,
         }),

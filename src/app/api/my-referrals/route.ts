@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { maskPhone } from "@/lib/phone";
 
 // 내가 추천해서 가입한 회원 목록 — 본인 access token으로 신원을 검증한 뒤 반환합니다.
-// 전화번호를 마스킹 없이 그대로 보여주는 이유: 추천인은 대부분 본인이 직접 안내한
-// 사람의 번호를 이미 알고 있어서, 실제 가입 여부 확인 목적상 전체 번호가 더 유용함.
+// 2026-10-02: 전화번호는 서버에서 가운데를 가린 값(maskPhone "010-****-5678")만 내려줌 — 추천인에게 다른 회원의
+// 전체 번호가 가지 않게(예전엔 가입 확인용으로 전체 번호를 그대로 줬음). 전체 번호는 관리자 화면·관리자 API에서만.
 export async function POST(req: NextRequest) {
   const { accessToken } = await req.json();
 
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest) {
     member_no: m.member_no,
     is_business: m.is_business,
     created_at: m.created_at,
-    phone: m.phone,
+    phone: maskPhone(m.phone),
     company_name: m.company_name,
     business_verified: m.business_verified,
     referral_note: notesById[m.id] ?? null,

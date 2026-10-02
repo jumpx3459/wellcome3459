@@ -1,12 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { normalizePhone } from "@/lib/phone";
 
 // KPI에서 뺄 회원 (2026-09-30, 커밋 K) — 관리자·테스트 계정. 서버(service role) 전용.
 // 기준은 DB 뷰 kpi_excluded_members(schema.sql 커밋 K 블록): members.is_test, admin_users 번호, kpi_excluded_phones(설립자 등).
 // 뷰가 아직 없으면(SQL 실행 전) admin_users 번호와 같은 회원만 빼는 것으로 대신한다.
-export const normalizePhone = (p: string | null | undefined) => {
-  const d = (p ?? "").replace(/[^0-9]/g, "");
-  return d.startsWith("82") ? `0${d.slice(2)}` : d;
-};
 
 export async function getKpiExcludedMemberIds(
   db: SupabaseClient

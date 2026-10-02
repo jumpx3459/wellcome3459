@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 import { checkAdminAuth, requireRole } from "@/lib/adminAuth";
 import { writeAudit, phoneTail } from "@/lib/adminAudit";
+import { normalizePhone } from "@/lib/phone";
 
 const ROLES = ["최고관리자", "관리자"] as const;
 
@@ -67,11 +68,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "회원을 찾을 수 없습니다." }, { status: 404 });
   }
 
-  const { data: existing } = await supabaseAdmin
-    .from("admin_users")
-    .select("id")
-    .eq("phone", member.phone)
-    .maybeSingle();
+  // 2026-10-02: 문자열 그대로(eq) 비교하면 admin_users.phone이 "+8210…"·하이픈 형식일 때 중복을 놓침 —
+  // members.phone(E1 이후 "010…" 숫자만)과 같은 normalizePhone 형식으로 맞춰 비교. 관리자 수가 적어 전체를 읽음
+  const memberPhone = normalizePhone(member.phone);
+  const { data: adminPhones, error: adminPhonesError } = await supabaseAdmin.from("admin_users").select("phone");
+  if (adminPhonesError) return NextResponse.json({ error: adminPhonesError.message }, { status: 500 });
+  const existing = memberPhone !== "" && (adminPhones ?? []).some((a) => normalizePhone(a.phone) === memberPhone);
   if (existing) {
     return NextResponse.json({ error: "이미 관리자로 등록된 회원이에요." }, { status: 409 });
   }
@@ -113,11 +115,7 @@ const founderAdminPhone = () => process.env.FOUNDER_ADMIN_PHONE || null;
 
 // admin_users.phone은 "01012345678"(국내형식)로 저장된 행과 "+8210..."(E.164) 행이
 // 섞일 수 있어서, 문자열 그대로 비교하면 형식만 달라도 보호가 조용히 꺼짐 —
-// 숫자만 남기고 국가코드 82를 0으로 되돌린 국내형식으로 맞춰서 비교.
-function normalizePhone(p: string) {
-  const digits = p.replace(/\D/g, "");
-  return digits.startsWith("82") ? `0${digits.slice(2)}` : digits;
-}
+// normalizePhone(국내형식 숫자만)으로 맞춰서 비교.
 
 function isFounderProtected(targetPhone: string | null, requesterId: string, targetId: string) {
   const founder = founderAdminPhone();

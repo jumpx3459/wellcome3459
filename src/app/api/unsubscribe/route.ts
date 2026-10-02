@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { normalizePhone } from "@/lib/phone";
 
 const MASKED_PHONE = "010-****-****";
-
-// "+82 10-1234-5678" / "821012345678" / "010-1234-5678" → "01012345678"
-function normalizePhone(p: string | null | undefined): string {
-  const digits = (p ?? "").replace(/[^0-9]/g, "");
-  return digits.startsWith("82") ? `0${digits.slice(2)}` : digits;
-}
 
 // 번호가 같은 비회원 리드·구매 요청은 마스킹, OTP 발송 로그는 삭제. 실패하면 true.
 async function maskByPhone(db: SupabaseClient, phone: string): Promise<boolean> {
