@@ -611,10 +611,15 @@ export default function SellPage() {
       <>
       {/* 2026-10-01 feat/form-order-v2: 매물 폼 재배치 2차 — 저장 항목·검증 그대로, 순서·묶음·표시만.
           ① 필수 정보 → ② 사진·영상 → ③ 판매자 확인 동의 → ④ 제품 상세(접힘) → ⑤ 거래 조건(접힘) → ⑥ 판매자 정보(접힘).
-          칸 수는 폼 폭 기준(@container): 1칸 → 2칸(560px~) → 3칸(840px~), PC 최대 960px. 접힌 묶음 칸에서 오류 나면 펼치고 스크롤 */}
-      <div ref={formRef} className="@container w-full max-w-[720px] mx-auto flex-1 px-5 py-4.5 flex flex-col gap-5" style={{ paddingBottom: wideForm ? 24 : FLOATING_CTA_SPACE + noteH }}>
+          칸 수는 폼 폭 기준(@container): 1칸 → 2칸(560px~) → 3칸(840px~), PC 최대 960px. 접힌 묶음 칸에서 오류 나면 펼치고 스크롤
+          2026-10-02 feat/sell-pc-2col: 화면 1024px(lg) 이상이면 2단 — 왼쪽(필수 정보·동의·접기 묶음) / 오른쪽 고정(사진·영상·안내·등록 버튼).
+          칸은 한 벌만 그리고(업로더 다시 마운트 없음) 배치만 CSS로 바꿈: lg 미만은 두 묶음이 display:contents라 칸들이
+          바깥 세로 줄에 그대로 서고 order로 예전 순서(① → 사진·영상 → 동의 → 접기 → 🔔 → 버튼). lg에선 각 묶음이 칸 수 기준(@container). */}
+      <div ref={formRef} className="@container w-full max-w-[720px] lg:max-w-[1160px] mx-auto flex-1 px-5 py-4.5 flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_clamp(360px,38%,420px)] lg:gap-x-8 lg:gap-y-0 lg:items-start" style={{ paddingBottom: wideForm ? 24 : FLOATING_CTA_SPACE + noteH }}>
+      {/* 왼쪽 */}
+      <div className="contents lg:@container lg:flex lg:flex-col lg:gap-5 lg:min-w-0">
         {/* 2026-09-29: 헤더 안 캐릭터 소개(76px/13px) 대신 buy와 같은 "완전 무료" 카드 (판매자용 문구) */}
-        <div className="flex items-center gap-3 rounded-2xl" style={{ background: "#fff", border: "1.5px solid #E4E7EB", padding: "15px 16px" }}>
+        <div className="order-1 flex items-center gap-3 rounded-2xl" style={{ background: "#fff", border: "1.5px solid #E4E7EB", padding: "15px 16px" }}>
           <img src="/images/manager.png" alt="점핑매니저" className="flex-shrink-0 rounded-xl bg-white" style={{ width: 72, height: 72, objectFit: "contain" }} />
           <span className="flex-1 min-w-0">
             <span className="block" style={{ fontSize: rem(18), fontWeight: 700, color: "#0B2540" }}>판매 등록은 완전 무료예요</span>
@@ -624,12 +629,12 @@ export default function SellPage() {
           </span>
         </div>
 
-        <p style={DEAL_HINT_STYLE}>
+        <p className="order-1" style={DEAL_HINT_STYLE}>
           <span style={{ color: "#E25100", fontWeight: 800 }}>*</span> 필수 항목
         </p>
 
         {/* ① 필수 정보 */}
-        <section>
+        <section className="order-1">
           <FormSectionTitle>필수 정보</FormSectionTitle>
           <div className="flex flex-col gap-4">
             <div className="min-w-0">
@@ -651,8 +656,8 @@ export default function SellPage() {
               <ConfirmWarnings warnings={titleWarnings} onConfirm={() => submit(true)} busy={submitting} />
             </div>
 
-            {/* 가격 한 줄: [판매 단가 | 원 / 단위] · 정상 단가(같은 단위) · 할인율 — 단위 = price_unit(기본 수량 단위, 일괄이면 최소주문 숨김) */}
-            <div className={FORM_ROW3}>
+            {/* 가격 한 줄: [판매 단가 | 원 / 단위] · 정상 단가(같은 단위, 할인율은 라벨 옆 배지) — 단위 = price_unit(기본 수량 단위, 일괄이면 최소주문 숨김) */}
+            <div className={FORM_ROW2}>
               <div className="min-w-0">
                 <FieldLabel compact need="required" htmlFor="sell-hopePrice">판매 단가</FieldLabel>
                 <div className="flex items-stretch rounded-xl overflow-hidden bg-white" style={{ border: `1.5px solid ${priceError ? BLOCK_COLOR : "#E4E7EB"}` }}>
@@ -695,7 +700,9 @@ export default function SellPage() {
                 {priceError && <p className="font-medium mt-1" style={{ fontSize: rem(14), color: BLOCK_COLOR }}>{priceError}</p>}
               </div>
               <div className="min-w-0">
-                <FieldLabel compact need="optional" htmlFor="sell-originalPrice">정상 단가</FieldLabel>
+                <FieldLabel compact need="optional" htmlFor="sell-originalPrice" extra={<SellDiscountBadge original={parsePriceInput(originalPrice)} deal={parsePriceInput(hopePrice)} />}>
+                  정상 단가
+                </FieldLabel>
                 <div className="flex items-center rounded-xl overflow-hidden bg-white" style={{ border: "1.5px solid #E4E7EB" }}>
                   <input
                     id="sell-originalPrice"
@@ -713,16 +720,13 @@ export default function SellPage() {
                   <span className="flex-shrink-0 font-bold whitespace-nowrap" style={{ padding: "0 12px 0 4px", fontSize: DEAL_INPUT_FONT_SIZE, color: "#0B2540" }}>{priceUnitSuffix(priceUnit)}</span>
                 </div>
                 <p className="mt-1" style={DEAL_HINT_STYLE}>판매 단가와 같은 단위로 적어주세요</p>
-              </div>
-              <div className="min-w-0 @min-[560px]:col-span-2" data-field="discount">
-                <p className="mb-2" style={DEAL_LABEL_STYLE}>할인율</p>
-                <SellDiscountHint original={parsePriceInput(originalPrice)} deal={parsePriceInput(hopePrice)} />
+                <SellDiscountWarn original={parsePriceInput(originalPrice)} deal={parsePriceInput(hopePrice)} />
                 <ConfirmWarnings warnings={priceWarns} onConfirm={titleWarnings.length ? undefined : () => submit(true)} busy={submitting} />
               </div>
             </div>
 
-            {/* 재고 총수량+단위 · 재고 위치(지역, 필수 — 알림 매칭 기준) · 연락처 */}
-            <div className={FORM_ROW3}>
+            {/* 재고 총수량+단위 · 재고 위치(지역, 필수 — 알림 매칭 기준) · 연락처 — 2단(lg) 왼쪽에선 3칸 */}
+            <div className={`${FORM_ROW3} lg:grid-cols-3!`}>
               <div className="min-w-0">
                 <FieldLabel compact need="required" htmlFor="sell-quantity">재고 총수량</FieldLabel>
                 <div className="flex rounded-xl overflow-hidden bg-white" style={{ border: `1.5px solid ${quantityError ? BLOCK_COLOR : "#E4E7EB"}` }}>
@@ -795,17 +799,8 @@ export default function SellPage() {
           </div>
         </section>
 
-        {/* ② 사진·영상 */}
-        <section>
-          <FormSectionTitle hint="사진이 있으면 더 빨리 연결돼요">사진·영상</FormSectionTitle>
-          <div className="flex flex-col gap-5">
-            <ImageUploader onChange={setImages} initialUrls={images} max={getPhotoLimit({ bonus_photo_slots: bonusPhotoSlots })} />
-            <div id="sell-video">
-              <VideoUploader ref={videoUploaderRef} onChange={setVideoUrl} initialUrl={videoUrl} onStatusChange={setVideoStatus} />
-            </div>
-          </div>
-        </section>
-
+        {/* 동의 + 접기 묶음 — lg 미만에선 바깥 줄에서 order-3(사진·영상 다음) */}
+        <div className="order-3 flex flex-col gap-5">
         {/* ③ 필수 동의 — 판매자 확인 사항 (동의 저장은 등록 시점, 미체크로 등록하면 여기로 스크롤) */}
         <div id="sell-seller-terms">
           <label
@@ -1105,17 +1100,34 @@ export default function SellPage() {
             </div>
           </div>
         </FormAccordion>
+        </div>
+      </div>
 
-        <div className="flex items-center gap-2.5 rounded-2xl" style={{ background: "#F5F6F8", padding: "14px 16px" }}>
-          <span style={{ fontSize: rem(18) }}>🔔</span>
-          <span className="flex-1" style={{ ...DEAL_HINT_STYLE, color: "#0B2540", fontWeight: 500 }}>
-            점핑매니저 검토 후, 이 조건 알림을 받는 회원들에게 빠르게 발송돼요.
-          </span>
+      {/* 오른쪽 — lg에서 화면에 고정(sticky). 사진·영상·안내가 화면보다 길면 그 부분만 안에서 스크롤, 등록 버튼은 항상 보임 */}
+      <div className="contents lg:@container lg:sticky lg:top-[calc(var(--sat)_+_16px)] lg:flex lg:flex-col lg:gap-4 lg:min-w-0 lg:max-h-[calc(100dvh_-_var(--sat)_-_var(--nav-bottom)_-_32px)]">
+        <div className="contents lg:flex lg:flex-col lg:gap-5 lg:min-h-0 lg:overflow-y-auto">
+          {/* ② 사진·영상 */}
+          <section className="order-2">
+            <FormSectionTitle hint="사진이 있으면 더 빨리 연결돼요">사진·영상</FormSectionTitle>
+            <div className="flex flex-col gap-5">
+              <ImageUploader onChange={setImages} initialUrls={images} max={getPhotoLimit({ bonus_photo_slots: bonusPhotoSlots })} />
+              <div id="sell-video">
+                <VideoUploader ref={videoUploaderRef} onChange={setVideoUrl} initialUrl={videoUrl} onStatusChange={setVideoStatus} />
+              </div>
+            </div>
+          </section>
+
+          <div className="order-4 flex items-center gap-2.5 rounded-2xl" style={{ background: "#F5F6F8", padding: "14px 16px" }}>
+            <span style={{ fontSize: rem(18) }}>🔔</span>
+            <span className="flex-1" style={{ ...DEAL_HINT_STYLE, color: "#0B2540", fontWeight: 500 }}>
+              점핑매니저 검토 후, 이 조건 알림을 받는 회원들에게 빠르게 발송돼요.
+            </span>
+          </div>
         </div>
 
-        {/* 2026-10-02: PC형(폼 폭 2칸 이상)이면 하단 고정 버튼 대신 폼 맨 끝 인라인 버튼 — 오류 문구는 버튼 바로 위 */}
+        {/* 2026-10-02: PC형(폼 폭 2칸 이상)이면 하단 고정 버튼 대신 인라인 버튼(lg 2단에선 오른쪽 맨 아래) — 오류 문구는 버튼 바로 위 */}
         {wideForm && (
-          <div>
+          <div className="order-5 lg:flex-shrink-0">
             {error && <FloatingCTANote>{error}</FloatingCTANote>}
             <button
               onClick={() => submit()}
@@ -1127,6 +1139,7 @@ export default function SellPage() {
             </button>
           </div>
         )}
+      </div>
       </div>
 
       {/* design-v2: 필수 항목(제목/수량/연락처)만 채워도 바로 제출할 수 있는데,
@@ -1180,14 +1193,22 @@ export default function SellPage() {
   );
 }
 
-// 정상 단가 칸 아래 — "○% 할인으로 보여요" / 판매가 ≥ 정상가면 주황 안내 (2026-10-01 PR-B [3])
-function SellDiscountHint({ original, deal }: { original?: number | null; deal?: number | null }) {
-  if (!original || !deal) return <p style={DEAL_HINT_STYLE}>판매·정상 단가를 넣으면 할인율이 보여요</p>;
-  const pct = discountPercent(original, deal);
-  if (pct === null) {
-    return <p className="mt-1 font-medium" style={{ fontSize: rem(14), color: WARN_COLOR }}>판매가가 정상가보다 높거나 같아 할인율이 안 보여요.</p>;
-  }
-  return <p className="mt-1 font-bold" style={{ fontSize: rem(14), color: pct >= HIGH_DISCOUNT_PCT ? WARN_COLOR : "#0B7A3E" }}>{pct}% 할인으로 보여요</p>;
+// 정상 단가 라벨 옆 배지 "27% 할인" (2026-10-02 feat/sell-pc-2col — 예전 할인율 한 줄 대신, 값 없으면 자리 없음)
+function SellDiscountBadge({ original, deal }: { original?: number | null; deal?: number | null }) {
+  const pct = original && deal ? discountPercent(original, deal) : null;
+  if (pct === null) return null;
+  const warn = pct >= HIGH_DISCOUNT_PCT;
+  return (
+    <span className="rounded-full font-bold whitespace-nowrap" style={{ fontSize: rem(13), lineHeight: 1.4, padding: "1px 8px", color: warn ? WARN_COLOR : "#0B7A3E", background: warn ? "#FFF4E5" : "#E8F5EE" }}>
+      {pct}% 할인
+    </span>
+  );
+}
+
+// 판매가 ≥ 정상가면 정상 단가 칸 아래 주황 안내 (2026-10-01 PR-B [3])
+function SellDiscountWarn({ original, deal }: { original?: number | null; deal?: number | null }) {
+  if (!original || !deal || discountPercent(original, deal) !== null) return null;
+  return <p className="mt-1 font-medium" style={{ fontSize: rem(14), color: WARN_COLOR }}>판매가가 정상가보다 높거나 같아 할인율이 안 보여요.</p>;
 }
 
 // 매물 폼 입력칸 공통 모양 (2026-10-01) — 오류 테두리는 빨강
