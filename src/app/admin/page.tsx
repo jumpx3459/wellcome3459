@@ -2312,7 +2312,8 @@ function ActiveDealCard({
   // 성공 시 리스트 행으로 자동 접힘.
   // 성공 여부를 반환 — 토스트가 실패(세션 만료 401, 서버 500, 네트워크 오류)를
   // "저장했어요"로 잘못 안내하지 않도록 응답 상태를 확인함.
-  const patch = async (body: Record<string, unknown>): Promise<boolean> => {
+  // 2026-10-02 PR-A: 실패하면 서버가 준 이유(error·field)도 돌려줌 — 영상 주소 검사 실패(field "video")는 그 이유를 토스트로
+  const patch = async (body: Record<string, unknown>): Promise<{ ok: boolean; error?: string; field?: string }> => {
     setSaving(true);
     try {
       const res = await fetch("/api/admin/deals/manage", {
@@ -2320,11 +2321,14 @@ function ActiveDealCard({
         headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
         body: JSON.stringify({ id: deal.id, ...body }),
       });
-      if (!res.ok) return false;
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        return { ok: false, error: typeof data.error === "string" ? data.error : undefined, field: data.field };
+      }
       onChanged();
-      return true;
+      return { ok: true };
     } catch {
-      return false;
+      return { ok: false };
     } finally {
       setSaving(false);
     }
@@ -2332,8 +2336,9 @@ function ActiveDealCard({
 
   const saveAll = async () => {
     const sellerPatch = sellerChanged ? { sellerPublic: seller.isPublic, sellerCompanyName: seller.companyName } : {};
-    if (!(await patch({ remainingQty: Number(remainingQty), images, videoUrl, ...sellerPatch }))) {
-      showToast("저장하지 못했어요. 다시 시도해주세요");
+    const result = await patch({ remainingQty: Number(remainingQty), images, videoUrl, ...sellerPatch });
+    if (!result.ok) {
+      showToast(result.field === "video" && result.error ? result.error : "저장하지 못했어요. 다시 시도해주세요");
       return;
     }
     setEditingPhotos(false);
@@ -2345,7 +2350,7 @@ function ActiveDealCard({
   // 2026-10-01: 마감 — 확인 후 status closed(manage PATCH 허용값). 서버가 감사 로그(deal_close) 기록
   const closeDeal = async () => {
     if (!confirm(`"${deal.title}" 매물을 지금 마감할까요? 진행 중 목록에서 빠지고 매물 상세에는 "마감됨"으로 보여요.`)) return;
-    if (await patch({ status: "closed" })) onClosed(deal.title);
+    if ((await patch({ status: "closed" })).ok) onClosed(deal.title);
     else showToast("마감하지 못했어요. 다시 시도해주세요");
   };
 
@@ -2376,7 +2381,7 @@ function ActiveDealCard({
 
   const extendHours = async (hours: number) => {
     const newClosesAt = new Date(new Date(deal.closes_at).getTime() + hours * 3600 * 1000).toISOString();
-    showToast((await patch({ closesAt: newClosesAt })) ? `${hours}시간 연장했어요` : "연장하지 못했어요. 다시 시도해주세요");
+    showToast((await patch({ closesAt: newClosesAt })).ok ? `${hours}시간 연장했어요` : "연장하지 못했어요. 다시 시도해주세요");
   };
 
   return (

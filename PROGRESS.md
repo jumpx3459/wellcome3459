@@ -152,6 +152,9 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
   manage는 이미 저장된 값과 같으면 그대로 통과.
 - /api/upload: 사진 경로 그대로, 영상 분기는 남김(예전 클라이언트 호환) + 형식 기본형 정규화. uploadClient: JSON이 아닌 응답(413 등)을 상태 코드 안내 JSON으로.
 - 버킷 설정(대표 실행 예정): deal-images file_size_limit 52428800 · allowed_mime_types 사진 4종(jpeg·png·webp·gif) + 영상 4종 — 코드 값과 같음.
+- 보완: 직접 업로드 FormData의 파일 파트 형식은 Blob.type에서 옴 → `new Blob([file], { type: 기본형 })`으로 다시 감싸 보냄(감싸지 않으면
+  잘라낸 webm은 "video/webm;codecs=…", 형식 빈 .mov·.mp4는 "application/octet-stream"). /api/upload 영상 분기도 Storage에 기본형 contentType.
+  관리자 매물 수정(manage PATCH) 실패 시 영상 검사 실패(field "video")는 서버 이유를 토스트로, 그 외는 예전 문구.
 
 ## 최근 작업 (2026-10-02) — 번호 표시 통일 + 추천 목록 번호 가리기 (PR #41, 머지 `d5f5e78` · 배포 run 36964863033 성공)
 
