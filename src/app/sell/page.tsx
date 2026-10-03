@@ -733,6 +733,8 @@ export default function SellPage() {
                   </select>
                 </div>
                 {priceError && <p className="font-medium mt-1" style={{ fontSize: rem(14), color: BLOCK_COLOR }}>{priceError}</p>}
+                {/* 2026-10-03 A안: 비회원에겐 가격 비공개("회원가 보기") — 판매자에게 미리 알림 */}
+                <p className="mt-1" style={DEAL_HINT_STYLE}>가격은 가입 회원에게만 공개돼요 · 브랜드 없이 올리고 싶으시면 추가 설명에 적어 주세요</p>
               </div>
               <div className="min-w-0">
                 <FieldLabel compact need="optional" htmlFor="sell-originalPrice" extra={<SellDiscountBadge original={parsePriceInput(originalPrice)} deal={parsePriceInput(hopePrice)} />}>
