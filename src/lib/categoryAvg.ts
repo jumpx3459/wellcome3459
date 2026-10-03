@@ -10,7 +10,8 @@ export type AvgSampleRow = {
   category: string;
   title: string;
   original_price: number | null;
-  deal_price: number;
+  deal_price: number | null;
+  discount_pct?: number | null; // 2026-10-03 A안: 비회원 표본은 가격 대신 DB 할인율(정수) — 값이 있으면(키가 있으면) 이것으로 계산
   status?: string | null;
   closes_at: string;
   created_at?: string | null;
@@ -20,9 +21,12 @@ export function isTestTitle(title: string): boolean {
   return title.includes("[테스트]");
 }
 
-function discountPct(r: { original_price: number | null; deal_price: number }): number | null {
+type PctSource = { original_price: number | null; deal_price: number | null; discount_pct?: number | null };
+
+function discountPct(r: PctSource): number | null {
+  if (r.discount_pct !== undefined) return r.discount_pct;
   if (!r.original_price || r.original_price <= 0) return null;
-  return ((r.original_price - r.deal_price) / r.original_price) * 100;
+  return ((r.original_price - (r.deal_price ?? 0)) / r.original_price) * 100;
 }
 
 export function avgDiscountByCategory(rows: AvgSampleRow[], nowMs: number): Record<string, number> {
@@ -48,7 +52,7 @@ export function avgDiscountByCategory(rows: AvgSampleRow[], nowMs: number): Reco
 
 // 배지에 쓸 %p 차이 — 조건 미달이면 null (배지 숨김)
 export function hotGapPct(
-  deal: { category: string; title: string; original_price: number | null; deal_price: number },
+  deal: { category: string; title: string } & PctSource,
   avgs: Record<string, number>,
 ): number | null {
   if (isTestTitle(deal.title)) return null;

@@ -15,6 +15,7 @@ import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import DealListCard from "@/components/DealListCard";
 import { avgDiscountByCategory, hotGapPct, type AvgSampleRow } from "@/lib/categoryAvg";
+import { selectWithPriceAccess, dealPriceFields, discountSortKey } from "@/lib/dealPriceAccess";
 
 import { EXAMPLE_DEALS, shouldShowExamples } from "@/lib/exampleDeals";
 import { rem } from "@/lib/rem";
@@ -61,6 +62,8 @@ function DealsPageInner() {
   // 가입 위저드)으로 보내던 문제 — 이미 가입된 회원도 다시 가입하라는 셈이라
   // 회원이면 마이페이지 알림 조건으로 보내도록 분기하기 위해 필요.
   const [isMember, setIsMember] = useState(false);
+  // 2026-10-03 A안: 가격 없이 받은 목록(비회원)이면 카드 가격 자리에 "회원가 보기" — 조회 전(첫 화면·예시)도 숨김으로 시작
+  const [priceHidden, setPriceHidden] = useState(isSupabaseConfigured);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
@@ -76,18 +79,21 @@ function DealsPageInner() {
 
     (async () => {
       // 2026-10-01 PR-B: 카드에 소비기한 — SQL 전이면 새 컬럼 빼고 다시 조회
-      const run = (extra: string) => supabase!
+      const run = (priceCols: string, extra: string) => supabase!
         .from("deals")
         .select<string, DealRowLoose>(
-          `id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, price_unit, closes_at, location, images, video_url, origin, min_order_qty, interest_count, stock_type, categories(name), regions(name)${extra}`
+          `id, title, ${priceCols}, total_qty, remaining_qty, quantity_unit, price_unit, closes_at, location, images, video_url, origin, min_order_qty, interest_count, stock_type, categories(name), regions(name)${extra}`
         )
         .eq("status", "active")
         .gt("closes_at", new Date().toISOString()) // 마감 지난 매물은 애초에 가져오지 않음
         .order("closes_at", { ascending: true });
-      let { data, error } = await run(DEAL_NEW_COLS);
-      if (isMissingNewColumn(error)) ({ data, error } = await run(""));
+      const { data, error, priceHidden: hidden } = await selectWithPriceAccess(async (cols) => {
+        const r = await run(cols, DEAL_NEW_COLS);
+        return isMissingNewColumn(r.error) ? run(cols, "") : r;
+      });
 
       if (!error && data) {
+        setPriceHidden(hidden);
         setDeals(
           data.map((d) => ({
             id: d.id,
@@ -96,8 +102,7 @@ function DealsPageInner() {
             region: (d.regions as unknown as { name: string } | null)?.name ?? "",
             location: formatDealLocation(((d.regions as unknown) as { name: string } | null)?.name, d.location),
             stock_type: d.stock_type ?? "general",
-            original_price: d.original_price,
-            deal_price: d.deal_price,
+            ...dealPriceFields(d, hidden),
             total_qty: d.total_qty,
             remaining_qty: d.remaining_qty,
             quantity_unit: d.quantity_unit ?? "개",
@@ -122,16 +127,18 @@ function DealsPageInner() {
 
     (async () => {
       // 2026-10-01 PR-B: 카드에 소비기한 — SQL 전이면 새 컬럼 빼고 다시 조회
-      const run = (extra: string) => supabase!
+      const run = (priceCols: string, extra: string) => supabase!
         .from("deals")
         .select<string, DealRowLoose>(
-          `id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, price_unit, closes_at, location, images, video_url, origin, min_order_qty, interest_count, stock_type, categories(name), regions(name)${extra}`
+          `id, title, ${priceCols}, total_qty, remaining_qty, quantity_unit, price_unit, closes_at, location, images, video_url, origin, min_order_qty, interest_count, stock_type, categories(name), regions(name)${extra}`
         )
         .or(`status.eq.closed,closes_at.lte.${new Date().toISOString()}`)
         .order("closes_at", { ascending: false })
         .limit(30);
-      let { data, error } = await run(DEAL_NEW_COLS);
-      if (isMissingNewColumn(error)) ({ data, error } = await run(""));
+      const { data, error, priceHidden: hidden } = await selectWithPriceAccess(async (cols) => {
+        const r = await run(cols, DEAL_NEW_COLS);
+        return isMissingNewColumn(r.error) ? run(cols, "") : r;
+      });
 
       if (!error && data) {
         setClosedDeals(
@@ -142,8 +149,7 @@ function DealsPageInner() {
             region: (d.regions as unknown as { name: string } | null)?.name ?? "",
             location: formatDealLocation(((d.regions as unknown) as { name: string } | null)?.name, d.location),
             stock_type: d.stock_type ?? "general",
-            original_price: d.original_price,
-            deal_price: d.deal_price,
+            ...dealPriceFields(d, hidden),
             total_qty: d.total_qty,
             remaining_qty: d.remaining_qty,
             quantity_unit: d.quantity_unit ?? "개",
@@ -170,18 +176,22 @@ function DealsPageInner() {
     (async () => {
       const nowIso = new Date().toISOString();
       const since = new Date(Date.now() - 30 * 24 * 3600e3).toISOString();
-      const { data, error } = await supabase
-        .from("deals")
-        .select("title, original_price, deal_price, status, closes_at, created_at, categories(name)")
-        .or(`created_at.gte.${since},and(status.eq.active,closes_at.gt.${nowIso})`)
-        .limit(1000);
+      // 2026-10-03 A안: 비회원은 가격 대신 discount_pct로 평균 (src/lib/categoryAvg.ts)
+      const { data, error, priceHidden: hidden } = await selectWithPriceAccess((cols) =>
+        supabase!
+          .from("deals")
+          .select<string, DealRowLoose>(`title, ${cols}, status, closes_at, created_at, categories(name)`)
+          .or(`created_at.gte.${since},and(status.eq.active,closes_at.gt.${nowIso})`)
+          .limit(1000)
+      );
       if (!error && data) {
         setAvgSamples(
           data.map((d) => ({
             category: (d.categories as unknown as { name: string } | null)?.name ?? "기타",
             title: d.title,
-            original_price: d.original_price,
-            deal_price: d.deal_price,
+            ...(hidden
+              ? { original_price: null, deal_price: null, discount_pct: d.discount_pct ?? null }
+              : { original_price: d.original_price, deal_price: d.deal_price }),
             status: d.status,
             closes_at: d.closes_at,
             created_at: d.created_at,
@@ -207,9 +217,7 @@ function DealsPageInner() {
   const byRegion = activeRegion === "전체" ? byCategory : byCategory.filter((d) => d.region === activeRegion);
   const filtered = [...byRegion].sort((a, b) => {
     if (sort === "urgent") return new Date(a.closes_at).getTime() - new Date(b.closes_at).getTime();
-    const discA = a.original_price ? (a.original_price - a.deal_price) / a.original_price : 0;
-    const discB = b.original_price ? (b.original_price - b.deal_price) / b.original_price : 0;
-    return discB - discA;
+    return discountSortKey(b) - discountSortKey(a);
   });
 
   const showExamples = view === "active" && shouldShowExamples(filtered.length, isSupabaseConfigured);
@@ -422,6 +430,7 @@ function DealsPageInner() {
               key={d.id}
               deal={d}
               closed={isClosed}
+              priceHidden={d.price_hidden ?? priceHidden}
               hotGapPct={isClosed ? null : hotGapPct(d, avgDiscount)}
               eager={idx === 0}
             />
@@ -441,7 +450,7 @@ function DealsPageInner() {
             </div>
             <div className="flex flex-col gap-3">
               {EXAMPLE_DEALS.map((d) => (
-                <DealListCard key={`example-${d.id}`} deal={d} example />
+                <DealListCard key={`example-${d.id}`} deal={d} example priceHidden={priceHidden} />
               ))}
             </div>
             <p className="text-center text-xs mt-2" style={{ color: "#9AA3AD" }}>

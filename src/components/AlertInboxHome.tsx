@@ -17,6 +17,9 @@ import { EXAMPLE_DEALS, shouldShowExamples } from "@/lib/exampleDeals";
 import { rem } from "@/lib/rem";
 import StockTypeBadge from "@/components/StockTypeBadge";
 import DealCardMedia from "@/components/DealCardMedia";
+import MemberPriceTeaser from "@/components/MemberPriceTeaser";
+import { selectWithPriceAccess, dealPriceFields, cardDiscountPct } from "@/lib/dealPriceAccess";
+import type { DealRowLoose } from "@/lib/dealFields";
 import { SECTION_TITLE_STYLE } from "@/components/EcosystemGrid";
 import { isLumpSum } from "@/lib/priceUnit";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
@@ -108,21 +111,27 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
         .select("id", { count: "exact", head: true })
         .eq("status", "active")
         .gt("closes_at", nowIso);
-      let matchQuery = supabase
-        .from("deals")
-        .select(
-          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, price_unit, closes_at, created_at, location, images, video_url, origin, min_order_qty, category_id, region_id, stock_type, categories(name), regions(name)",
-          { count: "exact" }
-        )
-        .eq("status", "active")
-        .gt("closes_at", nowIso)
-        .in("category_id", catIds)
-        .order("created_at", { ascending: false })
-        .limit(INBOX_LIMIT);
-      if (regIds.length > 0) matchQuery = matchQuery.in("region_id", regIds);
+      // 2026-10-03 A안: 회원 요청이 42501(가격 칸 권한 없음 — 세션이 요청 시점에 사라진 경우 등)이면 가격 없이 한 번 더 (src/lib/dealPriceAccess.ts)
+      const matchQuery = (cols: string) => {
+        let q = supabase!
+          .from("deals")
+          .select<string, DealRowLoose>(
+            `id, title, ${cols}, total_qty, remaining_qty, quantity_unit, price_unit, closes_at, created_at, location, images, video_url, origin, min_order_qty, category_id, region_id, stock_type, categories(name), regions(name)`,
+            { count: "exact" }
+          )
+          .eq("status", "active")
+          .gt("closes_at", nowIso)
+          .in("category_id", catIds)
+          .order("created_at", { ascending: false })
+          .limit(INBOX_LIMIT);
+        if (regIds.length > 0) q = q.in("region_id", regIds);
+        return q;
+      };
       const [{ count: totalCount }, matchRes] = await Promise.all([
         totalQuery,
-        catIds.length > 0 ? matchQuery : Promise.resolve({ data: [], count: 0 }),
+        catIds.length > 0
+          ? selectWithPriceAccess(matchQuery)
+          : Promise.resolve({ data: [] as DealRowLoose[], count: 0, priceHidden: false }),
       ]);
       // DB 필터와 별개로 같은 규칙 함수로 한 번 더 확인 (푸시 발송 기준과 어긋나지 않게)
       const dealRows = (matchRes.data ?? []).filter((d) =>
@@ -148,8 +157,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
           region: (d.regions as unknown as { name: string } | null)?.name ?? "",
           location: formatDealLocation(((d.regions as unknown) as { name: string } | null)?.name, d.location),
           stock_type: d.stock_type ?? "general",
-          original_price: d.original_price,
-          deal_price: d.deal_price,
+          ...dealPriceFields(d, matchRes.priceHidden),
           total_qty: d.total_qty,
           remaining_qty: d.remaining_qty,
           quantity_unit: d.quantity_unit ?? "개",
@@ -313,7 +321,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
           </div>
           {g.items.map((d, di) => {
             const cd = formatCountdown(d.closes_at);
-            const pct = d.original_price ? Math.round(((d.original_price - d.deal_price) / d.original_price) * 100) : 0;
+            const pct = cardDiscountPct(d);
             return (
               <Link
                 key={d.id}
@@ -389,13 +397,19 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                       </span>
                     )}
                     <span className="flex items-baseline gap-1.5 mt-1.5">
-                      {!wideLayout && pct > 0 && (
-                        <span className="font-black text-white rounded" style={{ fontSize: rem(12), padding: "2px 7px", background: "#E25100" }}>
-                          -{pct}%
-                        </span>
+                      {d.price_hidden ? (
+                        <MemberPriceTeaser discountPct={pct} color="#0B2540" className="text-lg" />
+                      ) : (
+                        <>
+                          {!wideLayout && pct > 0 && (
+                            <span className="font-black text-white rounded" style={{ fontSize: rem(12), padding: "2px 7px", background: "#E25100" }}>
+                              -{pct}%
+                            </span>
+                          )}
+                          <span className="font-black" style={{ fontSize: rem(18), color: "#0B2540" }}>{formatDealPrice(d.deal_price, d.quantity_unit, d.price_unit)}</span>
+                          <span style={{ fontSize: rem(12.5), color: "#6B7480", textDecoration: "line-through" }}>{formatDealPrice(d.original_price, d.quantity_unit, d.price_unit)}</span>
+                        </>
                       )}
-                      <span className="font-black" style={{ fontSize: rem(18), color: "#0B2540" }}>{formatDealPrice(d.deal_price, d.quantity_unit, d.price_unit)}</span>
-                      <span style={{ fontSize: rem(12.5), color: "#6B7480", textDecoration: "line-through" }}>{formatDealPrice(d.original_price, d.quantity_unit, d.price_unit)}</span>
                     </span>
                   </span>
                 </div>

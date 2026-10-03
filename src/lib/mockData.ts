@@ -9,6 +9,8 @@ export type Deal = {
   stock_type?: string | null; // 2026-09-29 재고 유형 (src/lib/stockType.ts)
   original_price: number;
   deal_price: number;
+  discount_pct?: number | null; // 2026-10-03 A안: 비회원 조회 행만 — DB generated 할인율 (src/lib/dealPriceAccess.ts)
+  price_hidden?: boolean; // 가격 없이 받은 행(비회원) — deal_price·original_price는 0, 화면은 "회원가 보기"
   total_qty: number;
   remaining_qty: number;
   closes_at: string; // ISO

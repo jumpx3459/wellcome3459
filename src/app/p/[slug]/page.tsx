@@ -6,6 +6,8 @@ import { useParams } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockDeals, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import { formatPrice, formatDealPrice } from "@/lib/format";
+import { selectWithPriceAccess, dealPriceFields, cardDiscountPct, memberPriceTeaser } from "@/lib/dealPriceAccess";
+import { withReturnTo } from "@/lib/safeReturnTo";
 import { getPartner } from "@/lib/partners";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import { rem } from "@/lib/rem";
@@ -20,27 +22,33 @@ export default function PartnerDemoPage() {
   const params = useParams<{ slug: string }>();
   const partner = getPartner(params.slug);
   const [deals, setDeals] = useState<Deal[]>(mockDeals.filter((d) => d.status !== "closed").slice(0, PREVIEW_COUNT));
+  // 2026-10-03 A안: 비회원은 가격 대신 "-N% · 회원가 보기" — 조회 전(첫 화면)도 숨김으로 시작
+  const [priceHidden, setPriceHidden] = useState(isSupabaseConfigured);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return; // 데모 모드: mockDeals 사용
 
     (async () => {
-      const { data, error } = await supabase
-        .from("deals")
-        .select(
-          "id, title, deal_price, original_price, total_qty, remaining_qty, quantity_unit, price_unit, closes_at, location, images, stock_type, categories(name), regions(name)"
-        )
-        .eq("status", "active")
-        .gt("closes_at", new Date().toISOString())
-        .order("closes_at", { ascending: true })
-        .limit(PREVIEW_COUNT);
+      const { data, error, priceHidden: hidden } = await selectWithPriceAccess((cols) =>
+        supabase!
+          .from("deals")
+          .select(
+            `id, title, ${cols}, total_qty, remaining_qty, quantity_unit, price_unit, closes_at, location, images, stock_type, categories(name), regions(name)`
+          )
+          .eq("status", "active")
+          .gt("closes_at", new Date().toISOString())
+          .order("closes_at", { ascending: true })
+          .limit(PREVIEW_COUNT)
+      );
 
       if (error || !data) return;
+      setPriceHidden(hidden);
       setDeals(
         data.map((d) => {
           const rec = d as unknown as Record<string, unknown>;
           return {
             ...rec,
+            ...dealPriceFields(rec, hidden),
             category: (rec.categories as { name: string } | null)?.name ?? "기타",
             location: formatDealLocation((rec.regions as { name: string } | null)?.name, rec.location as string | null),
           } as unknown as Deal;
@@ -63,6 +71,8 @@ export default function PartnerDemoPage() {
   }
 
   const signupHref = partner.refCode ? `/signup?ref=${partner.refCode}` : "/signup";
+  // 비회원 "회원가 보기" — 가입 후 이 페이지로(returnTo) + 파트너 ref 유지. 자동 관심 파라미터 없음
+  const memberPriceHref = withReturnTo("/signup", `/p/${params.slug}`, partner.refCode ? `ref=${partner.refCode}` : "");
 
   return (
     <main className="flex flex-col min-h-screen bg-white">
@@ -101,7 +111,7 @@ export default function PartnerDemoPage() {
         <div className="flex flex-col gap-3">
           {deals.slice(0, PREVIEW_COUNT).map((d) => {
             const color = categoryColors[d.category] ?? categoryColors["기타"];
-            const discountPct = d.original_price ? ((d.original_price - d.deal_price) / d.original_price) * 100 : 0;
+            const discountPct = d.price_hidden ? cardDiscountPct(d) : d.original_price ? ((d.original_price - d.deal_price) / d.original_price) * 100 : 0;
             return (
               <div key={d.id} className="bg-white border border-gray200 rounded-2xl overflow-hidden flex" style={{ borderLeft: `5px solid ${color.solid}` }}>
                 <div className="relative flex-shrink-0" style={{ width: 92, height: 92 }}>
@@ -115,14 +125,20 @@ export default function PartnerDemoPage() {
                 </div>
                 <div className="flex-1 min-w-0 px-3.5 py-2.5">
                   <div className="text-sm font-bold truncate" style={{ color: "#0B2540" }}>{d.title}</div>
-                  <div className="flex items-baseline gap-1.5 mt-1.5">
-                    <span className="text-base font-black" style={{ color: color.text }}>{formatDealPrice(d.deal_price, d.quantity_unit, d.price_unit)}</span>
-                    {discountPct > 0 && (
-                      <span className="text-xs font-bold rounded-full" style={{ color: partner.accentColor, background: "#fff", border: `1px solid ${partner.accentColor}`, padding: "1px 7px" }}>
-                        -{Math.round(discountPct)}%
-                      </span>
-                    )}
-                  </div>
+                  {priceHidden || d.price_hidden ? (
+                    <Link href={memberPriceHref} className="inline-block mt-1.5 text-base font-black" style={{ color: color.text }} data-member-price>
+                      {memberPriceTeaser(Math.round(discountPct))}
+                    </Link>
+                  ) : (
+                    <div className="flex items-baseline gap-1.5 mt-1.5">
+                      <span className="text-base font-black" style={{ color: color.text }}>{formatDealPrice(d.deal_price, d.quantity_unit, d.price_unit)}</span>
+                      {discountPct > 0 && (
+                        <span className="text-xs font-bold rounded-full" style={{ color: partner.accentColor, background: "#fff", border: `1px solid ${partner.accentColor}`, padding: "1px 7px" }}>
+                          -{Math.round(discountPct)}%
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             );

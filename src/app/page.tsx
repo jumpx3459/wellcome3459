@@ -7,7 +7,7 @@ import TabLink from "@/components/TabLink";
 import BusinessFooter from "@/components/BusinessFooter";
 import { mockCategories, mockDeals, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { formatPrice, formatRelativeTime, formatDealPrice } from "@/lib/format";
+import { formatPrice, formatRelativeTime } from "@/lib/format";
 import SplashScreen from "@/components/SplashScreen";
 import OnboardingIntro from "@/components/OnboardingIntro";
 import InstallAppButton, { useInstallPrompt } from "@/components/InstallAppButton";
@@ -17,7 +17,8 @@ import EcosystemGrid, { SECTION_TITLE_STYLE, SERVICES_ANCHOR_ID, scrollToService
 import AlertInboxHome from "@/components/AlertInboxHome";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
-import PriceText from "@/components/PriceText";
+import MemberPriceTeaser from "@/components/MemberPriceTeaser";
+import { GUEST_PRICE_COLS, dealPriceFields, cardDiscountPct } from "@/lib/dealPriceAccess";
 import { SITE_URL } from "@/lib/siteUrl";
 import { rem } from "@/lib/rem";
 import StockTypeBadge from "@/components/StockTypeBadge";
@@ -137,7 +138,7 @@ export default function Home() {
             supabase!
               .from("deals")
               .select<string, DealRowLoose>(
-                `id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, created_at, location, images, package_unit, min_order_qty, quantity_unit, price_unit, stock_type, categories(name), regions(name)${extra}`
+                `id, title, ${GUEST_PRICE_COLS}, total_qty, remaining_qty, closes_at, created_at, location, images, package_unit, min_order_qty, quantity_unit, price_unit, stock_type, categories(name), regions(name)${extra}`
               )
               .eq("status", "active")
               .gt("closes_at", new Date().toISOString())
@@ -146,21 +147,22 @@ export default function Home() {
           const r = await run(DEAL_NEW_COLS);
           return isMissingNewColumn(r.error) ? run("") : r;
         })(),
-        // 온보딩 "평균 할인율" — 진행 중 매물 중 정상가가 판매가보다 높은 것만 평균
+        // 온보딩 "평균 할인율" — 진행 중 매물 중 할인율이 있는 것(정상가 > 판매가)만 평균.
+        // 2026-10-03 A안: 비회원은 가격 칸을 못 읽음 → DB discount_pct(정수) 평균
         supabase
           .from("deals")
-          .select("original_price, deal_price")
+          .select(GUEST_PRICE_COLS)
           .eq("status", "active")
           .gt("closes_at", nowIso),
       ]);
 
       setTodayCount(count ?? 0);
-      const discounts = (priceRows ?? [])
-        .filter((d) => d.original_price && d.original_price > d.deal_price)
-        .map((d) => (d.original_price - d.deal_price) / d.original_price);
+      const discounts = ((priceRows ?? []) as { discount_pct: number | null }[])
+        .map((d) => d.discount_pct)
+        .filter((p): p is number => p !== null && p > 0);
       setAvgDiscount(
         discounts.length >= AVG_DISCOUNT_MIN_DEALS
-          ? Math.round((discounts.reduce((a, b) => a + b, 0) / discounts.length) * 100)
+          ? Math.round(discounts.reduce((a, b) => a + b, 0) / discounts.length)
           : null
       );
       if (previewData && previewData.length > 0) {
@@ -172,8 +174,7 @@ export default function Home() {
             region: (d.regions as unknown as { name: string } | null)?.name ?? "",
             location: formatDealLocation(((d.regions as unknown) as { name: string } | null)?.name, d.location),
             stock_type: d.stock_type ?? "general",
-            original_price: d.original_price,
-            deal_price: d.deal_price,
+            ...dealPriceFields(d, true),
             total_qty: d.total_qty,
             remaining_qty: d.remaining_qty,
             closes_at: d.closes_at,
@@ -363,9 +364,7 @@ export default function Home() {
           <div className="flex flex-col gap-2.5">
             {preview.map((d) => {
               const color = categoryColors[d.category] ?? categoryColors["기타"];
-              const discountPct = d.original_price
-                ? Math.round(((d.original_price - d.deal_price) / d.original_price) * 100)
-                : 0;
+              const discountPct = cardDiscountPct(d);
               return (
                 <Link
                   key={d.id}
@@ -434,13 +433,9 @@ export default function Home() {
                         </span>
                       )}
                     </div>
-                    <div className="flex flex-wrap items-baseline gap-x-1.5 mt-1.5">
-                      <span className="text-lg font-black" style={{ color: color.text }}>
-                        <PriceText text={formatDealPrice(d.deal_price, d.quantity_unit, d.price_unit)} />
-                      </span>
-                      <span className="text-xs text-gray500 line-through">
-                        <PriceText text={formatDealPrice(d.original_price, d.quantity_unit, d.price_unit)} />
-                      </span>
+                    {/* 2026-10-03 A안: 비회원 홈(예시 포함) — 가격 자리에 "-N% · 회원가 보기" */}
+                    <div className="mt-1.5">
+                      <MemberPriceTeaser discountPct={discountPct} color={color.text} className="text-lg" />
                     </div>
                   </div>
                 </Link>

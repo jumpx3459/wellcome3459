@@ -6,6 +6,8 @@ import PriceText from "@/components/PriceText";
 import StockTypeBadge from "@/components/StockTypeBadge";
 import { isLumpSum } from "@/lib/priceUnit";
 import { formatExpiry, isStorageType, STORAGE_ICONS } from "@/lib/dealFields";
+import { cardDiscountPct } from "@/lib/dealPriceAccess";
+import MemberPriceTeaser from "@/components/MemberPriceTeaser";
 
 // /deals 목록 카드 — 실매물·예시 공용 (2026-09-29, 예전엔 예시 카드가 따로 있어서 배지 위치가 달랐음).
 // 예시는 레이아웃 동일, 회색 톤 + "예시" 라벨로만 구분.
@@ -15,18 +17,20 @@ export default function DealListCard({
   example = false,
   hotGapPct = null,
   eager = false,
+  priceHidden = d.price_hidden ?? false,
 }: {
   deal: Deal;
   closed?: boolean;
   example?: boolean;
   hotGapPct?: number | null; // 같은 카테고리 평균보다 몇 %p 더 저렴한지 — 표시 조건은 src/lib/categoryAvg.ts
   eager?: boolean; // 첫 카드만 사진 바로 불러오기
+  priceHidden?: boolean; // 2026-10-03 A안: 비회원 — 가격 자리에 "-N% · 회원가 보기" (예시 카드도 같음)
 }) {
   const color = categoryColors[d.category] ?? categoryColors["기타"];
   const gray = closed || example;
   const accent = gray ? "#6B7480" : color.text;
   const remainPct = d.total_qty ? Math.round((d.remaining_qty / d.total_qty) * 100) : 0;
-  const discountPct = d.original_price ? Math.round(((d.original_price - d.deal_price) / d.original_price) * 100) : 0;
+  const discountPct = cardDiscountPct(d);
   const unit = d.quantity_unit || "개";
   const lump = isLumpSum(d.price_unit); // 일괄 판매면 MOQ 의미 없음
   const expiry = formatExpiry(d.expiry_date); // 2026-10-01 PR-B: "~2026.10.20까지"
@@ -100,14 +104,20 @@ export default function DealListCard({
             {d.min_order_qty && !lump && <span className="whitespace-nowrap">MOQ {d.min_order_qty}{unit}</span>}
           </div>
         )}
-        <div className="flex flex-wrap items-baseline gap-x-1.5 mt-2">
-          <span className="text-lg font-black" style={{ color: accent }}>
-            <PriceText text={formatDealPrice(d.deal_price, d.quantity_unit, d.price_unit)} />
-          </span>
-          <span className="text-sm text-gray500 font-normal line-through">
-            <PriceText text={formatDealPrice(d.original_price, d.quantity_unit, d.price_unit)} />
-          </span>
-        </div>
+        {priceHidden ? (
+          <div className="mt-2">
+            <MemberPriceTeaser discountPct={discountPct} color={accent} className="text-lg" />
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-baseline gap-x-1.5 mt-2">
+            <span className="text-lg font-black" style={{ color: accent }}>
+              <PriceText text={formatDealPrice(d.deal_price, d.quantity_unit, d.price_unit)} />
+            </span>
+            <span className="text-sm text-gray500 font-normal line-through">
+              <PriceText text={formatDealPrice(d.original_price, d.quantity_unit, d.price_unit)} />
+            </span>
+          </div>
+        )}
         {!gray && hotGapPct !== null && (
           <div
             className="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full mt-1.5"
