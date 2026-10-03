@@ -20,7 +20,7 @@ import type { ManifestRow } from "@/lib/parseCsv";
 import { rem } from "@/lib/rem";
 import { type StockType, STOCK_TYPES, isStockType } from "@/lib/stockType";
 import { getPhotoLimit, isPhotoLimitMaxed, MAX_PHOTO_SLOTS } from "@/lib/photoLimit";
-import { authFetch } from "@/lib/authFetch";
+import { authFetch, AUTH_EXPIRED_EVENT, isAuthNetworkError } from "@/lib/authFetch";
 import { FieldLabel, DEAL_INPUT_FONT_SIZE, DEAL_HINT_STYLE, DEAL_CHIP_FONT_SIZE, DEAL_LABEL_STYLE } from "@/components/FormField";
 import FormAccordion, { FormSectionTitle, FORM_ROW2, FORM_ROW3 } from "@/components/FormAccordion";
 import {
@@ -37,14 +37,18 @@ import { normalizeTitle, checkTitle, checkDescription } from "@/lib/titleGuard";
 import ConfirmWarnings, { BLOCK_COLOR, WARN_COLOR } from "@/components/ConfirmWarnings";
 import { COMPANY_DISCLOSURE_TEXT, CONSENT_TEXT } from "@/lib/consent";
 
-// 2026-09-30: 작성 중 내용 (sessionStorage) — 사진·영상은 이미 올라간 URL만 보관, 매니페스트 표는 제외
+// 2026-09-30: 작성 중 내용 (sessionStorage) — 사진·영상은 이미 올라간 URL만 보관
+// 2026-10-03 fix/offline-auth-misjudge: 매니페스트 표도 보관(로그인 다녀와도 유지). 판매자 동의 체크는 다시 받으므로 제외
 const SELL_DRAFT_KEY = "dj_sell_draft";
+// 2026-10-03: 제출이 401·인터넷 끊김이어도 폼은 그대로 — 예전엔 401이면 비회원 화면으로 바뀌어 폼이 사라졌음(오프라인 가짜 401 포함)
+const AUTH_LOST_MESSAGE = "로그인이 풀렸어요. 입력한 내용은 그대로 있어요";
+const NETWORK_LOST_MESSAGE = "인터넷 연결이 끊겼어요. 연결 후";
 type SellDraft = {
   companyName: string; isAnonymous: boolean; contactName: string; contactPhone: string; category: string;
   categoryTouched: boolean; stockType: string; region: string; productName: string; quantity: string; quantityUnit: string;
   minOrderQty: string; hopePrice: string; originalPrice: string; priceUnit: string; priceUnitTouched: boolean; hopeDurationHours: string;
   description: string; packageUnit: string; origin: string; spec: string; storageType: string; expiryDate: string; pid: string;
-  images: string[]; videoUrl: string | null;
+  images: string[]; videoUrl: string | null; manifestItems: ManifestRow[];
 };
 
 export default function SellPage() {
@@ -270,6 +274,7 @@ export default function SellPage() {
       if (typeof d.pid === "string") setPid(d.pid);
       if (Array.isArray(d.images)) setImages(d.images.filter((u): u is string => typeof u === "string"));
       if (typeof d.videoUrl === "string") setVideoUrl(d.videoUrl);
+      if (Array.isArray(d.manifestItems)) setManifestItems(d.manifestItems.filter((r): r is ManifestRow => !!r && typeof r === "object"));
     }
     setDraftReady(true);
   }, []);
@@ -278,7 +283,7 @@ export default function SellPage() {
     const d: SellDraft = {
       companyName, isAnonymous, contactName, contactPhone, category, categoryTouched, stockType, region, productName,
       quantity, quantityUnit, minOrderQty, hopePrice, originalPrice, priceUnit, priceUnitTouched, hopeDurationHours, description,
-      packageUnit, origin, spec, storageType, expiryDate, pid, images, videoUrl,
+      packageUnit, origin, spec, storageType, expiryDate, pid, images, videoUrl, manifestItems,
     };
     try {
       window.sessionStorage.setItem(SELL_DRAFT_KEY, JSON.stringify(d));
@@ -286,7 +291,7 @@ export default function SellPage() {
   }, [
     draftReady, done, companyName, isAnonymous, contactName, contactPhone, category, categoryTouched, stockType, region,
     productName, quantity, quantityUnit, minOrderQty, hopePrice, originalPrice, priceUnit, priceUnitTouched, hopeDurationHours,
-    description, packageUnit, origin, spec, storageType, expiryDate, pid, images, videoUrl,
+    description, packageUnit, origin, spec, storageType, expiryDate, pid, images, videoUrl, manifestItems,
   ]);
 
   // 2026-10-01 PR-A [11]: 매물명 막기(빨강)·확인 후 저장(주황) — 관리자 폼과 같은 규칙(src/lib/titleGuard.ts), 서버도 다시 검사
@@ -317,7 +322,9 @@ export default function SellPage() {
     if (stockType === "near_expiry") setOpenDetail(true);
   }, [stockType]);
 
+  const lastSubmitArgs = useRef<[boolean, boolean, boolean]>([false, false, false]); // 인터넷 끊김 [다시 시도]용
   const submit = async (confirmWarnings = false, skipVideo = false, skipPhotos = false) => {
+    lastSubmitArgs.current = [confirmWarnings, skipVideo, skipPhotos];
     setError(null);
     setMoqError(null);
     setPriceError(null);
@@ -441,8 +448,10 @@ export default function SellPage() {
         },
       });
       if (res.status === 401) {
-        // 세션이 끊김 — 작성 중 내용은 sessionStorage에 남아 있어 로그인 후 /sell로 돌아오면 그대로 이어짐
-        setAuthState("guest");
+        // 세션이 끊김 — 폼은 그대로 두고 AuthExpiredNotice [로그인]으로 안내. 작성 중 내용은 sessionStorage에 남아 있어
+        // 로그인 후 /sell로 돌아오면 그대로 이어짐
+        setError(AUTH_LOST_MESSAGE);
+        window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
         return;
       }
       if (!res.ok) {
@@ -504,12 +513,29 @@ export default function SellPage() {
       try {
         window.sessionStorage.removeItem(SELL_DRAFT_KEY);
       } catch {}
-    } catch {
-      setError("신청 처리 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");
+    } catch (e) {
+      setError(isAuthNetworkError(e) ? NETWORK_LOST_MESSAGE : "신청 처리 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");
     } finally {
       setSubmitting(false);
     }
   };
+  const errorNote =
+    error === NETWORK_LOST_MESSAGE ? (
+      <>
+        {error}{" "}
+        <button
+          type="button"
+          onClick={() => submit(...lastSubmitArgs.current)}
+          disabled={submitting}
+          className="pointer-events-auto font-bold underline"
+          style={{ color: "inherit", background: "none", border: "none", padding: 0 }}
+        >
+          다시 시도
+        </button>
+      </>
+    ) : (
+      error
+    );
 
   if (done) {
     return (
@@ -1052,7 +1078,7 @@ export default function SellPage() {
                 placeholder="예: P809200159651 (리퀴데이션 파렛트라면 적어주세요)"
               />
             </div>
-            <ManifestUploader onChange={setManifestItems} />
+            <ManifestUploader onChange={setManifestItems} initialRows={manifestItems} />
           </div>
         </FormAccordion>
 
@@ -1140,7 +1166,7 @@ export default function SellPage() {
         {/* 2026-10-02: PC형(폼 폭 2칸 이상)이면 하단 고정 버튼 대신 인라인 버튼(lg 2단에선 오른쪽 맨 아래 sticky) — 오류 문구는 버튼 바로 위 */}
         {wideForm && (
           <div className="order-5 lg:mt-auto lg:sticky lg:bottom-0 lg:z-10 lg:bg-white lg:pt-2 lg:pb-[calc(var(--nav-bottom)_+_12px)]">
-            {error && <FloatingCTANote>{error}</FloatingCTANote>}
+            {error && <FloatingCTANote>{errorNote}</FloatingCTANote>}
             <button
               onClick={() => submit()}
               disabled={submitting || busyLabel !== null}
@@ -1173,7 +1199,7 @@ export default function SellPage() {
       {/* 2026-09-29: 공용 하단 고정 버튼 — 판·블러 없이 버튼만 띄움 */}
       {!wideForm && (
       <FloatingCTA>
-          {error && <div ref={setNoteEl}><FloatingCTANote>{error}</FloatingCTANote></div>}
+          {error && <div ref={setNoteEl}><FloatingCTANote>{errorNote}</FloatingCTANote></div>}
           <button
             onClick={() => submit()}
             disabled={submitting || busyLabel !== null}
