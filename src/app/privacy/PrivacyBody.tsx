@@ -55,7 +55,7 @@ export default function PrivacyBody() {
           <div>
             <h2 className="font-bold text-navy mb-1.5">2. 개인정보의 수집 및 이용 목적</h2>
             <ul className="list-disc pl-5 space-y-1">
-              <li>관심 카테고리·지역에 맞는 매물 알림 발송</li>
+              <li>관심 조건에 맞는 재고 매물과 폐업·정리 부동산·설비 소식 알림(앱 푸시) 발송</li>
               <li>회원 식별 및 본인 확인</li>
               <li>점핑매니저의 거래 매칭 상담 연락</li>
               <li>거래 연결 진행 기록·분쟁 대응, 개인정보 열람·처리 관리(관리자 작업 기록)</li>
@@ -135,7 +135,7 @@ export default function PrivacyBody() {
           <div>
             <h2 className="font-bold text-navy mb-1.5">7. 광고성 정보</h2>
             <ul className="list-disc pl-5 space-y-1">
-              <li>매물 알림·긴급 공지·카카오톡 채널 소식은 광고성 정보이며 선택 동의한 회원에게만 보냅니다.</li>
+              <li>재고 매물·폐업·정리 부동산·설비 소식 알림(앱 푸시)·긴급 공지·카카오톡 채널 소식은 광고성 정보이며 선택 동의한 회원에게만 보냅니다.</li>
               <li>밤 9시~아침 8시에는 광고성 알림을 보내지 않습니다.</li>
               <li>수신 거부: MY 화면 또는 고객센터. 동의·철회 결과는 처리 즉시 화면에 안내합니다.</li>
             </ul>
