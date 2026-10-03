@@ -56,6 +56,24 @@ export const CONSENT_TEXT = {
   },
 } as const;
 
+// 2026-10-03 F-3a: 관심있어요 — 판매자 연결(거래 상담 제3자 제공) 동의 (consent-texts 7-1).
+// 버전은 이 동의 전용 — 문구를 바꾸면 이 값만 올린다(TERMS_VERSION과 별개). deal_connections.consent_version에 서버가 저장.
+// 화면이 보낸 버전은 서버가 같은지만 검사(다르면 예전 화면 → 새로고침 안내).
+export const CONNECTION_CONSENT_VERSION = "2026-10-07";
+export const CONNECTION_CONSENT_TEXT = {
+  title: "판매자와 연결해 드릴까요?",
+  label: "거래 상담을 위한 개인정보 제3자 제공 동의",
+  rows: [
+    ["제공받는 자", "이 매물의 판매자 (상호는 연결 전 점핑매니저가 안내해 드려요)"],
+    ["제공 항목", "휴대폰 번호, 그리고 알려주신 경우 이름·상호"],
+    ["이용 목적", "이 매물의 거래 상담"],
+    ["보유 기간", "거래 상담 종료 시까지"],
+  ],
+  refuse: "동의하지 않을 수 있으며, 이 경우 관심 표시만 되고 판매자 연결은 되지 않아요.",
+  agree: "동의하고 연결 요청",
+  interestOnly: "관심 표시만 할게요",
+} as const;
+
 // 판매 신청 업체명 공개 설정 (consent-texts 7-2) — 기본 비공개
 export const COMPANY_DISCLOSURE_TEXT = {
   title: "업체명 공개 설정 (기본: 비공개)",

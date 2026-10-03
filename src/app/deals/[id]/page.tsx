@@ -17,18 +17,19 @@ import JumpxPreviewSheet from "@/components/JumpxPreviewSheet";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 import { rem } from "@/lib/rem";
-import { getFreshAccessToken } from "@/lib/authFetch";
+import { authFetch, getFreshAccessToken, isAuthNetworkError } from "@/lib/authFetch";
 import { SECTION_TITLE_STYLE, SERVICES_ANCHOR_ID, ServiceTilesCompact } from "@/components/EcosystemGrid";
 import StockTypeBadge from "@/components/StockTypeBadge";
 import GuestPrivacyConsent from "@/components/GuestPrivacyConsent";
 import { isLumpSum } from "@/lib/priceUnit";
 import { isValidKoreanPhone } from "@/lib/auth";
-import { TERMS_VERSION } from "@/lib/consent";
+import { CONNECTION_CONSENT_VERSION, TERMS_VERSION } from "@/lib/consent";
+import ConnectionConsentSheet from "@/components/ConnectionConsentSheet";
 import PhotoCarousel, { type PhotoCarouselHandle } from "@/components/PhotoCarousel";
 import PhotoViewer from "@/components/PhotoViewer";
 import ZoomTip from "@/components/ZoomTip";
 import { PRIVATE_SELLER_NAME, PRIVATE_SELLER_NOTE, publicSellerName } from "@/lib/sellerDisplay";
-import FloatingCTA, { FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
+import FloatingCTA, { FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, FloatingCTANote, floatingCtaButtonStyle } from "@/components/FloatingCTA";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
 // 값이 없거나 공백뿐이면 섹션/행 자체를 그리지 않는다 (빈 공간 방지)
@@ -59,7 +60,6 @@ function DealDetailPageInner() {
   // 2026-09-30: 비회원 [필수] 개인정보 수집·이용 동의 (GuestPrivacyConsent)
   const [quickConsent, setQuickConsent] = useState(false);
   const [quickConsentError, setQuickConsentError] = useState(false);
-  const [quickSubmitting, setQuickSubmitting] = useState(false);
   const [quickError, setQuickError] = useState<string | null>(null);
   // 2026-09-29: 히어로 사진 넘기기(PhotoCarousel) + 전체 화면(PhotoViewer)
   const [photoIndex, setPhotoIndex] = useState(0);
@@ -71,6 +71,12 @@ function DealDetailPageInner() {
   // 2026-10-01 F-1: 이미 접수된 리드(비회원 같은 번호 재접수) 안내
   const [interestNotice, setInterestNotice] = useState<string | null>(null);
   const [manifestOpen, setManifestOpen] = useState(false);
+  // 2026-10-03 F-3a: 판매자 연결 동의(7-1) — 진행 중 연결 여부(unknown = 조회 전·실패), 동의 시트, 비회원 "이미 관심 → 연결 요청" 폼
+  const [connection, setConnection] = useState<"unknown" | "none" | "open">("unknown");
+  const [connectSheet, setConnectSheet] = useState<null | "member" | "guest">(null);
+  const [connectBusy, setConnectBusy] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
+  const [guestConnectOnly, setGuestConnectOnly] = useState(false);
   const sellerName = publicSellerName(deal);
 
   // JUMP X 브릿지("JUMP X에서 입찰 참여하기") — 거래 플랫폼이 준비될 때까지는
@@ -206,13 +212,21 @@ function DealDetailPageInner() {
   // 2026-10-01 F-1: 이미 관심 표시한 매물이면 처음부터 "관심 표시 완료" — 회원은 interests(본인 행만 읽힘), 비회원은 이 기기 기록
   useEffect(() => {
     if (isExampleId || !params.id) return;
-    if (readQuickInterestIds().includes(params.id)) setInterested(true);
+    // F-3a: 비회원은 이 기기 기록으로 연결 요청 여부를 판단(서버는 번호 없이 조회 불가)
+    if (readQuickInterestIds().includes(params.id)) {
+      setInterested(true);
+      setConnection(readQuickConnectionIds().includes(params.id) ? "open" : "none");
+    }
     if (!isSupabaseConfigured || !supabase) return;
     (async () => {
       const { data: userData } = await supabase!.auth.getUser();
       if (!userData.user) return;
       const { data } = await supabase!.from("interests").select("id").eq("deal_id", params.id).eq("member_id", userData.user.id).limit(1);
-      if (data?.length) setInterested(true);
+      if (data?.length) {
+        setInterested(true);
+        const open = await fetchMemberConnectionOpen(params.id);
+        if (open !== null) setConnection(open ? "open" : "none");
+      }
     })();
   }, [params.id, isExampleId]);
 
@@ -238,9 +252,28 @@ function DealDetailPageInner() {
       setShowQuickForm(true);
       return;
     }
+    // 2026-10-03 F-3a: 회원은 판매자 연결 동의 시트부터 — [동의하고 연결 요청] / [관심 표시만 할게요]
+    setConnectError(null);
+    setConnectSheet("member");
+  };
 
+  // 가입 직후 돌아온 경우(autoInterest=1) — 동의는 자동으로 받을 수 없으니 관심 표시만 하고, 상세의 [판매자 연결 요청]으로 안내
+  const autoInterest = async () => {
+    if (deal.status === "closed" || isPastClose() || !isSupabaseConfigured || !supabase) return handleInterest();
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return handleInterest();
+    if (await recordInterest(userData.user.id)) {
+      const open = await fetchMemberConnectionOpen(deal.id);
+      if (open !== null) setConnection(open ? "open" : "none");
+    }
+  };
+
+  // 회원 관심 표시 저장(interests, 브라우저 직접 — 기존 흐름 그대로). 성공하면 true, 실패 문구는 interestError
+  const recordInterest = async (userId: string): Promise<boolean> => {
+    if (!supabase) return false;
+    setInterestError(null);
     const { error } = await supabase.from("interests").upsert(
-      { deal_id: deal.id, member_id: userData.user.id },
+      { deal_id: deal.id, member_id: userId },
       { onConflict: "deal_id,member_id", ignoreDuplicates: true }
     );
     if (!error) {
@@ -267,6 +300,77 @@ function DealDetailPageInner() {
       } else {
         setInterestError("처리 중 문제가 발생했어요. 새로고침 후 다시 시도해주세요.");
       }
+    }
+    return !error;
+  };
+
+  const closeConnectSheet = () => {
+    if (connectBusy) return;
+    setConnectSheet(null);
+    setConnectError(null);
+  };
+
+  // 회원 [관심 표시만 할게요] — 연결 기록 없이 지금 흐름(이미 관심 표시했으면 닫기만)
+  const memberInterestOnly = async () => {
+    if (interested || !supabase) return closeConnectSheet();
+    setConnectBusy(true);
+    const { data: userData } = await supabase.auth.getUser();
+    const ok = userData.user ? await recordInterest(userData.user.id) : false;
+    setConnectBusy(false);
+    setConnectSheet(null);
+    if (ok) setConnection("none");
+  };
+
+  // 회원 [동의하고 연결 요청] — 관심 표시(아직이면) → /api/connections. 실패하면 시트 유지 + 문구
+  const memberAgree = async () => {
+    if (!supabase) return;
+    setConnectBusy(true);
+    setConnectError(null);
+    try {
+      if (!interested) {
+        const { data: userData } = await supabase.auth.getUser();
+        if (!userData.user || !(await recordInterest(userData.user.id))) {
+          setConnectError("관심 표시를 저장하지 못했어요. 잠시 후 다시 시도해주세요.");
+          return;
+        }
+      }
+      const res = await authFetch("/api/connections", {
+        json: { dealId: deal.id, connectionConsent: true, connectionConsentVersion: CONNECTION_CONSENT_VERSION },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setConnectError(
+          res.status === 401
+            ? "로그인이 풀렸어요. 다시 로그인한 뒤 시도해주세요."
+            : res.status === 409
+            ? "이미 마감된 매물이에요."
+            : res.status === 429
+            ? "잠시 후 다시 시도해주세요."
+            : data.error ?? "연결 요청을 저장하지 못했어요. 잠시 후 다시 시도해주세요."
+        );
+        return;
+      }
+      setConnection("open");
+      setInterestNotice(data.duplicate ? "이미 연결을 요청하셨어요" : "연결 요청 완료 · 점핑매니저가 판매자와 연결해 드려요");
+      setConnectSheet(null);
+    } catch (e) {
+      setConnectError(
+        isAuthNetworkError(e) ? "인터넷 연결이 끊겼어요. 연결 후 다시 시도해주세요." : "연결 요청을 저장하지 못했어요. 잠시 후 다시 시도해주세요."
+      );
+    } finally {
+      setConnectBusy(false);
+    }
+  };
+
+  // 관심 표시 후 [판매자 연결 요청] — 회원은 시트, 비회원은 번호 폼(번호·개인정보 동의) → 시트
+  const requestConnection = () => {
+    setConnectError(null);
+    setInterestNotice(null);
+    if (isMember) {
+      setConnectSheet("member");
+    } else {
+      setGuestConnectOnly(true);
+      setShowQuickForm(true);
     }
   };
 
@@ -297,9 +401,8 @@ function DealDetailPageInner() {
     setMessageSending(false);
   };
 
-  const submitQuickInterest = async () => {
+  const submitQuickInterest = () => {
     setQuickError(null);
-    const digits = quickPhone.replace(/[^0-9]/g, "");
     // 2026-10-01 F-1: 서버(/api/quick-interest)와 같은 규칙 — 01[016789] 10~11자리
     if (!isValidKoreanPhone(quickPhone)) {
       setQuickError("휴대폰 번호를 정확히 입력해주세요.");
@@ -314,38 +417,81 @@ function DealDetailPageInner() {
       setQuickError("개인정보 수집·이용에 동의해주세요.");
       return;
     }
-    setQuickSubmitting(true);
+    // 2026-10-03 F-3a: 번호·개인정보 동의를 확인한 뒤 판매자 연결 동의 시트 — 전송은 시트에서 고른 뒤 한 번
+    setConnectError(null);
+    setConnectSheet("guest");
+  };
+
+  // 비회원 전송 — withConnection이면 연결 동의 값도 같이(quick_leads + deal_connections). 실패하면 시트·폼 유지 + 문구
+  const sendQuickInterest = async (withConnection: boolean) => {
+    const digits = quickPhone.replace(/[^0-9]/g, "");
+    setConnectBusy(true);
+    setConnectError(null);
     try {
+      let data: { error?: string; duplicate?: boolean; connection?: string } = {};
       if (!isSupabaseConfigured) {
         await new Promise((r) => setTimeout(r, 400));
       } else {
         const res = await fetch("/api/quick-interest", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dealId: deal.id, phone: digits, privacyConsent: quickConsent, consentVersion: TERMS_VERSION }),
+          body: JSON.stringify({
+            dealId: deal.id,
+            phone: digits,
+            privacyConsent: quickConsent,
+            consentVersion: TERMS_VERSION,
+            ...(withConnection ? { connectionConsent: true, connectionConsentVersion: CONNECTION_CONSENT_VERSION } : {}),
+          }),
         });
-        const data = await res.json().catch(() => ({}));
+        data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          setQuickError(
+          setConnectError(
             res.status === 409 ? "이미 마감된 매물이에요." : res.status === 429 ? "잠시 후 다시 시도해주세요." : data.error ?? "전송에 실패했어요. 잠시 후 다시 시도해주세요."
           );
           return;
         }
-        if (data.duplicate) setInterestNotice("이미 접수됐어요, 빠르게 연락드려요");
       }
       rememberQuickInterest(deal.id);
+      if (withConnection) rememberQuickConnection(deal.id);
       setInterested(true);
+      setConnection(withConnection ? "open" : "none");
+      setInterestNotice(
+        withConnection
+          ? data.connection === "duplicate"
+            ? "이미 연결을 요청하셨어요"
+            : "연결 요청 완료 · 점핑매니저가 판매자와 연결해 드려요"
+          : data.duplicate
+          ? "이미 접수됐어요, 빠르게 연락드려요"
+          : null
+      );
+      setConnectSheet(null);
       setShowQuickForm(false);
+      setGuestConnectOnly(false);
     } catch {
-      setQuickError("전송에 실패했어요. 잠시 후 다시 시도해주세요.");
+      setConnectError(
+        typeof navigator !== "undefined" && navigator.onLine === false
+          ? "인터넷 연결이 끊겼어요. 연결 후 다시 시도해주세요."
+          : "전송에 실패했어요. 잠시 후 다시 시도해주세요."
+      );
     } finally {
-      setQuickSubmitting(false);
+      setConnectBusy(false);
     }
+  };
+
+  // 비회원 [관심 표시만 할게요] — 이미 관심 표시한 매물(연결 요청만 하러 온 경우)이면 보내지 않고 닫기
+  const guestInterestOnly = () => {
+    if (guestConnectOnly) {
+      closeConnectSheet();
+      setShowQuickForm(false);
+      setGuestConnectOnly(false);
+      return;
+    }
+    sendQuickInterest(false);
   };
 
   useEffect(() => {
     if (searchParams.get("autoInterest") === "1") {
-      handleInterest();
+      autoInterest();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deal.id]);
@@ -832,12 +978,15 @@ function DealDetailPageInner() {
               이어지도록 함. */}
           {/* 2026-09-29: 공용 하단 고정 버튼 — 판·블러 없이 버튼만 띄움 */}
           <FloatingCTA>
-            {showQuickForm && !interested ? (
+            {showQuickForm && (!interested || guestConnectOnly) ? (
               <div className="border border-gray200 rounded-2xl p-4 bg-white" style={{ boxShadow: "0 10px 28px rgba(11,37,64,.18)" }}>
-                <div className="text-sm font-bold text-navy mb-1">번호만 남기면 바로 연락드려요</div>
+                <div className="text-sm font-bold text-navy mb-1">
+                  {guestConnectOnly ? "번호를 확인하면 판매자와 연결해 드려요" : "번호만 남기면 바로 연락드려요"}
+                </div>
                 <p className="text-xs text-gray500 mb-3">
-                  회원가입 없이도 점핑매니저가 확인 후 연락드립니다. 알림을 계속 받고 싶으시면 나중에
-                  가입하셔도 돼요.
+                  {guestConnectOnly
+                    ? "관심 표시할 때 남기신 번호를 입력해주세요."
+                    : "회원가입 없이도 점핑매니저가 확인 후 연락드립니다. 알림을 계속 받고 싶으시면 나중에 가입하셔도 돼요."}
                 </p>
                 <div className="flex gap-2">
                   <input
@@ -851,11 +1000,11 @@ function DealDetailPageInner() {
                   />
                   <button
                     onClick={submitQuickInterest}
-                    disabled={quickSubmitting}
+                    disabled={connectBusy}
                     className="text-white font-bold rounded-xl px-5 whitespace-nowrap flex-shrink-0 disabled:opacity-60"
                     style={{ background: "#FF6F0F" }}
                   >
-                    {quickSubmitting ? "전송 중..." : "전달하기"}
+                    {connectBusy ? "전송 중..." : "전달하기"}
                   </button>
                 </div>
                 <div className="mt-2.5">
@@ -876,6 +1025,17 @@ function DealDetailPageInner() {
                   정식으로 가입하고 알림도 계속 받을래요 →
                 </Link>
               </div>
+            ) : interested && connection === "none" && !isPastClose() ? (
+              // 2026-10-03 F-3a: 관심 표시는 했지만(autoInterest 포함) 진행 중 연결이 없음 → 같은 동의 시트로
+              <>
+                {interestNotice && <FloatingCTANote tone="info">{interestNotice}</FloatingCTANote>}
+                <button type="button" onClick={requestConnection} className={FLOATING_CTA_BUTTON_CLASS} style={floatingCtaButtonStyle()}>
+                  판매자 연결 요청
+                </button>
+                <div className="mx-auto mt-2 w-fit max-w-full rounded-full bg-white text-center" style={{ fontSize: rem(14), padding: "6px 12px", color: "#4B5563", boxShadow: "0 4px 12px rgba(11,37,64,.15)" }}>
+                  관심 표시 완료 · 판매자 연결은 동의 후 진행돼요
+                </div>
+              </>
             ) : (
               <>
                 <button
@@ -885,7 +1045,11 @@ function DealDetailPageInner() {
                   className={`${FLOATING_CTA_BUTTON_CLASS}${interested ? " disabled:opacity-100" : ""}`}
                   style={interested ? { ...floatingCtaButtonStyle(true), background: "#fff", color: "#0B2540", border: "1.5px solid #C9CFD6", fontSize: rem(16) } : floatingCtaButtonStyle()}
                 >
-                  {interested ? "관심 표시 완료 · 점핑매니저가 빠르게 연락드려요" : "관심있어요 · 점핑매니저 연결"}
+                  {interested
+                    ? connection === "open"
+                      ? "연결 요청 완료 · 점핑매니저가 빠르게 연락드려요"
+                      : "관심 표시 완료 · 점핑매니저가 빠르게 연락드려요"
+                    : "관심있어요 · 점핑매니저 연결"}
                 </button>
                 {interestNotice && (
                   <div className="mx-auto mt-2 w-fit max-w-full rounded-full bg-white text-center font-bold" style={{ fontSize: rem(14), padding: "6px 12px", color: "#0B2540", boxShadow: "0 4px 12px rgba(11,37,64,.15)" }}>
@@ -912,6 +1076,16 @@ function DealDetailPageInner() {
             )}
                       </FloatingCTA>
         </>
+      )}
+
+      {connectSheet && (
+        <ConnectionConsentSheet
+          busy={connectBusy}
+          error={connectError}
+          onAgree={connectSheet === "member" ? memberAgree : () => sendQuickInterest(true)}
+          onInterestOnly={connectSheet === "member" ? memberInterestOnly : guestInterestOnly}
+          onClose={closeConnectSheet}
+        />
       )}
 
       {viewerIndex !== null && hasPhotos && (
@@ -944,5 +1118,33 @@ function rememberQuickInterest(dealId: string) {
   try {
     const ids = readQuickInterestIds().filter((x) => x !== dealId);
     window.localStorage.setItem(QUICK_INTEREST_KEY, JSON.stringify([dealId, ...ids].slice(0, 100)));
+  } catch {}
+}
+
+// 2026-10-03 F-3a: 회원의 이 매물 진행 중 연결 여부 (deal_connections는 서버 전용 → /api/connections check). 실패는 null(버튼 숨김)
+async function fetchMemberConnectionOpen(dealId: string): Promise<boolean | null> {
+  try {
+    const res = await authFetch("/api/connections", { json: { dealId, check: true } });
+    const data = await res.json().catch(() => ({}));
+    return res.ok && typeof data.open === "boolean" ? data.open : null;
+  } catch {
+    return null;
+  }
+}
+
+// 2026-10-03 F-3a: 비회원이 이 기기에서 판매자 연결까지 요청한 매물 id — 없으면 관심 표시 매물에 [판매자 연결 요청] 표시
+const QUICK_CONNECTION_KEY = "dj_quick_connection_deals";
+function readQuickConnectionIds(): string[] {
+  try {
+    const v = JSON.parse(window.localStorage.getItem(QUICK_CONNECTION_KEY) ?? "[]");
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+function rememberQuickConnection(dealId: string) {
+  try {
+    const ids = readQuickConnectionIds().filter((x) => x !== dealId);
+    window.localStorage.setItem(QUICK_CONNECTION_KEY, JSON.stringify([dealId, ...ids].slice(0, 100)));
   } catch {}
 }
