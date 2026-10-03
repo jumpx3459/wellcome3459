@@ -489,8 +489,11 @@ function DealDetailPageInner() {
     sendQuickInterest(false);
   };
 
+  // F-3a: 실제 매물을 불러온 뒤 한 번만 — 예전엔 첫 렌더의 예시 매물(mockDeals[0]) id로도 관심 저장을 시도했음
+  const autoInterestDone = useRef(false);
   useEffect(() => {
-    if (searchParams.get("autoInterest") === "1") {
+    if (searchParams.get("autoInterest") === "1" && deal.id === params.id && !autoInterestDone.current) {
+      autoInterestDone.current = true;
       autoInterest();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
