@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import webpush from "web-push";
+import { isDealAlertVersionCurrent } from "@/lib/consent";
 import { matchesConditions } from "@/lib/dealMatching";
 import { formatDealPrice } from "@/lib/format";
 import { stockTypeBadge } from "@/lib/stockType";
@@ -33,18 +34,24 @@ function ensureVapid(): boolean {
 const OPT_OUT_LINE = "알림 끄기: MY > 이 기기 푸시 알림";
 
 // 2026-09-30: 매물 알림 수신 동의(deal_alert_ad) 최신 값이 agreed=true인 회원만 발송 대상 — 기록 없으면 제외.
+// 2026-10-03 F-3b: 거기에 더해 동의 버전이 DEAL_ALERT_CONSENT_VERSION 이상이어야 함(옛 버전·버전 없음 제외 — 재동의 전까지 미발송).
 // 조회 실패는 null(발송 중단) — 선점(push_sent_at) 전에 불러서, 실패해도 나중에 다시 보낼 수 있게 한다.
 async function fetchDealAlertAgreedIds(supabaseAdmin: SupabaseClient): Promise<Set<string> | null> {
   const { data, error } = await supabaseAdmin
     .from("member_consent_latest")
-    .select("member_id")
+    .select("member_id, terms_version")
     .eq("consent_type", "deal_alert_ad")
     .eq("agreed", true);
   if (error) {
     console.error("[sendPush] consent_error", error);
     return null;
   }
-  return new Set((data ?? []).map((r) => (r as { member_id: string }).member_id));
+  return selectDealAlertAgreedIds((data ?? []) as { member_id: string; terms_version: string | null }[]);
+}
+
+// 대상 선정(순수 함수) — agreed=true 행 중 버전이 현재 이상인 회원만
+export function selectDealAlertAgreedIds(rows: { member_id: string; terms_version: string | null }[]): Set<string> {
+  return new Set(rows.filter((r) => isDealAlertVersionCurrent(r.terms_version)).map((r) => r.member_id));
 }
 
 // 2026-09-30: 야간(한국 시간 21:00~07:59) 발송 보류 — 이 시간에 등록된 매물·공지는 push_sent_at을 비워 두고,

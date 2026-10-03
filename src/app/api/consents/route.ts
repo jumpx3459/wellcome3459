@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { TERMS_VERSION, isConsentSource, isConsentType } from "@/lib/consent";
+import { DEAL_ALERT_CONSENT_VERSION, TERMS_VERSION, isConsentSource, isConsentType } from "@/lib/consent";
 
 // 동의 기록 (2026-09-30) — member_consents에 한 줄씩 추가만 한다(수정·삭제 없음, 최신 행이 현재 상태).
 // body: { accessToken, source, consents: [{ type, agreed }] }. 회원 id는 토큰에서, 약관 버전은 서버 상수로.
@@ -33,7 +33,8 @@ export async function POST(req: NextRequest) {
     member_id: userData.user.id,
     consent_type: c.type,
     agreed: c.agreed,
-    terms_version: TERMS_VERSION,
+    // 매물 알림 동의만 전용 버전(F-3b) — 클라이언트가 보낸 값은 쓰지 않고 항상 서버 상수
+    terms_version: c.type === "deal_alert_ad" ? DEAL_ALERT_CONSENT_VERSION : TERMS_VERSION,
     source,
     user_agent: userAgent,
   }));
