@@ -26,6 +26,7 @@ import { isValidKoreanPhone } from "@/lib/auth";
 import { CONNECTION_CONSENT_VERSION, TERMS_VERSION } from "@/lib/consent";
 import ConnectionConsentSheet from "@/components/ConnectionConsentSheet";
 import PriceText from "@/components/PriceText";
+import { selectWithPriceAccess, dealPriceFields, hasMemberSession, cardDiscountPct } from "@/lib/dealPriceAccess";
 import PhotoCarousel, { type PhotoCarouselHandle } from "@/components/PhotoCarousel";
 import PhotoViewer from "@/components/PhotoViewer";
 import ZoomTip from "@/components/ZoomTip";
@@ -72,6 +73,8 @@ function DealDetailPageInner() {
   // 2026-10-01 F-1: 이미 접수된 리드(비회원 같은 번호 재접수) 안내
   const [interestNotice, setInterestNotice] = useState<string | null>(null);
   const [manifestOpen, setManifestOpen] = useState(false);
+  // 2026-10-03 A안: 비회원(가격 없이 받은 매물·예시)은 가격 상자 대신 "가입하면 회원가를 볼 수 있어요" — 첫 화면도 숨김으로 시작
+  const [priceHidden, setPriceHidden] = useState(isSupabaseConfigured);
   // 2026-10-03 F-3a: 판매자 연결 동의(7-1) — 진행 중 연결 여부(unknown = 조회 전·실패), 동의 시트, 비회원 "이미 관심 → 연결 요청" 폼
   const [connection, setConnection] = useState<"unknown" | "none" | "open">("unknown");
   const [connectSheet, setConnectSheet] = useState<null | "member" | "guest">(null);
@@ -117,7 +120,8 @@ function DealDetailPageInner() {
         : "";
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
-        await navigator.share({ title: deal.title, text: `${deal.title} · ${formatDealPrice(deal.deal_price, deal.quantity_unit, deal.price_unit)}`, url });
+        // 2026-10-03 A안: 공유 문구에 가격 없음(회원이 공유해도) — 가격은 가입 회원에게만
+        await navigator.share({ title: deal.title, text: deal.title, url });
       } catch {
         // 사용자가 공유를 취소한 경우 — 무시
       }
@@ -151,22 +155,28 @@ function DealDetailPageInner() {
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
-    if (isExampleId) return;
+    if (isExampleId) {
+      hasMemberSession().then((member) => setPriceHidden(!member));
+      return;
+    }
 
     (async () => {
       // 2026-10-01 PR-B: 보관 조건·소비기한(expiry_date·storage_type) — SQL 전이면 빼고 다시 조회
-      const run = (extra: string) =>
+      const run = (priceCols: string, extra: string) =>
         supabase!
           .from("deals")
           .select<string, DealRowLoose>(
-            `id, title, deal_price, original_price, total_qty, remaining_qty, closes_at, location, images, video_url, description, status, package_unit, origin, spec, storage_condition, quantity_unit, price_unit, min_order_qty, interest_count, pid, manifest_items, is_anonymous, seller_display_name, stock_type, categories(name), regions(name)${extra}`
+            `id, title, ${priceCols}, total_qty, remaining_qty, closes_at, location, images, video_url, description, status, package_unit, origin, spec, storage_condition, quantity_unit, price_unit, min_order_qty, interest_count, pid, manifest_items, is_anonymous, seller_display_name, stock_type, categories(name), regions(name)${extra}`
           )
           .eq("id", params.id)
           .single();
-      let { data, error } = await run(DEAL_NEW_COLS);
-      if (isMissingNewColumn(error)) ({ data, error } = await run(""));
+      const { data, priceHidden: hidden } = await selectWithPriceAccess(async (cols) => {
+        const r = await run(cols, DEAL_NEW_COLS);
+        return isMissingNewColumn(r.error) ? run(cols, "") : r;
+      });
 
       if (data) {
+        setPriceHidden(hidden);
         setDeal({
           id: data.id,
           title: data.title,
@@ -174,8 +184,7 @@ function DealDetailPageInner() {
           region: (data.regions as unknown as { name: string } | null)?.name ?? "",
           location: formatDealLocation(((data.regions as unknown) as { name: string } | null)?.name, data.location),
           stock_type: data.stock_type ?? "general",
-          original_price: data.original_price,
-          deal_price: data.deal_price,
+          ...dealPriceFields(data, hidden),
           total_qty: data.total_qty,
           remaining_qty: data.remaining_qty,
           closes_at: data.closes_at,
@@ -635,48 +644,100 @@ function DealDetailPageInner() {
           />
         )}
 
-        <div>
-          {/* 2026-10-03: 할인율은 한 덩어리, 가격은 숫자·단위 사이에서만 줄바꿈(PriceText) — 큰 글자에서 "-38/%"·"원/k/g"처럼 끊기던 문제 */}
-          <div className="flex flex-wrap items-baseline gap-x-2">
-            {percentOff(deal.original_price, deal.deal_price) > 0 && (
-              <span className="text-xl font-black whitespace-nowrap" style={{ color: "#E25100" }}>
-                -{percentOff(deal.original_price, deal.deal_price)}%
-              </span>
+        {priceHidden ? (
+          // 2026-10-03 A안: 비회원 — 가격 상자 대신 가입 안내. 가입 링크엔 returnTo(이 매물)·ref만 — autoInterest 같은 자동 관심은 붙이지 않음
+          <div>
+            {(cardDiscountPct(deal) > 0 || (deal.interest_count ?? 0) >= 3) && (
+              <div className="flex flex-wrap items-baseline gap-x-2 mb-2">
+                {cardDiscountPct(deal) > 0 && (
+                  <span className="text-xl font-black whitespace-nowrap" style={{ color: "#E25100" }}>
+                    -{cardDiscountPct(deal)}%
+                  </span>
+                )}
+                {(deal.interest_count ?? 0) >= 3 && (
+                  <span
+                    className="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full flex-shrink-0"
+                    style={{ background: "#FDEEE8", color: "#C2410C" }}
+                  >
+                    ❤️ {deal.interest_count}명 관심
+                  </span>
+                )}
+              </div>
             )}
-            <span className="text-3xl font-black" style={{ color: "#0B2540" }}>
-              <PriceText text={formatDealPrice(deal.deal_price, deal.quantity_unit, deal.price_unit)} />
-            </span>
-            {/* 2026-09-26: 카드 리스트와 동일한 threshold-gating(3건 미만 숨김) */}
-            {(deal.interest_count ?? 0) >= 3 && (
-              <span
-                className="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full flex-shrink-0"
-                style={{ background: "#FDEEE8", color: "#C2410C" }}
+            <div className="rounded-2xl" style={{ background: "#FFF4EC", border: "1.5px solid #F6D3BF", padding: "14px 16px" }}>
+              <p className="text-base font-bold text-navy">가입하면 회원가를 볼 수 있어요</p>
+              <Link
+                href={withReturnTo("/signup", `/deals/${deal.id}`, ref ? `ref=${ref}` : "")}
+                className={`w-full mt-3 ${BTN_CLASS}`}
+                style={btnStyle("primary")}
+                data-member-price-cta
               >
-                ❤️ {deal.interest_count}명 관심
+                회원가 보기 · 무료 가입
+              </Link>
+            </div>
+            <div className="flex items-center justify-between gap-2 mt-2">
+              <span className="text-sm text-gray500">
+                {isLumpSum(deal.price_unit)
+                  ? "전체 일괄 판매"
+                  : deal.min_order_qty
+                    ? `최소주문 ${deal.min_order_qty}${deal.quantity_unit || "개"}`
+                    : null}
               </span>
-            )}
+              <button
+                type="button"
+                onClick={handleShare}
+                className="flex-shrink-0 flex items-center gap-1 text-xs font-bold text-gray500 border border-gray200 rounded-full px-3 py-1.5"
+              >
+                {shareCopied ? "링크 복사됨 ✓" : "공유 ↗"}
+              </button>
+            </div>
           </div>
-          <div className="flex items-center justify-between gap-2 mt-1">
-            <span className="text-sm text-gray500">
-              {deal.original_price > deal.deal_price && (
-                <span className="line-through"><PriceText text={formatDealPrice(deal.original_price, deal.quantity_unit, deal.price_unit)} /></span>
+        ) : (
+          <>
+          <div>
+            {/* 2026-10-03: 할인율은 한 덩어리, 가격은 숫자·단위 사이에서만 줄바꿈(PriceText) — 큰 글자에서 "-38/%"·"원/k/g"처럼 끊기던 문제 */}
+            <div className="flex flex-wrap items-baseline gap-x-2">
+              {percentOff(deal.original_price, deal.deal_price) > 0 && (
+                <span className="text-xl font-black whitespace-nowrap" style={{ color: "#E25100" }}>
+                  -{percentOff(deal.original_price, deal.deal_price)}%
+                </span>
               )}
-              {isLumpSum(deal.price_unit)
-                ? `${deal.original_price > deal.deal_price ? " · " : ""}전체 일괄 판매`
-                : deal.min_order_qty
-                  ? `${deal.original_price > deal.deal_price ? " · " : ""}최소주문 ${deal.min_order_qty}${deal.quantity_unit || "개"}`
-                  : null}
-            </span>
-            <button
-              type="button"
-              onClick={handleShare}
-              className="flex-shrink-0 flex items-center gap-1 text-xs font-bold text-gray500 border border-gray200 rounded-full px-3 py-1.5"
-            >
-              {shareCopied ? "링크 복사됨 ✓" : "공유 ↗"}
-            </button>
+              <span className="text-3xl font-black" style={{ color: "#0B2540" }}>
+                <PriceText text={formatDealPrice(deal.deal_price, deal.quantity_unit, deal.price_unit)} />
+              </span>
+              {/* 2026-09-26: 카드 리스트와 동일한 threshold-gating(3건 미만 숨김) */}
+              {(deal.interest_count ?? 0) >= 3 && (
+                <span
+                  className="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full flex-shrink-0"
+                  style={{ background: "#FDEEE8", color: "#C2410C" }}
+                >
+                  ❤️ {deal.interest_count}명 관심
+                </span>
+              )}
+            </div>
+            <div className="flex items-center justify-between gap-2 mt-1">
+              <span className="text-sm text-gray500">
+                {deal.original_price > deal.deal_price && (
+                  <span className="line-through"><PriceText text={formatDealPrice(deal.original_price, deal.quantity_unit, deal.price_unit)} /></span>
+                )}
+                {isLumpSum(deal.price_unit)
+                  ? `${deal.original_price > deal.deal_price ? " · " : ""}전체 일괄 판매`
+                  : deal.min_order_qty
+                    ? `${deal.original_price > deal.deal_price ? " · " : ""}최소주문 ${deal.min_order_qty}${deal.quantity_unit || "개"}`
+                    : null}
+              </span>
+              <button
+                type="button"
+                onClick={handleShare}
+                className="flex-shrink-0 flex items-center gap-1 text-xs font-bold text-gray500 border border-gray200 rounded-full px-3 py-1.5"
+              >
+                {shareCopied ? "링크 복사됨 ✓" : "공유 ↗"}
+              </button>
+            </div>
           </div>
-        </div>
-        <p className="text-xs text-gray500 -mt-1">창고 출고가 기준이에요 (배송비 별도).</p>
+          <p className="text-xs text-gray500 -mt-1">창고 출고가 기준이에요 (배송비 별도).</p>
+          </>
+        )}
 
         <div>
           <div className="h-2.5 bg-gray200 rounded-full overflow-hidden">

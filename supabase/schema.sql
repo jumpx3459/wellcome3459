@@ -1916,3 +1916,20 @@ end $$;
 alter table public.seller_requests add constraint seller_requests_linked_deal_id_fkey
   foreign key (linked_deal_id) references public.deals(id) on delete set null;
 
+
+-- ----------------------------------------------------------------------------
+-- 2026-10-03 A안 비회원 가격 비공개 — 운영 미실행. 순서: A 실행 → PR 배포 → B 실행
+--   원본·확인 조회·되돌리기: supabase/migrations/20261003_guest_price_a_discount_pct.sql, 20261003_guest_price_b_revoke_anon.sql
+-- ----------------------------------------------------------------------------
+-- A: 할인율 칸 (화면 카드 할인율 Math.round(((정상가 - 판매가) / 정상가) * 100)와 같은 계산, 할인 없으면 null)
+alter table public.deals add column if not exists discount_pct int
+  generated always as (
+    case
+      when original_price is null or original_price <= 0 or deal_price is null or deal_price >= original_price then null
+      else floor(((original_price::float8 - deal_price::float8) / original_price::float8) * 100 + 0.5)::int
+    end
+  ) stored;
+grant select (discount_pct) on public.deals to anon, authenticated;
+notify pgrst, 'reload schema';
+-- B: 비회원 판매가·정상가 읽기 권한 회수 (PR 배포 뒤)
+revoke select (deal_price, original_price) on public.deals from anon;
