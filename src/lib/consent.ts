@@ -5,6 +5,12 @@
 // 알림 켜기 4번, 동의·철회 안내 5번). 약관 전문은 docs/legal/terms-2026-10-07.md(/terms).
 export const TERMS_VERSION = "2026-10-07";
 
+// 2026-10-03 F-3b: 매물 알림 수신 동의(deal_alert_ad) 전용 버전 — 동의 범위(재고 매물 + 폐업·정리 부동산·설비 소식)를 넓히며 도입.
+// TERMS_VERSION·CONNECTION_CONSENT_VERSION과 별개: 문구·범위를 바꾸면 이 값만 올린다. 서버(/api/consents)가 이 상수로 저장.
+// 이 값보다 낮은 버전(YYYY-MM-DD 문자열 비교)이거나 버전이 없는 동의는 발송 대상에서 빠지고, MY에서 재동의를 받는다.
+export const DEAL_ALERT_CONSENT_VERSION = "2026-10-12";
+export const isDealAlertVersionCurrent = (v: string | null | undefined) => typeof v === "string" && v >= DEAL_ALERT_CONSENT_VERSION;
+
 // seller_terms(판매 신청 확인 사항)는 커밋 E부터 /api/seller-requests가 source 'sell'로 기록.
 // biz_info(사업자 인증 정보, 공개 후)·night_ad(예약)는 아직 받지 않음
 export const CONSENT_TYPES = [

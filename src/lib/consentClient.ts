@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { authFetch } from "@/lib/authFetch";
-import { consentNotice, type ConsentSource, type ConsentType } from "@/lib/consent";
+import { consentNotice, isDealAlertVersionCurrent, type ConsentSource, type ConsentType } from "@/lib/consent";
 
 // 화면 쪽 동의 조회·저장 (2026-09-30). 저장은 /api/consents(서버가 토큰에서 회원 id 결정).
 
@@ -19,7 +19,7 @@ export async function fetchMyConsents(): Promise<ConsentState | null> {
   if (!userId) return null;
   const { data, error } = await supabase
     .from("member_consent_latest")
-    .select("consent_type, agreed, created_at")
+    .select("consent_type, agreed, created_at, terms_version")
     .eq("member_id", userId);
   if (error) {
     console.warn("[consent] 조회 실패", error.message);
@@ -27,7 +27,9 @@ export async function fetchMyConsents(): Promise<ConsentState | null> {
   }
   const state: ConsentState = {};
   for (const row of data ?? []) {
-    state[row.consent_type as ConsentType] = { agreed: Boolean(row.agreed), createdAt: row.created_at };
+    // F-3b: 매물 알림 동의는 최신값이 agreed=true여도 버전이 현재보다 낮으면 "동의 안 함"(재동의 필요)으로 취급
+    const agreed = row.consent_type === "deal_alert_ad" ? Boolean(row.agreed) && isDealAlertVersionCurrent(row.terms_version) : Boolean(row.agreed);
+    state[row.consent_type as ConsentType] = { agreed, createdAt: row.created_at };
   }
   return state;
 }
