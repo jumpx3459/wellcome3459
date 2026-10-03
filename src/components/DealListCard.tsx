@@ -2,6 +2,7 @@ import Link from "next/link";
 import { categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import { formatDealPrice } from "@/lib/format";
 import DealCardMedia from "@/components/DealCardMedia";
+import PriceText from "@/components/PriceText";
 import StockTypeBadge from "@/components/StockTypeBadge";
 import { isLumpSum } from "@/lib/priceUnit";
 import { formatExpiry, isStorageType, STORAGE_ICONS } from "@/lib/dealFields";
@@ -69,7 +70,7 @@ export default function DealListCard({
             </div>
           )}
         </div>
-        {/* 2026-10-03: 매물명 2줄까지 + 말줄임. 수량·MOQ·가격은 각각 한 덩어리(글자 중간 줄바꿈 없음), 안 들어가면 항목 단위로 다음 줄 */}
+        {/* 2026-10-03: 매물명 2줄까지 + 말줄임. 수량·MOQ는 각각 한 덩어리(글자 중간 줄바꿈 없음), 가격은 숫자·단위 사이에서만 줄바꿈(PriceText) */}
         <div className="text-lg font-bold text-gray900 mt-2 line-clamp-2" data-title>{d.title}</div>
         <div className="text-sm font-medium mt-1 flex flex-wrap items-center gap-x-1" style={{ color: "#495057" }}>
           {closed ? (
@@ -96,11 +97,11 @@ export default function DealListCard({
           </div>
         )}
         <div className="flex flex-wrap items-baseline gap-x-1.5 mt-2">
-          <span className="text-lg font-black whitespace-nowrap" style={{ color: accent }}>
-            {formatDealPrice(d.deal_price, d.quantity_unit, d.price_unit)}
+          <span className="text-lg font-black" style={{ color: accent }}>
+            <PriceText text={formatDealPrice(d.deal_price, d.quantity_unit, d.price_unit)} />
           </span>
-          <span className="text-sm text-gray500 font-normal line-through whitespace-nowrap">
-            {formatDealPrice(d.original_price, d.quantity_unit, d.price_unit)}
+          <span className="text-sm text-gray500 font-normal line-through">
+            <PriceText text={formatDealPrice(d.original_price, d.quantity_unit, d.price_unit)} />
           </span>
         </div>
         {!gray && hotGapPct !== null && (

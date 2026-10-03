@@ -17,6 +17,7 @@ import EcosystemGrid, { SECTION_TITLE_STYLE, SERVICES_ANCHOR_ID, scrollToService
 import AlertInboxHome from "@/components/AlertInboxHome";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
+import PriceText from "@/components/PriceText";
 import { SITE_URL } from "@/lib/siteUrl";
 import { rem } from "@/lib/rem";
 import StockTypeBadge from "@/components/StockTypeBadge";
@@ -429,11 +430,11 @@ export default function Home() {
                       )}
                     </div>
                     <div className="flex flex-wrap items-baseline gap-x-1.5 mt-1.5">
-                      <span className="text-lg font-black whitespace-nowrap" style={{ color: color.text }}>
-                        {formatDealPrice(d.deal_price, d.quantity_unit, d.price_unit)}
+                      <span className="text-lg font-black" style={{ color: color.text }}>
+                        <PriceText text={formatDealPrice(d.deal_price, d.quantity_unit, d.price_unit)} />
                       </span>
-                      <span className="text-xs text-gray500 line-through whitespace-nowrap">
-                        {formatDealPrice(d.original_price, d.quantity_unit, d.price_unit)}
+                      <span className="text-xs text-gray500 line-through">
+                        <PriceText text={formatDealPrice(d.original_price, d.quantity_unit, d.price_unit)} />
                       </span>
                     </div>
                   </div>
