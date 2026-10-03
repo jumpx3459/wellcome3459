@@ -35,6 +35,7 @@ import { UI_SECTION, UI_CARD_TITLE, UI_LINK, BTN_CLASS, btnStyle } from "@/lib/u
 import { FieldLabel, FORM_INPUT_FONT_SIZE } from "@/components/FormField";
 import { RatioMetric, DailyBars, FunnelBars, InlineBar, BIG_NUM, LABEL, CARD } from "@/components/admin/DashboardViz";
 import AdminListCard from "@/components/admin/AdminListCard";
+import { formatConsentDate } from "@/lib/consent";
 
 // 2026-09-30 (커밋 K): /api/admin/kpi-daily 한 줄 (kpi_daily 테이블 일부 컬럼)
 type KpiDailyRow = {
@@ -350,6 +351,7 @@ type Interest = {
   } | null;
   phone?: string; // quick_leads(비회원 원클릭 리드)는 members 없이 전화번호만 가짐
   source: "member" | "quick";
+  connection_consent_at?: string | null; // 2026-10-03 F-3a: 판매자 연결 동의 시각(deal_connections) — 없으면 관심 표시만
 };
 
 type BuyRequest = {
@@ -1172,6 +1174,11 @@ function AdminDashboard({
                   {i.source === "quick" && (
                     <span className="font-bold px-2 py-0.5 rounded-full" style={{ fontSize: rem(14), background: "#FDEEE8", color: "#C2410C" }}>
                       ⚡ 원클릭
+                    </span>
+                  )}
+                  {i.connection_consent_at && (
+                    <span className="font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ fontSize: rem(14), background: "#E8F8EC", color: "#1D8A44" }}>
+                      연결 동의 ✓ {formatConsentDate(i.connection_consent_at)}
                     </span>
                   )}
                   {!i.contacted && i.outcome === "pending" && (
