@@ -1,5 +1,6 @@
 "use client";
 
+import { safeReturnTo } from "@/lib/safeReturnTo";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -50,7 +51,7 @@ export default function LoginPage() {
 function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnTo = searchParams.get("returnTo");
+  const returnTo = safeReturnTo(searchParams.get("returnTo")); // 같은 출처 경로만 (src/lib/safeReturnTo.ts)
 
   const [authChecked, setAuthChecked] = useState(false);
   const [authUserId, setAuthUserId] = useState<string | null>(null);

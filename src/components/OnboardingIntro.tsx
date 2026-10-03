@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import { rem } from "@/lib/rem";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
+import { isStandalone } from "@/lib/browserEnv";
 
 const STORAGE_KEY = "dj_onboarded"; // "1" = 명시적 액션(가입 시작/로그인 이동/둘러보기)으로 닫음 — 영구 억제
 const LAST_SHOWN_KEY = "dj_onboarding_last_shown"; // 버튼 없이 그냥 닫힌 경우 재노출 쿨다운 계산용
@@ -25,6 +26,10 @@ export default function OnboardingIntro({
 }) {
   const router = useRouter();
   const [visible, setVisible] = useState(false);
+  // 2026-10-03: 홈 화면에 추가한 앱(standalone)은 사파리와 저장소가 분리돼 로그인이 풀린 채 열림 —
+  // 가입 권유 대신 "로그인하고 알림 켜기"(→ 로그인 뒤 MY 알림 카드)를 앞에 둔다.
+  const [standalone, setStandalone] = useState(false);
+  useEffect(() => setStandalone(isStandalone()), []);
 
   useEffect(() => {
     if (isMember) {
@@ -67,6 +72,11 @@ export default function OnboardingIntro({
   function goToLogin() {
     dismiss();
     router.push("/login");
+  }
+
+  function goToAlertLogin() {
+    dismiss();
+    router.push(`/login?returnTo=${encodeURIComponent("/mypage#alerts")}`);
   }
 
   if (!visible) return null;
@@ -171,15 +181,15 @@ export default function OnboardingIntro({
         </div>
         )}
         <button
-          onClick={startSignup}
+          onClick={standalone ? goToAlertLogin : startSignup}
           className={`w-full ${BTN_CLASS}`}
           style={btnStyle("primary")}
         >
-          🔔 30초만에 알림 설정하기
+          {standalone ? "🔔 로그인하고 알림 켜기" : "🔔 30초만에 알림 설정하기"}
         </button>
         <div className="flex items-center justify-center gap-1" style={{ padding: "2px 10px 0" }}>
           <button
-            onClick={goToLogin}
+            onClick={standalone ? startSignup : goToLogin}
             style={{
               background: "none",
               border: "none",
@@ -191,7 +201,7 @@ export default function OnboardingIntro({
               padding: 8,
             }}
           >
-            이미 가입했어요
+            {standalone ? "처음이에요 · 가입하기" : "이미 가입했어요"}
           </button>
           <span style={{ color: "rgba(255,255,255,.35)", fontSize: rem(13) }}>·</span>
           <button

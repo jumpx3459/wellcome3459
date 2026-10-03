@@ -1,13 +1,14 @@
 import { rem } from "@/lib/rem";
 
-// iPhone "홈 화면에 추가" 3단계 — 설치 안내(InstallAppButton)와 알림 안내(PushBlockerNotice)가
+// iPhone "홈 화면에 추가" 안내(2026-10-03 4단계 — 홈 화면 앱은 사파리와 저장소가 달라 로그인이 풀려 있음) — 설치 안내(InstallAppButton)와 알림 안내(PushBlockerNotice)가
 // 같은 문구·디자인을 쓰도록 한 곳에 둔다 (2026-09-29).
 export const IOS_INSTALL_TITLE = "iPhone은 홈 화면에 추가해야 알림을 받을 수 있어요";
 
 const STEPS: React.ReactNode[] = [
   <>사파리 아래쪽 <b>공유 버튼(□↑)</b> 누르기</>,
   <><b>&quot;홈 화면에 추가&quot;</b> 선택</>,
-  <>홈 화면에 생긴 앱을 열고 <b>[알림 켜기]</b></>,
+  <>홈 화면에 생긴 앱 열기</>,
+  <>홈 화면 앱에서 <b>한 번 더 로그인</b>하면 알림을 켤 수 있어요</>,
 ];
 
 export default function IosInstallSteps() {

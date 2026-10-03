@@ -50,6 +50,19 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
+## 최근 작업 (2026-10-03) — 첫 방문 플로우 점검 반영 (브랜치 `fix/first-visit-flow`)
+
+- 기록 이월: PR #48(PR-D 관리자 매물 등록 폼 2단) 병합 `26d6324`, PR #49(authFetch 오프라인 오판)·PR #50(관리자 진행 중 매물 수정) 병합 → main `3ae06a1`.
+- 배경: 공유 링크(카톡) → 비회원 둘러보기 → 가입(보던 매물 복귀) → 알림 켜기 → (아이폰) 홈 화면 설치 읽기 전용 점검(2026-10-03) 결과 중 대표 결정분.
+- 이번 PR 범위
+  1. **returnTo 검증** — `src/lib/safeReturnTo.ts` `safeReturnTo()`: 같은 출처 "/" 경로만 허용, `//`·`/\`·스킴(https:·javascript:)·제어문자는 null → 기본값. signup·login의 `returnTo`를 읽는 자리 한 곳에서 적용(쿼리·해시 유지).
+  2. **returnTo 보완** — `withReturnTo()`: 하단 "알림" 탭(BottomNav, 경로 바뀔 때 window.location.search 반영)·마감 매물 CTA·빈 목록 CTA의 /signup 링크에 현재 경로(+쿼리) 붙임. 홈("/")·/signup·/login은 붙이지 않음.
+  3. **아이폰 설치 후 재로그인** — `IosInstallSteps` 4단계("홈 화면 앱에서 한 번 더 로그인하면 알림을 켤 수 있어요"). 홈 화면 앱(standalone) 비로그인 온보딩은 "로그인하고 알림 켜기"(→ `/login?returnTo=/mypage#alerts`)가 앞, 가입은 보조 링크.
+  4. **카톡 인앱 첫 방문 딤 시트 제거** — `InAppBanner` 상단 띠만 유지. 알림 안내는 가입 단계·MY 카드(PushBlockerNotice) 그대로.
+  5. **홈 설치 카드** — 첫 방문엔 숨김, 로그인 회원이거나 두 번째 방문(다른 브라우저 세션)부터 표시. `useInstallPrompt`의 `repeatVisit`(localStorage `dj_first_visit_at` + sessionStorage `dj_first_visit_session`, try/catch).
+- 검증: returnTo 옛/새 동등성(정상 경로·쿼리·해시·빈 값 같음, 외부 주소·`//`·`/\`·javascript:·제어문자만 다름), tsc·build, 로컬 Playwright(가짜 Supabase, 외부 요청 전부 차단 — 폰트만 시도) 전부 통과.
+- 이번 PR 제외(대표 결정): 가입 직후 푸시 결과 안내는 F-3 알림 통합 시트에서.
+
 ## 최근 작업 (2026-10-03) — PR-D 관리자 매물 등록 폼 2단 (브랜치 `feat/admin-deal-form-2col`, 로컬 커밋 · push 전)
 
 - **PR #47 병합 `eada5c1`**(PR-B 사진 업로드 — 커밋 `a268646`·`9737639`) · CI run 37015060343 · 배포 run 37015266907 성공 · 운영 /sell 200.
@@ -293,6 +306,8 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 
 ## 백로그 (2026-10-01)
 
+- **F-3 조건(첫 방문 플로우 점검 결정, 2026-10-03)**: requestPermission은 클릭 핸들러 안에서만(가입 submit은 await 뒤라 iOS에서 실패 가능), 거부·저장 실패는 화면 이동 전에 표시(지금은 `router.push`로 사라짐).
+- **공개 후(첫 방문 점검)**: OG 가격 노출·설명 원문 길이·사진 없는 매물 og:image → A안 PR / manifest 아이콘 any·maskable 분리·`id`·apple-touch-icon 180px / `getPushState` off를 default·granted_no_sub로 분리 / sw.js skipWaiting·clients.claim·캐시 헤더 / 가입 중 카톡→외부 브라우저 전환 시 OTP 재인증 안내.
 - **F-3**: 동의 버전을 동의 종류별로(지금은 전부 `TERMS_VERSION` 2026-10-07 하나 — 판매자 확인 사항 첫 줄 문구 변경 뒤에도 유지, 현재 동의 기록은 내부 테스트뿐이라 대표 결정).
 - **공개 후 별도 PR**: 로그인·가입 완료 후 이동(`router.push` — login/page.tsx·signup/page.tsx)을 `router.replace`로 — 지금은 로그인 화면이 기록에 남아
   홈에서 뒤로가기를 한 번 더 눌러야 종료될 수 있음(PR-C #35 리뷰 포인트). 카카오/로그인 핵심 기능이라 별도 브랜치·PR.
