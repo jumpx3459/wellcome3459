@@ -1,5 +1,6 @@
 "use client";
 
+import { safeReturnTo } from "@/lib/safeReturnTo";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -43,7 +44,7 @@ export default function SignupPage() {
 function SignupPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnTo = searchParams.get("returnTo");
+  const returnTo = safeReturnTo(searchParams.get("returnTo")); // 같은 출처 경로만 (src/lib/safeReturnTo.ts)
   const refCode = searchParams.get("ref"); // 추천인의 member id (점핑파트너 트래킹용)
   const { message: toastMessage, showToast } = useToast();
 

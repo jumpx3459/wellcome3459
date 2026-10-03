@@ -6,6 +6,8 @@ import Link from "next/link";
 import TabLink from "@/components/TabLink";
 import BusinessFooter from "@/components/BusinessFooter";
 import { useSearchParams } from "next/navigation";
+import { useCurrentPath } from "@/lib/useCurrentPath";
+import { withReturnTo } from "@/lib/safeReturnTo";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockDeals, mockCategories, mockRegions, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import AdSlot from "@/components/AdSlot";
@@ -468,6 +470,7 @@ function EmptyState({
   isMember: boolean;
 }) {
   const isAll = category === "전체";
+  const currentPath = useCurrentPath(); // 가입 후 이 목록으로 복귀
   // "전체"는 가장 흔한 기본 상태인데 categoryColors["기타"]의 회색(#8A8A82)을 그대로
   // 쓰면 정작 가장 많이 보이는 CTA가 제일 흐릿해짐 — 배경/뱃지는 기타 톤 유지하되
   // CTA 버튼 색만 브랜드 주황으로 분리.
@@ -523,7 +526,7 @@ function EmptyState({
         </TabLink>
       ) : (
         <Link
-          href="/signup"
+          href={withReturnTo("/signup", currentPath)}
           className="mt-4 text-sm font-bold text-white rounded-xl px-5 py-2.5"
           style={{ background: ctaColor }}
         >

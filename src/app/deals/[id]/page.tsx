@@ -11,6 +11,7 @@ import { mockDeals, categoryIcons, categoryColors, type Deal } from "@/lib/mockD
 import CountdownBadge from "@/components/CountdownBadge";
 import { formatPrice, percentOff, formatDealPrice } from "@/lib/format";
 import { SITE_URL } from "@/lib/siteUrl";
+import { withReturnTo } from "@/lib/safeReturnTo";
 import { MESSAGES_ENABLED, JUMPX_BRIDGE_ENABLED, JUMPX_PREVIEW_ENABLED } from "@/lib/features";
 import JumpxPreviewSheet from "@/components/JumpxPreviewSheet";
 import { formatDealLocation } from "@/lib/formatDealLocation";
@@ -696,7 +697,7 @@ function DealDetailPageInner() {
               비슷한 매물이 또 나올 때 가장 먼저 알려드릴게요.
             </p>
             <Link
-              href={ref ? `/signup?ref=${ref}` : "/signup"}
+              href={withReturnTo("/signup", `/deals/${deal.id}`, ref ? `ref=${ref}` : "")}
               className={`w-full ${BTN_CLASS}`}
               style={btnStyle("primary")}
             >

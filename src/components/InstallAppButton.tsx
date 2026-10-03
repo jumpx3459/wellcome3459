@@ -48,18 +48,33 @@ const MANUAL_STEPS: Record<ManualInstallBrowser, React.ReactNode[]> = {
 // 노출 여부는 "아직 설치 안 된 상태(!isStandalone)"만으로 판단하도록 분리.
 // 클릭 시 네이티브 프롬프트가 있으면 그걸 쓰고, 없으면(iOS든 Android/기타
 // 브라우저든) 수동 안내 모달로 폴백한다.
+const FIRST_VISIT_KEY = "dj_first_visit_at";
+const FIRST_VISIT_SESSION_KEY = "dj_first_visit_session";
+
 export function useInstallPrompt() {
   const [installEvent, setInstallEvent] = useState<InstallPromptEvent | null>(null);
   const [isIOS, setIsIOS] = useState(false);
   // 판별 전엔 배너를 띄우지 않음(인앱에서 잠깐 보였다 사라지는 깜빡임 방지)
   const [eligible, setEligible] = useState(false);
   const [installed, setInstalled] = useState(false); // 네이티브 설치를 수락했거나 appinstalled가 오면 카드 숨김
+  // 2026-10-03: 첫 방문엔 설치를 권하지 않음 — 이 기기에서 이전 방문(다른 브라우저 세션)이 있었으면 true
+  const [repeatVisit, setRepeatVisit] = useState(false);
 
   useEffect(() => {
     // 2026-09-29: 상황별로 안내는 하나만 — 설치 앱(standalone)이면 숨김, 인앱 브라우저는 설치가
     // 안 되므로 숨김(대신 InAppBanner가 크롬/사파리로 유도). 예전엔 인앱에서도 떴었음.
     setEligible(!detectStandalone() && !isInAppBrowser());
     setIsIOS(detectIOS());
+    // 첫 방문 시각을 localStorage에, 그 방문 세션 표시를 sessionStorage에 남김 — 둘 다 있으면 같은 세션(아직 첫 방문),
+    // localStorage만 있으면 이전 세션에 왔던 것(두 번째 방문부터). 저장소 접근이 막히면 첫 방문으로 보고 카드를 숨김.
+    try {
+      if (!localStorage.getItem(FIRST_VISIT_KEY)) {
+        localStorage.setItem(FIRST_VISIT_KEY, String(Date.now()));
+        sessionStorage.setItem(FIRST_VISIT_SESSION_KEY, "1");
+      } else {
+        setRepeatVisit(sessionStorage.getItem(FIRST_VISIT_SESSION_KEY) !== "1");
+      }
+    } catch {}
 
     const handler = (e: Event) => {
       e.preventDefault();
@@ -104,7 +119,7 @@ export function useInstallPrompt() {
     return "manual-guide";
   };
 
-  return { canInstall, promptInstall, hasNativePrompt };
+  return { canInstall, promptInstall, hasNativePrompt, repeatVisit };
 }
 
 export default function InstallAppButton({

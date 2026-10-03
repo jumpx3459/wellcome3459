@@ -50,7 +50,7 @@ export default function Home() {
   // 실제로 사라지는 시점(onFinish)에야 애니메이션 클래스를 붙이도록 지연.
   // OnboardingIntro(첫 방문자 화면)의 자체 로고도 같은 문제라 이 값을 그대로 전달.
   const [logoAnimate, setLogoAnimate] = useState(false);
-  const { canInstall, promptInstall, hasNativePrompt } = useInstallPrompt();
+  const { canInstall, promptInstall, hasNativePrompt, repeatVisit } = useInstallPrompt();
 
   const dismissInstallBanner = () => {
     try {
@@ -321,7 +321,8 @@ export default function Home() {
       {/* 상단은 핵심 전환(회원가입→맞춤 알림)에만 집중 — 카카오톡 채널 추가는
           같은 "카카오 버튼" 스타일로 나란히 있으면 가입과 중복돼 보여서
           매물을 먼저 보여준 뒤(아래) 저관여 위치로 옮김. */}
-      {canInstall && !installDismissed && (
+      {/* 2026-10-03: 첫 방문엔 설치 카드를 숨김 — 로그인 회원이거나 두 번째 방문부터 */}
+      {canInstall && !installDismissed && (isMember || repeatVisit) && (
         <div className="px-5 pt-5">
           {/* 2026-09-27: 배너가 전체폭을 다 써서 주목도가 과하다는 피드백 — 폭을
               절반 정도로 줄이고, 부담 없이 넘길 수 있게 닫기(X) 버튼을 추가. */}
