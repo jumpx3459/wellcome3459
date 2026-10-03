@@ -398,11 +398,11 @@ export default function Home() {
                       <NoPhotoPlaceholder category={d.category} size="sm" />
                     )}
                   </div>
-                  {/* 2026-10-03: 오른쪽 위 할인 배지 자리(pr-10)는 배지와 겹치는 첫 줄(재고 유형·매물명)에만 — 사진이 커져 본문 폭 확보 */}
+                  {/* 2026-10-03: 오른쪽 위 할인 배지 자리는 배지와 겹치는 첫 줄(재고 유형·매물명)에만 — 사진이 커져 본문 폭 확보. 매물명은 pr-14(3.5rem: 배지 폭이 글자 크기를 따라 커져 pr-10으론 큰 글자에서 겹침) */}
                   <div className="flex-1 min-w-0">
                     {d.stock_type && d.stock_type !== "general" && <StockTypeBadge value={d.stock_type} className="mb-1 mr-10" />}
                     {/* 매물명 2줄까지 + 말줄임 */}
-                    <div className="text-sm font-bold text-navy line-clamp-2 pr-10" data-title>{d.title}</div>
+                    <div className="text-sm font-bold text-navy line-clamp-2 pr-14" data-title>{d.title}</div>
                     <div className="text-xs text-gray500 mt-0.5">
                       {d.category} · {d.location}
                       {d.package_unit && ` · ${d.package_unit}`}
