@@ -854,7 +854,7 @@ function AdminDashboard({
             ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
             : "px-5 pt-4 flex flex-col gap-3"
         }
-        title={<span style={UI_SECTION}>최근 가입 회원 ({members.length}명)</span>}
+        title={<span style={UI_SECTION}>최근 가입 회원 <span style={{ ...LABEL, fontWeight: 400 }}>({members.length}명)</span></span>}
         open={membersOpen}
         onToggle={() => setMembersOpen((v) => !v)}
         limit={null}
@@ -1333,7 +1333,7 @@ function AdminDashboard({
             ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
             : "px-5 pb-6 flex flex-col gap-3"
         }
-        title={<div className="text-sm font-bold text-gray500">진행 중인 매물 ({activeDeals.length})</div>}
+        title={<span style={UI_SECTION}>진행 중인 매물 <span style={{ ...LABEL, fontWeight: 400 }}>({activeDeals.length}건)</span></span>}
         empty={!loading && <div className="text-center text-gray500 py-6 text-sm">진행 중인 매물이 없어요.</div>}
         listClassName="flex flex-col gap-3"
         items={activeDeals}
@@ -1359,7 +1359,7 @@ function AdminDashboard({
             ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
             : "px-5 pb-8 flex flex-col gap-3"
         }
-        title={<span className="text-sm font-bold text-gray500">대기 중인 판매자 신청 ({requests.length})</span>}
+        title={<span style={UI_SECTION}>대기 중인 판매자 신청 <span style={{ ...LABEL, fontWeight: 400 }}>({requests.length}건)</span></span>}
         open={sellerReqOpen}
         onToggle={() => setSellerReqOpen((v) => !v)}
         toolbar={loading && <div className="text-center text-gray500 py-8">불러오는 중...</div>}
@@ -1467,8 +1467,8 @@ function AdminDashboard({
             : "mt-8 px-5"
         }
         title={
-          <h2 className="text-sm font-bold text-navy">
-            🏅 공식 점핑파트너 신청 ({partnerRequests.filter((r) => r.status === "pending").length}건 대기)
+          <h2 style={UI_SECTION}>
+            🏅 공식 점핑파트너 신청 <span style={{ ...LABEL, fontWeight: 400 }}>({partnerRequests.filter((r) => r.status === "pending").length}건 대기)</span>
           </h2>
         }
         open={partnerReqOpen}
@@ -1530,8 +1530,8 @@ function AdminDashboard({
             : "mt-8 px-5"
         }
         title={
-          <h2 className="text-sm font-bold text-navy">
-            📊 점핑파트너 실적 ({partnersOverview.length}명)
+          <h2 style={UI_SECTION}>
+            📊 점핑파트너 실적 <span style={{ ...LABEL, fontWeight: 400 }}>({partnersOverview.length}명)</span>
           </h2>
         }
         open={partnersOverviewOpen}
@@ -1585,8 +1585,8 @@ function AdminDashboard({
             : "px-5 pb-8 flex flex-col gap-3"
         }
         title={
-          <span className="text-sm font-bold text-gray500">
-            🔍 이런 재고 찾습니다 ({buyRequests.filter((b) => !b.contacted).length}건 미연락)
+          <span style={UI_SECTION}>
+            🔍 이런 재고 찾습니다 <span style={{ ...LABEL, fontWeight: 400 }}>({buyRequests.filter((b) => !b.contacted).length}건 미연락)</span>
           </span>
         }
         open={buyReqOpen}
@@ -1703,7 +1703,7 @@ function AdminDashboard({
             onClick={() => setAdminsOpen((v) => !v)}
             className="w-full flex items-center justify-between"
           >
-            <span className={isDesktop ? undefined : "text-sm font-bold text-gray500"} style={isDesktop ? UI_SECTION : undefined}>관리자 목록 ({admins.length}명)</span>
+            <span style={UI_SECTION}>관리자 목록 <span style={{ ...LABEL, fontWeight: 400 }}>({admins.length}명)</span></span>
             <span className="text-sm font-bold text-gray500">{adminsOpen ? "접기 ▲" : "펼치기 ▼"}</span>
           </button>
           {adminsOpen && (

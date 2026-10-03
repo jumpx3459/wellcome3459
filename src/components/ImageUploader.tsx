@@ -6,7 +6,7 @@ import { rem } from "@/lib/rem";
 import { uploadFormData } from "@/lib/uploadClient";
 import { BASE_PHOTO_SLOTS } from "@/lib/photoLimit";
 import { usePointerFine } from "@/lib/usePointerFine";
-import { DEAL_LABEL_STYLE, FORM_HINT_STYLE } from "@/components/FormField";
+import { DEAL_LABEL_STYLE, FORM_HINT_STYLE, UPLOAD_ERROR_CLASS, UPLOAD_ERROR_STYLE } from "@/components/FormField";
 import Toast, { useToast } from "@/components/Toast";
 
 // 2026-10-02 PR-B: file은 이번에 고른 사진만(다시 시도용) — 불러온 기존 사진(initialUrls)엔 없음. error는 실패 이유(목록 아래 안내)
@@ -312,9 +312,20 @@ export default function ImageUploader({
             color: dragOver ? "#0B2540" : "#6B7480",
           }}
         >
-          {pointerFine
-            ? "클릭하거나 사진을 끌어다 놓으세요 (여러 장 가능)"
-            : "탭해서 사진 선택 (여러 번 눌러서 계속 추가할 수 있어요)"}
+          {/* 2026-10-03 PR-D: PC는 버튼 모양 + 끌어다 놓기 안내(누르면 지금처럼 파일 선택 창, 여러 장). 휴대폰 문구는 그대로 */}
+          {pointerFine ? (
+            <span className="flex flex-col items-center gap-1.5 py-3">
+              <span
+                className="inline-flex items-center gap-1.5 rounded-lg bg-white font-bold"
+                style={{ border: "1.5px solid #0B2540", color: "#0B2540", fontSize: rem(15), padding: "8px 16px" }}
+              >
+                📁 사진 파일 선택
+              </span>
+              <span style={{ fontSize: rem(14) }}>또는 사진을 여기로 끌어다 놓으세요 · 여러 장 한 번에 선택 가능</span>
+            </span>
+          ) : (
+            "탭해서 사진 선택 (여러 번 눌러서 계속 추가할 수 있어요)"
+          )}
           <input
             type="file"
             accept="image/*,.heic,.heif"
@@ -440,7 +451,7 @@ export default function ImageUploader({
         </p>
       )}
       {failedMessages.map((m) => (
-        <p key={m} className="mt-1.5 font-medium" style={{ ...FORM_HINT_STYLE, color: "#E5484D" }}>
+        <p key={m} className={UPLOAD_ERROR_CLASS} style={UPLOAD_ERROR_STYLE}>
           {m}
         </p>
       ))}
