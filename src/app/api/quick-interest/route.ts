@@ -6,6 +6,7 @@ import { toLocalPhone } from "@/lib/auth";
 import { normalizePhone } from "@/lib/phone";
 import { clientIp } from "@/lib/adminAuth";
 import { overLimit, UUID_RE } from "@/lib/rateLimit";
+import { createDealConnection, isCurrentConnectionConsent } from "@/lib/dealConnection";
 
 // 비회원이 "관심있어요"를 누를 때, 전체 회원가입 없이 전화번호만으로 바로
 // 점핑매니저에게 리드를 넘기기 위한 경량 엔드포인트입니다.
@@ -15,13 +16,17 @@ import { overLimit, UUID_RE } from "@/lib/rateLimit";
 //   · 횟수 제한: IP 10분 10회, 같은 번호 10분 3회 (서버 메모리, src/lib/rateLimit.ts)
 //   · 같은 매물+같은 번호가 이미 있으면 새로 저장·알림 없이 200 { duplicate: true }
 //   · 개인정보 동의 + 동의 문구 버전 필수 — 저장 시각·버전은 서버가 기록
+// 2026-10-03 F-3a: 판매자 연결 동의(7-1) 분기 — connectionConsent=true + connectionConsentVersion(서버 상수와 같은지만 검사)이면
+//   quick_leads 저장(이미 있으면 그 행) + 거래 연결 기록(deal_connections, buyer_phone) 생성. 없으면 지금처럼 관심 표시만.
+//   응답 connection: "created" | "duplicate"(진행 중 연결 이미 있음). 연결 저장 실패는 500 — 리드는 남아 있어 다시 보내면 연결만 만듦.
 const PHONE_RE = /^01[016789]\d{7,8}$/;
 const IP_LIMIT = 10;
 const PHONE_LIMIT = 3;
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
-  const { dealId, phone, privacyConsent, consentVersion } = (body ?? {}) as Record<string, unknown>;
+  const { dealId, phone, privacyConsent, consentVersion, connectionConsent, connectionConsentVersion } = (body ?? {}) as Record<string, unknown>;
+  const wantsConnection = connectionConsent === true;
 
   if (typeof dealId !== "string" || !UUID_RE.test(dealId)) {
     return NextResponse.json({ error: "매물 정보가 올바르지 않아요.", field: "dealId" }, { status: 400 });
@@ -37,6 +42,9 @@ export async function POST(req: NextRequest) {
   if (typeof consentVersion !== "string" || !consentVersion) {
     return NextResponse.json({ error: "화면을 새로고침한 뒤 다시 시도해주세요.", field: "privacyConsent" }, { status: 400 });
   }
+  if (wantsConnection && !isCurrentConnectionConsent(connectionConsentVersion)) {
+    return NextResponse.json({ error: "화면을 새로고침한 뒤 다시 시도해주세요.", field: "connectionConsent" }, { status: 400 });
+  }
 
   if (overLimit(`qi-ip:${clientIp(req)}`, IP_LIMIT) || overLimit(`qi-phone:${local}`, PHONE_LIMIT)) {
     return NextResponse.json({ error: "잠시 후 다시 시도해주세요." }, { status: 429 });
@@ -47,7 +55,7 @@ export async function POST(req: NextRequest) {
 
   if (!supabaseUrl || !serviceKey) {
     // 데모 모드: 저장 없이 성공만 반환
-    return NextResponse.json({ ok: true, demo: true });
+    return NextResponse.json({ ok: true, demo: true, ...(wantsConnection ? { connection: "created" } : {}) });
   }
 
   const supabaseAdmin = createClient(supabaseUrl, serviceKey);
@@ -66,22 +74,49 @@ export async function POST(req: NextRequest) {
     .eq("deal_id", dealId)
     .in("phone", variants)
     .limit(1);
-  if (existing && existing.length > 0) return NextResponse.json({ ok: true, duplicate: true });
+  const connect = (leadId: string) =>
+    createDealConnection(supabaseAdmin, {
+      dealId,
+      dealTitle: deal.title ?? "",
+      buyer: { phone: local },
+      source: "quick_lead",
+      sourceId: leadId,
+    });
+  const connectFailed = () =>
+    NextResponse.json({ error: "연결 요청을 저장하지 못했어요. 잠시 후 다시 시도해주세요." }, { status: 500 });
 
-  const { error } = await supabaseAdmin.from("quick_leads").insert({
-    deal_id: dealId,
-    phone: local,
-    privacy_consented_at: new Date().toISOString(),
-    privacy_consent_version: TERMS_VERSION,
-  });
+  if (existing && existing.length > 0) {
+    if (!wantsConnection) return NextResponse.json({ ok: true, duplicate: true });
+    // 관심 표시는 예전에 했고 이번에 연결 동의 — 연결 기록만
+    const connection = await connect(existing[0].id);
+    if (connection === "failed") return connectFailed();
+    if (connection === "created") {
+      await sendAdminPush("🤝 판매자 연결 요청", deal.title ? `${deal.title} · 비회원 연결 동의` : "비회원이 판매자 연결에 동의했어요", "/admin");
+    }
+    return NextResponse.json({ ok: true, duplicate: true, connection });
+  }
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const { data: inserted, error } = await supabaseAdmin
+    .from("quick_leads")
+    .insert({
+      deal_id: dealId,
+      phone: local,
+      privacy_consented_at: new Date().toISOString(),
+      privacy_consent_version: TERMS_VERSION,
+    })
+    .select("id")
+    .single();
+
+  if (error) return NextResponse.json({ error: "전송에 실패했어요. 잠시 후 다시 시도해주세요." }, { status: 500 });
+
+  const connection = wantsConnection ? await connect(inserted.id) : null;
+  if (connection === "failed") return connectFailed();
 
   await sendAdminPush(
-    "🙋 새 원클릭 리드",
-    deal.title ? `${deal.title} · 비회원 관심` : "비회원 관심 표시가 들어왔어요",
+    connection ? "🤝 새 원클릭 리드 · 연결 동의" : "🙋 새 원클릭 리드",
+    deal.title ? `${deal.title} · 비회원 ${connection ? "연결 동의" : "관심"}` : "비회원 관심 표시가 들어왔어요",
     "/admin"
   );
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, ...(connection ? { connection } : {}) });
 }
