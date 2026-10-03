@@ -407,6 +407,11 @@ function AdminDashboard({
   const setDealFormDirty = useCallback((dirty: boolean) => {
     dealFormDirtyRef.current = dirty;
   }, []);
+  // [닫기]·[취소]·신청 카드 [닫기] — 작성 중이면(신청 폼은 미리 채운 값에서 바뀌었거나 사진·영상 변화) 확인 후 닫기, 빈 폼은 바로
+  const closeDealForm = () => {
+    if (dealFormDirtyRef.current && !confirm("작성 중인 내용이 사라져요. 닫을까요?")) return;
+    setOpenFormFor(null);
+  };
   const switchForm = (next: string) => {
     if (openFormFor === next) return;
     const dealFormOpen = openFormFor !== null && openFormFor !== "notice";
@@ -1248,7 +1253,7 @@ function AdminDashboard({
         style={isDesktop ? { order: -1 } : undefined}
       >
         {openFormFor === "new" ? (
-          <button type="button" onClick={() => setOpenFormFor(null)} className={`ml-auto ${BTN_CLASS}`} style={{ ...btnStyle("secondary"), minHeight: 40, fontSize: rem(15), padding: "0 16px" }}>
+          <button type="button" onClick={closeDealForm} className={`ml-auto ${BTN_CLASS}`} style={{ ...btnStyle("secondary"), minHeight: 40, fontSize: rem(15), padding: "0 16px" }}>
             닫기
           </button>
         ) : (
@@ -1268,7 +1273,7 @@ function AdminDashboard({
               </span>
               <button
                 type="button"
-                onClick={() => setOpenFormFor(null)}
+                onClick={closeDealForm}
                 className={`flex-shrink-0 ${BTN_CLASS}`}
                 style={{ ...btnStyle("secondary"), minHeight: 36, fontSize: rem(14), padding: "0 14px" }}
               >
@@ -1431,7 +1436,7 @@ function AdminDashboard({
             )}
             <div className="flex gap-2 mt-3">
               <button
-                onClick={() => (openFormFor === r.id ? setOpenFormFor(null) : switchForm(r.id))}
+                onClick={() => (openFormFor === r.id ? closeDealForm() : switchForm(r.id))}
                 className="flex-1 text-navy font-bold border-2 border-navy rounded-xl text-sm"
                 style={{ padding: "10px 0" }}
               >
