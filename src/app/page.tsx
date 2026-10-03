@@ -372,22 +372,27 @@ export default function Home() {
                   href={isExample ? "/signup" : `/deals/${d.id}`}
                   className="relative flex items-center gap-3 rounded-2xl border border-gray200 px-3.5 py-3 overflow-hidden active:scale-[0.98] transition-transform"
                 >
-                  {discountPct > 0 && (
-                    // 2026-09-27 (재검토): 브랜드 색(레드) 통일성을 유지하기 위해 주황
-                    // 계열로 되돌리되, CTA와 헷갈리지 않도록 형태(코너 리본 → 필)와
-                    // 채도/투명도를 낮춰 "정보 배지"로만 읽히게 구분.
-                    <div
-                      className="absolute top-2 right-2 text-xs font-black text-white px-2.5 py-1 rounded-full"
-                      style={{ background: "rgba(226,81,0,0.72)" }}
-                    >
-                      -{discountPct}%
-                    </div>
-                  )}
                   {/* 2026-10-03: 사진 56px(3.5rem) → 110px 정사각형(px 고정 — 큰 글자 설정에서도 같은 크기). 사진 없을 때 자리 표시도 같은 크기 */}
                   <div
-                    className="rounded-token flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden"
+                    className="relative rounded-token flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden"
                     style={{ background: color.bg, width: 110, height: 110 }}
                   >
+                    {/* 2026-10-03: 할인율 배지를 카드 오른쪽 위 → 사진 왼쪽 위로(/deals 카드 DealCardMedia와 같은 위치·색 규칙의 축소판).
+                        본문 오른쪽 위에 있을 땐 "소비기한 임박" 칩·매물명과 겹쳤음(사진이 커져 본문 폭이 줄어서). 큰 글자에서도 사진 안에 들어가게 최대 폭 제한 */}
+                    {discountPct > 0 && (
+                      <div
+                        className="absolute top-1.5 left-1.5 z-[1] font-black text-white rounded-full pointer-events-none whitespace-nowrap"
+                        style={{
+                          background: isExample ? "rgba(107,116,128,0.78)" : "rgba(226,81,0,0.78)",
+                          fontSize: rem(13),
+                          lineHeight: 1.2,
+                          padding: "2px 7px",
+                          maxWidth: "calc(100% - 12px)",
+                        }}
+                      >
+                        -{discountPct}%
+                      </div>
+                    )}
                     {d.images && d.images.length > 0 ? (
                       <img
                         src={d.images[0]}
@@ -398,11 +403,11 @@ export default function Home() {
                       <NoPhotoPlaceholder category={d.category} size="sm" />
                     )}
                   </div>
-                  {/* 2026-10-03: 오른쪽 위 할인 배지 자리(pr-10)는 배지와 겹치는 첫 줄(재고 유형·매물명)에만 — 사진이 커져 본문 폭 확보 */}
+                  {/* 할인 배지가 사진 위로 옮겨가서 본문 오른쪽 배지 자리(pr) 없음 — 글자 칸 최대 */}
                   <div className="flex-1 min-w-0">
-                    {d.stock_type && d.stock_type !== "general" && <StockTypeBadge value={d.stock_type} className="mb-1 mr-10" />}
+                    {d.stock_type && d.stock_type !== "general" && <StockTypeBadge value={d.stock_type} className="mb-1" />}
                     {/* 매물명 2줄까지 + 말줄임 */}
-                    <div className="text-sm font-bold text-navy line-clamp-2 pr-10" data-title>{d.title}</div>
+                    <div className="text-sm font-bold text-navy line-clamp-2" data-title>{d.title}</div>
                     <div className="text-xs text-gray500 mt-0.5">
                       {d.category} · {d.location}
                       {d.package_unit && ` · ${d.package_unit}`}

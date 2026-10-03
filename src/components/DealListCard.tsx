@@ -35,7 +35,7 @@ export default function DealListCard({
   return (
     <Link
       href={example ? `/deals/example-${d.id}` : `/deals/${d.id}`}
-      className="bg-white border border-gray200 rounded-2xl overflow-hidden flex flex-col relative"
+      className="bg-white border border-gray200 rounded-2xl overflow-hidden flex flex-col relative w-full min-w-0 max-w-full"
       style={{
         borderLeft: `5px solid ${gray ? "#C7CBD1" : color.solid}`,
         opacity: closed ? 0.85 : example ? 0.9 : 1,
@@ -53,7 +53,9 @@ export default function DealListCard({
         eager={eager}
       />
 
-      <div className="px-4 py-3.5">
+      {/* 2026-10-03: 운영(안드로이드 크롬)에서 긴 매물명이 한 줄로 카드 폭을 밀어 화면 밖으로 넘친 제보 — 홈 카드처럼 본문·매물명을
+          min-w-0 블록 안에 둠(줄 수 제한(-webkit-box)이 폭 계산에 직접 끼지 않게). 로컬 크롬에선 재현 안 됨 */}
+      <div className="px-4 py-3.5 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <div
             className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full min-w-0"
@@ -71,7 +73,9 @@ export default function DealListCard({
           )}
         </div>
         {/* 2026-10-03: 매물명 2줄까지 + 말줄임. 수량·MOQ는 각각 한 덩어리(글자 중간 줄바꿈 없음), 가격은 숫자·단위 사이에서만 줄바꿈(PriceText) */}
-        <div className="text-lg font-bold text-gray900 mt-2 line-clamp-2" data-title>{d.title}</div>
+        <div className="mt-2 min-w-0">
+          <div className="text-lg font-bold text-gray900 line-clamp-2" data-title>{d.title}</div>
+        </div>
         <div className="text-sm font-medium mt-1 flex flex-wrap items-center gap-x-1" style={{ color: "#495057" }}>
           {closed ? (
             d.location
