@@ -17,6 +17,7 @@ import EcosystemGrid, { SECTION_TITLE_STYLE, SERVICES_ANCHOR_ID, scrollToService
 import AlertInboxHome from "@/components/AlertInboxHome";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
+import PriceText from "@/components/PriceText";
 import { SITE_URL } from "@/lib/siteUrl";
 import { rem } from "@/lib/rem";
 import StockTypeBadge from "@/components/StockTypeBadge";
@@ -382,9 +383,10 @@ export default function Home() {
                       -{discountPct}%
                     </div>
                   )}
+                  {/* 2026-10-03: 사진 56px(3.5rem) → 110px 정사각형(px 고정 — 큰 글자 설정에서도 같은 크기). 사진 없을 때 자리 표시도 같은 크기 */}
                   <div
-                    className="w-14 h-14 rounded-token flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden"
-                    style={{ background: color.bg }}
+                    className="rounded-token flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden"
+                    style={{ background: color.bg, width: 110, height: 110 }}
                   >
                     {d.images && d.images.length > 0 ? (
                       <img
@@ -396,9 +398,11 @@ export default function Home() {
                       <NoPhotoPlaceholder category={d.category} size="sm" />
                     )}
                   </div>
-                  <div className="flex-1 min-w-0 pr-10">
-                    {d.stock_type && d.stock_type !== "general" && <StockTypeBadge value={d.stock_type} className="mb-1" />}
-                    <div className="text-sm font-bold text-navy truncate">{d.title}</div>
+                  {/* 2026-10-03: 오른쪽 위 할인 배지 자리(pr-10)는 배지와 겹치는 첫 줄(재고 유형·매물명)에만 — 사진이 커져 본문 폭 확보 */}
+                  <div className="flex-1 min-w-0">
+                    {d.stock_type && d.stock_type !== "general" && <StockTypeBadge value={d.stock_type} className="mb-1 mr-10" />}
+                    {/* 매물명 2줄까지 + 말줄임 */}
+                    <div className="text-sm font-bold text-navy line-clamp-2 pr-10" data-title>{d.title}</div>
                     <div className="text-xs text-gray500 mt-0.5">
                       {d.category} · {d.location}
                       {d.package_unit && ` · ${d.package_unit}`}
@@ -409,27 +413,28 @@ export default function Home() {
                     {/* 2026-09-27: 동종업계 문자광고(가격/출고지/물량단위/최소주문 등을
                         항상 함께 표기)를 벤치마킹 — 상세페이지엔 이미 있던 최소주문
                         수량을 미리보기 카드에도 노출해 구매 결정에 필요한 정보 밀도를 높임. */}
-                    <div className="text-[0.7222rem] text-gray500 mt-0.5 flex items-center gap-1.5">
-                      <span>{d.remaining_qty}/{d.total_qty} 남음</span>
+                    {/* 2026-10-03: 항목(남은 수량·최소 수량·시간)은 각각 한 덩어리 — 안 들어가면 항목 단위로 다음 줄(글자 중간 줄바꿈 없음) */}
+                    <div className="text-[0.7222rem] text-gray500 mt-0.5 flex flex-wrap items-center gap-x-1.5">
+                      <span className="whitespace-nowrap">{d.remaining_qty}/{d.total_qty} 남음</span>
                       {d.min_order_qty && !isLumpSum(d.price_unit) && (
-                        <>
+                        <span className="whitespace-nowrap inline-flex items-center gap-1.5">
                           <span>·</span>
                           <span>최소 {d.min_order_qty}{d.quantity_unit || "개"}</span>
-                        </>
+                        </span>
                       )}
                       {formatRelativeTime(d.created_at) && (
-                        <>
+                        <span className="whitespace-nowrap inline-flex items-center gap-1.5">
                           <span>·</span>
                           <span>{formatRelativeTime(d.created_at)}</span>
-                        </>
+                        </span>
                       )}
                     </div>
-                    <div className="flex items-baseline gap-1.5 mt-1.5">
+                    <div className="flex flex-wrap items-baseline gap-x-1.5 mt-1.5">
                       <span className="text-lg font-black" style={{ color: color.text }}>
-                        {formatDealPrice(d.deal_price, d.quantity_unit, d.price_unit)}
+                        <PriceText text={formatDealPrice(d.deal_price, d.quantity_unit, d.price_unit)} />
                       </span>
                       <span className="text-xs text-gray500 line-through">
-                        {formatDealPrice(d.original_price, d.quantity_unit, d.price_unit)}
+                        <PriceText text={formatDealPrice(d.original_price, d.quantity_unit, d.price_unit)} />
                       </span>
                     </div>
                   </div>

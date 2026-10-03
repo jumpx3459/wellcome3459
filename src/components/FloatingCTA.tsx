@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { rem } from "@/lib/rem";
+import FloatingCTAMeasure from "@/components/FloatingCTAMeasure";
 
 // 하단 고정 버튼 공용 (2026-09-29, 결정 변경: 예전 "흰 반투명 판 + 블러 + 위 그라데이션" 취소).
 // 판 없이 주황 버튼만 그림자로 띄운다. 하단 탭(--nav-bottom, safe-area 포함) 위로 GAP만큼 띄움.
@@ -8,6 +9,9 @@ export const FLOATING_CTA_GAP = 12; // 하단 탭과 버튼 사이
 export const FLOATING_CTA_HEIGHT = 56;
 // 페이지 하단 여백 = 버튼 높이 + 간격 + 여유 — 마지막 입력칸·안내 카드가 버튼에 가리지 않게
 export const FLOATING_CTA_SPACE = FLOATING_CTA_HEIGHT + FLOATING_CTA_GAP + 24;
+// 2026-10-03: 실제 높이 기준 여백 — 버튼 아래 안내 알약·큰 글자로 버튼 묶음이 커지는 화면(매물 상세)용.
+// --floating-cta-h는 FloatingCTAMeasure가 채움(없으면 고정값과 같음)
+export const FLOATING_CTA_SPACE_FIT = `calc(var(--floating-cta-h, ${FLOATING_CTA_HEIGHT + FLOATING_CTA_GAP}px) + 24px)`;
 
 export function floatingCtaButtonStyle(inactive = false): CSSProperties {
   return {
@@ -42,6 +46,7 @@ export default function FloatingCTA({ children, className = "" }: { children: Re
       style={{ bottom: `calc(var(--nav-bottom) + ${FLOATING_CTA_GAP}px)` }}
     >
       <div className="pointer-events-auto">{children}</div>
+      <FloatingCTAMeasure gap={FLOATING_CTA_GAP} />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import webpush from "web-push";
 import { matchesConditions } from "@/lib/dealMatching";
 import { formatDealPrice } from "@/lib/format";
 import { stockTypeBadge } from "@/lib/stockType";
+import { normalizePhone } from "@/lib/phone";
 
 // 2026-10-01: VAPID 키는 모듈 로드 때가 아니라 실제 발송 직전에 1회 설정(lazy).
 // 예전엔 파일을 불러오는 순간 setVapidDetails가 돌아, build(GitHub Actions의 vercel build — Sensitive env는 비어 있음) 중
@@ -375,7 +376,16 @@ export async function sendNoticePush(noticeId: string) {
   return { sentCount, total: subs?.length ?? 0 };
 }
 
-export async function sendAdminPush(title: string, body: string, url: string) {
+// 2026-10-03: 판매자 연결 요청 알림은 건마다 따로 보이게 tag를 매번 다르게 — 예전엔 모든 관리자 알림이 tag "admin-lead" 하나라
+// 새 알림이 알림창의 이전 알림을 덮어써서(회원 연결 → 비회원 연결) 한 건이 안 온 것처럼 보일 수 있었음.
+export function adminConnectionTag() {
+  return `admin-connection-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+// 관리자 알림 받는 사람: admin_users 전원(역할 무관)의 번호와 같은 번호로 가입한 회원 계정의 모든 기기 구독(push_subscriptions).
+// push_opt_out·매물 알림 동의는 보지 않음(운영 알림). 2026-10-03: 번호 비교를 normalizePhone으로 — admin_users.phone이
+// "+8210…"·하이픈 형식이면 members.phone("010…")과 숫자만 비교해선 안 맞아 알림이 안 갔음.
+export async function sendAdminPush(title: string, body: string, url: string, tag = "admin-lead") {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceKey || !ensureVapid()) return;
@@ -383,14 +393,12 @@ export async function sendAdminPush(title: string, body: string, url: string) {
   const supabaseAdmin = createClient(supabaseUrl, serviceKey);
 
   const { data: admins } = await supabaseAdmin.from("admin_users").select("phone");
-  const adminPhoneDigits = new Set(
-    (admins ?? []).map((a) => a.phone?.replace(/[^0-9]/g, "")).filter(Boolean)
-  );
+  const adminPhoneDigits = new Set((admins ?? []).map((a) => normalizePhone(a.phone)).filter(Boolean));
   if (adminPhoneDigits.size === 0) return;
 
   const { data: members } = await supabaseAdmin.from("members").select("id, phone");
   const adminMemberIds = (members ?? [])
-    .filter((m) => adminPhoneDigits.has(m.phone?.replace(/[^0-9]/g, "")))
+    .filter((m) => adminPhoneDigits.has(normalizePhone(m.phone)))
     .map((m) => m.id);
   if (adminMemberIds.length === 0) return;
 
@@ -405,7 +413,7 @@ export async function sendAdminPush(title: string, body: string, url: string) {
     try {
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
-        JSON.stringify({ title, body, url, tag: "admin-lead" })
+        JSON.stringify({ title, body, url, tag })
       );
       delivered.push(sub.id);
     } catch (e) {
