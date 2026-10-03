@@ -29,7 +29,7 @@ import PhotoCarousel, { type PhotoCarouselHandle } from "@/components/PhotoCarou
 import PhotoViewer from "@/components/PhotoViewer";
 import ZoomTip from "@/components/ZoomTip";
 import { PRIVATE_SELLER_NAME, PRIVATE_SELLER_NOTE, publicSellerName } from "@/lib/sellerDisplay";
-import FloatingCTA, { FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, FloatingCTANote, floatingCtaButtonStyle } from "@/components/FloatingCTA";
+import FloatingCTA, { FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE_FIT, FloatingCTANote, floatingCtaButtonStyle } from "@/components/FloatingCTA";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
 // 값이 없거나 공백뿐이면 섹션/행 자체를 그리지 않는다 (빈 공간 방지)
@@ -351,7 +351,8 @@ function DealDetailPageInner() {
         return;
       }
       setConnection("open");
-      setInterestNotice(data.duplicate ? "이미 연결을 요청하셨어요" : "연결 요청 완료 · 점핑매니저가 판매자와 연결해 드려요");
+      // 2026-10-03: 완료 안내는 하단 버튼("연결 요청 완료 · 점핑매니저가 빠르게 연락드려요") 한 곳만 — 중복이면 그 사실만 알림
+      setInterestNotice(data.duplicate ? "이미 연결을 요청하셨어요" : null);
       setConnectSheet(null);
     } catch (e) {
       setConnectError(
@@ -459,7 +460,7 @@ function DealDetailPageInner() {
         withConnection
           ? data.connection === "duplicate"
             ? "이미 연결을 요청하셨어요"
-            : "연결 요청 완료 · 점핑매니저가 판매자와 연결해 드려요"
+            : null // 완료 안내는 하단 버튼 한 곳만
           : data.duplicate
           ? "이미 접수됐어요, 빠르게 연락드려요"
           : null
@@ -634,13 +635,14 @@ function DealDetailPageInner() {
         )}
 
         <div>
-          <div className="flex items-baseline gap-2">
+          {/* 2026-10-03: 할인율·가격은 각각 한 덩어리(큰 글자에서 "-38/%"·"원/k/g"처럼 끊기던 문제) — 안 들어가면 항목 단위로 다음 줄 */}
+          <div className="flex flex-wrap items-baseline gap-x-2">
             {percentOff(deal.original_price, deal.deal_price) > 0 && (
-              <span className="text-xl font-black" style={{ color: "#E25100" }}>
+              <span className="text-xl font-black whitespace-nowrap" style={{ color: "#E25100" }}>
                 -{percentOff(deal.original_price, deal.deal_price)}%
               </span>
             )}
-            <span className="text-3xl font-black" style={{ color: "#0B2540" }}>
+            <span className="text-3xl font-black whitespace-nowrap" style={{ color: "#0B2540" }}>
               {formatDealPrice(deal.deal_price, deal.quantity_unit, deal.price_unit)}
             </span>
             {/* 2026-09-26: 카드 리스트와 동일한 threshold-gating(3건 미만 숨김) */}
@@ -874,7 +876,7 @@ function DealDetailPageInner() {
         </div>
       ) : (
         <>
-          <div className="px-5 pt-1" style={{ paddingBottom: FLOATING_CTA_SPACE }} /* 고정 CTA(약 101px) + 위 페이드 28px + 여유 16px — 하단 탭·안전영역은 AppShell이 더함 */>
+          <div className="px-5 pt-1" style={{ paddingBottom: FLOATING_CTA_SPACE_FIT }} /* 2026-10-03: 고정 CTA 실제 높이(안내 알약·큰 글자 포함) + 간격 + 여유 — 하단 탭·안전영역은 AppShell이 더함 */>
             <div className="bg-gray100 rounded-2xl p-3 flex items-center gap-3.5">
               <img
                 src="/images/manager.png"
