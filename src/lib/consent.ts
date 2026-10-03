@@ -37,16 +37,19 @@ export const isConsentSource = (v: unknown): v is ConsentSource =>
 export const REQUIRED_CONSENTS = ["tos", "privacy", "eligibility"] as const;
 
 // 화면 문구 — 가입·재동의 시트·알림 켜기 시트가 같이 쓴다 (consent-texts 2·4번)
+// 2026-10-03 F-3b: 매물 알림 동의 설명 본문 — 가입·재동의·알림 켜기 시트가 한 곳에서 같이 씀(바꾸면 DEAL_ALERT_CONSENT_VERSION도 올릴 것)
+export const DEAL_ALERT_DESC = "관심 조건에 맞는 재고 매물과 폐업·정리 부동산·설비 소식을 앱 푸시로 빠르게 알려드려요. 밤 9시~아침 8시 등록 건은 아침 8시에 보내드려요.";
+
 export const CONSENT_TEXT = {
   tos: { label: "서비스 이용약관 동의", href: "/terms" },
   privacy: { label: "개인정보 수집·이용 동의" }, // 보기 → PRIVACY_CONSENT_TEXT(3번 전문)
   eligibility: { label: "사업 목적으로 이용하며, 만 14세 이상입니다" },
   deal_alert_ad: {
     label: "매물 알림 수신 동의 (광고성 정보)",
-    desc: "관심 조건에 맞는 매물을 앱 푸시로 빠르게 알려드려요.\n밤 9시~아침 8시에 등록된 매물은 아침 8시에 보내드려요.\n동의하지 않아도 매물 둘러보기는 할 수 있어요.",
+    desc: `${DEAL_ALERT_DESC}\n동의하지 않아도 매물 둘러보기는 할 수 있어요.`,
     // 알림 켜기 시트(4번)
     pushTitle: "매물 알림을 받으려면 동의가 필요해요",
-    pushDesc: "관심 조건에 맞는 매물을 앱 푸시로 빠르게 알려드려요.\n밤 9시~아침 8시에 등록된 매물은 아침 8시에 보내드려요.\nMY > 이 기기 푸시 알림에서 언제든 끌 수 있어요.",
+    pushDesc: `${DEAL_ALERT_DESC}\nMY > 이 기기 푸시 알림에서 언제든 끌 수 있어요.`,
   },
   kakao_marketing: { label: "카카오톡 채널 소식 수신 동의 (광고성 정보)", desc: "공지·이벤트 소식을 카카오톡으로 받아요." },
   // 판매 신청 확인 사항 (consent-texts 7-2)

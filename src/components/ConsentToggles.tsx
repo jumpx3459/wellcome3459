@@ -9,7 +9,7 @@ import { formatConsentDate, type ConsentType } from "@/lib/consent";
 // 2026-09-30: MY 수신 동의 토글 — 바꿀 때마다 member_consents에 새 행(source mypage).
 // 매물 알림을 철회하면 발송 대상에서만 빠지고(sendDealPush·sendNoticePush), 기기 푸시 구독은 그대로 둔다.
 const ROWS: { type: ConsentType; title: string; desc: string }[] = [
-  { type: "deal_alert_ad", title: "매물 알림 수신 동의", desc: "광고성 정보 · 관심 조건 매물을 앱 푸시로 알려드려요" },
+  { type: "deal_alert_ad", title: "매물 알림 수신 동의", desc: "광고성 정보 · 관심 조건 재고 매물과 폐업·정리 부동산·설비 소식을 앱 푸시로 알려드려요" },
   { type: "kakao_marketing", title: "카카오톡 채널 소식 수신 동의", desc: "광고성 정보 · 공지·이벤트 소식" },
 ];
 
