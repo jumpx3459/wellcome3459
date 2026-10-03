@@ -13,6 +13,9 @@ export const FORM_CHIP_FONT_SIZE = rem(16);
 export const DEAL_LABEL_STYLE = { fontSize: rem(15), fontWeight: 700, color: "#0B2540" } as const;
 export const DEAL_INPUT_FONT_SIZE = rem(16);
 export const DEAL_HINT_STYLE = { fontSize: rem(14), color: "#4B5563", lineHeight: 1.5 } as const;
+// 사진·영상 업로드 오류 상자 (2026-10-03 PR-D) — 16px 굵게, 빨강 글자 + 연한 빨강 바탕. ImageUploader·VideoUploader 공통
+export const UPLOAD_ERROR_CLASS = "mt-1.5 rounded-lg font-bold";
+export const UPLOAD_ERROR_STYLE = { fontSize: rem(16), color: "#E5484D", background: "#FDECEC", padding: "8px 12px", lineHeight: 1.5 } as const;
 export const DEAL_CHIP_FONT_SIZE = rem(15);
 export const DEAL_BUTTON_FONT_SIZE = rem(15);
 

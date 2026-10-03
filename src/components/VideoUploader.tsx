@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useImperativeHandle, useRef, useState, type Ref } from "react";
-import { DEAL_LABEL_STYLE, FORM_HINT_STYLE } from "@/components/FormField";
+import { DEAL_LABEL_STYLE, FORM_HINT_STYLE, UPLOAD_ERROR_STYLE } from "@/components/FormField";
 import { rem } from "@/lib/rem";
 import { usePointerFine } from "@/lib/usePointerFine";
 import { requestVideoUploadUrl, uploadToSignedUrlWithProgress } from "@/lib/uploadClient";
@@ -387,7 +387,7 @@ export default function VideoUploader({
 
       {phase === "error" && (
         <div className="flex flex-col gap-2">
-          <div className="text-sm text-orange font-medium">{error}</div>
+          <div className="rounded-lg font-bold" style={UPLOAD_ERROR_STYLE}>{error}</div>
           {trimUnsupported ? (
             <button
               type="button"
