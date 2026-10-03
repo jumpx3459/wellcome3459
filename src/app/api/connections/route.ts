@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { sendAdminPush } from "@/lib/sendPush";
+import { adminConnectionTag, sendAdminPush } from "@/lib/sendPush";
 import { overLimit, UUID_RE } from "@/lib/rateLimit";
 import { createDealConnection, hasOpenMemberConnection, isCurrentConnectionConsent } from "@/lib/dealConnection";
 
@@ -75,6 +75,6 @@ export async function POST(req: NextRequest) {
   if (result === "duplicate") return NextResponse.json({ ok: true, duplicate: true });
   if (result === "failed") return NextResponse.json({ error: "연결 요청을 저장하지 못했어요. 잠시 후 다시 시도해주세요." }, { status: 500 });
 
-  await sendAdminPush("🤝 판매자 연결 요청", deal.title ? `${deal.title} · 회원 연결 동의` : "회원이 판매자 연결에 동의했어요", "/admin");
+  await sendAdminPush("🤝 판매자 연결 요청", deal.title ? `${deal.title} · 회원 연결 동의` : "회원이 판매자 연결에 동의했어요", "/admin", adminConnectionTag());
   return NextResponse.json({ ok: true });
 }

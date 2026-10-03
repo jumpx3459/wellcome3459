@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { sendAdminPush } from "@/lib/sendPush";
+import { adminConnectionTag, sendAdminPush } from "@/lib/sendPush";
 import { TERMS_VERSION } from "@/lib/consent";
 import { toLocalPhone } from "@/lib/auth";
 import { normalizePhone } from "@/lib/phone";
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
     const connection = await connect(existing[0].id);
     if (connection === "failed") return connectFailed();
     if (connection === "created") {
-      await sendAdminPush("🤝 판매자 연결 요청", deal.title ? `${deal.title} · 비회원 연결 동의` : "비회원이 판매자 연결에 동의했어요", "/admin");
+      await sendAdminPush("🤝 판매자 연결 요청", deal.title ? `${deal.title} · 비회원 연결 동의` : "비회원이 판매자 연결에 동의했어요", "/admin", adminConnectionTag());
     }
     return NextResponse.json({ ok: true, duplicate: true, connection });
   }
@@ -112,11 +112,12 @@ export async function POST(req: NextRequest) {
   const connection = wantsConnection ? await connect(inserted.id) : null;
   if (connection === "failed") return connectFailed();
 
-  await sendAdminPush(
-    connection ? "🤝 새 원클릭 리드 · 연결 동의" : "🙋 새 원클릭 리드",
-    deal.title ? `${deal.title} · 비회원 ${connection ? "연결 동의" : "관심"}` : "비회원 관심 표시가 들어왔어요",
-    "/admin"
-  );
+  // 2026-10-03: 연결 동의가 있으면 회원과 같은 제목 "🤝 판매자 연결 요청" + 건마다 다른 tag(알림창에서 덮어쓰지 않게)
+  if (connection) {
+    await sendAdminPush("🤝 판매자 연결 요청", deal.title ? `${deal.title} · 비회원 연결 동의(새 리드)` : "비회원이 판매자 연결에 동의했어요", "/admin", adminConnectionTag());
+  } else {
+    await sendAdminPush("🙋 새 원클릭 리드", deal.title ? `${deal.title} · 비회원 관심` : "비회원 관심 표시가 들어왔어요", "/admin");
+  }
 
   return NextResponse.json({ ok: true, ...(connection ? { connection } : {}) });
 }
