@@ -69,9 +69,17 @@ export default function DealListCard({
             </div>
           )}
         </div>
-        <div className="text-lg font-bold text-gray900 mt-2">{d.title}</div>
-        <div className="text-sm font-medium mt-1" style={{ color: "#495057" }}>
-          {closed ? d.location : `잔여 ${d.remaining_qty}${unit} · ${d.location}`}
+        {/* 2026-10-03: 매물명 2줄까지 + 말줄임. 수량·MOQ·가격은 각각 한 덩어리(글자 중간 줄바꿈 없음), 안 들어가면 항목 단위로 다음 줄 */}
+        <div className="text-lg font-bold text-gray900 mt-2 line-clamp-2" data-title>{d.title}</div>
+        <div className="text-sm font-medium mt-1 flex flex-wrap items-center gap-x-1" style={{ color: "#495057" }}>
+          {closed ? (
+            d.location
+          ) : (
+            <>
+              <span className="whitespace-nowrap">잔여 {d.remaining_qty}{unit} ·</span>
+              <span>{d.location}</span>
+            </>
+          )}
         </div>
         {(storage || expiry) && (
           <div className="text-xs font-bold mt-1 flex items-center gap-1.5 flex-wrap" style={{ color: gray ? "#6B7480" : "#C2410C" }}>
@@ -84,14 +92,14 @@ export default function DealListCard({
           <div className="text-xs font-medium mt-1 flex items-center gap-1.5 flex-wrap" style={{ color: "#495057" }}>
             {d.origin && <span>🌍 {d.origin}</span>}
             {d.origin && d.min_order_qty && !lump ? <span style={{ color: "#C7CBD1" }}>·</span> : null}
-            {d.min_order_qty && !lump && <span>MOQ {d.min_order_qty}{unit}</span>}
+            {d.min_order_qty && !lump && <span className="whitespace-nowrap">MOQ {d.min_order_qty}{unit}</span>}
           </div>
         )}
-        <div className="flex items-baseline gap-1.5 mt-2">
-          <span className="text-lg font-black" style={{ color: accent }}>
+        <div className="flex flex-wrap items-baseline gap-x-1.5 mt-2">
+          <span className="text-lg font-black whitespace-nowrap" style={{ color: accent }}>
             {formatDealPrice(d.deal_price, d.quantity_unit, d.price_unit)}
           </span>
-          <span className="text-sm text-gray500 font-normal line-through">
+          <span className="text-sm text-gray500 font-normal line-through whitespace-nowrap">
             {formatDealPrice(d.original_price, d.quantity_unit, d.price_unit)}
           </span>
         </div>
