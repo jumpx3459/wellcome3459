@@ -29,6 +29,7 @@ import { isStockType, STOCK_TYPES, type StockType } from "@/lib/stockType";
 import FormAccordion, { FormSectionTitle, FORM_ROW2, FORM_ROW3 } from "@/components/FormAccordion";
 import StockTypeBadge from "@/components/StockTypeBadge";
 import { MAX_PHOTO_SLOTS } from "@/lib/photoLimit";
+import { validateDealEdit, dealEditWarnings, type DealEditField, type DealEditInput } from "@/lib/dealEdit";
 import { DEAL_PRICE_UNITS, LUMP_SUM, isDealPriceUnit, isLumpSum, priceUnitSuffix } from "@/lib/priceUnit";
 import { UI_SECTION, UI_CARD_TITLE, UI_LINK, BTN_CLASS, btnStyle } from "@/lib/uiText";
 import { FieldLabel, FORM_INPUT_FONT_SIZE } from "@/components/FormField";
@@ -120,6 +121,13 @@ type ActiveDeal = {
   quick_lead_count: number | null;
   is_anonymous?: boolean | null;
   seller_display_name?: string | null;
+  // 2026-10-03 feat/admin-deal-edit: 카드에서 수정하는 칸 (목록 API가 select * 로 이미 줌)
+  original_price?: number | null;
+  min_order_qty?: number | null;
+  price_unit?: string | null;
+  stock_type?: string | null;
+  expiry_date?: string | null;
+  description?: string | null;
 };
 
 // 2026-09-28 (2): 목록/마감 UI 추가하며 함께 정의 — ActiveDeal과 달리 수량/가격
@@ -2256,6 +2264,40 @@ function AdminDashboard({
   );
 }
 
+// 2026-10-03 feat/admin-deal-edit: 진행 중 매물 수정 칸 공용
+type EditWarnings = { title: string[]; description: string[]; price: string[] };
+const NO_EDIT_WARNINGS: EditWarnings = { title: [], description: [], price: [] };
+const EDIT_FIELDS: DealEditField[] = ["title", "dealPrice", "originalPrice", "minOrderQty", "expiryDate", "description", "closesAt"];
+const DAY_MS = 24 * 3600 * 1000;
+const nowMs = () => Date.now(); // 클릭 처리에서만 부름(렌더 중 호출 아님)
+
+// ISO·ms → <input type="datetime-local"> 값(이 기기 시간대, 분까지)
+function toLocalInput(v: string | number): string {
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return "";
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+const editInputCls = (error?: boolean) =>
+  `w-full min-w-0 border-2 rounded-lg px-2.5 py-1.5 text-sm outline-none focus:border-orange bg-white ${error ? "border-[#DC2626]" : "border-gray200"}`;
+
+function EditField({ label, htmlFor, error, children }: { label: string; htmlFor: string; error?: string; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <label htmlFor={htmlFor} className="text-xs font-bold text-gray500 block mb-1">
+        {label}
+      </label>
+      {children}
+      {error && (
+        <p className="text-xs font-medium mt-1" style={{ color: BLOCK_COLOR }}>
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ActiveDealCard({
   deal,
   adminKey,
@@ -2293,6 +2335,67 @@ function ActiveDealCard({
   const [deleting, setDeleting] = useState(false);
   const { message: toastMessage, showToast } = useToast();
 
+  // 2026-10-03 feat/admin-deal-edit: 매물 내용·마감 일시 수정 — 바꾼 칸만 보내고, 검증은 서버와 같은 src/lib/dealEdit.ts.
+  // 저장은 기존 "변경사항 저장" 한 번으로. 수정·연장은 알림을 다시 보내지 않음.
+  const editCurrent = {
+    title: deal.title,
+    deal_price: deal.deal_price,
+    original_price: deal.original_price ?? null,
+    total_qty: deal.total_qty,
+    price_unit: deal.price_unit ?? null,
+    stock_type: deal.stock_type ?? null,
+    expiry_date: deal.expiry_date ?? null,
+    description: deal.description ?? null,
+    closes_at: deal.closes_at,
+  };
+  // 정상가 없이 등록하면 original_price = 판매가로 저장됨 → 칸은 비워서 보여줌
+  const initialOrig = deal.original_price && deal.original_price !== deal.deal_price ? String(deal.original_price) : "";
+  const initialMoq = deal.min_order_qty ? String(deal.min_order_qty) : "";
+  const initialExpiry = deal.expiry_date?.slice(0, 10) ?? "";
+  const [form, setForm] = useState(() => ({
+    title: deal.title,
+    dealPrice: String(deal.deal_price),
+    originalPrice: initialOrig,
+    minOrderQty: initialMoq,
+    expiryDate: initialExpiry,
+    description: deal.description ?? "",
+    closesAt: toLocalInput(deal.closes_at),
+  }));
+  const [editError, setEditError] = useState<{ field: DealEditField; error: string } | null>(null);
+  const [editWarns, setEditWarns] = useState<EditWarnings>(NO_EDIT_WARNINGS);
+  const confirmedRef = useRef(false); // 주황 경고를 "그대로 저장"으로 확인함 — 칸을 다시 고치면 풀림
+  const lumpSum = isLumpSum(deal.price_unit);
+  const setField = (key: keyof typeof form, value: string) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setEditError(null);
+    setEditWarns(NO_EDIT_WARNINGS);
+    confirmedRef.current = false;
+  };
+  const fieldError = (f: DealEditField) => (editError?.field === f ? editError.error : undefined);
+  const buildEdit = (): DealEditInput => {
+    const e: DealEditInput = {};
+    if (normalizeTitle(form.title, { admin: true }) !== deal.title) e.title = form.title;
+    const dealPrice = parsePriceInput(form.dealPrice) ?? null;
+    if (dealPrice !== deal.deal_price || form.originalPrice !== initialOrig) {
+      e.dealPrice = dealPrice;
+      e.originalPrice = parsePriceInput(form.originalPrice) ?? null;
+    }
+    if (!lumpSum && form.minOrderQty !== initialMoq) e.minOrderQty = form.minOrderQty.trim() ? Number(form.minOrderQty) : null;
+    if (form.expiryDate !== initialExpiry) e.expiryDate = form.expiryDate || null;
+    if (form.description !== (deal.description ?? "")) e.description = form.description || null;
+    if (form.closesAt !== toLocalInput(deal.closes_at)) {
+      const t = Date.parse(form.closesAt);
+      e.closesAt = Number.isNaN(t) ? "" : new Date(t).toISOString();
+    }
+    return e;
+  };
+  // 마감 빠른 버튼 — 지금 칸 값(비었거나 지난 시각이면 지금)에서 n일 뒤. 저장해야 반영
+  const addDays = (n: number) => {
+    const t = Date.parse(form.closesAt);
+    const base = Math.max(Number.isNaN(t) ? Date.parse(deal.closes_at) : t, nowMs());
+    setField("closesAt", toLocalInput(base + n * DAY_MS));
+  };
+
   // 2026-09-26: 재고 저장 / 사진 저장 버튼이 따로 있어서 "이걸 왜 두 번 눌러야
   // 하냐"는 피드백 — 재고·사진·영상을 한 번에 PATCH하는 단일 저장 버튼으로
   // 통합. 저장 성공 시 토스트로 알리고, 열려 있던 사진/영상 관리 패널은
@@ -2304,7 +2407,9 @@ function ActiveDealCard({
   // 성공 여부를 반환 — 토스트가 실패(세션 만료 401, 서버 500, 네트워크 오류)를
   // "저장했어요"로 잘못 안내하지 않도록 응답 상태를 확인함.
   // 2026-10-02 PR-A: 실패하면 서버가 준 이유(error·field)도 돌려줌 — 영상 주소 검사 실패(field "video")는 그 이유를 토스트로
-  const patch = async (body: Record<string, unknown>): Promise<{ ok: boolean; error?: string; field?: string }> => {
+  const patch = async (
+    body: Record<string, unknown>
+  ): Promise<{ ok: boolean; error?: string; field?: string; warnings?: EditWarnings }> => {
     setSaving(true);
     try {
       const res = await fetch("/api/admin/deals/manage", {
@@ -2314,7 +2419,12 @@ function ActiveDealCard({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        return { ok: false, error: typeof data.error === "string" ? data.error : undefined, field: data.field };
+        return {
+          ok: false,
+          error: typeof data.error === "string" ? data.error : undefined,
+          field: data.field,
+          warnings: res.status === 422 && data.needsConfirm ? { ...NO_EDIT_WARNINGS, ...data.warnings } : undefined,
+        };
       }
       onChanged();
       return { ok: true };
@@ -2326,8 +2436,30 @@ function ActiveDealCard({
   };
 
   // skipVideo: 새 영상이 안 올라간 채 저장 — skipVideoUrl(기존 영상 유지면 그 URL, 아니면 null)로 저장
-  const saveAll = async (skipVideo = false, skipVideoUrl: string | null = null, skipPhotos = false) => {
+  const saveAll = async (skipVideo = false, skipVideoUrl: string | null = null, skipPhotos = false, confirmWarnings = confirmedRef.current) => {
     if (busyLabel) return;
+    const edit = buildEdit();
+    const invalid = validateDealEdit(edit, editCurrent);
+    if (invalid) {
+      setEditError(invalid);
+      showToast("빨간 안내가 있는 칸을 확인해주세요");
+      return;
+    }
+    if (!confirmWarnings) {
+      const w = dealEditWarnings(edit, editCurrent);
+      if (w.title.length || w.description.length || w.price.length) {
+        setEditWarns(w);
+        return;
+      }
+    }
+    if (
+      edit.dealPrice != null &&
+      edit.originalPrice &&
+      edit.dealPrice >= edit.originalPrice &&
+      !window.confirm("판매가가 정상가보다 높거나 같아요. 할인율이 표시되지 않아요. 그대로 저장할까요?")
+    ) {
+      return;
+    }
     if (!skipPhotos && photoStatus.failed > 0) {
       setPhotoSheet(true);
       return;
@@ -2337,11 +2469,29 @@ function ActiveDealCard({
       return;
     }
     const sellerPatch = sellerChanged ? { sellerPublic: seller.isPublic, sellerCompanyName: seller.companyName } : {};
-    const result = await patch({ remainingQty: Number(remainingQty), images, videoUrl: skipVideo ? skipVideoUrl : videoUrl, ...sellerPatch });
+    const result = await patch({
+      ...edit,
+      confirmWarnings: confirmWarnings || undefined,
+      remainingQty: Number(remainingQty),
+      images,
+      videoUrl: skipVideo ? skipVideoUrl : videoUrl,
+      ...sellerPatch,
+    });
     if (!result.ok) {
+      if (result.warnings) {
+        setEditWarns(result.warnings); // 서버만 아는 경고(같은 이름 진행 중 매물)
+        return;
+      }
+      if (result.field && EDIT_FIELDS.includes(result.field as DealEditField) && result.error) {
+        setEditError({ field: result.field as DealEditField, error: result.error });
+        showToast(result.error);
+        return;
+      }
       showToast(result.field === "video" && result.error ? result.error : "저장하지 못했어요. 다시 시도해주세요");
       return;
     }
+    confirmedRef.current = false;
+    setEditWarns(NO_EDIT_WARNINGS);
     setEditingPhotos(false);
     setEditingVideo(false);
     setExpanded(false);
@@ -2380,10 +2530,13 @@ function ActiveDealCard({
     }
   };
 
-  const extendHours = async (hours: number) => {
-    const newClosesAt = new Date(new Date(deal.closes_at).getTime() + hours * 3600 * 1000).toISOString();
-    showToast((await patch({ closesAt: newClosesAt })).ok ? `${hours}시간 연장했어요` : "연장하지 못했어요. 다시 시도해주세요");
+  const confirmAndSave = () => {
+    confirmedRef.current = true;
+    saveAll(false, null, false, true);
   };
+  const [minClosesLocal] = useState(() => toLocalInput(Date.now())); // 달력에서 지난 시각 흐리게(서버도 지금 이후만 허용)
+  const idp = `deal-edit-${deal.id}`;
+  const expiryForLimit = form.expiryDate || null;
 
   return (
     <div className="bg-white border border-gray200 rounded-2xl px-4 py-4">
@@ -2461,6 +2614,85 @@ function ActiveDealCard({
         </div>
       ) : (
         <>
+          {/* 2026-10-03 feat/admin-deal-edit: 매물 내용 수정 — 카테고리·사진 순서·판매자 정보(아래 따로)는 여기서 안 바꿈 */}
+          <div className="flex flex-col gap-2.5 mt-3">
+            <EditField label="매물명" htmlFor={`${idp}-title`} error={fieldError("title")}>
+              <input
+                id={`${idp}-title`}
+                type="text"
+                className={editInputCls(!!fieldError("title"))}
+                value={form.title}
+                onChange={(e) => setField("title", e.target.value)}
+              />
+              <ConfirmWarnings warnings={editWarns.title} onConfirm={confirmAndSave} busy={saving} />
+            </EditField>
+            <div className="grid grid-cols-2 gap-2">
+              <EditField label="판매가(원)" htmlFor={`${idp}-dealPrice`} error={fieldError("dealPrice")}>
+                <input
+                  id={`${idp}-dealPrice`}
+                  type="text"
+                  inputMode="numeric"
+                  className={editInputCls(!!fieldError("dealPrice"))}
+                  value={formatPriceInput(form.dealPrice)}
+                  onChange={(e) => setField("dealPrice", e.target.value)}
+                />
+              </EditField>
+              <EditField label="정상가(원, 선택)" htmlFor={`${idp}-originalPrice`} error={fieldError("originalPrice")}>
+                <input
+                  id={`${idp}-originalPrice`}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="없음"
+                  className={editInputCls(!!fieldError("originalPrice"))}
+                  value={formatPriceInput(form.originalPrice)}
+                  onChange={(e) => setField("originalPrice", e.target.value)}
+                />
+              </EditField>
+            </div>
+            <ConfirmWarnings warnings={editWarns.price} onConfirm={editWarns.title.length ? undefined : confirmAndSave} busy={saving} />
+            <div className="grid grid-cols-2 gap-2">
+              {/* 일괄(전체 가격) 매물은 최소주문 없음 */}
+              {!lumpSum && (
+                <EditField label={`최소 주문량(MOQ, ${deal.quantity_unit || "개"})`} htmlFor={`${idp}-minOrderQty`} error={fieldError("minOrderQty")}>
+                  <input
+                    id={`${idp}-minOrderQty`}
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    placeholder="없음"
+                    onWheel={(e) => e.currentTarget.blur()} // 휠로 값 바뀜 방지 (재고 칸과 같음)
+                    className={editInputCls(!!fieldError("minOrderQty"))}
+                    value={form.minOrderQty}
+                    onChange={(e) => setField("minOrderQty", e.target.value)}
+                  />
+                </EditField>
+              )}
+              <EditField label={deal.stock_type === "near_expiry" ? "소비기한(필수)" : "소비기한"} htmlFor={`${idp}-expiryDate`} error={fieldError("expiryDate")}>
+                <input
+                  id={`${idp}-expiryDate`}
+                  type="date"
+                  className={editInputCls(!!fieldError("expiryDate"))}
+                  value={form.expiryDate}
+                  onChange={(e) => setField("expiryDate", e.target.value)}
+                />
+              </EditField>
+            </div>
+            <EditField label="추가 설명" htmlFor={`${idp}-description`} error={fieldError("description")}>
+              <textarea
+                id={`${idp}-description`}
+                rows={3}
+                className={editInputCls(!!fieldError("description"))}
+                value={form.description}
+                onChange={(e) => setField("description", e.target.value)}
+              />
+              <ConfirmWarnings
+                warnings={editWarns.description}
+                onConfirm={editWarns.title.length || editWarns.price.length ? undefined : confirmAndSave}
+                busy={saving}
+              />
+            </EditField>
+          </div>
+
           <div className="flex items-center gap-2 mt-3">
             <label className="text-xs font-bold text-gray500">재고</label>
             <input
@@ -2475,14 +2707,39 @@ function ActiveDealCard({
             <span className="text-xs text-gray500">/ {deal.total_qty}{deal.quantity_unit || "개"}</span>
           </div>
 
+          {/* 2026-10-03 feat/admin-deal-edit: [+24시간 연장](바로 저장) → [+1일][+7일][+30일] + 날짜·시간 직접 지정, "변경사항 저장"으로 반영.
+              소비기한이 있으면 그날 23:59까지만(서버도 같은 검사) */}
+          <div className="mt-2.5">
+            <EditField label="마감 일시" htmlFor={`${idp}-closesAt`} error={fieldError("closesAt")}>
+              <div className="flex gap-1.5">
+                {[1, 7, 30].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => addDays(n)}
+                    className="flex-1 text-xs font-bold text-navy border-2 border-gray200 rounded-lg py-2"
+                  >
+                    +{n}일
+                  </button>
+                ))}
+              </div>
+              <input
+                id={`${idp}-closesAt`}
+                type="datetime-local"
+                className={`${editInputCls(!!fieldError("closesAt"))} mt-1.5`}
+                value={form.closesAt}
+                min={minClosesLocal}
+                max={expiryForLimit ? `${expiryForLimit}T23:59` : undefined}
+                onChange={(e) => setField("closesAt", e.target.value)}
+              />
+            </EditField>
+            <p className="text-xs text-gray500 mt-1">
+              {expiryForLimit ? `소비기한(${expiryForLimit.replace(/-/g, ".")}) 23:59까지 정할 수 있어요 · ` : ""}
+              &quot;변경사항 저장&quot;을 눌러야 반영돼요 · 알림은 다시 보내지 않아요
+            </p>
+          </div>
+
           <div className="flex gap-2 mt-2.5">
-            <button
-              onClick={() => extendHours(24)}
-              disabled={saving}
-              className="flex-1 text-xs font-bold text-navy border-2 border-gray200 rounded-lg py-2"
-            >
-              +24시간 연장
-            </button>
             <button
               onClick={closeDeal}
               disabled={saving}
