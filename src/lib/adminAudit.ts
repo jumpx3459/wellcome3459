@@ -21,7 +21,11 @@ export type AuditAction =
   | "interests_list_view"
   | "lead_update" // 2026-10-01 F-1: 리드 연락완료·성사·불발 변경 (detail: deal_id, before, after)
   | "business_check" // 2026-10-04: 사업자 조회 (detail: b_no는 maskBizNo "123-45-*****"만, result, status_code)
-  | "business_check_exception"; // 2026-10-04: 사업자 조회 예외 확인 (detail: 마스킹 번호, seller_request_id — 사유는 표에만)
+  | "business_check_exception" // 2026-10-04: 사업자 조회 예외 확인 (detail: 마스킹 번호, seller_request_id — 사유는 표에만)
+  | "connection_step" // 2026-10-04 F-4: 거래 연결 단계 변경 (detail: deal_id, from, to, method, result·금액 — 메모는 이력 표에만)
+  | "connection_phone_view" // 2026-10-04 F-4: 연결 구매자 번호 전체 보기 (detail: phoneTail만)
+  | "seller_private_view" // 2026-10-04 F-4: 판매자 비공개 정보 조회 (detail: deal_id)
+  | "seller_private_save"; // 2026-10-04 F-4: 판매자 비공개 정보 저장 (detail: deal_id, 바뀐 칸 이름, 연락처는 phoneTail)
 
 export const phoneTail = (p: string | null | undefined) => {
   const d = (p ?? "").replace(/[^0-9]/g, "");

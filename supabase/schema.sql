@@ -1980,3 +1980,10 @@ create index if not exists seller_business_checks_checked_idx on public.seller_b
 
 alter table public.seller_business_checks enable row level security;   -- 정책 없음 = service role만
 revoke all on public.seller_business_checks from anon, authenticated;
+
+-- ============================================================================
+-- 2026-10-04 F-4 거래 연결 보드 — interests 회원 수정 차단 (운영 실행 완료 10/4, 대표)
+-- 상세·확인 조회·되돌리기: supabase/migrations/20261004_interests_revoke_update.sql
+-- 회원 화면은 interests에 insert·select만 함. 관리자 쓰기(리드 PATCH·연결 단계 전환)는 service role.
+-- ============================================================================
+revoke update on public.interests from anon, authenticated;

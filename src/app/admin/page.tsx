@@ -36,6 +36,8 @@ import { FieldLabel, FORM_INPUT_FONT_SIZE } from "@/components/FormField";
 import { RatioMetric, DailyBars, FunnelBars, InlineBar, BIG_NUM, LABEL, CARD } from "@/components/admin/DashboardViz";
 import AdminListCard from "@/components/admin/AdminListCard";
 import BusinessCheckSection, { BusinessCheckBadge } from "@/components/admin/BusinessCheckSection";
+import ConnectionBoard from "@/components/admin/ConnectionBoard";
+import { CARD_TITLE_PROPS } from "@/components/admin/cardTitle";
 import { isPassingCheck, NOT_CHECKED_MESSAGE, type BusinessCheck } from "@/lib/businessCheck";
 import { formatConsentDate } from "@/lib/consent";
 
@@ -363,6 +365,8 @@ type Interest = {
   phone?: string; // quick_leads(비회원 원클릭 리드)는 members 없이 전화번호만 가짐
   source: "member" | "quick";
   connection_consent_at?: string | null; // 2026-10-03 F-3a: 판매자 연결 동의 시각(deal_connections) — 없으면 관심 표시만
+  has_connection?: boolean; // 2026-10-04 F-4: 거래 연결 기록 있음 → 성사·불발은 연결 보드에서
+  connection_state?: "open" | "cancelled" | "closed" | null; // 진행 중 / 최근 연결 취소 / 성사·불발로 종료
 };
 
 type BuyRequest = {
@@ -517,6 +521,9 @@ function AdminDashboard({
   // 참고용 섹션(전체 회원 목록/관리자 목록)은 기본 접힘.
   const [membersOpen, setMembersOpen] = useState(false);
   const [leadsOpen, setLeadsOpen] = useState(true);
+  // 2026-10-04 F-4: 거래 연결 카드 — 건수는 ConnectionBoard가 불러온 뒤 알려줌(-1 = 아직)
+  const [connectionsOpen, setConnectionsOpen] = useState(true);
+  const [connCounts, setConnCounts] = useState<{ open: number; closed: number; stuck: number }>({ open: -1, closed: 0, stuck: 0 });
   const [sellerReqOpen, setSellerReqOpen] = useState(true);
   const [partnerReqOpen, setPartnerReqOpen] = useState(true);
   const [buyReqOpen, setBuyReqOpen] = useState(true);
@@ -894,7 +901,7 @@ function AdminDashboard({
             ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
             : "px-5 pt-4 flex flex-col gap-3"
         }
-        title={<span style={UI_SECTION}>최근 가입 회원 <span style={{ ...LABEL, fontWeight: 400 }}>({members.length}명)</span></span>}
+        title={<span {...CARD_TITLE_PROPS}>최근 가입 회원 <span style={{ ...LABEL, fontWeight: 400 }}>({members.length}명)</span></span>}
         open={membersOpen}
         onToggle={() => setMembersOpen((v) => !v)}
         limit={null}
@@ -1067,7 +1074,7 @@ function AdminDashboard({
             : "px-5 pt-4 flex flex-col gap-3"
         }
         title={
-          <span style={UI_SECTION}>
+          <span {...CARD_TITLE_PROPS}>
             관심 표시한 회원 <span style={{ ...LABEL, fontWeight: 400 }}>({interests.filter(leadNeedsAction).length}건 미연락)</span>
           </span>
         }
@@ -1243,7 +1250,24 @@ function AdminDashboard({
               >
                 {i.contacted ? "✓ 연락완료" : "연락완료"}
               </button>
-            {i.outcome === "pending" && (
+            {/* 2026-10-04 F-4: 연결 기록이 있는 리드는 성사·불발을 연결 보드 ⑥에서(리드 값도 거기서 함께 갱신) */}
+            {/* 연결이 취소로 끝난 리드: 버튼 없이 회색 표시만(리드 outcome은 그대로 — 성사율에 안 섞임) */}
+            {i.outcome === "pending" && i.has_connection && i.connection_state === "cancelled" && (
+              <span className="self-center font-bold px-2.5 py-1 rounded-full whitespace-nowrap bg-gray100 text-gray500" style={{ fontSize: rem(14) }} data-testid="lead-conn-cancelled">
+                연결 취소됨
+              </span>
+            )}
+            {i.outcome === "pending" && i.has_connection && i.connection_state !== "cancelled" && (
+              <button
+                type="button"
+                onClick={() => jumpToSection("connections", () => setConnectionsOpen(true))}
+                className="flex-1 font-bold rounded-lg whitespace-nowrap"
+                style={{ fontSize: rem(15), minHeight: 40, background: "#EAF0F7", color: "#1B3A5C" }}
+              >
+                연결 보드에서 처리
+              </button>
+            )}
+            {i.outcome === "pending" && !i.has_connection && (
               <>
                 <button
                   onClick={async () => {
@@ -1284,6 +1308,16 @@ function AdminDashboard({
         )}
       />
     </>
+  );
+  const connectionsBlock = (
+    <ConnectionBoard
+      adminKey={adminKey}
+      isDesktop={isDesktop}
+      open={connectionsOpen}
+      onToggle={() => setConnectionsOpen((v) => !v)}
+      onCounts={setConnCounts}
+      onChanged={load}
+    />
   );
   const formRequest = openFormFor && openFormFor !== "new" && openFormFor !== "notice" ? requests.find((r) => r.id === openFormFor) ?? null : null;
   const newDealBlock = (
@@ -1342,7 +1376,7 @@ function AdminDashboard({
             "긴급 공지"라는 가벼운 트랙으로 구현. 구인/구직은 법률 검토 전까지 제외. */}
         {openFormFor === "notice" ? (
           <div className="flex items-center justify-between mt-3">
-            <span style={UI_SECTION}>긴급 공지 등록</span>
+            <span {...CARD_TITLE_PROPS}>긴급 공지 등록</span>
             <button type="button" onClick={() => setOpenFormFor(null)} className={BTN_CLASS} style={{ ...btnStyle("secondary"), minHeight: 40, fontSize: rem(15), padding: "0 16px" }}>
               닫기
             </button>
@@ -1378,7 +1412,7 @@ function AdminDashboard({
             ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
             : "px-5 pb-6 flex flex-col gap-3"
         }
-        title={<span style={UI_SECTION}>진행 중인 매물 <span style={{ ...LABEL, fontWeight: 400 }}>({activeDeals.length}건)</span></span>}
+        title={<span {...CARD_TITLE_PROPS}>진행 중인 매물 <span style={{ ...LABEL, fontWeight: 400 }}>({activeDeals.length}건)</span></span>}
         empty={!loading && <div className="text-center text-gray500 py-6 text-sm">진행 중인 매물이 없어요.</div>}
         listClassName="flex flex-col gap-3"
         items={activeDeals}
@@ -1404,7 +1438,7 @@ function AdminDashboard({
             ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
             : "px-5 pb-8 flex flex-col gap-3"
         }
-        title={<span style={UI_SECTION}>대기 중인 판매자 신청 <span style={{ ...LABEL, fontWeight: 400 }}>({requests.length}건)</span></span>}
+        title={<span {...CARD_TITLE_PROPS}>대기 중인 판매자 신청 <span style={{ ...LABEL, fontWeight: 400 }}>({requests.length}건)</span></span>}
         open={sellerReqOpen}
         onToggle={() => setSellerReqOpen((v) => !v)}
         toolbar={loading && <div className="text-center text-gray500 py-8">불러오는 중...</div>}
@@ -1546,7 +1580,7 @@ function AdminDashboard({
             : "mt-8 px-5"
         }
         title={
-          <h2 style={UI_SECTION}>
+          <h2 {...CARD_TITLE_PROPS}>
             🏅 공식 점핑파트너 신청 <span style={{ ...LABEL, fontWeight: 400 }}>({partnerRequests.filter((r) => r.status === "pending").length}건 대기)</span>
           </h2>
         }
@@ -1609,7 +1643,7 @@ function AdminDashboard({
             : "mt-8 px-5"
         }
         title={
-          <h2 style={UI_SECTION}>
+          <h2 {...CARD_TITLE_PROPS}>
             📊 점핑파트너 실적 <span style={{ ...LABEL, fontWeight: 400 }}>({partnersOverview.length}명)</span>
           </h2>
         }
@@ -1664,7 +1698,7 @@ function AdminDashboard({
             : "px-5 pb-8 flex flex-col gap-3"
         }
         title={
-          <span style={UI_SECTION}>
+          <span {...CARD_TITLE_PROPS}>
             🔍 이런 재고 찾습니다 <span style={{ ...LABEL, fontWeight: 400 }}>({buyRequests.filter((b) => !b.contacted).length}건 미연락)</span>
           </span>
         }
@@ -1782,7 +1816,7 @@ function AdminDashboard({
             onClick={() => setAdminsOpen((v) => !v)}
             className="w-full flex items-center justify-between"
           >
-            <span style={UI_SECTION}>관리자 목록 <span style={{ ...LABEL, fontWeight: 400 }}>({admins.length}명)</span></span>
+            <span {...CARD_TITLE_PROPS}>관리자 목록 <span style={{ ...LABEL, fontWeight: 400 }}>({admins.length}명)</span></span>
             <span className="text-sm font-bold text-gray500">{adminsOpen ? "접기 ▲" : "펼치기 ▼"}</span>
           </button>
           {adminsOpen && (
@@ -1937,6 +1971,8 @@ function AdminDashboard({
           }).length;
           const actions = [
             { label: "미연락 리드", value: metrics?.counts?.uncontactedLeads ?? interests.filter((i) => !i.contacted).length, urgent: true, go: () => { setLeadFilter("uncontacted"); jumpToSection("leads", () => setLeadsOpen(true)); } },
+            // 2026-10-04 F-4: 24시간 단계 변화 없는 거래 연결 (거래 연결 카드가 불러온 값)
+            { label: "멈춘 연결", value: connCounts.stuck, urgent: true, go: () => jumpToSection("connections", () => setConnectionsOpen(true)) },
             { label: "마감임박(6h)", value: soonDeals, urgent: true, go: () => jumpToSection("active-deals") },
             { label: "대기 판매신청", value: metrics?.counts?.pendingSellerRequests ?? requests.length, urgent: false, go: () => jumpToSection("pending-sellers", () => setSellerReqOpen(true)) },
             { label: "재고문의 미연락", value: metrics?.counts?.uncontactedBuyRequests ?? buyRequests.filter((b) => !b.contacted).length, urgent: false, go: () => jumpToSection("buy-requests", () => setBuyReqOpen(true)) },
@@ -1947,7 +1983,7 @@ function AdminDashboard({
             <section aria-label="조치 필요">
               <h2 style={UI_SECTION}>⚡ 조치 필요</h2>
               {hot.length > 0 && (
-                <div className={`mt-2.5 grid gap-2 ${isDesktop ? "grid-cols-4" : "grid-cols-2"}`}>
+                <div className={`mt-2.5 grid gap-2 ${isDesktop ? "grid-cols-5" : "grid-cols-2"}`}>
                   {hot.map((a) => (
                     <button
                       key={a.label}
@@ -2134,11 +2170,13 @@ function AdminDashboard({
       <div className={isDesktop ? "px-8 pb-6 max-w-[1200px] mx-auto w-full" : "contents"}>
         {!isDesktop && membersBlock}
         {!isDesktop && leadsBlock}
+        {!isDesktop && connectionsBlock}
         <div className={isDesktop ? "mb-4" : "contents"}>{newDealBlock}</div>
         {isDesktop ? (
           <div className="columns-3 gap-4">
             {[
               { key: "leads", title: "관심 표시한 회원", count: interests.length, node: leadsBlock },
+              { key: "connections", title: "거래 연결", count: connCounts.open + connCounts.closed === 0 ? 0 : -1, node: connectionsBlock },
               { key: "business-check", title: "사업자 조회", count: -1, node: bizCheckBlock },
               { key: "pending-sellers", title: "대기 중인 판매자 신청", count: requests.length, node: pendingSellersBlock },
               { key: "active-deals", title: "진행 중인 매물", count: activeDeals.length, node: activeDealsBlock },
@@ -2153,7 +2191,7 @@ function AdminDashboard({
                 <div key={c.key} className="break-inside-avoid mb-4">
                   {c.count === 0 ? (
                     <div className="bg-white border border-gray200 rounded-2xl flex items-center justify-between gap-2" style={{ padding: "12px 16px" }}>
-                      <span style={UI_SECTION}>{c.title}</span>
+                      <span {...CARD_TITLE_PROPS}>{c.title}</span>
                       <span style={LABEL}>없어요</span>
                     </div>
                   ) : (

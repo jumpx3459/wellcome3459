@@ -1,0 +1,95 @@
+import { NextRequest, NextResponse } from "next/server";
+import { checkAdminAuth } from "@/lib/adminAuth";
+import { phoneTail, writeAudit } from "@/lib/adminAudit";
+import { UUID_RE } from "@/lib/rateLimit";
+import { normalizePhone } from "@/lib/phone";
+import { linkedSellerRequest, saveSellerPrivate } from "@/lib/sellerPrivate";
+
+// 2026-10-04 F-4 연결 상세 — 판매자 비공개 정보(상호·담당자·연락처 + 메모). 연결 id로 받아 그 매물의 deal_seller_private 1행.
+// GET: 저장된 값(없으면 null) + 판매 신청 매물이고 3칸이 비었으면 신청 정보(suggest, 처음 채울 때 참고 — ③ 허락만 저장된 행 포함). PUT: 저장(연락처 normalizePhone).
+// 조회·저장 모두 감사 로그 — detail에 값은 넣지 않음(바뀐 칸 이름·연락처 뒤 4자리만).
+const MAX = { companyName: 100, contactName: 50, memo: 200 } as const;
+
+async function dealOf(db: import("@supabase/supabase-js").SupabaseClient, id: string) {
+  const { data, error } = await db.from("deal_connections").select("id, deal_id").eq("id", id).maybeSingle();
+  return { deal: data as { id: string; deal_id: string } | null, error };
+}
+
+export async function GET(req: NextRequest, ctx: RouteContext<"/api/admin/connections/[id]/seller">) {
+  const auth = await checkAdminAuth(req);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const { id } = await ctx.params;
+  if (!UUID_RE.test(id)) return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });
+  const db = auth.db;
+  const { deal, error } = await dealOf(db, id);
+  if (error) return NextResponse.json({ error: "연결 기록을 불러오지 못했어요." }, { status: 500 });
+  if (!deal) return NextResponse.json({ error: "연결 기록을 찾을 수 없어요." }, { status: 404 });
+
+  const [{ data: item, error: privError }, request] = await Promise.all([
+    db
+      .from("deal_seller_private")
+      .select("company_name, contact_name, contact_phone, memo, source, name_disclosure_ok, name_disclosure_at, updated_at")
+      .eq("deal_id", deal.deal_id)
+      .maybeSingle(),
+    linkedSellerRequest(db, deal.deal_id),
+  ]);
+  if (privError) return NextResponse.json({ error: "판매자 정보를 불러오지 못했어요." }, { status: 500 });
+
+  await writeAudit(db, req, {
+    admin: auth.admin,
+    action: "seller_private_view",
+    targetType: "deal",
+    targetId: deal.deal_id,
+    detail: { connection_id: id, has_row: !!item },
+  });
+  return NextResponse.json({
+    item: item ?? null,
+    source: item?.source ?? (request ? "seller_request" : "admin_direct"),
+    suggest: request && !(item?.company_name || item?.contact_name || item?.contact_phone) ? { company_name: request.company_name, contact_name: request.contact_name, contact_phone: request.contact_phone } : null,
+  });
+}
+
+export async function PUT(req: NextRequest, ctx: RouteContext<"/api/admin/connections/[id]/seller">) {
+  const auth = await checkAdminAuth(req);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const { id } = await ctx.params;
+  if (!UUID_RE.test(id)) return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });
+  const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
+  const text = (k: keyof typeof MAX) => (typeof body?.[k] === "string" ? (body[k] as string).trim() : "");
+  const companyName = text("companyName");
+  const contactName = text("contactName");
+  const memo = text("memo");
+  for (const k of Object.keys(MAX) as (keyof typeof MAX)[]) {
+    if (text(k).length > MAX[k]) return NextResponse.json({ error: `${MAX[k]}자까지 적을 수 있어요.`, field: k }, { status: 400 });
+  }
+  const contactPhone = normalizePhone(typeof body?.contactPhone === "string" ? body.contactPhone : "");
+  if (contactPhone && !/^[0-9]{8,11}$/.test(contactPhone)) {
+    return NextResponse.json({ error: "연락처는 숫자 8~11자리로 적어주세요.", field: "contactPhone" }, { status: 400 });
+  }
+
+  const db = auth.db;
+  const { deal, error } = await dealOf(db, id);
+  if (error) return NextResponse.json({ error: "연결 기록을 불러오지 못했어요." }, { status: 500 });
+  if (!deal) return NextResponse.json({ error: "연결 기록을 찾을 수 없어요." }, { status: 404 });
+
+  const { data: before } = await db
+    .from("deal_seller_private")
+    .select("company_name, contact_name, contact_phone, memo")
+    .eq("deal_id", deal.deal_id)
+    .maybeSingle();
+  const next = { company_name: companyName || null, contact_name: contactName || null, contact_phone: contactPhone || null, memo: memo || null };
+  const saved = await saveSellerPrivate(db, deal.deal_id, auth.admin.id, next);
+  if (!saved.ok) {
+    console.error("[admin/connections/seller] 저장 실패", saved.message);
+    return NextResponse.json({ error: "판매자 정보를 저장하지 못했어요." }, { status: 500 });
+  }
+  const changed = (Object.keys(next) as (keyof typeof next)[]).filter((k) => (before?.[k] ?? null) !== next[k]);
+  await writeAudit(db, req, {
+    admin: auth.admin,
+    action: "seller_private_save",
+    targetType: "deal",
+    targetId: deal.deal_id,
+    detail: { connection_id: id, created: saved.created, changed, contact_phone: phoneTail(next.contact_phone) },
+  });
+  return NextResponse.json({ ok: true });
+}
