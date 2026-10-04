@@ -1,13 +1,13 @@
 "use client";
 
-import { DEAL_NEW_COLS, isMissingNewColumn, type DealRowLoose, formatExpiry } from "@/lib/dealFields";
+import { DEAL_NEW_COLS, isMissingNewColumn, type DealRowLoose } from "@/lib/dealFields";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import TabLink from "@/components/TabLink";
 import BusinessFooter from "@/components/BusinessFooter";
 import { mockCategories, mockDeals, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { formatPrice, formatRelativeTime } from "@/lib/format";
+import { formatPrice } from "@/lib/format";
 import SplashScreen from "@/components/SplashScreen";
 import OnboardingIntro from "@/components/OnboardingIntro";
 import InstallAppButton, { useInstallPrompt } from "@/components/InstallAppButton";
@@ -23,10 +23,8 @@ import { isNegotiable } from "@/lib/priceMode";
 import NegotiablePrice from "@/components/NegotiablePrice";
 import { SITE_URL } from "@/lib/siteUrl";
 import { rem } from "@/lib/rem";
-import StockTypeBadge from "@/components/StockTypeBadge";
 import ReturningMemberIntro from "@/components/ReturningMemberIntro";
 import { getRememberedLoginMethod, hasActivePushSubscription, hasLoginHistory, type LoginMethod } from "@/lib/returningMember";
-import { isLumpSum } from "@/lib/priceUnit";
 import FloatingCTA, { FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
 
 const TODAY_BADGE_THRESHOLD = 5; // 이보다 적으면 "오늘 N건" 배너를 아예 숨김 (빈약한 숫자 노출 방지)
@@ -376,7 +374,7 @@ export default function Home() {
                   {/* 2026-10-03: 사진 56px(3.5rem) → 110px 정사각형(px 고정 — 큰 글자 설정에서도 같은 크기). 사진 없을 때 자리 표시도 같은 크기 */}
                   <div
                     className="relative rounded-token flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden"
-                    style={{ background: color.bg, width: 110, height: 110 }}
+                    style={{ background: color.bg, width: 140, height: 140 }}
                   >
                     {/* 2026-10-03: 할인율 배지를 카드 오른쪽 위 → 사진 왼쪽 위로(/deals 카드 DealCardMedia와 같은 위치·색 규칙의 축소판).
                         본문 오른쪽 위에 있을 땐 "소비기한 임박" 칩·매물명과 겹쳤음(사진이 커져 본문 폭이 줄어서). 큰 글자에서도 사진 안에 들어가게 최대 폭 제한 */}
@@ -405,35 +403,12 @@ export default function Home() {
                     )}
                   </div>
                   {/* 할인 배지가 사진 위로 옮겨가서 본문 오른쪽 배지 자리(pr) 없음 — 글자 칸 최대 */}
-                  <div className="flex-1 min-w-0">
-                    {d.stock_type && d.stock_type !== "general" && <StockTypeBadge value={d.stock_type} className="mb-1" />}
+                  <div className="flex-1 min-w-0" style={{ overflowX: "clip", overflowWrap: "anywhere" }}>
                     {/* 매물명 2줄까지 + 말줄임 */}
-                    <div className="text-sm font-bold text-navy line-clamp-2" data-title>{d.title}</div>
-                    <div className="text-xs text-gray500 mt-0.5">
-                      {d.category} · {d.location}
-                      {d.package_unit && ` · ${d.package_unit}`}
-                    </div>
-                    {formatExpiry(d.expiry_date) && (
-                      <div className="text-xs font-bold mt-0.5" style={{ color: "#C2410C" }}>⏰ 소비기한 {formatExpiry(d.expiry_date)}</div>
-                    )}
-                    {/* 2026-09-27: 동종업계 문자광고(가격/출고지/물량단위/최소주문 등을
-                        항상 함께 표기)를 벤치마킹 — 상세페이지엔 이미 있던 최소주문
-                        수량을 미리보기 카드에도 노출해 구매 결정에 필요한 정보 밀도를 높임. */}
-                    {/* 2026-10-03: 항목(남은 수량·최소 수량·시간)은 각각 한 덩어리 — 안 들어가면 항목 단위로 다음 줄(글자 중간 줄바꿈 없음) */}
-                    <div className="text-[0.7222rem] text-gray500 mt-0.5 flex flex-wrap items-center gap-x-1.5">
-                      <span className="whitespace-nowrap">{d.remaining_qty}/{d.total_qty} 남음</span>
-                      {d.min_order_qty && !isLumpSum(d.price_unit) && (
-                        <span className="whitespace-nowrap inline-flex items-center gap-1.5">
-                          <span>·</span>
-                          <span>최소 {d.min_order_qty}{d.quantity_unit || "개"}</span>
-                        </span>
-                      )}
-                      {formatRelativeTime(d.created_at) && (
-                        <span className="whitespace-nowrap inline-flex items-center gap-1.5">
-                          <span>·</span>
-                          <span>{formatRelativeTime(d.created_at)}</span>
-                        </span>
-                      )}
+                    <div className="font-bold text-navy line-clamp-2 leading-snug" style={{ fontSize: rem(17) }} data-title>{d.title}</div>
+                    {/* 2026-10-04 card-layout-v2: 회원 홈 목록형과 같은 규칙 — 메타 한 줄 "카테고리 · 잔여"(진한 회색), 소비기한·포장·최소 수량·등록 시각은 목록에서 뺌(상세에는 그대로) */}
+                    <div className="mt-0.5" style={{ fontSize: rem(14), color: "#374151" }}>
+                      {d.category} · 잔여 {d.remaining_qty}{d.quantity_unit || "개"}
                     </div>
                     {/* 2026-10-03 A안: 비회원 홈(예시 포함) — 가격 자리에 "-N% · 회원가 보기" */}
                     <div className="mt-1.5">

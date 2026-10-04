@@ -20,7 +20,7 @@ export default function MemberPriceTeaser({
           <wbr />{" "}
         </>
       )}
-      <span className="whitespace-nowrap">{MEMBER_PRICE_CTA}</span>
+      <span style={{ wordBreak: "keep-all" }}>{MEMBER_PRICE_CTA}</span>
     </span>
   );
 }
