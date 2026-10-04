@@ -50,7 +50,19 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
-## 최근 작업 (2026-10-04) — 판매자 신원 확인(공개 전 4번) (브랜치 `feat/seller-business-check`, 운영 SQL 미실행)
+## 최근 작업 (2026-10-04) — #58 운영 기록 + 사업자 조회 상호 미전송 (브랜치 `fix/nts-no-company-name`)
+
+- **#58 운영 기록(10/4)**: `seller_business_checks` 생성 SQL 운영 실행 · 확인 조회 기대값 일치 · `business-licenses` 버킷 public=false 확인 ·
+  Vercel `NTS_API_KEY`(Production, Secret) 등록 · 배포 Deploy #262.
+- **운영 확인**: 실제 조회 일치·불일치 동작 / 시험 신청에서 [매물로 등록하기] 비활성 + 안내 문구 / [예외 확인] 표시 — 통과.
+- **발견**: 상호(`b_nm`)를 국세청 validate에 보내면 등록 상호와 띄어쓰기까지 같아야 일치 → 정상 사업자도 "불일치"
+  (예: "웰컴코리아" 불일치 / "웰컴코리아주식회사" 일치, "점프엑스주식회사" 불일치 / 상호 비움 일치). → 이 PR로 수정.
+- **수정**: validate 요청에 `b_nm`을 넣지 않음(판정은 사업자번호·대표자명·개업일자만). `input_company_name`은 DB에 참고용으로 그대로 저장.
+  관리자 상호 칸 라벨 "상호 (선택 · 국세청 판정에는 쓰지 않아요)", 입력 상호≠신청 상호 노란 경고는 유지(띄어쓰기·(주)·주식회사 무시 비교).
+  시험: `node scripts/nts-fake-test.mts`(가짜 국세청 서버가 `b_nm`을 받으면 400으로 실패 — 운영 호출 0건).
+- **시험 조회 기록 정리**: 대표가 SQL로 삭제. 조회 기록 화면의 삭제 기능은 만들지 않음(법적 증빙 — 필요하면 공개 후 최고관리자 전용으로).
+
+## 이전 작업 (2026-10-04) — 판매자 신원 확인(공개 전 4번) (브랜치 `feat/seller-business-check`, 운영 SQL 미실행)
 
 - 결정(10/4 대표): 판매자 등록은 쉽게 — `/sell`·`seller_requests`는 그대로(사업자번호 칸 없음). 점핑매니저가 통화로 사업자번호·대표자명·개업일자를 받아
   관리자 "사업자 조회"에서 국세청 진위확인 → 통과해야 [매물로 등록하기]. 저장은 새 표(서버 전용), `deal_seller_private`·`members.business_verified`와 연결 안 함.

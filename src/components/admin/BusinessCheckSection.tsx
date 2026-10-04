@@ -214,7 +214,7 @@ export default function BusinessCheckSection({
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span style={DEAL_LABEL_STYLE}>상호 (선택)</span>
+          <span style={DEAL_LABEL_STYLE}>상호 (선택 · 국세청 판정에는 쓰지 않아요)</span>
           <input className={inputClass} style={inputStyle} value={company} maxLength={100} onChange={(e) => setCompany(e.target.value)} />
         </label>
       </div>
