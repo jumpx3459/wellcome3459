@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { rem } from "@/lib/rem";
 import { DEAL_LABEL_STYLE, DEAL_HINT_STYLE } from "@/components/FormField";
-import { NOT_CHECKED_MESSAGE, type BusinessCheck } from "@/lib/businessCheck";
+import { NOT_CHECKED_MESSAGE, normCompany, type BusinessCheck } from "@/lib/businessCheck";
 
 // 2026-10-04 feat/deal-seller-private — 관리자 매물 등록·수정의 "실제 판매자"(내부 전용) 칸 + "사업자 조회 기록" 선택.
 // 회사가 대신 올리는 매물도 실제 판매자(상호·연락처·담당자)를 deal_seller_private에 남기려는 칸 — 구매자에게는 보이지 않음.
@@ -75,6 +75,10 @@ export default function SellerPrivateFields({
     void load();
   }, [showCheckPicker, load]);
 
+  // 고른(또는 이미 연결된) 조회의 입력 상호와 실제 판매자 상호가 다르면 노란 경고 — 등록은 막지 않음(상호가 서로 다르게 불리는 경우가 있어서)
+  const checkedCompany = linkedCheck ? linkedCheck.input_company_name : checks?.find((c) => c.id === value.checkId)?.input_company_name;
+  const companyMismatch = !!value.company.trim() && !!checkedCompany?.trim() && normCompany(value.company) !== normCompany(checkedCompany);
+
   const inputCls = (err?: string) =>
     `w-full min-w-0 border-2 rounded-lg px-3 py-2.5 text-[0.8889rem] outline-none focus:border-orange bg-white ${err ? "border-[#DC2626]" : "border-gray200"}`;
   const label = (htmlFor: string, text: string, required?: boolean) => (
@@ -108,6 +112,11 @@ export default function SellerPrivateFields({
           onChange={(e) => onChange({ ...value, company: e.target.value })}
         />
         {errText(errors?.company)}
+        {companyMismatch && (
+          <p className="mt-1.5 rounded-lg" style={{ background: "#FFF8DB", color: "#7A5B00", fontSize: rem(14), padding: "8px 12px", lineHeight: 1.5 }}>
+            고른 사업자 조회의 상호({checkedCompany})와 달라요. 같은 판매자가 맞는지 확인해주세요. 등록은 그대로 할 수 있어요.
+          </p>
+        )}
       </div>
       <div className="min-w-0">
         {label(`${idPrefix}-sellerPrivatePhone`, "연락처", true)}

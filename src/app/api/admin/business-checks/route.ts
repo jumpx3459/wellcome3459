@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
   }
 
   // 2026-10-04 feat/deal-seller-private: 매물에 붙일 수 있는 조회 — 신청 없이 조회했고(seller_request_id null) 아직 매물에 안 붙은(deal_id null)
-  // validate 행 중 통과(진위 일치 또는 예외 확인)만. 등록·수정 폼의 "사업자 조회 기록" 선택 목록(자동 선택 없음)
+  // validate 행 중 통과(진위 일치 또는 예외 확인)만, 조회 후 7일 이내만. 등록·수정 폼의 "사업자 조회 기록" 선택 목록(자동 선택 없음)
   if (sp.get("unlinked") === "1") {
     const { data, error } = await db
       .from("seller_business_checks")
@@ -85,6 +85,7 @@ export async function GET(req: NextRequest) {
       .is("deal_id", null)
       .eq("kind", "validate")
       .or(PASSING_OR)
+      .gte("checked_at", new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()) // 최근 7일만 — 오래된 조회를 다른 매물에 잘못 붙이지 않게
       .order("checked_at", { ascending: false })
       .limit(50);
     if (error) return NextResponse.json({ error: "조회 기록을 불러오지 못했어요." }, { status: 500 });
