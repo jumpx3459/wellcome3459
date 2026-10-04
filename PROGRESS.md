@@ -57,14 +57,14 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
   하단 고정 버튼 하나 **[무료 회원가입하고 가격 보기]** (`/signup?returnTo=/deals/<id>` + `ref` 유지, autoInterest 없음 — #57 규칙).
   본문 가격 상자의 [회원가 보기 · 무료 가입]은 이 버튼으로 합침(안내 "가입하면 회원가를 볼 수 있어요"는 유지). 세션 확인 전엔 버튼을 그리지 않음(회원 깜빡임 방지).
   `?autoInterest=1` 옛 링크로 비회원이 와도 기록 없음. 세션이 끊긴 회원이 관심 버튼을 누르면 가입 화면(returnTo)으로.
-- `/p/[slug]`: 위·아래 두 개이던 "알림" 가입 버튼을 아래 하나로(같은 문구·링크, returnTo 유지; demo 파트너는 refCode 없음).
+- `/p/[slug]`: 위·아래 두 개이던 "알림" 가입 버튼을 아래 하나 [무료 회원가입하고 가격 보기]로(returnTo 유지; demo 파트너는 refCode 없음). 상단 버튼은 복원해 보니 높이 830px 이상 화면에서 위·아래가 동시에 보여(대표 규칙) 두지 않음.
 - BottomNav 비회원 4번째 탭 "알림"(종) → **"가입"**(UserPlus) — 링크 `/signup?returnTo=<현재 경로>`, 현재 주소의 `autoInterest`는 returnTo에서 뺌. 회원 "공유" 탭 그대로.
 - 안 지움: `quick_leads` 표·`/api/quick-interest`·비회원 연결 서버 코드(#52·#53)·`ConnectionConsentSheet`(공용) — 화면에서 호출만 없앰. 처리방침·약관 문구 변경 없음.
   이 기기 localStorage의 `dj_quick_interest_deals`·`dj_quick_connection_deals`는 이제 읽지 않음(남아 있어도 무해).
-- 확인 필요: 마감·예시 매물의 비회원 버튼은 각각 "덤핑정보 알림 받기"·"무료 알림받기"(그 분기는 그대로 — 문구 통일 여부는 대표 결정).
-- 검증: build·tsc 통과 · Playwright(로컬 서버 + 가짜 Supabase, 외부 요청 차단·운영 호출 0건, 344·360px isMobile·hasTouch, 글자 100·130%) 79항목 통과 —
+- 마감·예시 매물(대표 결정 10/4): 비회원 버튼 "덤핑정보 알림 받기"·"무료 알림받기"도 같은 [무료 회원가입하고 가격 보기](returnTo=현재 경로+ref, autoInterest 없음, 요청 호출 없음). 회원은 옛 문구 그대로.
+- 검증: build·tsc 통과 · Playwright(로컬 서버 + 가짜 Supabase, 외부 요청 차단·운영 호출 0건, 344·360px isMobile·hasTouch, 글자 100·130%) 103항목 통과 —
   비회원 상세·/p/demo 입력칸 0개(옛 화면은 [관심있어요]를 눌러야 열려서 눌러 본 뒤에도 0개)·가입 버튼 1개·href·클릭해도 quick-interest·interests·connections 요청 0건,
-  비회원 탭 "가입"·회원 탭 "공유", 회원 상세 [관심있어요 · 점핑매니저 연결] → 7-1 동의 창, 넘침·글자 잘림 없음. 옛 코드로 되돌리면 시험 실패 확인.
+  마감·예시 매물(?autoInterest=1 포함) 버튼 1개·returnTo에서 autoInterest 제거, 비회원 탭 "가입"·회원 탭 "공유", 회원 상세 [관심있어요 · 점핑매니저 연결] → 7-1 동의 창, 넘침·글자 잘림 없음. 옛 코드로 되돌리면 시험 실패 확인.
 - 메모(공개 후, 이번엔 손대지 않음): 할인율 두 번 표시, /deals 가로 넘침, 고아 구분점.
 
 ## 최근 작업 (2026-10-04) — #58 운영 기록 + 사업자 조회 상호 미전송 (브랜치 `fix/nts-no-company-name`)

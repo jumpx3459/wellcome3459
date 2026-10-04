@@ -794,13 +794,17 @@ function DealDetailPageInner() {
             <p className="text-sm text-gray500 mb-3">
               비슷한 매물이 또 나올 때 가장 먼저 알려드릴게요.
             </p>
-            <Link
-              href={withReturnTo("/signup", `/deals/${deal.id}`, ref ? `ref=${ref}` : "")}
-              className={`w-full ${BTN_CLASS}`}
-              style={btnStyle("primary")}
-            >
-              덤핑정보 알림 받기
-            </Link>
+            {/* 2026-10-04 4.5: 비회원 버튼은 상세와 같은 [무료 회원가입하고 가격 보기] (returnTo+ref, autoInterest 없음) */}
+            {authKnown && (
+              <Link
+                href={withReturnTo("/signup", `/deals/${params.id}`, ref ? `ref=${ref}` : "")}
+                className={`w-full ${BTN_CLASS}`}
+                style={btnStyle("primary")}
+                data-guest-signup-cta
+              >
+                {isMember ? "덤핑정보 알림 받기" : "무료 회원가입하고 가격 보기"}
+              </Link>
+            )}
           </div>
         </div>
       ) : isExampleId ? (
@@ -812,13 +816,16 @@ function DealDetailPageInner() {
               <br className="hidden sm:inline" />
               빠르게 알림이 가요.
             </div>
-            <Link
-              href="/signup"
-              className={`w-full mt-4 ${BTN_CLASS}`}
-              style={btnStyle("primary")}
-            >
-              무료 알림받기 →
-            </Link>
+            {authKnown && (
+              <Link
+                href={withReturnTo("/signup", `/deals/${params.id}`, ref ? `ref=${ref}` : "")}
+                className={`w-full mt-4 ${BTN_CLASS}`}
+                style={btnStyle("primary")}
+                data-guest-signup-cta
+              >
+                {isMember ? "무료 알림받기 →" : "무료 회원가입하고 가격 보기"}
+              </Link>
+            )}
           </div>
         </div>
       ) : (

@@ -70,7 +70,7 @@ export default function PartnerDemoPage() {
     );
   }
 
-  // 2026-10-04 4.5: 가입 버튼은 아래 하나 — 가입 후 이 페이지로(returnTo) + 파트너 ref 유지. 자동 관심 파라미터 없음
+  // 2026-10-04 4.5: 가입 버튼은 아래 하나(상단 버튼은 높이 830px 이상 화면에서 위·아래가 동시에 보여 두지 않음) — 가입 후 이 페이지로(returnTo) + 파트너 ref 유지. 자동 관심 파라미터 없음
   const memberPriceHref = withReturnTo("/signup", `/p/${params.slug}`, partner.refCode ? `ref=${partner.refCode}` : "");
 
   return (
