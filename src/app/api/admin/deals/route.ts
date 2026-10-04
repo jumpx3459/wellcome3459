@@ -9,6 +9,8 @@ import { resolveSellerDisplay } from "@/lib/sellerDisplay";
 import { checkDealVideoUrl } from "@/lib/videoUploadServer";
 import { normalizeTitle, checkTitle, checkDescription, DUPLICATE_TITLE_WARNING } from "@/lib/titleGuard";
 import { isStorageType, isValidExpiryDate, storageSummary, priceWarnings, isMissingNewColumn, EXPIRY_REQUIRED_MESSAGE } from "@/lib/dealFields";
+import { isPassingCheck, NOT_CHECKED_MESSAGE, ALREADY_HANDLED_MESSAGE } from "@/lib/businessCheck";
+import { ntsStatus } from "@/lib/nts";
 
 export async function POST(req: NextRequest) {
   const auth = await checkAdminAuth(req);
@@ -106,16 +108,30 @@ export async function POST(req: NextRequest) {
   // 예전 폼처럼 값이 안 오면 판매 신청의 공개 설정·업체명을 따름. 임의 이름("… 판매자 #NNNN")은 폐지.
   let sellerMemberId: string | null = null;
   let seller = resolveSellerDisplay(sellerPublic === true, sellerCompanyName);
+  // 2026-10-04 판매자 신원 확인: 판매 신청 승인은 ① 아직 대기 중이고 ② 그 신청의 최신 사업자 조회가 통과(진위 일치 또는 예외 확인)일 때만
+  let passCheck: { id: string; b_no: string } | null = null;
   if (requestId) {
-    const { data: sr } = await supabaseAdmin
+    const { data: sr, error: srErr } = await supabaseAdmin
       .from("seller_requests")
-      .select("company_name, is_anonymous, seller_member_id")
+      .select("company_name, is_anonymous, seller_member_id, status, linked_deal_id")
       .eq("id", requestId)
       .maybeSingle();
-    if (sr) {
-      sellerMemberId = sr.seller_member_id ?? null;
-      if (typeof sellerPublic !== "boolean") seller = resolveSellerDisplay(sr.is_anonymous === false, sr.company_name);
-    }
+    if (srErr) return NextResponse.json({ error: "판매 신청을 확인하지 못했어요." }, { status: 500 });
+    if (!sr) return NextResponse.json({ error: "판매 신청을 찾을 수 없어요." }, { status: 404 });
+    if (sr.status !== "pending" || sr.linked_deal_id) return NextResponse.json({ error: ALREADY_HANDLED_MESSAGE }, { status: 409 });
+    const { data: latest, error: chkErr } = await supabaseAdmin
+      .from("seller_business_checks")
+      .select("id, b_no, kind, validate_result, exception_ok")
+      .eq("seller_request_id", requestId)
+      .eq("kind", "validate")
+      .order("checked_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (chkErr) return NextResponse.json({ error: "사업자 조회 기록을 확인하지 못했어요." }, { status: 500 });
+    if (!isPassingCheck(latest)) return NextResponse.json({ error: NOT_CHECKED_MESSAGE }, { status: 409 });
+    passCheck = { id: latest!.id as string, b_no: latest!.b_no as string };
+    sellerMemberId = sr.seller_member_id ?? null;
+    if (typeof sellerPublic !== "boolean") seller = resolveSellerDisplay(sr.is_anonymous === false, sr.company_name);
   }
 
   // 확인 후 저장 경고 — 같은 판매자(판매 신청 승인이면 그 회원, 직접 등록이면 판매자 없는 매물)의 같은 이름 진행 중 매물
@@ -185,14 +201,45 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   if (requestId) {
-    await supabaseAdmin
+    // 2026-10-04: 대기 중이고 아직 연결 안 된 신청만 승인 — 동시에 두 번 눌러 0행이면(다른 요청이 먼저 승인)
+    // 방금 만든 매물을 알림 발송(sendDealPush, 아래) 전에 지워 중복 매물·중복 알림을 막음
+    const { data: approved, error: srUpdErr } = await supabaseAdmin
       .from("seller_requests")
-      .update({ status: "approved", linked_deal_id: deal.id })
-      .eq("id", requestId);
+      .update({ status: "approved", linked_deal_id: deal.id, reviewed_by: auth.admin.name })
+      .eq("id", requestId)
+      .eq("status", "pending")
+      .is("linked_deal_id", null)
+      .select("id");
+    if (srUpdErr || !approved?.length) {
+      const { error: delErr } = await supabaseAdmin.from("deals").delete().eq("id", deal.id);
+      if (delErr) console.error("[admin/deals] 승인 실패 후 매물 되돌리기 실패", deal.id, delErr.code);
+      return srUpdErr
+        ? NextResponse.json({ error: "판매 신청 상태를 바꾸지 못했어요. 다시 시도해주세요." }, { status: 500 })
+        : NextResponse.json({ error: ALREADY_HANDLED_MESSAGE }, { status: 409 });
+    }
+    const { error: linkErr } = await supabaseAdmin.from("seller_business_checks").update({ deal_id: deal.id }).eq("id", passCheck!.id);
+    if (linkErr) console.error("[admin/deals] 조회 기록에 매물 연결 실패", linkErr.code);
   }
 
   // 매물 등록이 확정되는 즉시, 해당 카테고리·지역 구독자에게 자동으로 알림을 보냅니다.
   const pushResult = await sendDealPush(deal.id);
+
+  // 2026-10-04: 승인 시점 사업자 상태 재조회 1회 — 기록만 하고 실패해도 승인은 그대로(알림 뒤라 발송을 늦추지 않음)
+  if (requestId && passCheck) {
+    const s = await ntsStatus(passCheck.b_no);
+    const { error: recheckErr } = await supabaseAdmin.from("seller_business_checks").insert({
+      seller_request_id: requestId,
+      deal_id: deal.id,
+      kind: "status_recheck",
+      b_no: passCheck.b_no,
+      status_code: s.result === "ok" ? s.status.code : null,
+      status_text: s.result === "ok" ? s.status.text : null,
+      tax_type: s.result === "ok" ? s.status.taxType : null,
+      error_kind: s.result === "error" ? s.errorKind : null,
+      checked_by_admin_id: auth.admin.id,
+    });
+    if (recheckErr) console.error("[admin/deals] 상태 재조회 기록 실패", recheckErr.code);
+  }
 
   return NextResponse.json({ ok: true, id: deal.id, push: pushResult });
 }
