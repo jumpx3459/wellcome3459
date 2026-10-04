@@ -126,10 +126,10 @@ export default function PartnerDemoPage() {
                       {memberPriceTeaser(Math.round(discountPct))}
                     </Link>
                   ) : (
-                    <div className="flex items-baseline gap-1.5 mt-1.5">
-                      <span className="text-base font-black" style={{ color: color.text }}>{dealPriceLabel(d)}</span>
+                    <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mt-1.5">
+                      <span className="text-base font-black whitespace-nowrap" style={{ color: color.text }}>{dealPriceLabel(d)}</span>
                       {discountPct > 0 && (
-                        <span className="text-xs font-bold rounded-full" style={{ color: partner.accentColor, background: "#fff", border: `1px solid ${partner.accentColor}`, padding: "1px 7px" }}>
+                        <span className="text-xs font-bold rounded-full whitespace-nowrap" style={{ color: partner.accentColor, background: "#fff", border: `1px solid ${partner.accentColor}`, padding: "1px 7px" }}>
                           -{Math.round(discountPct)}%
                         </span>
                       )}

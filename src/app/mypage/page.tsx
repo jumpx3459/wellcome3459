@@ -1459,7 +1459,7 @@ export default function MyPage() {
                 >
                   <div className="min-w-0">
                     <div className="truncate" style={UI_CARD_TITLE}>{i.deals.title}</div>
-                    <div className="mt-0.5" style={{ ...UI_LINK, color: "#0B2540" }}>
+                    <div className="mt-0.5 truncate" style={{ ...UI_LINK, color: "#0B2540" }}>
                       {dealPriceLabel(i.deals)}
                     </div>
                   </div>
