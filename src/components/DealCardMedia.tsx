@@ -20,6 +20,8 @@ export default function DealCardMedia({
   onMediaClick,
   className = "",
   eager = false,
+  ratio = "4/3",
+  tag = null,
 }: {
   image?: string | null;
   alt: string;
@@ -33,12 +35,14 @@ export default function DealCardMedia({
   onMediaClick?: (e: MouseEvent) => void; // 회원 홈: 사진 눌러 크게 보기
   className?: string;
   eager?: boolean; // 첫 화면에 보이는 카드만 바로 불러오기 — 나머지는 스크롤할 때(lazy)
+  ratio?: string; // 사진이 있을 때 가로:세로 — 기본 4/3, /deals 카드는 1/1(2026-10-04 v2)
+  tag?: string | null; // 사진 위 왼쪽 아래 오버레이(카테고리·시즌 태그) — 반투명 네이비 바탕 흰 글자
 }) {
   const clickable = !!image && !!onMediaClick;
   return (
     <div
       className={`relative w-full overflow-hidden ${className}`}
-      style={{ aspectRatio: image ? "4/3" : "3/1" }}
+      style={{ aspectRatio: image ? ratio : "3/1" }}
       {...(clickable
         ? {
             role: "button",
@@ -71,6 +75,15 @@ export default function DealCardMedia({
         <span className="absolute bottom-1.5 right-1.5 rounded font-bold text-white pointer-events-none" style={{ fontSize: rem(13), padding: "1px 6px", background: "rgba(0,0,0,.5)" }}>
           1/{imageCount}
         </span>
+      )}
+      {tag && (
+        <div
+          className="absolute bottom-2 left-2 rounded-full font-bold text-white pointer-events-none truncate"
+          style={{ maxWidth: "calc(100% - 72px)", background: "rgba(11,37,64,0.74)", fontSize: rem(13), lineHeight: 1.3, padding: "3px 10px" }}
+          data-media-tag
+        >
+          {tag}
+        </div>
       )}
       {!closed && discountPct > 0 && (
         <div
