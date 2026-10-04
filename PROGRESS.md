@@ -1,6 +1,6 @@
 # PROGRESS
 
-마지막 업데이트: 2026-10-04 (PR #61 F-4 병합 `5ab3bf4`·배포 run 37179769308·운영 확인 통과 기록 + F-1 리드 보안 완료 판정 + PC 비회원 화면 사전 점검 — 브랜치 `docs/progress-61-f1-guest-check` / F-4 관리자 거래 연결 보드 — 브랜치 `feat/f4-connection-board`, interests 권한 회수 SQL은 운영 실행 완료(기록용 파일만) / PR #60 4.5 비회원 가입 버튼 통일 병합 `2d4f492` / PR #59 사업자 조회 상호 미전송 병합 `06f0fe2` / PR #58 판매자 신원 확인 병합 `160d5ef`·SQL·NTS_API_KEY 운영 반영 / PR #57 A안 비회원 가격 비공개 병합 `5dfc47f`·SQL A·B 실행·운영 확인 통과 / PR #56 처리방침·약관 매물 알림 범위 병합 `635d3e5` / PR #55 F-3b 매물 알림 동의 전용 버전 병합 `3a51712` / PR #54 /deals 넘침 방어·홈 카드 배지 병합 `81dac2c` / PR #53 병합 `377bc99` / PR #52 F-3a 병합 `e9ea982`·운영 확인 / PR #51 첫 방문 플로우 병합 `b28659c` / PR-D 관리자 매물 등록 폼 2단 — 커밋 1 2단·판매자 신청 폼 자리 이동·커밋 2 카드 제목·PC 사진 버튼·업로드 오류 상자, 브랜치 `feat/admin-deal-form-2col` / PR #47 PR-B 사진 업로드 병합 `eada5c1` / PR #46 PR-C1 관리자 카드 목록 병합 `9ee5715` / PR #45 /sell PC 2단 병합 `c5aca29` / PR #44 /sell·관리자 레이아웃 정리 병합 `849d069` / PR-A2 영상 업로드 보완 / PR #42 영상 직접 업로드 병합 `bae6df1`·운영 시험 / PR #41 번호 표시 통일 병합 `d5f5e78` / PR #40 F-2 거래 연결 DB 병합 `60646c0`·운영 SQL 실행 완료 / L-8 관리자 매물 [마감] 버튼 — 브랜치 `feat/admin-deal-close` / PR #31 VAPID lazy 초기화 — 병합 `f2dca21` / ① 관리자 역할 기반 최소판 — PR #30, SQL 1~5 실행 완료 / PR용 CI(chore/pr-ci) / J-2 사업자정보 푸터·관리자 대시보드 레이아웃 / J-1 로그인·가입 번호 자동완성 버그 / PR #26 커밋 K KPI 매일 저장·방문 기록·지표 정확도 — 병합 `c0c9c8a`·SQL 실행 완료 / PR #25 커밋 G 비회원 동의 기록·90일 자동 삭제 — 병합 `cf6093d`·SQL 실행 완료 / PR #24 커밋 D 사업자 정보 푸터·문의 경로 — 병합 `f24170c` / PR #23 커밋 E 판매자 표시 — 병합 `6dbe813`·SQL ①②③ 실행 완료 / PR #22 커밋 H: 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내 — 병합 `8cf2f41` / PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
+마지막 업데이트: 2026-10-04 (대리 게시 매물 실제 판매자 저장 + 직접 등록 사업자 조회 연결·#63 병합 기록·운영 확인 방법 정정 — 브랜치 `feat/deal-seller-private` / PR #61 F-4 병합 `5ab3bf4`·배포 run 37179769308·운영 확인 통과 기록 + F-1 리드 보안 완료 판정 + PC 비회원 화면 사전 점검 — 브랜치 `docs/progress-61-f1-guest-check` / F-4 관리자 거래 연결 보드 — 브랜치 `feat/f4-connection-board`, interests 권한 회수 SQL은 운영 실행 완료(기록용 파일만) / PR #60 4.5 비회원 가입 버튼 통일 병합 `2d4f492` / PR #59 사업자 조회 상호 미전송 병합 `06f0fe2` / PR #58 판매자 신원 확인 병합 `160d5ef`·SQL·NTS_API_KEY 운영 반영 / PR #57 A안 비회원 가격 비공개 병합 `5dfc47f`·SQL A·B 실행·운영 확인 통과 / PR #56 처리방침·약관 매물 알림 범위 병합 `635d3e5` / PR #55 F-3b 매물 알림 동의 전용 버전 병합 `3a51712` / PR #54 /deals 넘침 방어·홈 카드 배지 병합 `81dac2c` / PR #53 병합 `377bc99` / PR #52 F-3a 병합 `e9ea982`·운영 확인 / PR #51 첫 방문 플로우 병합 `b28659c` / PR-D 관리자 매물 등록 폼 2단 — 커밋 1 2단·판매자 신청 폼 자리 이동·커밋 2 카드 제목·PC 사진 버튼·업로드 오류 상자, 브랜치 `feat/admin-deal-form-2col` / PR #47 PR-B 사진 업로드 병합 `eada5c1` / PR #46 PR-C1 관리자 카드 목록 병합 `9ee5715` / PR #45 /sell PC 2단 병합 `c5aca29` / PR #44 /sell·관리자 레이아웃 정리 병합 `849d069` / PR-A2 영상 업로드 보완 / PR #42 영상 직접 업로드 병합 `bae6df1`·운영 시험 / PR #41 번호 표시 통일 병합 `d5f5e78` / PR #40 F-2 거래 연결 DB 병합 `60646c0`·운영 SQL 실행 완료 / L-8 관리자 매물 [마감] 버튼 — 브랜치 `feat/admin-deal-close` / PR #31 VAPID lazy 초기화 — 병합 `f2dca21` / ① 관리자 역할 기반 최소판 — PR #30, SQL 1~5 실행 완료 / PR용 CI(chore/pr-ci) / J-2 사업자정보 푸터·관리자 대시보드 레이아웃 / J-1 로그인·가입 번호 자동완성 버그 / PR #26 커밋 K KPI 매일 저장·방문 기록·지표 정확도 — 병합 `c0c9c8a`·SQL 실행 완료 / PR #25 커밋 G 비회원 동의 기록·90일 자동 삭제 — 병합 `cf6093d`·SQL 실행 완료 / PR #24 커밋 D 사업자 정보 푸터·문의 경로 — 병합 `f24170c` / PR #23 커밋 E 판매자 표시 — 병합 `6dbe813`·SQL ①②③ 실행 완료 / PR #22 커밋 H: 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내 — 병합 `8cf2f41` / PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
 
 새 세션을 시작할 때 이 파일을 먼저 읽고, 아래 "다음에 할 일"부터 확인하세요.
 
@@ -50,6 +50,24 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
+## 최근 작업 (2026-10-04) — 대리 게시 매물 실제 판매자 저장 + 직접 등록 사업자 조회 연결 (브랜치 `feat/deal-seller-private`, DB 변경 없음)
+
+- **왜**: 관리자가 직접(대신) 올린 매물은 실제 판매자(상호·담당자·연락처)를 저장할 곳이 등록 시점에 없었고(`deal_seller_private`는 연결 보드에서만 채움),
+  직접 등록은 사업자 조회를 거치지 않아도 등록됐으며 조회 행(`seller_business_checks`)도 `deal_id` 없이 남았음. 운영 select(대표 승인, 번호 뒤 4자리):
+  실매물 8건 중 `deal_seller_private` 행 1건(상호·담당자·연락처 모두 빈 `admin_direct`), 조회 연결 0건, 직접 등록용 조회 기록 0건.
+- **등록(`POST /api/admin/deals`)**: 직접 등록(requestId 없음) = 실제 판매자 상호(필수)·연락처(필수, 숫자 8~11자리)·담당자(선택) + **통과한 사업자 조회 기록 1건 필수**
+  (자동 선택 없음 — 신청 없이 조회·매물 미연결·kind validate·진위 '01' 또는 예외 확인인 행만 목록). 검증 → 매물 insert → `saveSellerPrivate`(admin_direct) →
+  조회 행 조건부 update(같은 조건 재확인, 1행) → 실패하면 **매물 삭제 후 409/500** → 성공해야만 `sendDealPush`. 승인 시점 상태 재조회 1회(실패해도 등록 유지)는 직접 등록도 같이 기록.
+  판매 신청 [매물로 등록하기]: 이 두 칸은 숨기고 기존 신청 검사 유지, 알림 전에 신청 정보(업체명·담당자·연락처)로 `saveSellerPrivate`(seller_request, 신청 id) — 실패 시 매물 삭제(승인 처리 전이라 신청 상태는 그대로).
+- **수정(`/api/admin/deals/manage/seller` GET·PUT, 알림 재발송 없음)**: 매물 수정 카드에 "실제 판매자(내부 전용)" 편집 + [판매자 정보 저장]. 신청 매물이고 행이 없으면 신청 정보로 미리 채움(저장해야 DB 반영).
+  조회가 안 붙은 매물은 통과한 직접 조회 기록을 골라 연결(기존 실매물 채우기용), 이미 붙은 매물은 표시만·재연결 거절. 저장 성공·연결 실패면 "판매자 정보는 저장했어요" 안내.
+- **감사 로그**: `seller_private_save` detail에 `via`(deal_create | deal_edit | seller_request_approve | connection_board) 추가, 조회 행 연결은 `linked_check_id`. 값은 칸 이름·연락처 뒤 4자리만. 수정 화면 조회는 `seller_private_view`(via deal_edit).
+- **연결 보드**: 변경 없음(같은 표·같은 함수, 입력 검증만 공용 함수로 — 동작 동일). 회귀 확인 필요.
+- **처리방침**: 수집 항목 표에 1줄("회사가 판매자의 의뢰로 매물을 대신 게시할 때 — 상호·담당자 이름·연락처, 목적 거래 연결, 보관 매물 마감 후 1년"). 시행일·`TERMS_VERSION` 등 버전 상수는 그대로(재동의 요구 없음).
+- **공유 코드**: `src/lib/sellerPrivate.ts`(parseSellerPrivateFields·findLinkableCheck·linkDirectCheck·sellerValueFromRequest), `src/components/admin/SellerPrivateFields.tsx`·`DealSellerPrivateEditor.tsx`, `business-checks?unlinked=1`.
+- **배포 후 대표 할 일**: 기존 실매물 4건(2026-10-03 등록분)은 관리자 화면 매물 수정 카드에서 "실제 판매자"를 채우고, 필요하면 사업자 조회 후 기록 연결. **운영 DB 쓰기·마이그레이션 없음.**
+- **다음 PR(별도)**: 가격 협의(price_mode) — 사전 조사 결과는 대화에 있음(NOT NULL 해제·CHECK·푸시 본문 "0원" 방지·카드/상세/MY 분기).
+
 ## 최근 작업 (2026-10-05) — robots `/api` 차단 · 푸시 tag·urgency·TTL 보강 (브랜치 `fix/push-sound-robots`) — 소리 원인은 기기 알림 설정(코드로 변경 불가)
 
 - **PR #62 병합 기록**(docs): 병합 커밋 `f31520e` · 배포(Deploy to Vercel) run 37182436912 성공(2026-10-04 06:18Z).
@@ -79,8 +97,11 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
   web-push·Supabase를 가짜로 바꿔 실제 sendPush.ts를 돌린 시험: 새 코드는 매물·공지·관리자 3경로 모두 `urgency high · TTL 21600`·tag `deal-D1`·`notice-N1`·관리자 기본 tag 매번 다름,
   옛 코드는 옵션 없음·관리자 기본 tag `admin-lead` 고정(시험 유효) · 로컬 /robots.txt `Disallow: /api` 확인.
   (#62 때는 `.env.local`의 실제 env로 로컬 build를 돌려 prerender가 운영 Supabase를 읽었음 — 이후 로컬 build는 가짜 env만.)
-- **운영 확인 방법(대표)**: merge + Deploy to Vercel 초록 → 휴대폰 설치 앱 한 번 열었다 닫기(sw 갱신) → 낮 시간 관리자 [테스트] 발송 2건 연속 → 두 번 다 소리·진동 /
-  https://dumpingjumping.com/robots.txt 에 `Disallow: /api` 확인.
+- **#63 병합 기록**: 병합 커밋 `2b0b6ff`(2026-10-04 06:41Z) · 배포(Deploy to Vercel) run 37183544800 성공 · PR CI run 37183484347 성공.
+  robots 운영 확인 통과(대표 전달 — 재확인 아님) · 소리 원인은 위 "기기 알림 설정" 확정(켠 뒤 정상, 대표 전달).
+- **운영 확인 방법 정정(10/4)**: 처음엔 "[테스트] 2건 연속 발송"으로 적었으나, **[테스트] 매물도 매물 알림 동의·구독 회원 전원에게 간다**(제목 접두어·`is_test`로 수신 대상을 가르는 코드 없음 —
+  `sendPush.ts` sendDealPush, 21~08시는 보류 후 아침 8시 cron). 그래서 확인은 "**실매물을 낮(08~21시)에 등록해서**" 한다:
+  merge + Deploy 초록 → 휴대폰 설치 앱 한 번 열었다 닫기(sw 갱신) → 낮 시간 실매물 등록 → 소리·진동 / https://dumpingjumping.com/robots.txt 에 `Disallow: /api` 확인.
 
 ## 최근 작업 (2026-10-04) — PR #61 병합 기록 · F-1 완료 판정 · PC 비회원 화면 사전 점검 (브랜치 `docs/progress-61-f1-guest-check`, 기록만)
 

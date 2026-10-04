@@ -55,5 +55,8 @@ export function statusLabel(code: string | null): string {
   return "확인 대기";
 }
 
+/** 상호 비교용 — 공백·(주)·주식회사 무시, 대소문자 무시 */
+export const normCompany = (v: string | null | undefined) => (v ?? "").replace(/\s+/g, "").replace(/\(주\)|（주）|주식회사/g, "").toLowerCase();
+
 export const NOT_CHECKED_MESSAGE = "사업자 조회 후 등록할 수 있어요";
 export const ALREADY_HANDLED_MESSAGE = "이미 처리된 신청이에요";

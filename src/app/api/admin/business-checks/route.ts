@@ -5,6 +5,7 @@ import { writeAudit } from "@/lib/adminAudit";
 import { maskBizNo, normalizeBizNo, normalizeOpenDate, ntsValidate } from "@/lib/nts";
 import { normalizePhone } from "@/lib/phone";
 import type { BusinessCheck } from "@/lib/businessCheck";
+import { PASSING_OR } from "@/lib/sellerPrivate";
 
 // 2026-10-04 판매자 신원 확인 — 사업자 조회(국세청 진위확인·상태조회) 기록. 3역할 모두 조회 가능, 예외 확인은 [id]/exception.
 // 응답·감사 로그에는 사업자번호 전체를 넣지 않음(maskBizNo "123-45-*****"). [다시 조회]는 recheckOf(조회 id)로 서버가 저장된 값을 씀.
@@ -72,6 +73,23 @@ export async function GET(req: NextRequest) {
       phoneMatch[r.id as string] = memberPhone ? memberPhone === normalizePhone(r.contact_phone as string) : null;
     }
     return NextResponse.json({ items: await toClient(db, (checks.data ?? []) as Row[]), phoneMatch });
+  }
+
+  // 2026-10-04 feat/deal-seller-private: 매물에 붙일 수 있는 조회 — 신청 없이 조회했고(seller_request_id null) 아직 매물에 안 붙은(deal_id null)
+  // validate 행 중 통과(진위 일치 또는 예외 확인)만, 조회 후 7일 이내만. 등록·수정 폼의 "사업자 조회 기록" 선택 목록(자동 선택 없음)
+  if (sp.get("unlinked") === "1") {
+    const { data, error } = await db
+      .from("seller_business_checks")
+      .select(COLUMNS)
+      .is("seller_request_id", null)
+      .is("deal_id", null)
+      .eq("kind", "validate")
+      .or(PASSING_OR)
+      .gte("checked_at", new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()) // 최근 7일만 — 오래된 조회를 다른 매물에 잘못 붙이지 않게
+      .order("checked_at", { ascending: false })
+      .limit(50);
+    if (error) return NextResponse.json({ error: "조회 기록을 불러오지 못했어요." }, { status: 500 });
+    return NextResponse.json({ items: await toClient(db, (data ?? []) as Row[]) });
   }
 
   // 최근 50건

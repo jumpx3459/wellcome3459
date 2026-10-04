@@ -25,7 +25,7 @@ export type AuditAction =
   | "connection_step" // 2026-10-04 F-4: 거래 연결 단계 변경 (detail: deal_id, from, to, method, result·금액 — 메모는 이력 표에만)
   | "connection_phone_view" // 2026-10-04 F-4: 연결 구매자 번호 전체 보기 (detail: phoneTail만)
   | "seller_private_view" // 2026-10-04 F-4: 판매자 비공개 정보 조회 (detail: deal_id)
-  | "seller_private_save"; // 2026-10-04 F-4: 판매자 비공개 정보 저장 (detail: deal_id, 바뀐 칸 이름, 연락처는 phoneTail)
+  | "seller_private_save"; // 2026-10-04 F-4: 판매자 비공개 정보 저장 (detail: via[deal_create|deal_edit|seller_request_approve|connection_board], 바뀐 칸 이름, 연락처는 phoneTail, 조회 행 연결 시 linked_check_id)
 
 export const phoneTail = (p: string | null | undefined) => {
   const d = (p ?? "").replace(/[^0-9]/g, "");
