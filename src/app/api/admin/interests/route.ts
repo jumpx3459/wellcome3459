@@ -45,27 +45,44 @@ export async function GET(req: NextRequest) {
 
   // 2026-10-03 F-3a: 판매자 연결 동의 배지 — deal_connections.source_id가 interests.id / quick_leads.id (읽기 전용).
   // 조회 실패해도 목록은 그대로(배지만 없음)
-  // 2026-10-04 F-4: 연결 기록이 있는 리드(has_connection)는 리드 카드에서 [성사]·[불발] 대신 "연결 보드에서 처리"
+  // 2026-10-04 F-4: 연결 기록이 있는 리드(has_connection)는 리드 카드에서 [성사]·[불발] 대신 "연결 보드에서 처리".
+  // connection_state: 진행 중 연결이 하나라도 있으면 open, 없으면 가장 최근 종료 연결이 취소면 cancelled, 아니면 closed(성사·불발 — 리드 outcome에 반영됨)
   const ids = [...(memberData ?? []), ...(quickData ?? [])].map((d) => d.id);
   const consentBySource = new Map<string, string>();
   const connectedSources = new Set<string>();
+  const latestState = new Map<string, { open: boolean; closedAt: string; cancelled: boolean }>();
   if (ids.length) {
     const { data: connRows, error: connError } = await supabaseAdmin
       .from("deal_connections")
-      .select("source, source_id, consent_at")
+      .select("source, source_id, consent_at, status, result, closed_at")
       .in("source", ["interest", "quick_lead"])
       .in("source_id", ids);
     if (connError) console.error("[admin/interests] 연결 조회 실패", connError.code, connError.message);
     for (const c of connRows ?? []) {
       const key = `${c.source}:${c.source_id}`;
       connectedSources.add(key);
+      const prevState = latestState.get(key) ?? { open: false, closedAt: "", cancelled: false };
+      if (c.status !== "closed") prevState.open = true;
+      else if ((c.closed_at ?? "") >= prevState.closedAt) {
+        prevState.closedAt = c.closed_at ?? "";
+        prevState.cancelled = c.result === "cancelled";
+      }
+      latestState.set(key, prevState);
       if (!c.consent_at) continue;
       const prev = consentBySource.get(key);
       if (!prev || c.consent_at > prev) consentBySource.set(key, c.consent_at);
     }
   }
 
-  const withConnection = (key: string) => ({ connection_consent_at: consentBySource.get(key) ?? null, has_connection: connectedSources.has(key) });
+  const connectionState = (key: string): "open" | "cancelled" | "closed" | null => {
+    const st = latestState.get(key);
+    return !st ? null : st.open ? "open" : st.cancelled ? "cancelled" : "closed";
+  };
+  const withConnection = (key: string) => ({
+    connection_consent_at: consentBySource.get(key) ?? null,
+    has_connection: connectedSources.has(key),
+    connection_state: connectionState(key),
+  });
   const merged = [
     ...(memberData ?? []).map((d) => ({ ...d, source: "member" as const, ...withConnection(`interest:${d.id}`) })),
     ...(quickData ?? []).map((d) => ({ ...d, source: "quick" as const, ...withConnection(`quick_lead:${d.id}`) })),

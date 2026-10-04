@@ -65,7 +65,8 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - **KPI 맞추기**: 연결 source가 interest/quick_lead면 원본 리드에 진행 단계 `contacted=true`, ⑥ 성사·불발이면 `outcome`(completed · no_deal)·`completed_amount`·`completed_at`(리드 카드 PATCH와 같은 값, service role).
   **⑥ 취소는 연결에 result='cancelled'만 — 리드는 `contacted=true`만, outcome·금액은 그대로**(내부 시험 연결 정리가 성사율에 섞이지 않게, 취소≠불발).
   취소된 연결의 리드는 outcome pending으로 남음 → 대시보드 "리드 성사율"(성사/(성사+불발))·카테고리 완료율 분모에서 빠지고, 리드 수·"진행중" 필터에는 남음, 미연락 수에서는 빠짐.
-  리드 카드: 연결 기록이 있는 리드는 [성사]·[불발] 대신 [연결 보드에서 처리].
+  리드 카드: 연결 기록이 있는 리드는 [성사]·[불발] 대신 [연결 보드에서 처리]. 연결이 취소로 끝난 리드는 버튼 없이 회색 "연결 취소됨"만
+  (`/api/admin/interests`의 `connection_state`: 진행 중 연결이 있으면 open, 없으면 가장 최근 종료가 취소면 cancelled, 성사·불발이면 closed — 리드 outcome의 기존 결과 표시).
 - **버튼 문구**(10/4 수정): 단계 번호 대신 누르면 되는 일 — [내가 맡기]·[판매자 확인 완료]·[구매자에게 안내 완료]·[판매자에게 번호 전달]·[결과 기록(성사·불발·취소)],
   번호(② 접수 ~ ⑥ 결과)는 버튼 위 작은 표시. 지난 단계는 "✓ 맡은 사람 있음"·"✓ 판매자 확인됨" 등.
 - **③ 상호 안내 허락**: 체크 → `deal_seller_private.name_disclosure_ok/at`(없으면 행 생성: 판매 신청 매물 seller_request+신청 id, 직접 등록 admin_direct). ④는 막지 않고 "상호 안내 허락됨 / 상호 비공개로 안내" 표시.

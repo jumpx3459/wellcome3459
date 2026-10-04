@@ -366,6 +366,7 @@ type Interest = {
   source: "member" | "quick";
   connection_consent_at?: string | null; // 2026-10-03 F-3a: 판매자 연결 동의 시각(deal_connections) — 없으면 관심 표시만
   has_connection?: boolean; // 2026-10-04 F-4: 거래 연결 기록 있음 → 성사·불발은 연결 보드에서
+  connection_state?: "open" | "cancelled" | "closed" | null; // 진행 중 / 최근 연결 취소 / 성사·불발로 종료
 };
 
 type BuyRequest = {
@@ -1250,7 +1251,13 @@ function AdminDashboard({
                 {i.contacted ? "✓ 연락완료" : "연락완료"}
               </button>
             {/* 2026-10-04 F-4: 연결 기록이 있는 리드는 성사·불발을 연결 보드 ⑥에서(리드 값도 거기서 함께 갱신) */}
-            {i.outcome === "pending" && i.has_connection && (
+            {/* 연결이 취소로 끝난 리드: 버튼 없이 회색 표시만(리드 outcome은 그대로 — 성사율에 안 섞임) */}
+            {i.outcome === "pending" && i.has_connection && i.connection_state === "cancelled" && (
+              <span className="self-center font-bold px-2.5 py-1 rounded-full whitespace-nowrap bg-gray100 text-gray500" style={{ fontSize: rem(14) }} data-testid="lead-conn-cancelled">
+                연결 취소됨
+              </span>
+            )}
+            {i.outcome === "pending" && i.has_connection && i.connection_state !== "cancelled" && (
               <button
                 type="button"
                 onClick={() => jumpToSection("connections", () => setConnectionsOpen(true))}
