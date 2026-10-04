@@ -50,6 +50,23 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
+## 최근 작업 (2026-10-05) — 푸시 sw.js 태그 보강 · robots `/api` 차단 (브랜치 `fix/push-sound-robots`)
+
+- **PR #62 병합 기록**(docs): 병합 커밋 `f31520e` · 배포(Deploy to Vercel) run 37182436912 성공(2026-10-04 06:18Z).
+- **F-1 운영 확인 통과(10/5, 대표 조회)**: interests 6행 전부 pending·contacted true·금액 없음 → 의심 행 0 · members 보호 트리거 6개 전부 존재 · interests UPDATE false 유지 ·
+  interests INSERT completed_amount true(**남은 구멍 — 공개 후 1~2주**, 위 F-1 판정 참고).
+- **조사(public/sw.js showNotification 옵션)**: body·icon·badge `/icon-192.png`·image(payload)·data{url,logId}·requireInteraction false·renotify true·tag(payload.tag 없으면 고정 `jumpingbid-deal`)·silent false·vibrate [200,100,200]·actions(view·dismiss).
+  **silent는 이미 false**(#20 이후 무음 옵션 없음). 서버가 보내는 tag는 이미 매물별 `deal-<id>`·긴급 공지 `notice-<id>`(sendPush.ts), 관리자 알림은 `admin-lead`(기본)·`admin-connection-<시각>-<난수>`.
+  긴급 공지도 같은 sw.js 경로(별도 옵션 없음). 즉 서버가 tag를 보내는 경우 새·옛 sw.js 동작이 같음.
+  **원인 판정**: sw.js 옵션(silent·고정 tag)은 소리 안 나는 원인이 아님(이미 해소) — 이 수정은 tag 없는 payload 방어. 실제 무음이 계속되면 sw.js 밖(발송 경로·기기 알림 채널·방해금지·Chrome 조용한 알림)을 봐야 하며 운영 확인(아래)으로 가림.
+- **수정(sw.js만)**: tag는 payload.tag → 없으면 url `/deals/<id>`에서 `deal-<id>` → 그것도 없으면 tag 없음. renotify:true는 tag가 있을 때만(tag 없이 renotify:true면 showNotification이 TypeError). 고정 tag `jumpingbid-deal` 삭제.
+  제목·본문·(광고)·클릭 주소·nid 처리·vibrate·requireInteraction 그대로. 야간 보류는 서버 담당(sw.js에 시간 조건 없음).
+- **robots**: `src/app/robots.ts` disallow에 `/api` 추가(`/admin`·`/mypage`·`/api`). og:image·sitemap·manifest는 `/api` 아래가 아니라(Supabase Storage·`/images`·`/manifest.json`) Allow 예외 불필요.
+- **검증(운영 호출 0건)**: 가짜 env로 build 통과(빌드 산출물(.next 캐시 제외)에 운영 Supabase 주소 없음) · sw.js vm 시험: 새 sw는 매물 A·B·긴급 공지 tag 서로 다름·silent 없음(false)·renotify true·vibrate 유지·tag 없는 payload는 tag·renotify 없음,
+  옛 sw는 tag 없는 payload가 고정 `jumpingbid-deal`로 교체됨(차이는 이 경우만) · 로컬 /robots.txt에 `Disallow: /api` 확인.
+- **운영 확인 방법(대표)**: merge + Deploy to Vercel 초록 → 휴대폰 설치 앱 한 번 열었다 닫기(sw 갱신) → 낮 시간 관리자 [테스트] 발송 2건 연속 → 두 번 다 소리·진동 /
+  https://dumpingjumping.com/robots.txt 에 `Disallow: /api` 확인.
+
 ## 최근 작업 (2026-10-04) — PR #61 병합 기록 · F-1 완료 판정 · PC 비회원 화면 사전 점검 (브랜치 `docs/progress-61-f1-guest-check`, 기록만)
 
 - **PR #61 F-4 병합**: 병합 커밋 `5ab3bf4` · 배포(Deploy to Vercel) run 37179769308 성공(2026-10-04 05:24Z).
