@@ -2,13 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkAdminAuth } from "@/lib/adminAuth";
 import { phoneTail, writeAudit } from "@/lib/adminAudit";
 import { UUID_RE } from "@/lib/rateLimit";
-import { normalizePhone } from "@/lib/phone";
-import { linkedSellerRequest, saveSellerPrivate } from "@/lib/sellerPrivate";
+import { linkedSellerRequest, parseSellerPrivateFields, saveSellerPrivate, type SellerPrivateVia } from "@/lib/sellerPrivate";
 
 // 2026-10-04 F-4 연결 상세 — 판매자 비공개 정보(상호·담당자·연락처 + 메모). 연결 id로 받아 그 매물의 deal_seller_private 1행.
 // GET: 저장된 값(없으면 null) + 판매 신청 매물이고 3칸이 비었으면 신청 정보(suggest, 처음 채울 때 참고 — ③ 허락만 저장된 행 포함). PUT: 저장(연락처 normalizePhone).
 // 조회·저장 모두 감사 로그 — detail에 값은 넣지 않음(바뀐 칸 이름·연락처 뒤 4자리만).
-const MAX = { companyName: 100, contactName: 50, memo: 200 } as const;
 
 async function dealOf(db: import("@supabase/supabase-js").SupabaseClient, id: string) {
   const { data, error } = await db.from("deal_connections").select("id, deal_id").eq("id", id).maybeSingle();
@@ -55,17 +53,8 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/admin/connec
   const { id } = await ctx.params;
   if (!UUID_RE.test(id)) return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
-  const text = (k: keyof typeof MAX) => (typeof body?.[k] === "string" ? (body[k] as string).trim() : "");
-  const companyName = text("companyName");
-  const contactName = text("contactName");
-  const memo = text("memo");
-  for (const k of Object.keys(MAX) as (keyof typeof MAX)[]) {
-    if (text(k).length > MAX[k]) return NextResponse.json({ error: `${MAX[k]}자까지 적을 수 있어요.`, field: k }, { status: 400 });
-  }
-  const contactPhone = normalizePhone(typeof body?.contactPhone === "string" ? body.contactPhone : "");
-  if (contactPhone && !/^[0-9]{8,11}$/.test(contactPhone)) {
-    return NextResponse.json({ error: "연락처는 숫자 8~11자리로 적어주세요.", field: "contactPhone" }, { status: 400 });
-  }
+  const parsed = parseSellerPrivateFields(body, { requireCompany: false, requirePhone: false, withMemo: true });
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error, field: parsed.field }, { status: 400 });
 
   const db = auth.db;
   const { deal, error } = await dealOf(db, id);
@@ -77,7 +66,7 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/admin/connec
     .select("company_name, contact_name, contact_phone, memo")
     .eq("deal_id", deal.deal_id)
     .maybeSingle();
-  const next = { company_name: companyName || null, contact_name: contactName || null, contact_phone: contactPhone || null, memo: memo || null };
+  const next = { ...parsed.value, memo: parsed.value.memo ?? null };
   const saved = await saveSellerPrivate(db, deal.deal_id, auth.admin.id, next);
   if (!saved.ok) {
     console.error("[admin/connections/seller] 저장 실패", saved.message);
@@ -89,7 +78,7 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/admin/connec
     action: "seller_private_save",
     targetType: "deal",
     targetId: deal.deal_id,
-    detail: { connection_id: id, created: saved.created, changed, contact_phone: phoneTail(next.contact_phone) },
+    detail: { via: "connection_board" satisfies SellerPrivateVia, connection_id: id, created: saved.created, changed, contact_phone: phoneTail(next.contact_phone) },
   });
   return NextResponse.json({ ok: true });
 }

@@ -8,6 +8,8 @@ import ImageUploader, { type ImageUploadStatus, type ImageUploaderHandle } from 
 import VideoUploader, { type VideoUploadStatus, type VideoUploaderHandle } from "@/components/VideoUploader";
 import VideoNotUploadedSheet, { PHOTO_FAILED_DESCRIPTION, uploadingLabel, videoNotUploaded } from "@/components/VideoNotUploadedSheet";
 import SellerDisplayPicker from "@/components/SellerDisplayPicker";
+import SellerPrivateFields, { EMPTY_SELLER_PRIVATE, type SellerPrivateDraft } from "@/components/admin/SellerPrivateFields";
+import DealSellerPrivateEditor from "@/components/admin/DealSellerPrivateEditor";
 import { publicSellerName } from "@/lib/sellerDisplay";
 import { isTestTitle } from "@/lib/categoryAvg";
 import { formatPhoneTyping } from "@/lib/auth";
@@ -2906,6 +2908,9 @@ function ActiveDealCard({
             <SellerDisplayPicker idPrefix={`deal-${deal.id}`} isPublic={seller.isPublic} companyName={seller.companyName} onChange={setSeller} />
           </div>
 
+          {/* 2026-10-04: 실제 판매자(내부 전용) — 구매자에게 보이지 않음. 매물 내용 저장과 별개로 저장(알림 재발송 없음) */}
+          <DealSellerPrivateEditor adminKey={adminKey} dealId={deal.id} onToast={showToast} />
+
           <button
             onClick={() => saveAll()}
             disabled={saving || busyLabel !== null}
@@ -3073,6 +3078,8 @@ function DealForm({
   const [manifestItems, setManifestItems] = useState<ManifestRow[]>(prefill?.manifestItems ?? []);
   // 2026-09-30: 판매자 표시 — 기본 대리 게시(비공개)
   const [seller, setSeller] = useState({ isPublic: prefill?.sellerPublic ?? false, companyName: prefill?.sellerCompanyName ?? "" });
+  // 2026-10-04: 직접 등록(판매 신청 아님)의 실제 판매자(내부 전용)·연결할 사업자 조회 — 판매 신청 승인은 신청 정보를 쓰므로 칸을 숨김
+  const [sellerPrivate, setSellerPrivate] = useState<SellerPrivateDraft>(EMPTY_SELLER_PRIVATE);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<DealField, string>>>({});
@@ -3090,6 +3097,7 @@ function DealForm({
   const focusField = (field: DealField | "description") => {
     if (field === "category") setOpenDeal(true); // 거래 조건
     if (field === "minOrderQty" || field === "expiryDate" || field === "description") setOpenDetail(true); // 제품 상세
+    if (field === "sellerPrivateCompany" || field === "sellerPrivatePhone" || field === "sellerPrivateName" || field === "businessCheckId") setOpenSeller(true); // 판매자 정보
     setTimeout(() => {
       const el = document.getElementById(`deal-${field}`);
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -3108,7 +3116,7 @@ function DealForm({
   const snapshot = JSON.stringify([
     title, stockType, category, region, originalPrice, dealPrice, totalQty, quantityUnit, priceUnit, minOrderQty, location,
     closesInHours, images, videoUrl, videoStatus, photoStatus, description, packageUnit, origin, spec, storageType, expiryDate,
-    pid, manifestItems, seller,
+    pid, manifestItems, seller, sellerPrivate,
   ]);
   const [initialSnapshot] = useState(snapshot);
   const dirty = snapshot !== initialSnapshot;
@@ -3137,6 +3145,13 @@ function DealForm({
     if (!lumpSum && minOrderQty.trim() && !(Number(minOrderQty) > 0)) errs.minOrderQty = "최소 주문량은 0보다 커야 해요.";
     else if (!lumpSum && minOrderQty.trim() && qty > 0 && Number(minOrderQty) > qty) errs.minOrderQty = "최소주문량은 재고 총수량보다 클 수 없어요.";
     if (stockType === "near_expiry" && !expiryDate) errs.expiryDate = EXPIRY_REQUIRED_MESSAGE;
+    if (!requestId) {
+      if (!sellerPrivate.company.trim()) errs.sellerPrivateCompany = "실제 판매자 상호를 입력해주세요.";
+      const sellerPhone = normalizePhone(sellerPrivate.phone);
+      if (!sellerPhone) errs.sellerPrivatePhone = "실제 판매자 연락처를 입력해주세요.";
+      else if (!/^[0-9]{8,11}$/.test(sellerPhone)) errs.sellerPrivatePhone = "연락처는 숫자 8~11자리로 적어주세요.";
+      if (!sellerPrivate.checkId) errs.businessCheckId = NOT_CHECKED_MESSAGE;
+    }
     return errs;
   };
 
@@ -3223,6 +3238,14 @@ function DealForm({
           manifestItems: manifestItems.length ? manifestItems : null,
           sellerPublic: seller.isPublic,
           sellerCompanyName: seller.companyName,
+          ...(requestId
+            ? {}
+            : {
+                sellerPrivateCompany: sellerPrivate.company,
+                sellerPrivateName: sellerPrivate.name,
+                sellerPrivatePhone: sellerPrivate.phone,
+                businessCheckId: sellerPrivate.checkId,
+              }),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -3599,8 +3622,25 @@ function DealForm({
             </div>
           </FormAccordion>
 
-          <FormAccordion id="deal-sec-seller" title="판매자 정보" count={seller.isPublic ? 1 : 0} open={openSeller} onToggle={() => setOpenSeller((v) => !v)}>
+          <FormAccordion id="deal-sec-seller" title="판매자 정보" count={(seller.isPublic ? 1 : 0) + (!requestId ? [sellerPrivate.company, sellerPrivate.phone, sellerPrivate.name, sellerPrivate.checkId].filter(Boolean).length : 0)} open={openSeller} onToggle={() => setOpenSeller((v) => !v)}>
             <SellerDisplayPicker idPrefix="deal-new" isPublic={seller.isPublic} companyName={seller.companyName} onChange={setSeller} />
+            {!requestId && (
+              <div className="mt-3">
+                <SellerPrivateFields
+                  adminKey={adminKey}
+                  idPrefix="deal"
+                  value={sellerPrivate}
+                  onChange={(n) => {
+                    setSellerPrivate(n);
+                    setFieldErrors((prev) => ({ ...prev, sellerPrivateCompany: undefined, sellerPrivatePhone: undefined, sellerPrivateName: undefined, businessCheckId: undefined }));
+                  }}
+                  errors={{ company: fieldErrors.sellerPrivateCompany, phone: fieldErrors.sellerPrivatePhone, name: fieldErrors.sellerPrivateName, checkId: fieldErrors.businessCheckId }}
+                  showCheckPicker
+                  onGoBizCheck={() => document.getElementById("business-check")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  disabled={submitting}
+                />
+              </div>
+            )}
           </FormAccordion>
         </div>
       </div>
@@ -3728,9 +3768,9 @@ function requestPrefill(r: SellerRequest) {
   };
 }
 
-type DealField = "title" | "category" | "region" | "originalPrice" | "dealPrice" | "totalQty" | "minOrderQty" | "expiryDate";
+type DealField = "title" | "category" | "region" | "originalPrice" | "dealPrice" | "totalQty" | "minOrderQty" | "expiryDate" | "sellerPrivateCompany" | "sellerPrivatePhone" | "sellerPrivateName" | "businessCheckId";
 // 화면 위→아래 순서 (첫 누락 칸 포커스용) — 2026-10-01 2차: ① 매물명·판매/정상 단가·재고 총수량·지역 → 제품 상세(MOQ·소비기한) → 거래 조건(카테고리)
-const DEAL_FIELD_ORDER: DealField[] = ["title", "dealPrice", "originalPrice", "totalQty", "region", "minOrderQty", "expiryDate", "category"];
+const DEAL_FIELD_ORDER: DealField[] = ["title", "dealPrice", "originalPrice", "totalQty", "region", "minOrderQty", "expiryDate", "category", "sellerPrivateCompany", "sellerPrivatePhone", "sellerPrivateName", "businessCheckId"];
 
 // 붙인 입력 그룹(한 테두리) — [입력 | 원 / 단위] (2026-10-01 2차)
 const GROUP_INPUT_CLS = "flex-1 min-w-0 px-3 py-2.5 text-[0.8889rem] outline-none bg-transparent";
