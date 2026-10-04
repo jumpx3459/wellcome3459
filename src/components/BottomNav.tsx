@@ -4,7 +4,7 @@ import TabLink from "@/components/TabLink";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Flame } from "lucide-react";
-import { HouseIcon, MagnifyingGlassIcon, BellIcon, HandshakeIcon, UserIcon } from "@phosphor-icons/react";
+import { HouseIcon, MagnifyingGlassIcon, UserPlusIcon, HandshakeIcon, UserIcon } from "@phosphor-icons/react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { rem } from "@/lib/rem";
 import { withReturnTo } from "@/lib/safeReturnTo";
@@ -23,7 +23,8 @@ const BASE_TABS = [
   { href: "/buy", label: "찾습니다", icon: MagnifyingGlassIcon, lib: "phosphor" as const },
 ];
 
-const ALERT_TAB = { href: "/signup", label: "알림", icon: BellIcon, lib: "phosphor" as const };
+// 2026-10-04 4.5: 비회원 4번째 탭 "알림" → "가입" — 관심있어요(번호 입력)와 알림을 헷갈리지 않게 가입 경로를 하나로
+const SIGNUP_TAB = { href: "/signup", label: "가입", icon: UserPlusIcon, lib: "phosphor" as const };
 const SHARE_TAB = { href: "/mypage#referral", label: "공유", icon: HandshakeIcon, lib: "phosphor" as const };
 const MY_TAB = { href: "/mypage", label: "MY", icon: UserIcon, lib: "phosphor" as const };
 
@@ -31,12 +32,12 @@ type Tab = (Omit<typeof MY_TAB, "href"> & { href: string }) | (typeof BASE_TABS)
 
 export default function BottomNav() {
   const pathname = usePathname();
-  // 2026-09-28: 세션 확인 전엔 "unknown" — 예전엔 초기값 false라 회원도 잠깐 "알림" 탭이
+  // 2026-09-28: 세션 확인 전엔 "unknown" — 예전엔 초기값 false라 회원도 잠깐 "알림"(지금은 "가입") 탭이
   // 보였다가 "공유"로 바뀌었음. 확인 전엔 4번째 칸을 중립 자리표시로 둔다.
   const [auth, setAuth] = useState<"unknown" | "member" | "guest">(isSupabaseConfigured ? "unknown" : "guest");
   // usePathname엔 #이 없어서 해시를 따로 추적 (/mypage#referral에서만 "공유" 활성)
   const [hash, setHash] = useState("");
-  // 비회원 "알림" 탭이 지금 보던 화면(매물 상세 등)으로 돌아오게 returnTo에 붙일 쿼리 — useSearchParams는 루트 레이아웃에서
+  // 비회원 "가입" 탭이 지금 보던 화면(매물 상세 등)으로 돌아오게 returnTo에 붙일 쿼리 — useSearchParams는 루트 레이아웃에서
   // Suspense 없이 쓰면 빌드가 깨져서 경로가 바뀔 때 window에서 직접 읽음
   const [search, setSearch] = useState("");
 
@@ -54,7 +55,11 @@ export default function BottomNav() {
   useEffect(() => {
     const sync = () => {
       setHash(window.location.hash);
-      setSearch(window.location.search);
+      // 가입 후 자동 관심 기록이 따라가지 않게 autoInterest는 returnTo에서 뺌(옛 링크로 들어온 경우)
+      const q = new URLSearchParams(window.location.search);
+      q.delete("autoInterest");
+      const qs = q.toString();
+      setSearch(qs ? `?${qs}` : "");
     };
     // 경로가 바뀔 때마다 현재 해시 반영. Next Link의 같은 페이지 해시 이동은 hashchange가 안 날 수 있어
     // 탭 클릭 시에도 직접 갱신한다(아래 onClick).
@@ -77,8 +82,8 @@ export default function BottomNav() {
     return path.startsWith(tab.href.split(/[#?]/)[0]);
   };
 
-  const alertTab = { ...ALERT_TAB, href: withReturnTo("/signup", `${path}${search}`) };
-  const fourth = auth === "member" ? SHARE_TAB : auth === "guest" ? alertTab : null;
+  const signupTab = { ...SIGNUP_TAB, href: withReturnTo("/signup", `${path}${search}`) };
+  const fourth = auth === "member" ? SHARE_TAB : auth === "guest" ? signupTab : null;
   const TABS: (Tab | null)[] = [...BASE_TABS, fourth, MY_TAB];
 
   return (
