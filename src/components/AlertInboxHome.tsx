@@ -16,6 +16,7 @@ import { matchesCategory } from "@/lib/dealMatching";
 import { EXAMPLE_DEALS, shouldShowExamples } from "@/lib/exampleDeals";
 import { rem } from "@/lib/rem";
 import StockTypeBadge from "@/components/StockTypeBadge";
+import PriceText from "@/components/PriceText";
 import DealCardMedia from "@/components/DealCardMedia";
 import MemberPriceTeaser from "@/components/MemberPriceTeaser";
 import { selectWithPriceAccess, dealPriceFields, cardDiscountPct } from "@/lib/dealPriceAccess";
@@ -23,7 +24,6 @@ import { dealPriceLabel, isNegotiable } from "@/lib/priceMode";
 import NegotiablePrice from "@/components/NegotiablePrice";
 import type { DealRowLoose } from "@/lib/dealFields";
 import { SECTION_TITLE_STYLE } from "@/components/EcosystemGrid";
-import { isLumpSum } from "@/lib/priceUnit";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 import { useBackToClose } from "@/lib/useBackToClose";
 
@@ -298,10 +298,10 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
 
       {groups.map((g, gi) => (
         <div key={g.label}>
-          <div className="flex items-center gap-2" style={{ padding: "18px 20px 9px" }}>
-            <span className="font-black" style={{ fontSize: rem(12), color: "#0B2540", letterSpacing: "0.02em" }}>{g.label}</span>
+          <div className="flex items-center gap-2" style={{ padding: "12px 20px 6px" }}>
+            <span className="font-black" style={{ fontSize: rem(14), color: "#0B2540", letterSpacing: "0.02em" }}>{g.label}</span>
             <span className="flex-1" style={{ height: 1, background: "#EEF0F2" }} />
-            <span className="font-mono font-bold" style={{ fontSize: rem(11), color: "#6B7480" }}>{g.items.length}건</span>
+            <span className="font-mono font-bold" style={{ fontSize: rem(13), color: "#6B7480" }}>{g.items.length}건</span>
           </div>
           {g.items.map((d, di) => {
             const cd = formatCountdown(d.closes_at);
@@ -311,9 +311,9 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                 key={d.id}
                 href={`/deals/${d.id}`}
                 className="block w-full text-left"
-                style={{ borderBottom: "1px solid #F1F3F5", padding: "14px 20px", background: "#fff" }}
+                style={{ borderBottom: "1px solid #F1F3F5", padding: "10px 20px", background: "#fff" }}
               >
-                <div className="flex items-center gap-1.5" style={{ marginBottom: 8 }}>
+                <div className="flex items-center gap-1.5" style={{ marginBottom: 6 }}>
                   <span style={{ fontSize: rem(12), color: "#6B7480" }}>{d.location}</span>
                   {/* 넓은 카드는 남은 시간이 사진 오른쪽 위(DealCardMedia), 좁은 썸네일 카드만 여기 */}
                   {!wideLayout && (
@@ -345,7 +345,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                         if (e.key === "Enter" || e.key === " ") openViewer(e as unknown as React.MouseEvent, d.images!, d.video_url ?? null);
                       }}
                       className="relative rounded-xl overflow-hidden flex-shrink-0"
-                      style={{ width: 96, height: 96 }}
+                      style={{ width: 140, height: 140 }}
                     >
                       <img src={d.images[0]} alt={d.title} className="w-full h-full object-cover" />
                       {d.video_url && (
@@ -354,7 +354,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                         </span>
                       )}
                       {d.images.length > 1 && (
-                        <span className="absolute bottom-1 right-1 rounded font-bold text-white" style={{ fontSize: rem(9), padding: "0 4px", background: "rgba(0,0,0,.5)", lineHeight: 1.5 }}>
+                        <span className="absolute bottom-1 right-1 rounded font-bold text-white" style={{ fontSize: rem(8), padding: "0 3px", background: "rgba(0,0,0,.5)", lineHeight: 1.5 }}>
                           1/{d.images.length}
                         </span>
                       )}
@@ -362,24 +362,17 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                   ) : (
                     <span
                       className="rounded-xl overflow-hidden flex-shrink-0 block"
-                      style={{ width: 96, height: 96 }}
+                      style={{ width: 140, height: 140 }}
                     >
                       <NoPhotoPlaceholder category={d.category} size="sm" />
                     </span>
                   )}
                   <span className="flex-1 min-w-0" style={{ overflowX: "clip", overflowWrap: "anywhere" }}>
                     {d.stock_type && d.stock_type !== "general" && <StockTypeBadge value={d.stock_type} className="mb-1" />}
-                    <span className="block font-bold leading-snug" style={{ fontSize: rem(16), color: "#1A1F26" }}>{d.title}</span>
-                    <span className="block mt-0.5" style={{ fontSize: rem(12.5), color: "#6B7480" }}>
-                      {d.category} · {d.location} · 잔여 {d.remaining_qty}{d.quantity_unit || "개"}
+                    <span className="block font-bold leading-snug" data-title style={{ fontSize: rem(17), color: "#1A1F26", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{d.title}</span>
+                    <span className="block mt-0.5" style={{ fontSize: rem(14), color: "#374151" }}>
+                      {d.category} · 잔여 {d.remaining_qty}{d.quantity_unit || "개"}
                     </span>
-                    {(d.origin || (d.min_order_qty && !isLumpSum(d.price_unit))) && (
-                      <span className="block mt-0.5" style={{ fontSize: rem(11.5), color: "#9AA3AD" }}>
-                        {d.origin && `🌍 ${d.origin}`}
-                        {d.origin && d.min_order_qty && !isLumpSum(d.price_unit) ? " · " : ""}
-                        {d.min_order_qty && !isLumpSum(d.price_unit) && `MOQ ${d.min_order_qty}${d.quantity_unit || "개"}`}
-                      </span>
-                    )}
                     <span className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mt-1.5">
                       {isNegotiable(d) ? (
                         <NegotiablePrice color="#0B2540" className="text-lg" />
@@ -392,8 +385,8 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                               -{pct}%
                             </span>
                           )}
-                          <span className="font-black whitespace-nowrap" style={{ fontSize: rem(18), color: "#0B2540" }}>{dealPriceLabel(d)}</span>
-                          <span className="whitespace-nowrap" style={{ fontSize: rem(12.5), color: "#6B7480", textDecoration: "line-through" }}>{d.original_price != null ? formatDealPrice(d.original_price, d.quantity_unit, d.price_unit) : ""}</span>
+                          <span className="font-black" style={{ fontSize: rem(18), color: "#0B2540" }}><PriceText text={dealPriceLabel(d)} /></span>
+                          <span style={{ fontSize: rem(12.5), color: "#6B7480", textDecoration: "line-through" }}><PriceText text={d.original_price != null ? formatDealPrice(d.original_price, d.quantity_unit, d.price_unit) : ""} /></span>
                         </>
                       )}
                     </span>
@@ -434,7 +427,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
 
       {loaded && shouldShowExamples(deals.length, isSupabaseConfigured) && (
         <div>
-          <div className="flex items-center gap-2" style={{ padding: "18px 20px 9px" }}>
+          <div className="flex items-center gap-2" style={{ padding: "12px 20px 6px" }}>
             <span style={SECTION_TITLE_STYLE}>💡 이런 매물이 올라와요</span>
             <span className="flex-1" style={{ height: 1, background: "#EEF0F2" }} />
             <span className="text-xs font-bold rounded-full" style={{ padding: "2px 8px", background: "#E9ECEF", color: "#495057" }}>예시</span>
@@ -442,8 +435,8 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
           {EXAMPLE_DEALS.map((d) => {
             const pct = d.original_price && d.deal_price != null ? Math.round(((d.original_price - d.deal_price) / d.original_price) * 100) : 0;
             return (
-              <Link key={`example-${d.id}`} href={`/deals/example-${d.id}`} className="block w-full text-left" style={{ borderBottom: "1px solid #F1F3F5", padding: "14px 20px", opacity: 0.8 }}>
-                <div className="flex items-center gap-1.5" style={{ marginBottom: 8 }}>
+              <Link key={`example-${d.id}`} href={`/deals/example-${d.id}`} className="block w-full text-left" style={{ borderBottom: "1px solid #F1F3F5", padding: "10px 20px", opacity: 0.8 }}>
+                <div className="flex items-center gap-1.5" style={{ marginBottom: 6 }}>
                   <span className="font-black rounded" style={{ fontSize: rem(11.5), padding: "3px 8px", background: "#E9ECEF", color: "#495057" }}>예시</span>
                   <span style={{ fontSize: rem(12), color: "#6B7480" }}>{d.location}</span>
                 </div>
@@ -460,20 +453,13 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                     className="rounded-xl"
                   />
                   <span className="flex-1 min-w-0" style={{ overflowX: "clip", overflowWrap: "anywhere" }}>
-                    <span className="block font-bold leading-snug" style={{ fontSize: rem(16), color: "#1A1F26" }}>{d.title}</span>
-                    <span className="block mt-0.5" style={{ fontSize: rem(12.5), color: "#6B7480" }}>
-                      {d.category} · {d.location} · 잔여 {d.remaining_qty}{d.quantity_unit || "개"}
+                    <span className="block font-bold leading-snug" data-title style={{ fontSize: rem(17), color: "#1A1F26", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{d.title}</span>
+                    <span className="block mt-0.5" style={{ fontSize: rem(14), color: "#374151" }}>
+                      {d.category} · 잔여 {d.remaining_qty}{d.quantity_unit || "개"}
                     </span>
-                    {(d.origin || (d.min_order_qty && !isLumpSum(d.price_unit))) && (
-                      <span className="block mt-0.5" style={{ fontSize: rem(11.5), color: "#9AA3AD" }}>
-                        {d.origin && `🌍 ${d.origin}`}
-                        {d.origin && d.min_order_qty && !isLumpSum(d.price_unit) ? " · " : ""}
-                        {d.min_order_qty && !isLumpSum(d.price_unit) && `MOQ ${d.min_order_qty}${d.quantity_unit || "개"}`}
-                      </span>
-                    )}
                     <span className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mt-1.5">
-                      <span className="font-black whitespace-nowrap" style={{ fontSize: rem(18), color: "#6B7480" }}>{dealPriceLabel(d)}</span>
-                      <span className="whitespace-nowrap" style={{ fontSize: rem(12.5), color: "#9AA3AD", textDecoration: "line-through" }}>{d.original_price != null ? formatDealPrice(d.original_price, d.quantity_unit, d.price_unit) : ""}</span>
+                      <span className="font-black" style={{ fontSize: rem(18), color: "#6B7480" }}><PriceText text={dealPriceLabel(d)} /></span>
+                      <span style={{ fontSize: rem(12.5), color: "#9AA3AD", textDecoration: "line-through" }}><PriceText text={d.original_price != null ? formatDealPrice(d.original_price, d.quantity_unit, d.price_unit) : ""} /></span>
                     </span>
                   </span>
                 </div>

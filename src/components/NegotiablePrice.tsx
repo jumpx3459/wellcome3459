@@ -18,7 +18,7 @@ export default function NegotiablePrice({
         <>
           <span aria-hidden className="font-bold text-gray500"> ·</span>
           <wbr />{" "}
-          <span className="whitespace-nowrap font-bold text-gray500" style={{ fontSize: "0.72em" }}>
+          <span className="font-bold text-gray500" style={{ fontSize: "0.72em", wordBreak: "keep-all" }}>
             {NEGOTIABLE_NOTE}
           </span>
         </>
