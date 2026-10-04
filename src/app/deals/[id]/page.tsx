@@ -20,10 +20,8 @@ import { rem } from "@/lib/rem";
 import { authFetch, getFreshAccessToken, isAuthNetworkError } from "@/lib/authFetch";
 import { SECTION_TITLE_STYLE, SERVICES_ANCHOR_ID, ServiceTilesCompact } from "@/components/EcosystemGrid";
 import StockTypeBadge from "@/components/StockTypeBadge";
-import GuestPrivacyConsent from "@/components/GuestPrivacyConsent";
 import { isLumpSum } from "@/lib/priceUnit";
-import { isValidKoreanPhone } from "@/lib/auth";
-import { CONNECTION_CONSENT_VERSION, TERMS_VERSION } from "@/lib/consent";
+import { CONNECTION_CONSENT_VERSION } from "@/lib/consent";
 import ConnectionConsentSheet from "@/components/ConnectionConsentSheet";
 import PriceText from "@/components/PriceText";
 import { selectWithPriceAccess, dealPriceFields, hasMemberSession, cardDiscountPct } from "@/lib/dealPriceAccess";
@@ -57,12 +55,6 @@ function DealDetailPageInner() {
     mockDeals.find((d) => d.id === (isExampleId ? params.id.slice(8) : params.id)) ?? mockDeals[0]
   );
   const [interested, setInterested] = useState(false);
-  const [showQuickForm, setShowQuickForm] = useState(false);
-  const [quickPhone, setQuickPhone] = useState("");
-  // 2026-09-30: 비회원 [필수] 개인정보 수집·이용 동의 (GuestPrivacyConsent)
-  const [quickConsent, setQuickConsent] = useState(false);
-  const [quickConsentError, setQuickConsentError] = useState(false);
-  const [quickError, setQuickError] = useState<string | null>(null);
   // 2026-09-29: 히어로 사진 넘기기(PhotoCarousel) + 전체 화면(PhotoViewer)
   const [photoIndex, setPhotoIndex] = useState(0);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
@@ -77,16 +69,17 @@ function DealDetailPageInner() {
   const [priceHidden, setPriceHidden] = useState(isSupabaseConfigured);
   // 2026-10-03 F-3a: 판매자 연결 동의(7-1) — 진행 중 연결 여부(unknown = 조회 전·실패), 동의 시트, 비회원 "이미 관심 → 연결 요청" 폼
   const [connection, setConnection] = useState<"unknown" | "none" | "open">("unknown");
-  const [connectSheet, setConnectSheet] = useState<null | "member" | "guest">(null);
+  const [connectSheet, setConnectSheet] = useState<null | "member">(null);
   const [connectBusy, setConnectBusy] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
-  const [guestConnectOnly, setGuestConnectOnly] = useState(false);
   const sellerName = publicSellerName(deal);
 
   // JUMP X 브릿지("JUMP X에서 입찰 참여하기") — 거래 플랫폼이 준비될 때까지는
   // "준비중" 안내만 하고, 클릭은 수요 신호로만 가볍게 기록합니다.
   const [memberId, setMemberId] = useState<string | null>(null);
   const [isMember, setIsMember] = useState(false);
+  // 2026-10-04 4.5: 세션 확인이 끝났는지 — 확인 전엔 하단 버튼을 그리지 않음(회원이 가입 버튼을 잠깐 보는 깜빡임 방지)
+  const [authKnown, setAuthKnown] = useState(!isSupabaseConfigured);
   const [jumpxSheetOpen, setJumpxSheetOpen] = useState(false);
   const [showMessageForm, setShowMessageForm] = useState(false);
   const [messageBody, setMessageBody] = useState("");
@@ -140,8 +133,10 @@ function DealDetailPageInner() {
     if (!isSupabaseConfigured || !supabase) return;
 
     (async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) return;
+      const res = await supabase.auth.getUser().catch(() => null);
+      setAuthKnown(true);
+      const userData = res?.data;
+      if (!userData?.user) return;
       setIsMember(true);
       setMemberId(userData.user.id);
       const { data: member } = await supabase
@@ -222,11 +217,6 @@ function DealDetailPageInner() {
   // 2026-10-01 F-1: 이미 관심 표시한 매물이면 처음부터 "관심 표시 완료" — 회원은 interests(본인 행만 읽힘), 비회원은 이 기기 기록
   useEffect(() => {
     if (isExampleId || !params.id) return;
-    // F-3a: 비회원은 이 기기 기록으로 연결 요청 여부를 판단(서버는 번호 없이 조회 불가)
-    if (readQuickInterestIds().includes(params.id)) {
-      setInterested(true);
-      setConnection(readQuickConnectionIds().includes(params.id) ? "open" : "none");
-    }
     if (!isSupabaseConfigured || !supabase) return;
     (async () => {
       const { data: userData } = await supabase!.auth.getUser();
@@ -249,17 +239,12 @@ function DealDetailPageInner() {
       setInterestError("이미 마감된 매물이에요.");
       return;
     }
-    if (!isSupabaseConfigured || !supabase) {
-      // 데모 모드에서도 실제와 동일한 원클릭 흐름을 보여줍니다.
-      setShowQuickForm(true);
-      return;
-    }
+    if (!isSupabaseConfigured || !supabase) return;
 
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
-      // 회원가입 화면으로 보내는 대신, 전화번호 한 줄만 받는 인라인 폼을 엽니다.
-      // (회원가입·인증 없이도 리드가 즉시 점핑매니저에게 전달됩니다.)
-      setShowQuickForm(true);
+      // 2026-10-04 4.5: 회원 버튼을 눌렀는데 세션이 끊긴 경우 — 번호 입력 폼 대신 가입·로그인 화면으로(돌아올 주소 유지)
+      router.push(withReturnTo("/signup", `/deals/${deal.id}`, ref ? `ref=${ref}` : ""));
       return;
     }
     // 2026-10-03 F-3a: 회원은 판매자 연결 동의 시트부터 — [동의하고 연결 요청] / [관심 표시만 할게요]
@@ -271,7 +256,8 @@ function DealDetailPageInner() {
   const autoInterest = async () => {
     if (deal.status === "closed" || isPastClose() || !isSupabaseConfigured || !supabase) return handleInterest();
     const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) return handleInterest();
+    // 2026-10-04 4.5: 세션이 없으면(옛 링크·가입 안 마침) 아무것도 기록하지 않고 그대로 — 하단 가입 버튼만 보임
+    if (!userData.user) return;
     if (await recordInterest(userData.user.id)) {
       const open = await fetchMemberConnectionOpen(deal.id);
       if (open !== null) setConnection(open ? "open" : "none");
@@ -377,12 +363,7 @@ function DealDetailPageInner() {
   const requestConnection = () => {
     setConnectError(null);
     setInterestNotice(null);
-    if (isMember) {
-      setConnectSheet("member");
-    } else {
-      setGuestConnectOnly(true);
-      setShowQuickForm(true);
-    }
+    setConnectSheet("member");
   };
 
   const sendMessage = async () => {
@@ -410,94 +391,6 @@ function DealDetailPageInner() {
       setMessageSent(true);
     }
     setMessageSending(false);
-  };
-
-  const submitQuickInterest = () => {
-    setQuickError(null);
-    // 2026-10-01 F-1: 서버(/api/quick-interest)와 같은 규칙 — 01[016789] 10~11자리
-    if (!isValidKoreanPhone(quickPhone)) {
-      setQuickError("휴대폰 번호를 정확히 입력해주세요.");
-      return;
-    }
-    if (deal.status === "closed" || isPastClose()) {
-      setQuickError("이미 마감된 매물이에요.");
-      return;
-    }
-    if (!quickConsent) {
-      setQuickConsentError(true);
-      setQuickError("개인정보 수집·이용에 동의해주세요.");
-      return;
-    }
-    // 2026-10-03 F-3a: 번호·개인정보 동의를 확인한 뒤 판매자 연결 동의 시트 — 전송은 시트에서 고른 뒤 한 번
-    setConnectError(null);
-    setConnectSheet("guest");
-  };
-
-  // 비회원 전송 — withConnection이면 연결 동의 값도 같이(quick_leads + deal_connections). 실패하면 시트·폼 유지 + 문구
-  const sendQuickInterest = async (withConnection: boolean) => {
-    const digits = quickPhone.replace(/[^0-9]/g, "");
-    setConnectBusy(true);
-    setConnectError(null);
-    try {
-      let data: { error?: string; duplicate?: boolean; connection?: string } = {};
-      if (!isSupabaseConfigured) {
-        await new Promise((r) => setTimeout(r, 400));
-      } else {
-        const res = await fetch("/api/quick-interest", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            dealId: deal.id,
-            phone: digits,
-            privacyConsent: quickConsent,
-            consentVersion: TERMS_VERSION,
-            ...(withConnection ? { connectionConsent: true, connectionConsentVersion: CONNECTION_CONSENT_VERSION } : {}),
-          }),
-        });
-        data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          setConnectError(
-            res.status === 409 ? "이미 마감된 매물이에요." : res.status === 429 ? "잠시 후 다시 시도해주세요." : data.error ?? "전송에 실패했어요. 잠시 후 다시 시도해주세요."
-          );
-          return;
-        }
-      }
-      rememberQuickInterest(deal.id);
-      if (withConnection) rememberQuickConnection(deal.id);
-      setInterested(true);
-      setConnection(withConnection ? "open" : "none");
-      setInterestNotice(
-        withConnection
-          ? data.connection === "duplicate"
-            ? "이미 연결을 요청하셨어요"
-            : null // 완료 안내는 하단 버튼 한 곳만
-          : data.duplicate
-          ? "이미 접수됐어요, 빠르게 연락드려요"
-          : null
-      );
-      setConnectSheet(null);
-      setShowQuickForm(false);
-      setGuestConnectOnly(false);
-    } catch {
-      setConnectError(
-        typeof navigator !== "undefined" && navigator.onLine === false
-          ? "인터넷 연결이 끊겼어요. 연결 후 다시 시도해주세요."
-          : "전송에 실패했어요. 잠시 후 다시 시도해주세요."
-      );
-    } finally {
-      setConnectBusy(false);
-    }
-  };
-
-  // 비회원 [관심 표시만 할게요] — 이미 관심 표시한 매물(연결 요청만 하러 온 경우)이면 보내지 않고 닫기
-  const guestInterestOnly = () => {
-    if (guestConnectOnly) {
-      closeConnectSheet();
-      setShowQuickForm(false);
-      setGuestConnectOnly(false);
-      return;
-    }
-    sendQuickInterest(false);
   };
 
   // F-3a: 실제 매물을 불러온 뒤 한 번만 — 예전엔 첫 렌더의 예시 매물(mockDeals[0]) id로도 관심 저장을 시도했음
@@ -645,7 +538,7 @@ function DealDetailPageInner() {
         )}
 
         {priceHidden ? (
-          // 2026-10-03 A안: 비회원 — 가격 상자 대신 가입 안내. 가입 링크엔 returnTo(이 매물)·ref만 — autoInterest 같은 자동 관심은 붙이지 않음
+          // 2026-10-03 A안: 비회원 — 가격 상자 대신 가입 안내. 가입 버튼은 하단 고정 버튼 하나(4.5) — returnTo(이 매물)·ref만, autoInterest 같은 자동 관심은 붙이지 않음
           <div>
             {(cardDiscountPct(deal) > 0 || (deal.interest_count ?? 0) >= 3) && (
               <div className="flex flex-wrap items-baseline gap-x-2 mb-2">
@@ -666,14 +559,6 @@ function DealDetailPageInner() {
             )}
             <div className="rounded-2xl" style={{ background: "#FFF4EC", border: "1.5px solid #F6D3BF", padding: "14px 16px" }}>
               <p className="text-base font-bold text-navy">가입하면 회원가를 볼 수 있어요</p>
-              <Link
-                href={withReturnTo("/signup", `/deals/${deal.id}`, ref ? `ref=${ref}` : "")}
-                className={`w-full mt-3 ${BTN_CLASS}`}
-                style={btnStyle("primary")}
-                data-member-price-cta
-              >
-                회원가 보기 · 무료 가입
-              </Link>
             </div>
             <div className="flex items-center justify-between gap-2 mt-2">
               <span className="text-sm text-gray500">
@@ -1045,53 +930,16 @@ function DealDetailPageInner() {
               이어지도록 함. */}
           {/* 2026-09-29: 공용 하단 고정 버튼 — 판·블러 없이 버튼만 띄움 */}
           <FloatingCTA>
-            {showQuickForm && (!interested || guestConnectOnly) ? (
-              <div className="border border-gray200 rounded-2xl p-4 bg-white" style={{ boxShadow: "0 10px 28px rgba(11,37,64,.18)" }}>
-                <div className="text-sm font-bold text-navy mb-1">
-                  {guestConnectOnly ? "번호를 확인하면 판매자와 연결해 드려요" : "번호만 남기면 바로 연락드려요"}
-                </div>
-                <p className="text-xs text-gray500 mb-3">
-                  {guestConnectOnly
-                    ? "관심 표시할 때 남기신 번호를 입력해주세요."
-                    : "회원가입 없이도 점핑매니저가 확인 후 연락드립니다. 알림을 계속 받고 싶으시면 나중에 가입하셔도 돼요."}
-                </p>
-                <div className="flex gap-2">
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    value={quickPhone}
-                    onChange={(e) => setQuickPhone(e.target.value)}
-                    placeholder="010-0000-0000"
-                    className="flex-1 min-w-0 border-2 border-gray200 rounded-xl px-4 text-base outline-none focus:border-orange"
-                    style={{ height: "48px" }}
-                  />
-                  <button
-                    onClick={submitQuickInterest}
-                    disabled={connectBusy}
-                    className="text-white font-bold rounded-xl px-5 whitespace-nowrap flex-shrink-0 disabled:opacity-60"
-                    style={{ background: "#FF6F0F" }}
-                  >
-                    {connectBusy ? "전송 중..." : "전달하기"}
-                  </button>
-                </div>
-                <div className="mt-2.5">
-                  <GuestPrivacyConsent
-                    checked={quickConsent}
-                    onChange={(v) => {
-                      setQuickConsent(v);
-                      setQuickConsentError(false);
-                    }}
-                    error={quickConsentError}
-                  />
-                </div>
-                {quickError && <div className="text-xs text-orange font-medium mt-2">{quickError}</div>}
-                <Link
-                  href={`/signup?returnTo=${encodeURIComponent(`/deals/${deal.id}?autoInterest=1`)}${ref ? `&ref=${ref}` : ""}`}
-                  className="block text-center text-xs text-gray500 underline mt-3"
-                >
-                  정식으로 가입하고 알림도 계속 받을래요 →
-                </Link>
-              </div>
+            {!authKnown ? null : !isMember ? (
+              // 2026-10-04 4.5: 비회원은 번호 입력 폼·"정식으로 가입하고…" 없이 가입 버튼 하나 — 가입 시 관심·리드 자동 기록 없음(#57 규칙)
+              <Link
+                href={withReturnTo("/signup", `/deals/${deal.id}`, ref ? `ref=${ref}` : "")}
+                className={FLOATING_CTA_BUTTON_CLASS}
+                style={floatingCtaButtonStyle()}
+                data-guest-signup-cta
+              >
+                무료 회원가입하고 가격 보기
+              </Link>
             ) : interested && connection === "none" && !isPastClose() ? (
               // 2026-10-03 F-3a: 관심 표시는 했지만(autoInterest 포함) 진행 중 연결이 없음 → 같은 동의 시트로
               <>
@@ -1149,8 +997,8 @@ function DealDetailPageInner() {
         <ConnectionConsentSheet
           busy={connectBusy}
           error={connectError}
-          onAgree={connectSheet === "member" ? memberAgree : () => sendQuickInterest(true)}
-          onInterestOnly={connectSheet === "member" ? memberInterestOnly : guestInterestOnly}
+          onAgree={memberAgree}
+          onInterestOnly={memberInterestOnly}
           onClose={closeConnectSheet}
         />
       )}
@@ -1171,23 +1019,6 @@ function DealDetailPageInner() {
   );
 }
 
-// 2026-10-01 F-1: 비회원이 이 기기에서 관심 접수한 매물 id — 다시 와도 "관심 표시 완료"로 (저장소가 막혀 있으면 조용히 넘어감)
-const QUICK_INTEREST_KEY = "dj_quick_interest_deals";
-function readQuickInterestIds(): string[] {
-  try {
-    const v = JSON.parse(window.localStorage.getItem(QUICK_INTEREST_KEY) ?? "[]");
-    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
-  } catch {
-    return [];
-  }
-}
-function rememberQuickInterest(dealId: string) {
-  try {
-    const ids = readQuickInterestIds().filter((x) => x !== dealId);
-    window.localStorage.setItem(QUICK_INTEREST_KEY, JSON.stringify([dealId, ...ids].slice(0, 100)));
-  } catch {}
-}
-
 // 2026-10-03 F-3a: 회원의 이 매물 진행 중 연결 여부 (deal_connections는 서버 전용 → /api/connections check). 실패는 null(버튼 숨김)
 async function fetchMemberConnectionOpen(dealId: string): Promise<boolean | null> {
   try {
@@ -1197,21 +1028,4 @@ async function fetchMemberConnectionOpen(dealId: string): Promise<boolean | null
   } catch {
     return null;
   }
-}
-
-// 2026-10-03 F-3a: 비회원이 이 기기에서 판매자 연결까지 요청한 매물 id — 없으면 관심 표시 매물에 [판매자 연결 요청] 표시
-const QUICK_CONNECTION_KEY = "dj_quick_connection_deals";
-function readQuickConnectionIds(): string[] {
-  try {
-    const v = JSON.parse(window.localStorage.getItem(QUICK_CONNECTION_KEY) ?? "[]");
-    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
-  } catch {
-    return [];
-  }
-}
-function rememberQuickConnection(dealId: string) {
-  try {
-    const ids = readQuickConnectionIds().filter((x) => x !== dealId);
-    window.localStorage.setItem(QUICK_CONNECTION_KEY, JSON.stringify([dealId, ...ids].slice(0, 100)));
-  } catch {}
 }
