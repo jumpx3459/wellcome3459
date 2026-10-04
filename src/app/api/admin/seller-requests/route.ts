@@ -37,14 +37,23 @@ export async function PATCH(req: NextRequest) {
   if (!id || !status) {
     return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });
   }
+  // 2026-10-04 판매자 신원 확인: 승인은 매물 등록(POST /api/admin/deals — 사업자 조회 통과 검사)으로만.
+  // 여기서 approved·매물 연결을 직접 넣으면 그 검사를 우회하므로 거부. 화면은 거절에만 씀
+  if (status === "approved" || linkedDealId != null) {
+    return NextResponse.json({ error: "승인은 [매물로 등록하기]로만 할 수 있어요." }, { status: 400 });
+  }
 
   const supabaseAdmin = getAdminClient();
-  const { error } = await supabaseAdmin
+  // 대기 중인 신청만 — 이미 승인된 신청을 거절로 바꾸면 매물 연결과 어긋남
+  const { data, error } = await supabaseAdmin
     .from("seller_requests")
-    .update({ status, linked_deal_id: linkedDealId ?? null, reviewed_by: auth.admin.name })
-    .eq("id", id);
+    .update({ status, reviewed_by: auth.admin.name })
+    .eq("id", id)
+    .eq("status", "pending")
+    .select("id");
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!data?.length) return NextResponse.json({ error: "이미 처리된 신청이에요" }, { status: 409 });
 
   return NextResponse.json({ ok: true });
 }
