@@ -36,6 +36,7 @@ import { FieldLabel, FORM_INPUT_FONT_SIZE } from "@/components/FormField";
 import { RatioMetric, DailyBars, FunnelBars, InlineBar, BIG_NUM, LABEL, CARD } from "@/components/admin/DashboardViz";
 import AdminListCard from "@/components/admin/AdminListCard";
 import BusinessCheckSection, { BusinessCheckBadge } from "@/components/admin/BusinessCheckSection";
+import ConnectionBoard from "@/components/admin/ConnectionBoard";
 import { isPassingCheck, NOT_CHECKED_MESSAGE, type BusinessCheck } from "@/lib/businessCheck";
 import { formatConsentDate } from "@/lib/consent";
 
@@ -363,6 +364,7 @@ type Interest = {
   phone?: string; // quick_leads(비회원 원클릭 리드)는 members 없이 전화번호만 가짐
   source: "member" | "quick";
   connection_consent_at?: string | null; // 2026-10-03 F-3a: 판매자 연결 동의 시각(deal_connections) — 없으면 관심 표시만
+  has_connection?: boolean; // 2026-10-04 F-4: 거래 연결 기록 있음 → 성사·불발은 연결 보드에서
 };
 
 type BuyRequest = {
@@ -517,6 +519,9 @@ function AdminDashboard({
   // 참고용 섹션(전체 회원 목록/관리자 목록)은 기본 접힘.
   const [membersOpen, setMembersOpen] = useState(false);
   const [leadsOpen, setLeadsOpen] = useState(true);
+  // 2026-10-04 F-4: 거래 연결 카드 — 건수는 ConnectionBoard가 불러온 뒤 알려줌(-1 = 아직)
+  const [connectionsOpen, setConnectionsOpen] = useState(true);
+  const [connCounts, setConnCounts] = useState<{ open: number; closed: number; stuck: number }>({ open: -1, closed: 0, stuck: 0 });
   const [sellerReqOpen, setSellerReqOpen] = useState(true);
   const [partnerReqOpen, setPartnerReqOpen] = useState(true);
   const [buyReqOpen, setBuyReqOpen] = useState(true);
@@ -1243,7 +1248,18 @@ function AdminDashboard({
               >
                 {i.contacted ? "✓ 연락완료" : "연락완료"}
               </button>
-            {i.outcome === "pending" && (
+            {/* 2026-10-04 F-4: 연결 기록이 있는 리드는 성사·불발을 연결 보드 ⑥에서(리드 값도 거기서 함께 갱신) */}
+            {i.outcome === "pending" && i.has_connection && (
+              <button
+                type="button"
+                onClick={() => jumpToSection("connections", () => setConnectionsOpen(true))}
+                className="flex-1 font-bold rounded-lg whitespace-nowrap"
+                style={{ fontSize: rem(15), minHeight: 40, background: "#EAF0F7", color: "#1B3A5C" }}
+              >
+                연결 보드에서 처리
+              </button>
+            )}
+            {i.outcome === "pending" && !i.has_connection && (
               <>
                 <button
                   onClick={async () => {
@@ -1284,6 +1300,16 @@ function AdminDashboard({
         )}
       />
     </>
+  );
+  const connectionsBlock = (
+    <ConnectionBoard
+      adminKey={adminKey}
+      isDesktop={isDesktop}
+      open={connectionsOpen}
+      onToggle={() => setConnectionsOpen((v) => !v)}
+      onCounts={setConnCounts}
+      onChanged={load}
+    />
   );
   const formRequest = openFormFor && openFormFor !== "new" && openFormFor !== "notice" ? requests.find((r) => r.id === openFormFor) ?? null : null;
   const newDealBlock = (
@@ -2134,11 +2160,13 @@ function AdminDashboard({
       <div className={isDesktop ? "px-8 pb-6 max-w-[1200px] mx-auto w-full" : "contents"}>
         {!isDesktop && membersBlock}
         {!isDesktop && leadsBlock}
+        {!isDesktop && connectionsBlock}
         <div className={isDesktop ? "mb-4" : "contents"}>{newDealBlock}</div>
         {isDesktop ? (
           <div className="columns-3 gap-4">
             {[
               { key: "leads", title: "관심 표시한 회원", count: interests.length, node: leadsBlock },
+              { key: "connections", title: "거래 연결", count: connCounts.open + connCounts.closed === 0 ? 0 : -1, node: connectionsBlock },
               { key: "business-check", title: "사업자 조회", count: -1, node: bizCheckBlock },
               { key: "pending-sellers", title: "대기 중인 판매자 신청", count: requests.length, node: pendingSellersBlock },
               { key: "active-deals", title: "진행 중인 매물", count: activeDeals.length, node: activeDealsBlock },

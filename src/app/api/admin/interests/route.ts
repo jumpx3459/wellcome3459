@@ -45,26 +45,30 @@ export async function GET(req: NextRequest) {
 
   // 2026-10-03 F-3a: 판매자 연결 동의 배지 — deal_connections.source_id가 interests.id / quick_leads.id (읽기 전용).
   // 조회 실패해도 목록은 그대로(배지만 없음)
+  // 2026-10-04 F-4: 연결 기록이 있는 리드(has_connection)는 리드 카드에서 [성사]·[불발] 대신 "연결 보드에서 처리"
   const ids = [...(memberData ?? []), ...(quickData ?? [])].map((d) => d.id);
   const consentBySource = new Map<string, string>();
+  const connectedSources = new Set<string>();
   if (ids.length) {
     const { data: connRows, error: connError } = await supabaseAdmin
       .from("deal_connections")
       .select("source, source_id, consent_at")
       .in("source", ["interest", "quick_lead"])
-      .in("source_id", ids)
-      .not("consent_at", "is", null);
+      .in("source_id", ids);
     if (connError) console.error("[admin/interests] 연결 조회 실패", connError.code, connError.message);
     for (const c of connRows ?? []) {
       const key = `${c.source}:${c.source_id}`;
+      connectedSources.add(key);
+      if (!c.consent_at) continue;
       const prev = consentBySource.get(key);
       if (!prev || c.consent_at > prev) consentBySource.set(key, c.consent_at);
     }
   }
 
+  const withConnection = (key: string) => ({ connection_consent_at: consentBySource.get(key) ?? null, has_connection: connectedSources.has(key) });
   const merged = [
-    ...(memberData ?? []).map((d) => ({ ...d, source: "member" as const, connection_consent_at: consentBySource.get(`interest:${d.id}`) ?? null })),
-    ...(quickData ?? []).map((d) => ({ ...d, source: "quick" as const, connection_consent_at: consentBySource.get(`quick_lead:${d.id}`) ?? null })),
+    ...(memberData ?? []).map((d) => ({ ...d, source: "member" as const, ...withConnection(`interest:${d.id}`) })),
+    ...(quickData ?? []).map((d) => ({ ...d, source: "quick" as const, ...withConnection(`quick_lead:${d.id}`) })),
   ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   // 2026-10-01: 리드 연락처가 담긴 목록 조회 — 호출 단위로 감사 로그
   await writeAudit(supabaseAdmin, req, { admin: auth.admin, action: "interests_list_view", targetType: "interests", detail: { count: merged.length } });
