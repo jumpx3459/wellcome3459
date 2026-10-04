@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkAdminAuth } from "@/lib/adminAuth";
 import { writeAudit } from "@/lib/adminAudit";
 import { UUID_RE } from "@/lib/rateLimit";
+import { saveSellerPrivate } from "@/lib/sellerPrivate";
 import {
   CONNECTION_METHODS, CONNECTION_RESULTS, MEMO_MAX, RESULT_TO_LEAD_OUTCOME, STEP_AT_COLUMN,
   canMoveTo, hasPhoneNumber, isConnectionStatus, type ConnectionMethod, type ConnectionResult,
@@ -15,6 +16,8 @@ import {
 //   · 담당자가 없으면 이번에 처리한 관리자가 담당자(보통 ② 접수). 이미 있으면 바꾸지 않음.
 //   · KPI 맞추기: 원본 리드(interests·quick_leads, source_id)를 리드 카드 PATCH와 같은 값으로 — 진행 단계면 contacted=true,
 //     ⑥이면 outcome(성사 completed / 불발·취소 no_deal)·completed_amount·completed_at도. 실패해도 단계 전환은 유지(응답에 표시).
+//   · ③ 판매자 확인: nameDisclosureOk(판매자가 상호 안내를 허락함)를 deal_seller_private에 저장(매물당 1행, 없으면 만듦).
+//     ④는 허락이 없어도 막지 않음(화면에 "상호 비공개로 안내" 표시만).
 const RACE_MESSAGE = "다른 관리자가 먼저 처리했어요. 새로고침해 주세요.";
 
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/admin/connections/[id]/step">) {
@@ -32,6 +35,10 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/admin/conne
   }
   if (!CONNECTION_METHODS.includes(method as ConnectionMethod)) {
     return NextResponse.json({ error: "연락 방법(전화·문자·카톡)을 골라주세요.", field: "method" }, { status: 400 });
+  }
+  const nameDisclosureOk = body?.nameDisclosureOk;
+  if (nameDisclosureOk !== undefined && (typeof nameDisclosureOk !== "boolean" || to !== "seller_confirmed")) {
+    return NextResponse.json({ error: "상호 안내 허락 값이 올바르지 않아요.", field: "nameDisclosureOk" }, { status: 400 });
   }
   if (memo.length > MEMO_MAX) return NextResponse.json({ error: `메모는 ${MEMO_MAX}자까지 적을 수 있어요.`, field: "memo" }, { status: 400 });
   if (hasPhoneNumber(memo)) return NextResponse.json({ error: "메모에 휴대폰 번호는 적을 수 없어요.", field: "memo" }, { status: 400 });
@@ -99,6 +106,17 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/admin/conne
     memo: memo || null,
   });
 
+  // ③ 상호 안내 허락 (실패해도 단계 전환은 유지 — 응답·감사 로그에 표시)
+  let disclosure: "ok" | "skipped" | "failed" = "skipped";
+  if (typeof nameDisclosureOk === "boolean") {
+    const saved = await saveSellerPrivate(db, conn.deal_id, auth.admin.id, {
+      name_disclosure_ok: nameDisclosureOk,
+      name_disclosure_at: nameDisclosureOk ? nowIso : null,
+    });
+    disclosure = saved.ok ? "ok" : "failed";
+    if (!saved.ok) console.error("[admin/connections/step] 상호 허락 저장 실패", saved.message);
+  }
+
   // KPI 맞추기 — 원본 리드 (리드 카드 PATCH와 같은 값)
   let leadSync: "ok" | "skipped" | "failed" = "skipped";
   const leadTable = conn.source === "interest" ? "interests" : conn.source === "quick_lead" ? "quick_leads" : null;
@@ -125,6 +143,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/admin/conne
       ...(to === "closed" ? { result, amount } : {}),
       assigned: !conn.assigned_admin_id,
       lead_sync: leadSync,
+      ...(typeof nameDisclosureOk === "boolean" ? { name_disclosure_ok: nameDisclosureOk, disclosure_save: disclosure } : {}),
       ...(eventError ? { event_insert_failed: true, event_error: eventError.code ?? eventError.message } : {}),
     },
   });
@@ -136,5 +155,5 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/admin/conne
       { status: 500 }
     );
   }
-  return NextResponse.json({ ok: true, status: to, leadSyncFailed: leadSync === "failed" });
+  return NextResponse.json({ ok: true, status: to, leadSyncFailed: leadSync === "failed", disclosureFailed: disclosure === "failed" });
 }

@@ -246,6 +246,7 @@ function ConnectionRow({
   const [result, setResult] = useState<ConnectionResult | null>(null);
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
+  const [nameOk, setNameOk] = useState(item.name_disclosure_ok);
 
   const submit = async (to: Exclude<ConnectionStatus, "requested">) => {
     if (!method) {
@@ -267,6 +268,7 @@ function ConnectionRow({
           to,
           method,
           memo,
+          ...(to === "seller_confirmed" ? { nameDisclosureOk: nameOk } : {}),
           ...(to === "closed" ? { result, amount: result === "success" ? parsePriceInput(amount) ?? null : null, reason } : {}),
         }),
       });
@@ -367,6 +369,19 @@ function ConnectionRow({
                     {STEP_LABEL[s]}
                     {needConsent && !passed && <span className="ml-1.5 text-xs" style={{ color: "#B91C1C" }}>연결 동의 필요</span>}
                   </button>
+                  {/* ③: 판매자가 상호를 구매자에게 알려도 된다고 했는지 → deal_seller_private.name_disclosure_ok */}
+                  {s === "seller_confirmed" && !passed && (
+                    <label className="flex items-center gap-1.5 px-1 font-bold" style={{ fontSize: rem(14), color: "#4B5563" }}>
+                      <input type="checkbox" checked={nameOk} onChange={(e) => setNameOk(e.target.checked)} className="w-4 h-4 flex-shrink-0" />
+                      판매자가 상호 안내를 허락함
+                    </label>
+                  )}
+                  {/* ④: 막지 않고 허락 여부만 */}
+                  {s === "buyer_confirmed" && (
+                    <span className="px-1 font-bold" style={{ fontSize: rem(14), color: item.name_disclosure_ok ? "#1D8A44" : "#966B00" }}>
+                      {item.name_disclosure_ok ? "✓ 상호 안내 허락됨" : "허락 없음 · 상호 비공개로 안내"}
+                    </span>
+                  )}
                 </div>
               );
             })}
@@ -438,6 +453,7 @@ function ConnectionRow({
               {error}
             </p>
           )}
+          <SellerPrivatePanel connectionId={item.id} adminKey={adminKey} />
         </div>
       )}
     </div>
@@ -455,6 +471,113 @@ function ClosedRow({ item }: { item: ConnectionItem }) {
         {item.result === "success" && item.result_amount != null && ` · ${item.result_amount.toLocaleString()}원`}
         {" · "}담당 {item.assigned_admin_name ?? "없음"} · {fmtTime(item.closed_at)}
       </div>
+    </div>
+  );
+}
+
+// 판매자 비공개 정보 3칸(상호·담당자·연락처) + 메모 — 조회도 감사 로그라 [불러오기]를 눌렀을 때만 가져옴
+function SellerPrivatePanel({ connectionId, adminKey }: { connectionId: string; adminKey: string }) {
+  const [loaded, setLoaded] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ text: string; error: boolean } | null>(null);
+  const [form, setForm] = useState({ companyName: "", contactName: "", contactPhone: "", memo: "" });
+  const [hint, setHint] = useState<string | null>(null);
+
+  const load = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch(`/api/admin/connections/${connectionId}/seller`, { headers: { "x-admin-key": adminKey } });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMsg({ text: data.error ?? "불러오지 못했어요.", error: true });
+        return;
+      }
+      const it = data.item;
+      const sg = data.suggest;
+      setForm({
+        companyName: it?.company_name ?? sg?.company_name ?? "",
+        contactName: it?.contact_name ?? sg?.contact_name ?? "",
+        contactPhone: it?.contact_phone ? formatPhone(it.contact_phone) : sg?.contact_phone ? formatPhone(sg.contact_phone) : "",
+        memo: it?.memo ?? "",
+      });
+      setHint(sg ? "판매 신청 정보를 채워 뒀어요 · 저장해야 반영돼요" : !it?.company_name && !it?.contact_name && !it?.contact_phone ? "아직 저장된 정보가 없어요" : null);
+      setLoaded(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const save = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch(`/api/admin/connections/${connectionId}/seller`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json().catch(() => ({}));
+      setMsg(res.ok ? { text: "저장했어요", error: false } : { text: data.error ?? "저장하지 못했어요.", error: true });
+      if (res.ok) setHint(null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const field = (key: keyof typeof form, label: string, max: number, extra?: { inputMode?: "tel"; placeholder?: string }) => (
+    <label className="flex flex-col gap-1 min-w-0">
+      <span className="font-bold" style={{ fontSize: rem(14), color: "#4B5563" }}>{label}</span>
+      <input
+        aria-label={label}
+        value={form[key]}
+        onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value.slice(0, max) }))}
+        maxLength={max}
+        inputMode={extra?.inputMode}
+        placeholder={extra?.placeholder}
+        className="w-full min-w-0 border-2 border-gray200 rounded-xl px-3 outline-none focus:border-orange"
+        style={{ height: 40, fontSize: rem(15) }}
+      />
+    </label>
+  );
+
+  return (
+    <div className="rounded-xl flex flex-col gap-2" style={{ background: "#F7F9FB", padding: 12 }}>
+      <div className="font-bold" style={{ fontSize: rem(15), color: "#1F2937" }}>
+        판매자 비공개 정보 <span style={{ ...LABEL, fontWeight: 400 }}>(구매자에게 보이지 않음)</span>
+      </div>
+      {!loaded ? (
+        <button
+          type="button"
+          onClick={load}
+          disabled={busy}
+          className="w-full font-bold rounded-lg disabled:opacity-60"
+          style={{ fontSize: rem(15), minHeight: 40, border: "1.5px solid #D5DAE0", color: "#0B2540", background: "#fff" }}
+        >
+          {busy ? "불러오는 중..." : "판매자 비공개 정보 불러오기"}
+        </button>
+      ) : (
+        <>
+          {field("companyName", "상호", 100)}
+          {field("contactName", "담당자", 50)}
+          {field("contactPhone", "연락처", 20, { inputMode: "tel", placeholder: "예: 010-1234-5678 · 02-123-4567" })}
+          {field("memo", "메모", MEMO_MAX)}
+          {hint && <p style={LABEL}>{hint}</p>}
+          <button
+            type="button"
+            onClick={save}
+            disabled={busy}
+            className="w-full font-bold rounded-lg text-white disabled:opacity-60"
+            style={{ fontSize: rem(15), minHeight: 40, background: "#0B2540" }}
+          >
+            판매자 정보 저장
+          </button>
+        </>
+      )}
+      {msg && (
+        <p className="font-bold" style={{ fontSize: rem(14), color: msg.error ? "#B91C1C" : "#1D8A44" }}>
+          {msg.text}
+        </p>
+      )}
     </div>
   );
 }
