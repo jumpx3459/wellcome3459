@@ -68,9 +68,9 @@ export async function POST(req: NextRequest) {
   if (isReservedSellerName(companyName)) {
     return NextResponse.json({ error: "점프엑스·덤핑점핑으로 오인될 수 있는 업체명은 쓸 수 없어요.", field: "companyName" }, { status: 400 });
   }
-  // 2026-10-01: 재고 위치(지역) 필수 — 알림 매칭 기준 (sell 폼과 같은 규칙). 없는 지역 이름은 아래 조회 뒤 다시 막음
-  if (typeof region !== "string" || !region.trim()) {
-    return NextResponse.json({ error: "재고 위치(지역)를 선택해주세요.", field: "region" }, { status: 400 });
+  // 2026-10-04: 재고 위치(지역)는 선택 — 알림 매칭 기준이 아님(카테고리만). 비어 있으면 region_id null(점핑매니저가 확인), 값이 있으면 아래에서 존재하는 지역인지 검사
+  if (region != null && region !== "" && typeof region !== "string") {
+    return NextResponse.json({ error: "재고 위치(지역)가 올바르지 않아요.", field: "region" }, { status: 400 });
   }
   // 2026-09-29: 희망 단가 필수 (sell 폼과 같은 규칙)
   if (typeof hopePrice !== "number" || !Number.isFinite(hopePrice) || hopePrice <= 0) {
@@ -170,7 +170,7 @@ export async function POST(req: NextRequest) {
   const regRow = region
     ? (await supabaseAdmin.from("regions").select("id").eq("name", region).maybeSingle()).data
     : null;
-  if (!regRow) {
+  if (region && !regRow) {
     return NextResponse.json({ error: "없는 지역이에요. 다시 선택해주세요.", field: "region" }, { status: 400 });
   }
 

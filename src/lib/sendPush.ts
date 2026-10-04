@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import { isDealAlertVersionCurrent } from "@/lib/consent";
-import { matchesConditions } from "@/lib/dealMatching";
+import { selectDealAlertMembers, selectNoticeAlertMembers } from "@/lib/dealMatching";
 import { pushPriceParts } from "@/lib/priceMode";
 import { stockTypeBadge } from "@/lib/stockType";
 import { normalizePhone } from "@/lib/phone";
@@ -67,7 +67,7 @@ export function isQuietHoursKST(now = new Date()) {
   return hour >= 21 || hour < 8;
 }
 
-// 카테고리·지역을 구독한 회원의 기기에 직접 웹 푸시를 발송합니다.
+// 관심 카테고리를 고른 회원의 기기에 직접 웹 푸시를 발송합니다(2026-10-04부터 지역은 조건이 아님 — 전국 알림).
 // (카카오 알림톡 같은 중간 채널 없이 브라우저/PWA에 바로 전달, 알라미와 동일한 방식)
 // 매물당 1회만 — push_sent_at이 이미 있으면 skip, 발송 직전에 push_sent_at을 조건부로 채워 중복 발송(등록+cron 동시 실행)을 막는다.
 // 2026-09-30 (커밋 K): 발송 결과 410 Gone·404 Not Found = 브라우저에서 구독이 영구 해지됨 → 그 구독 행 삭제.
@@ -167,8 +167,7 @@ export async function sendDealPush(dealId: string) {
   const stockBadge = stockTypeBadge(deal.stock_type);
   const stockTypePrefix = stockBadge ? `${stockBadge} · ` : "";
 
-  // member_categories와 member_regions는 서로 직접 연결된 외래키가 없어
-  // 한 번의 조인 쿼리로는 가져올 수 없습니다. 각각 조회한 뒤 교집합을 계산합니다.
+  // 2026-10-04: 대상 = 이 카테고리를 고른 회원 ∩ push_opt_out 아님 ∩ deal_alert_ad 최신 agreed·현재 버전 ∩ (아래) 구독 보유. 지역 조건 없음.
   const { data: catMembers } = await supabaseAdmin
     .from("member_categories")
     .select("member_id")
@@ -176,34 +175,13 @@ export async function sendDealPush(dealId: string) {
 
   const catMemberIds = (catMembers ?? []).map((m) => m.member_id);
 
-  // 지역을 하나도 선택 안 한 회원은 "전국"으로 간주 — member_regions에 행이
-  // 아예 없으면 지역 필터 없이 통과시킵니다. (관심 카테고리 후보로 이미
-  // 좁혀놨으니 이 후보들만 대상으로 region 행을 조회합니다.)
-  const { data: regionRows } = await supabaseAdmin
-    .from("member_regions")
-    .select("member_id, region_id")
-    .in("member_id", catMemberIds.length ? catMemberIds : ["00000000-0000-0000-0000-000000000000"]);
-
-  const regionsByMember = new Map<string, number[]>();
-  for (const r of regionRows ?? []) {
-    regionsByMember.set(r.member_id, [...(regionsByMember.get(r.member_id) ?? []), r.region_id]);
-  }
-
   // 알림 끄기(push_opt_out)한 회원 제외 — 끌 때 구독도 지우지만 이중 안전장치.
   // 대상 id를 .in()으로 또 넘기면 URL이 길어지니, 수가 적은 opt-out 쪽을 따로 조회한다.
   const { data: optedOutRows } = await supabaseAdmin.from("members").select("id").eq("push_opt_out", true);
   const optedOut = new Set((optedOutRows ?? []).map((m) => m.id));
 
-  // 매칭 규칙은 회원 홈(AlertInboxHome)과 공유 — src/lib/dealMatching.ts.
-  // catMemberIds는 이미 이 카테고리를 고른 회원이라 카테고리 목록은 [deal.category_id]로 충분.
-  const memberIds = catMemberIds.filter(
-    (id) =>
-      matchesConditions(
-        { category: deal.category_id, region: deal.region_id },
-        [deal.category_id],
-        regionsByMember.get(id) ?? []
-      ) && !optedOut.has(id) && agreedIds.has(id)
-  );
+  // 대상 선정 규칙은 src/lib/dealMatching.ts selectDealAlertMembers (단위 시험 scripts/alert-target-test.mts)
+  const memberIds = selectDealAlertMembers({ categoryMemberIds: catMemberIds, optedOut, agreed: agreedIds });
 
   if (memberIds.length === 0) {
     return { sentCount: 0, total: 0 };
@@ -271,9 +249,9 @@ export async function sendDealPush(dealId: string) {
 }
 
 // 2026-09-28: 긴급 공지(부동산·설비 처분 등) 알림 — 재고 매물 알림(sendDealPush)과
-// 달리 카테고리 매칭이 없고, notice_alerts_opt_in을 켠 회원만 대상. 공지에 지역이
-// 지정돼 있으면 그 지역을 선택한 회원 + 지역 미선택("전국") 회원만, 지역이 없으면
-// (전국 공지) opt-in 회원 전원에게 보낸다.
+// 달리 카테고리 매칭이 없고, notice_alerts_opt_in을 켠 회원만 대상.
+// 2026-10-04: 지역 조건 없음 — 공지의 지역(region_id)은 표시용일 뿐, 대상 = 긴급 공지 알림을 켠 회원 ∩ push_opt_out 아님 ∩
+// deal_alert_ad 최신 agreed·현재 버전 ∩ 구독 보유 전원(매물 알림과 같은 규칙에서 카테고리·지역만 뺌).
 // 2026-09-30: 매물과 같은 규칙 — active 공지만, 1회만(push_sent_at), 야간 보류.
 export async function sendNoticePush(noticeId: string) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -326,21 +304,12 @@ export async function sendNoticePush(noticeId: string) {
     .eq("notice_alerts_opt_in", true)
     .eq("push_opt_out", false);
 
-  // 긴급 공지 opt-in에 더해 매물 알림 수신 동의(광고성 정보)도 있어야 함
-  let memberIds = (optedIn ?? []).map((m) => m.id).filter((id) => agreedIds.has(id));
-
-  if (notice.region_id && memberIds.length > 0) {
-    const { data: regionRows } = await supabaseAdmin
-      .from("member_regions")
-      .select("member_id, region_id")
-      .in("member_id", memberIds);
-
-    const membersWithAnyRegion = new Set((regionRows ?? []).map((r) => r.member_id));
-    const regionMatchIds = new Set(
-      (regionRows ?? []).filter((r) => r.region_id === notice.region_id).map((r) => r.member_id)
-    );
-    memberIds = memberIds.filter((id) => regionMatchIds.has(id) || !membersWithAnyRegion.has(id));
-  }
+  // 긴급 공지 opt-in에 더해 매물 알림 수신 동의(광고성 정보)도 있어야 함. 지역은 보지 않음(단위 시험 scripts/alert-target-test.mts)
+  const memberIds = selectNoticeAlertMembers({
+    noticeOptInIds: (optedIn ?? []).map((m) => m.id),
+    optedOut: new Set<string>(), // 위 조회에서 push_opt_out = false만 가져옴
+    agreed: agreedIds,
+  });
 
   if (memberIds.length === 0) {
     return { sentCount: 0, total: 0 };

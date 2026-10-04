@@ -124,7 +124,7 @@ export default function SellPage() {
   // 한 줄("추천됨" 배지 포함)로 접고, "수정"을 눌러야 다시 펼치도록 통일.
   const [categoryEditing, setCategoryEditing] = useState(true);
   const [region, setRegion] = useState<string>("");
-  // 2026-10-01 fix/form-overflow: 재고 위치(지역) 필수 — 서버도 400 field "region"
+  // 2026-10-04: 재고 위치(지역)는 선택 — 서버는 값이 있을 때만 존재하는 지역인지 검사(400 field "region")
   const [regionError, setRegionError] = useState<string | null>(null);
   // 묶음 펼침 — 2026-10-01 2차: ④ 제품 상세·⑤ 거래 조건·⑥ 판매자 정보 모두 기본 접힘 ("deal" = 거래 조건, "detail" = 제품 상세)
   const [openDeal, setOpenDeal] = useState(false);
@@ -362,13 +362,7 @@ export default function SellPage() {
       scrollTo("sell-hopePrice");
       return;
     }
-    // 2026-10-01: 재고 위치(지역) 필수 — 알림 매칭 기준 (서버도 같은 규칙)
-    if (!region) {
-      setRegionError("재고 위치(지역)를 선택해주세요.");
-      setError("빨간 안내가 있는 칸을 확인해주세요.");
-      reveal(null, "sell-region");
-      return;
-    }
+    // 2026-10-04: 재고 위치(지역)는 선택 — 알림 매칭 기준이 아님(카테고리만). 비워 두면 점핑매니저가 확인
     const orig = parsePriceInput(originalPrice);
     // 2026-10-01 PR-B: 소비기한 임박 재고는 소비기한 필수 (서버도 같은 규칙) — ③이 접혀 있으면 펼침
     if (stockType === "near_expiry" && !expiryDate) {
@@ -762,7 +756,7 @@ export default function SellPage() {
               </div>
             </div>
 
-            {/* 재고 총수량+단위 · 재고 위치(지역, 필수 — 알림 매칭 기준) · 연락처 — 2단(lg) 왼쪽은 묶음 내용 680px 이상일 때만 3칸, 미만은 2칸(수량·지역 / 연락처) */}
+            {/* 재고 총수량+단위 · 재고 위치(지역, 선택 — 알림 매칭과 무관) · 연락처 — 2단(lg) 왼쪽은 묶음 내용 680px 이상일 때만 3칸, 미만은 2칸(수량·지역 / 연락처) */}
             <div className={`${FORM_ROW3} lg:@min-[680px]:grid-cols-3!`}>
               <div className="min-w-0">
                 <FieldLabel compact need="required" htmlFor="sell-quantity">재고 총수량</FieldLabel>
@@ -798,7 +792,7 @@ export default function SellPage() {
                 {quantityError && <p className="font-medium mt-1" style={{ fontSize: rem(14), color: BLOCK_COLOR }}>{quantityError}</p>}
               </div>
               <div className="min-w-0">
-                <FieldLabel compact need="required" htmlFor="sell-region">재고 위치(지역)</FieldLabel>
+                <FieldLabel compact need="optional" htmlFor="sell-region">재고 위치(지역)</FieldLabel>
                 <select
                   id="sell-region"
                   className="w-full rounded-xl outline-none bg-white"
@@ -809,7 +803,7 @@ export default function SellPage() {
                     setRegionError(null);
                   }}
                 >
-                  <option value="">지역을 선택해주세요</option>
+                  <option value="">선택 안 함</option>
                   {mockRegions.map((r) => (
                     <option key={r} value={r} style={{ color: "#1A1F26" }}>{r}</option>
                   ))}
@@ -817,7 +811,7 @@ export default function SellPage() {
                 {regionError ? (
                   <p className="font-medium mt-1" style={{ fontSize: rem(14), color: BLOCK_COLOR }}>{regionError}</p>
                 ) : (
-                  <p className="mt-1" style={DEAL_HINT_STYLE}>물건이 있는 곳 — 이 지역 알림 회원에게 알림이 가요.</p>
+                  <p className="mt-1" style={DEAL_HINT_STYLE}>모르면 비워두세요 — 매니저가 확인해요.</p>
                 )}
               </div>
               {/* 2단 왼쪽 2칸일 땐 연락처를 한 줄 전체로 — 반 칸이면 예시 문구("010-0000-0000 또는 02-000-0000")가 잘림(1024px) */}

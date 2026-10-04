@@ -3356,8 +3356,9 @@ function DealForm({
             className="rounded-lg text-sm font-bold leading-relaxed"
             style={{ background: "#FDEEE8", color: "#C2410C", padding: "10px 12px" }}
           >
-            이 판매신청에는 {!prefill?.category && !prefill?.region ? "카테고리·지역이" : !prefill?.category ? "카테고리가" : "지역이"}{" "}
-            없어요. 카테고리·지역을 지정해야 알림이 발송돼요 — 아래에서 선택해주세요.
+            이 판매신청에는 {!prefill?.category && !prefill?.region ? "카테고리·지역이" : !prefill?.category ? "카테고리가" : "지역(재고 위치)이"}{" "}
+            없어요. {!prefill?.category ? "카테고리를 지정해야 알림이 발송돼요. " : ""}
+            {!prefill?.region ? "매물 등록에는 지역이 꼭 필요해요(알림 조건은 아니에요). " : ""}아래에서 선택해주세요.
           </div>
         )}
 
@@ -4033,15 +4034,16 @@ function NoticeForm({ adminKey, onDone }: { adminKey: string; onDone: () => void
         />
       </div>
       <div>
-        <FieldLabel need="optional">지역</FieldLabel>
+        <FieldLabel need="optional">소재지(표시용)</FieldLabel>
         <select className="w-full border-2 border-gray200 rounded-xl px-3.5 outline-none focus:border-navy bg-white" style={{ height: 52, fontSize: FORM_INPUT_FONT_SIZE }} value={region} onChange={(e) => setRegion(e.target.value)}>
-          <option value="">전국 (지역 무관)</option>
+          <option value="">표시 안 함</option>
           {mockRegions.map((r) => (
             <option key={r} value={r}>
               {r}
             </option>
           ))}
         </select>
+        <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }}>공지 목록에 보이는 소재지예요. 알림은 지역과 관계없이 전체 발송돼요.</p>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div className="min-w-0">

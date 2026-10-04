@@ -6,7 +6,7 @@ import TabLink from "@/components/TabLink";
 import BusinessFooter from "@/components/BusinessFooter";
 import { CheckCircle } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { mockCategories, mockRegions, categoryIcons, categoryColors } from "@/lib/mockData";
+import { mockCategories, categoryIcons, categoryColors } from "@/lib/mockData";
 import { formatPrice, formatMemberNo, formatRelativeTime, dealUrgencyState } from "@/lib/format";
 import { dealPriceLabel, isNegotiable } from "@/lib/priceMode";
 import { generateRefCode } from "@/lib/refCode";
@@ -84,7 +84,6 @@ export default function MyPage() {
   const [bannerDismissed, setBannerDismissed] = useState(true); // 값 로드 전 깜빡임 방지, 아래 effect가 실제 판정
   const [memberId, setMemberId] = useState<string | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
-  const [regions, setRegions] = useState<string[]>([]);
   const [alertsOpen, setAlertsOpen] = useState(false);
   // 2026-09-28: 긴급 공지(부동산·설비 처분) 알림 — 기존 카테고리/지역 매칭 알림과
   // 완전히 별개의 opt-in. 무분별한 전체발송으로 재고 알림 피로도가 올라가는 걸
@@ -210,16 +209,6 @@ export default function MyPage() {
       setCategories(
         (catRows ?? [])
           .map((r) => (r.categories as unknown as { name: string } | null)?.name)
-          .filter((name): name is string => Boolean(name))
-      );
-
-      const { data: regRows } = await supabase
-        .from("member_regions")
-        .select("regions(name)")
-        .eq("member_id", userId);
-      setRegions(
-        (regRows ?? [])
-          .map((r) => (r.regions as unknown as { name: string } | null)?.name)
           .filter((name): name is string => Boolean(name))
       );
 
@@ -463,23 +452,15 @@ export default function MyPage() {
 
       const { error: delCatError } = await supabase.from("member_categories").delete().eq("member_id", userId);
       if (delCatError) throw delCatError;
-      const { error: delRegError } = await supabase.from("member_regions").delete().eq("member_id", userId);
-      if (delRegError) throw delRegError;
+      // 2026-10-04: 지역은 알림 조건이 아님 — member_regions는 건드리지 않음(예전에 저장한 값도 지우지 않음)
 
       const { data: catRows } = await supabase.from("categories").select("id, name").in("name", categories);
-      const { data: regRows } = await supabase.from("regions").select("id, name").in("name", regions);
 
       if (catRows?.length) {
         const { error: insCatError } = await supabase
           .from("member_categories")
           .insert(catRows.map((c) => ({ member_id: userId, category_id: c.id })));
         if (insCatError) throw insCatError;
-      }
-      if (regRows?.length) {
-        const { error: insRegError } = await supabase
-          .from("member_regions")
-          .insert(regRows.map((r) => ({ member_id: userId, region_id: r.id })));
-        if (insRegError) throw insRegError;
       }
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -1298,8 +1279,6 @@ export default function MyPage() {
               {/* 2026-09-29: "외 5" 식 과한 말줄임 대신 이름을 다 쓰고 2줄까지 */}
               <span className="block mt-0.5" style={{ ...UI_DESC, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                 {categories.length === 0 || categories.length === mockCategories.length ? "전체 카테고리" : categories.join("·")}
-                {" · "}
-                {regions.length === 0 || regions.length === mockRegions.length ? "전 지역" : regions.join("·")}
               </span>
             </span>
             <span className="flex-shrink-0 whitespace-nowrap" style={{ ...UI_LINK, color: "#6B7480" }}>{alertsOpen ? "접기 ▲" : "변경하기 ›"}</span>
@@ -1350,44 +1329,6 @@ export default function MyPage() {
                 </div>
               </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span style={UI_CARD_TITLE}>관심 지역</span>
-                  <button
-                    type="button"
-                    onClick={() => setRegions(regions.length === mockRegions.length ? [] : [...mockRegions])}
-                    className="text-orange"
-                    style={UI_LINK}
-                  >
-                    {regions.length === mockRegions.length ? "전체 해제" : "전체 선택"}
-                  </button>
-                </div>
-                <p className="mb-2" style={UI_DESC}>선택 안 하면 전국 매물 알림을 다 받아요</p>
-                {/* 2026-09-28: 위 카테고리 칩(2026-09-27에 signup과 톤을 맞춤)과
-                    달리 이 지역 칩만 옛날 스타일(선택 시 배경 꽉 채움)로 남아있어
-                    어긋난다는 피드백 — signup 관심지역 칩과 동일하게 흰 배경 고정 +
-                    선택 시 테두리만 두껍게 바꾸는 방식으로 통일. */}
-                <div className="grid grid-cols-4 gap-2">
-                  {mockRegions.map((r) => {
-                    const picked = regions.includes(r);
-                    return (
-                      <button
-                        key={r}
-                        onClick={() => toggle(regions, setRegions, r)}
-                        className="py-2.5 rounded-full font-bold text-center"
-                        style={{
-                          fontSize: rem(15),
-                          background: "#fff",
-                          border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
-                          color: "#1A1F26",
-                        }}
-                      >
-                        {r}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
             </div>
           )}
           </div>
