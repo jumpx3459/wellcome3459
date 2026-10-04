@@ -35,6 +35,8 @@ import { UI_SECTION, UI_CARD_TITLE, UI_LINK, BTN_CLASS, btnStyle } from "@/lib/u
 import { FieldLabel, FORM_INPUT_FONT_SIZE } from "@/components/FormField";
 import { RatioMetric, DailyBars, FunnelBars, InlineBar, BIG_NUM, LABEL, CARD } from "@/components/admin/DashboardViz";
 import AdminListCard from "@/components/admin/AdminListCard";
+import BusinessCheckSection, { BusinessCheckBadge } from "@/components/admin/BusinessCheckSection";
+import { isPassingCheck, NOT_CHECKED_MESSAGE, type BusinessCheck } from "@/lib/businessCheck";
 import { formatConsentDate } from "@/lib/consent";
 
 // 2026-09-30 (커밋 K): /api/admin/kpi-daily 한 줄 (kpi_daily 테이블 일부 컬럼)
@@ -209,6 +211,15 @@ function downloadCsv(filename: string, rows: (string | number | null | undefined
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// 2026-10-04 판매자 신원 확인: 대기 중인 신청들의 사업자 조회 기록(최신순)·신청 연락처 = 가입 번호 여부. 실패하면 빈 값
+async function fetchBizChecks(adminKey: string, ids: string[]): Promise<{ items: BusinessCheck[]; phoneMatch: Record<string, boolean | null> }> {
+  if (!ids.length) return { items: [], phoneMatch: {} };
+  const d = await fetch(`/api/admin/business-checks?seller_request_ids=${ids.join(",")}`, { headers: { "x-admin-key": adminKey } })
+    .then((r) => (r.ok ? r.json() : null))
+    .catch(() => null);
+  return { items: d?.items ?? [], phoneMatch: d?.phoneMatch ?? {} };
 }
 
 const ADMIN_SESSION_TTL_MS = 6 * 60 * 60 * 1000; // 6시간
@@ -399,6 +410,16 @@ function AdminDashboard({
   onLogout: () => void;
 }) {
   const [requests, setRequests] = useState<SellerRequest[]>([]);
+  // 2026-10-04 판매자 신원 확인: 대기 중인 신청들의 사업자 조회 기록(최신순) + 신청 연락처 = 가입 번호 여부
+  const [bizChecks, setBizChecks] = useState<BusinessCheck[]>([]);
+  const [bizPhoneMatch, setBizPhoneMatch] = useState<Record<string, boolean | null>>({});
+  const [bizPreselect, setBizPreselect] = useState<{ id: string; nonce: number } | null>(null);
+  const loadBizChecks = (ids: string[]) =>
+    fetchBizChecks(adminKey, ids).then((d) => {
+      setBizChecks(d.items);
+      setBizPhoneMatch(d.phoneMatch);
+    });
+  const latestBizCheck = (requestId: string) => bizChecks.find((c) => c.seller_request_id === requestId && c.kind === "validate") ?? null;
   // 2026-10-01: 카드가 목록에서 빠진 뒤에도 보이는 안내(매물 마감 등) — 카드 안 토스트는 카드와 함께 사라짐
   const { message: dashToast, showToast: showDashToast } = useToast();
   const [partnerRequests, setPartnerRequests] = useState<PartnerRequest[]>([]);
@@ -580,6 +601,10 @@ function AdminDashboard({
     ])
       .then(([reqData, dealData, interestData, buyData, memberData]) => {
         setRequests(reqData.items ?? []);
+        fetchBizChecks(adminKey, ((reqData.items ?? []) as SellerRequest[]).map((r) => r.id)).then((d) => {
+          setBizChecks(d.items);
+          setBizPhoneMatch(d.phoneMatch);
+        });
         setActiveDeals(dealData.items ?? []);
         setInterests(interestData.items ?? []);
         setBuyRequests(buyData.items ?? []);
@@ -1449,10 +1474,25 @@ function AdminDashboard({
                 style={{ maxHeight: "180px" }}
               />
             )}
-            <div className="flex gap-2 mt-3">
+            {/* 2026-10-04 판매자 신원 확인: 최신 사업자 조회 결과 + 조회 섹션 바로가기(이 신청 미리 선택) */}
+            <div className="flex items-center justify-between gap-2 mt-3">
+              <BusinessCheckBadge check={latestBizCheck(r.id)} />
+              <button
+                type="button"
+                onClick={() => {
+                  setBizPreselect({ id: r.id, nonce: Date.now() });
+                  document.getElementById("business-check")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                className="flex-shrink-0 font-bold rounded-lg text-sm px-3 py-1.5 border border-gray200 text-navy"
+              >
+                사업자 조회
+              </button>
+            </div>
+            <div className="flex gap-2 mt-2">
               <button
                 onClick={() => (openFormFor === r.id ? closeDealForm() : switchForm(r.id))}
-                className="flex-1 text-navy font-bold border-2 border-navy rounded-xl text-sm"
+                disabled={openFormFor !== r.id && !isPassingCheck(latestBizCheck(r.id))}
+                className="flex-1 text-navy font-bold border-2 border-navy rounded-xl text-sm disabled:opacity-40"
                 style={{ padding: "10px 0" }}
               >
                 {openFormFor === r.id ? "닫기" : "매물로 등록하기"}
@@ -1472,10 +1512,29 @@ function AdminDashboard({
                 거절
               </button>
             </div>
+            {openFormFor !== r.id && !isPassingCheck(latestBizCheck(r.id)) && (
+              <div className="mt-1.5 text-sm text-gray500">{NOT_CHECKED_MESSAGE}</div>
+            )}
           </div>
         )}
       />
     </>
+  );
+  // 2026-10-04 판매자 신원 확인: "사업자 조회" — 판매자 신청 목록 바로 위(📱 세로 순서·💻 3단 모두)
+  const bizCheckBlock = (
+    <BusinessCheckSection
+      adminKey={adminKey}
+      adminRole={adminRole}
+      requests={requests}
+      phoneMatch={bizPhoneMatch}
+      preselect={bizPreselect}
+      className={
+        isDesktop
+          ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
+          : "px-5 pb-6 flex flex-col gap-3"
+      }
+      onChanged={() => loadBizChecks(requests.map((r) => r.id))}
+    />
   );
   const partnerReqBlock = (
     <>
@@ -2080,6 +2139,7 @@ function AdminDashboard({
           <div className="columns-3 gap-4">
             {[
               { key: "leads", title: "관심 표시한 회원", count: interests.length, node: leadsBlock },
+              { key: "business-check", title: "사업자 조회", count: -1, node: bizCheckBlock },
               { key: "pending-sellers", title: "대기 중인 판매자 신청", count: requests.length, node: pendingSellersBlock },
               { key: "active-deals", title: "진행 중인 매물", count: activeDeals.length, node: activeDealsBlock },
               { key: "partner-requests", title: "🏅 공식 점핑파트너 신청", count: partnerRequests.length, node: partnerReqBlock },
@@ -2105,6 +2165,7 @@ function AdminDashboard({
         ) : (
           <>
             {activeDealsBlock}
+            {bizCheckBlock}
             {pendingSellersBlock}
             {partnerReqBlock}
             {partnersOverviewBlock}
