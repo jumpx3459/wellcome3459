@@ -3356,8 +3356,9 @@ function DealForm({
             className="rounded-lg text-sm font-bold leading-relaxed"
             style={{ background: "#FDEEE8", color: "#C2410C", padding: "10px 12px" }}
           >
-            이 판매신청에는 {!prefill?.category && !prefill?.region ? "카테고리·지역이" : !prefill?.category ? "카테고리가" : "지역이"}{" "}
-            없어요. 카테고리·지역을 지정해야 알림이 발송돼요 — 아래에서 선택해주세요.
+            이 판매신청에는 {!prefill?.category && !prefill?.region ? "카테고리·지역이" : !prefill?.category ? "카테고리가" : "지역(재고 위치)이"}{" "}
+            없어요. {!prefill?.category ? "카테고리를 지정해야 알림이 발송돼요. " : ""}
+            {!prefill?.region ? "매물 등록에는 지역이 꼭 필요해요(알림 조건은 아니에요). " : ""}아래에서 선택해주세요.
           </div>
         )}
 

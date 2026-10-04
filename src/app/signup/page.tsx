@@ -5,7 +5,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { sendOtp, verifyOtp, isValidKoreanPhone, toLocalPhone, formatPhoneTyping } from "@/lib/auth";
-import { mockCategories, mockRegions, categoryIcons, categoryColors } from "@/lib/mockData";
+import { mockCategories, categoryIcons, categoryColors } from "@/lib/mockData";
 import { subscribeToPush, savePushSubscription } from "@/lib/pushClient";
 import { generateRefCode } from "@/lib/refCode";
 import Toast, { useToast } from "@/components/Toast";
@@ -69,8 +69,6 @@ function SignupPageInner() {
   const [otpError, setOtpError] = useState<string | null>(null);
 
   const [categories, setCategories] = useState<string[]>([]);
-  const [regions, setRegions] = useState<string[]>([]);
-  const [regionOpen, setRegionOpen] = useState(false);
   // 카카오 알림톡(개인화된 매물 메시지) 발송은 현재 구현돼 있지 않음 — 이 토글은
   // 카카오톡 "채널 추가"(친구 추가) 링크를 가입 완료 때 열어줄 뿐인 공지·이벤트용 보조 채널.
   // 2026-09-30: 마케팅 수신 동의(agreeKakaoMkt)와 분리하고 기본값 false (예전엔 둘이 한 값 + 기본 true).
@@ -377,19 +375,10 @@ function SignupPageInner() {
         .from("categories")
         .select("id, name")
         .in("name", categories);
-      const { data: regRows } = await supabase
-        .from("regions")
-        .select("id, name")
-        .in("name", regions);
 
       if (catRows?.length) {
         await supabase.from("member_categories").upsert(
           catRows.map((c) => ({ member_id: userId, category_id: c.id }))
-        );
-      }
-      if (regRows?.length) {
-        await supabase.from("member_regions").upsert(
-          regRows.map((r) => ({ member_id: userId, region_id: r.id }))
         );
       }
 
@@ -421,17 +410,12 @@ function SignupPageInner() {
   const verified = Boolean(authUserId);
   // 2026-09-30: 앱 푸시(매물 알림 동의)는 선택 — 필수 3개(약관·개인정보·이용 대상) + 휴대폰 인증만으로 가입 가능
   const step4Ready = verified && reqAgreed;
-  const estAlerts = Math.max(2, categories.length * 4 + (regions.length === 0 ? 6 : regions.length * 2));
+  const estAlerts = Math.max(2, categories.length * 4 + 6);
   const condCats =
     categories.length > 0
       ? categories.slice(0, 2).join("·") + (categories.length > 2 ? ` 외 ${categories.length - 2}` : "")
       : "전체 카테고리";
-  const allRegionsOn = regions.length === mockRegions.length;
-  const condRegions =
-    regions.length === 0 || allRegionsOn
-      ? "전 지역"
-      : regions.slice(0, 2).join("·") + (regions.length > 2 ? ` 외 ${regions.length - 2}` : "");
-  const myCondText = `${condCats} · ${condRegions}`;
+  const myCondText = condCats; // 2026-10-04: 매물 알림은 카테고리만(지역 선택 없음)
 
   const obCtaLabel =
     obStep === 1
@@ -480,11 +464,6 @@ function SignupPageInner() {
   const pickAllCategories = () => {
     setCategories([...mockCategories]);
     showToast("전체 카테고리로 받습니다 · 나중에 좁힐 수 있어요");
-  };
-
-  const pickAllRegions = () => {
-    setRegions(allRegionsOn ? [] : [...mockRegions]);
-    showToast(allRegionsOn ? "지역 선택을 비웠어요" : "전국 모든 지역으로 받습니다");
   };
 
   if (!authChecked) return null;
@@ -657,56 +636,6 @@ function SignupPageInner() {
               아직 잘 모르겠어요 · 전체 받기 →
             </button>
 
-            <div className="mt-6" style={{ borderTop: "1px solid #EEF0F2", paddingTop: 18 }}>
-              <button
-                type="button"
-                onClick={() => setRegionOpen((v) => !v)}
-                className="w-full flex items-center justify-between flex-wrap gap-x-2 gap-y-1"
-              >
-                <span style={{ color: "#0B2540", fontSize: rem(15), fontWeight: 700, wordBreak: "keep-all" }}>
-                  🗺️ 관심지역
-                </span>
-                <span className="font-bold ml-auto" style={{ color: "#6B7480", fontSize: rem(13), whiteSpace: "nowrap" }}>
-                  {regionOpen
-                    ? "접기 ▲"
-                    : allRegionsOn || regions.length === 0
-                    ? "전국 · 펼치기 ▾"
-                    : `${regions.length}곳 · 펼치기 ▾`}
-                </span>
-              </button>
-              {regionOpen && (
-                <div className="mt-3">
-                  <div className="flex flex-wrap gap-2">
-                    {mockRegions.map((r) => {
-                      const picked = regions.includes(r);
-                      return (
-                        <button
-                          key={r}
-                          onClick={() => toggleIn(regions, setRegions, r)}
-                          className="rounded-full font-bold"
-                          style={{
-                            padding: "10px 14px",
-                            fontSize: rem(14),
-                            background: "#fff",
-                            border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
-                            color: "#1A1F26",
-                          }}
-                        >
-                          {r}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <button
-                    onClick={pickAllRegions}
-                    className="mt-3"
-                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: rem(12.5), fontWeight: 700, color: "#6B7480", textDecoration: "underline", textUnderlineOffset: 4, padding: "6px 0" }}
-                  >
-                    {allRegionsOn ? "전국 전체 선택됨 · 해제하기" : "전국 어디든 괜찮아요 →"}
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
         )}
 

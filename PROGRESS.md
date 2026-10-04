@@ -60,6 +60,17 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - **수정**: `src/lib/bizCheckJump.ts` `scrollToBizCheck`(스크롤 + 테두리 1.8초 강조) — 등록 폼·수정 카드·판매 신청 카드가 같은 함수. 등록 폼·수정 카드의 바로가기는 사업자 조회의
   판매 신청을 **"신청 없이 조회(직접 등록)"으로 되돌린 뒤** 이동(`goToBizCheck`, 기존 `bizPreselect` 재사용, id ""). 판매 신청 카드 [사업자 조회]는 그 신청 선택 + 같은 이동·강조.
 
+## 최근 작업 (2026-10-04) — 매물 알림 지역 매칭 해제(카테고리만) + /sell 재고 위치 선택 (브랜치 `feat/alert-category-only`, DB 변경 없음)
+
+- **결정**: 매물 알림 대상 = 이 카테고리를 고른 회원 ∩ push_opt_out 아님 ∩ deal_alert_ad 최신 agreed·현재 버전(≥ 2026-10-12) ∩ 구독 보유. **지역 조건 제거.** 즉시 발송·아침 8시 cron 모두 `sendDealPush` 한 경로라 같이 바뀜(매물당 1회 `push_sent_at` 선점 그대로).
+  회원이 저장한 `member_regions` 값은 지우지도 쓰지도 않음(DB 변경 없음) — 화면에서만 지역 선택 제거.
+- **코드**: `sendPush.ts` sendDealPush의 지역 조회·매칭 삭제 → `dealMatching.ts selectDealAlertMembers`(카테고리 후보 − opt-out − 동의 없음/옛 버전, 단위 시험 `scripts/alert-target-test.mts`). 회원 홈(AlertInboxHome)도 같은 규칙(카테고리만, 지역 필터·"전 지역" 문구 삭제).
+  긴급 공지(`sendNoticePush`)는 **지역을 계속 씀**(공지에 지역이 있으면 그 지역 선택 회원 + 지역 미선택 회원 — 이번엔 변경하지 않음, 결정 필요 시 별도 PR).
+- **화면**: 가입(관심지역 아코디언·STEP 구성은 그대로 1/2·2/2), MY("관심 지역" 카드·요약의 "전 지역"·저장 시 member_regions 삭제/삽입 제거), 사이트·가입 meta 설명, README. 홈 상단 "· 전 지역"은 카테고리 요약만.
+- **/sell**: 재고 위치(지역) 선택으로(* 제거, "모르면 비워두세요 — 매니저가 확인해요."), 서버 `seller-requests`는 지역 없으면 region_id null 허용(값이 있으면 존재하는 지역인지만 검사). 관리자 폼 지역은 필수 유지 — 지역 없는 신청을 승인하려면 지역을 고르기 전엔 등록 불가, 안내 문구 정리.
+- **확인만(수정 안 함)**: 처리방침·동의 문구의 "관심 카테고리·지역" 수집 항목 — `src/app/privacy/PrivacyBody.tsx:41`, `src/lib/consent.ts:97`, `docs/legal/consent-texts-2026-10-07.md` 37·68행(알림 매칭 기준이라는 말은 없음, 수집 항목으로만 표기).
+- **운영 select(대표 승인, 번호 출력 없음)**: 기본 후보(구독·동의·opt-out 아님) 2명(일반 1 / 시험 1) 중 지역을 저장한 회원은 시험 1명이고 전 지역을 골라 둬서 변경 전·후 카테고리별 대상 수가 같음(화장품 2 = 일반 1·시험 1, 나머지 17개 카테고리 각 1 = 시험 1).
+
 ## 최근 작업 (2026-10-04) — "가격 협의" 매물(가격 없음) 지원, 관리자 폼만 (브랜치 `feat/deal-price-negotiable`, **운영 SQL 미실행 — SQL 먼저**)
 
 - **모델**: `deals.price_mode` text not null default 'fixed' check in ('fixed','negotiable'). `deal_price`·`original_price` NOT NULL 해제 + CHECK `deals_price_by_mode_check`

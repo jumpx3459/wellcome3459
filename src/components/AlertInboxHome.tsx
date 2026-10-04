@@ -5,14 +5,14 @@ import Link from "next/link";
 import TabLink from "@/components/TabLink";
 import BusinessFooter from "@/components/BusinessFooter";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { mockDeals, mockRegions, type Deal } from "@/lib/mockData";
+import { mockDeals, type Deal } from "@/lib/mockData";
 import { formatPrice, formatDealPrice } from "@/lib/format";
 import { formatCountdown } from "@/lib/format";
 import InstallAppButton, { useInstallPrompt } from "@/components/InstallAppButton";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
-import { matchesConditions } from "@/lib/dealMatching";
+import { matchesCategory } from "@/lib/dealMatching";
 import { EXAMPLE_DEALS, shouldShowExamples } from "@/lib/exampleDeals";
 import { rem } from "@/lib/rem";
 import StockTypeBadge from "@/components/StockTypeBadge";
@@ -37,7 +37,7 @@ const INBOX_HEADER_GAP = 14;
 
 const INSTALL_DISMISS_KEY = "dj_home_install_dismissed";
 // 2026-09-28: 회원 홈 = 내 조건에 맞는 진행 중 매물만 (전체는 /deals). 매칭 규칙은 푸시 발송과
-// 같은 matchesConditions (src/lib/dealMatching.ts). 한 번에 가져오는 최대 건수.
+// 같은 규칙(src/lib/dealMatching.ts — 카테고리만, 지역은 조건이 아님). 한 번에 가져오는 최대 건수.
 const INBOX_LIMIT = 50;
 
 type FeedGroup = { label: string; items: Deal[] };
@@ -65,7 +65,6 @@ function bucketDeals(deals: Deal[]): FeedGroup[] {
 
 export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: boolean }) {
   const [categories, setCategories] = useState<string[]>([]);
-  const [regions, setRegions] = useState<string[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [outsideCount, setOutsideCount] = useState(0); // 내 조건 밖 진행 중 매물 수
@@ -98,12 +97,8 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
         return;
       }
 
-      const [{ data: catRows }, { data: regRows }] = await Promise.all([
-        supabase.from("member_categories").select("category_id, categories(name)").eq("member_id", userId),
-        supabase.from("member_regions").select("region_id, regions(name)").eq("member_id", userId),
-      ]);
+      const { data: catRows } = await supabase.from("member_categories").select("category_id, categories(name)").eq("member_id", userId);
       const catIds = (catRows ?? []).map((r) => r.category_id as number);
-      const regIds = (regRows ?? []).map((r) => r.region_id as number);
       const nowIso = new Date().toISOString();
 
       // 전체 진행 중 매물 수(내 조건 밖 개수 계산용)와, 조건 매칭 매물을 DB에서 바로 걸러 조회.
@@ -126,7 +121,6 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
           .in("category_id", catIds)
           .order("created_at", { ascending: false })
           .limit(INBOX_LIMIT);
-        if (regIds.length > 0) q = q.in("region_id", regIds);
         return q;
       };
       const [{ count: totalCount }, matchRes] = await Promise.all([
@@ -136,19 +130,12 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
           : Promise.resolve({ data: [] as DealRowLoose[], count: 0, priceHidden: false }),
       ]);
       // DB 필터와 별개로 같은 규칙 함수로 한 번 더 확인 (푸시 발송 기준과 어긋나지 않게)
-      const dealRows = (matchRes.data ?? []).filter((d) =>
-        matchesConditions({ category: d.category_id as number, region: d.region_id as number }, catIds, regIds)
-      );
+      const dealRows = (matchRes.data ?? []).filter((d) => matchesCategory(d.category_id as number, catIds));
       setOutsideCount(Math.max(0, (totalCount ?? 0) - (matchRes.count ?? dealRows.length)));
 
       setCategories(
         (catRows ?? [])
           .map((r) => (r.categories as unknown as { name: string } | null)?.name)
-          .filter((n): n is string => Boolean(n))
-      );
-      setRegions(
-        (regRows ?? [])
-          .map((r) => (r.regions as unknown as { name: string } | null)?.name)
           .filter((n): n is string => Boolean(n))
       );
       setDeals(
@@ -180,12 +167,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
     categories.length > 0
       ? categories.slice(0, 2).join("·") + (categories.length > 2 ? ` 외 ${categories.length - 2}` : "")
       : "전체 카테고리";
-  const allRegionsOn = regions.length > 0 && regions.length === mockRegions.length;
-  const condRegions =
-    regions.length === 0 || allRegionsOn
-      ? "전 지역"
-      : regions.slice(0, 2).join("·") + (regions.length > 2 ? ` 외 ${regions.length - 2}` : "");
-  const myCondText = `${condCats} · ${condRegions}`;
+  const myCondText = condCats; // 2026-10-04: 매물 알림은 카테고리만 — 지역은 조건이 아님
 
   const [viewer, setViewer] = useState<{ images: string[]; video: string | null; index: number } | null>(null);
   // 2026-10-01 PR-C: 열려 있으면 안드로이드 뒤로가기 = 이것만 닫기 (src/lib/useBackToClose.ts)

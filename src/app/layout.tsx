@@ -5,7 +5,7 @@ import { pretendard } from "@/lib/fonts";
 import { SITE_URL as BASE_URL } from "@/lib/siteUrl";
 
 const DEFAULT_DESCRIPTION =
-  "전국 B2B 덤핑 재고·이월상품·반품 특가 정보를 관심 카테고리와 지역만 등록하면 가장 먼저 알려드립니다. Powered by JumpX.";
+  "전국 B2B 덤핑 재고·이월상품·반품 특가 정보를 관심 카테고리만 등록하면 가장 먼저 알려드립니다. Powered by JumpX.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
