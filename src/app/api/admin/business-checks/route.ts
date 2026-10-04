@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const v = await ntsValidate({ bNo: bNo!, repName, openDate: openDate!, companyName });
+  const v = await ntsValidate({ bNo: bNo!, repName, openDate: openDate! });
   const row = {
     seller_request_id: sellerRequestId,
     kind: "validate" as const,

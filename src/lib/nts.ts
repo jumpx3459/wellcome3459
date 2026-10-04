@@ -3,7 +3,7 @@
 //   Swagger https://infuser.odcloud.kr/api/stages/28493/api-docs (v1.1, 2026-10-04 확인)
 //   · POST {base}/validate · POST {base}/status, base = https://api.odcloud.kr/api/nts-businessman/v1
 //   · serviceKey는 URL 쿼리, 나머지는 JSON body. 1회 최대 100건
-//   · validate body {businesses:[{b_no, start_dt, p_nm, p_nm2?, b_nm?, ...}]} → data[].valid "01"(일치)/"02"(확인할 수 없습니다),
+//   · validate body {businesses:[{b_no, start_dt, p_nm, p_nm2?, ...} (b_nm은 안 보냄)]} → data[].valid "01"(일치)/"02"(확인할 수 없습니다),
 //     일치면 data[].status에 상태조회 결과가 같이 옴
 //   · status body {b_no:[...]} → data[].b_stt_cd "01" 계속 / "02" 휴업 / "03" 폐업, 미등록·삭제면 b_stt_cd ""이고
 //     tax_type = "국세청에 등록되지 않은 사업자등록번호입니다"
@@ -132,10 +132,10 @@ export async function ntsStatus(bNo: string): Promise<NtsStatusResult> {
 }
 
 /** 진위확인 — 일치(01)면 응답에 같이 온 상태를 쓰고, 없으면 상태조회를 한 번 더(실패해도 진위 결과는 유지, status null) */
-export async function ntsValidate(input: { bNo: string; repName: string; openDate: string; companyName?: string | null }): Promise<NtsValidateResult> {
+export async function ntsValidate(input: { bNo: string; repName: string; openDate: string }): Promise<NtsValidateResult> {
+  // 상호(b_nm)는 보내지 않음 — 보내면 등록 상호와 띄어쓰기까지 같아야 일치로 판정돼 정상 사업자도 불일치가 나옴(2026-10-04 운영 확인).
+  // 판정은 사업자번호·대표자명·개업일자만. 상호는 DB에 참고용으로만 저장.
   const biz: Record<string, string> = { b_no: input.bNo, start_dt: input.openDate, p_nm: input.repName };
-  // 상호는 선택 — 빈 값이면 아예 안 보냄(명세: 빈 값으로 검색하려면 ""를 넣어야 하고, 넣으면 그 값까지 비교함)
-  if (input.companyName && input.companyName.trim()) biz.b_nm = input.companyName.trim();
   const r = await post("/validate", { businesses: [biz] });
   if (!r.ok) return { result: "error", errorKind: r.errorKind };
   const item = firstData(r.json);
