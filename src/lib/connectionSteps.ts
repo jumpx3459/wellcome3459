@@ -13,6 +13,29 @@ export const STEP_LABEL: Record<ConnectionStatus, string> = {
   closed: "⑥ 결과",
 };
 
+/** 단계 버튼 문구 — "누르면 무엇이 되는지". 번호는 버튼 위 작은 표시(STEP_MARK)로만 */
+export const STEP_ACTION_LABEL: Record<Exclude<ConnectionStatus, "requested">, string> = {
+  accepted: "내가 맡기",
+  seller_confirmed: "판매자 확인 완료",
+  buyer_confirmed: "구매자에게 안내 완료",
+  contact_sent: "판매자에게 번호 전달",
+  closed: "결과 기록(성사·불발·취소)",
+};
+/** 이미 지난 단계 버튼에 보이는 문구 */
+export const STEP_DONE_LABEL: Record<Exclude<ConnectionStatus, "requested" | "closed">, string> = {
+  accepted: "✓ 맡은 사람 있음",
+  seller_confirmed: "✓ 판매자 확인됨",
+  buyer_confirmed: "✓ 구매자 안내됨",
+  contact_sent: "✓ 판매자에게 번호 전달됨",
+};
+export const STEP_MARK: Record<Exclude<ConnectionStatus, "requested">, string> = {
+  accepted: "② 접수",
+  seller_confirmed: "③ 판매자 확인",
+  buyer_confirmed: "④ 상호 안내·구매자 확인",
+  contact_sent: "⑤ 연락처 전달",
+  closed: "⑥ 결과",
+};
+
 /** 단계 시각 칸 — 단계 전환 API가 now()로 채움 */
 export const STEP_AT_COLUMN: Record<Exclude<ConnectionStatus, "requested">, string> = {
   accepted: "accepted_at",
@@ -30,11 +53,10 @@ export const CONNECTION_RESULTS = ["success", "failed", "cancelled"] as const;
 export type ConnectionResult = (typeof CONNECTION_RESULTS)[number];
 export const RESULT_LABEL: Record<ConnectionResult, string> = { success: "성사", failed: "불발", cancelled: "취소" };
 
-/** 리드(interests·quick_leads) outcome — 리드 카드 PATCH와 같은 값. 취소도 거래가 없었으니 불발(no_deal) */
-export const RESULT_TO_LEAD_OUTCOME: Record<ConnectionResult, "completed" | "no_deal"> = {
+/** 리드(interests·quick_leads) outcome — 리드 카드 PATCH와 같은 값. 취소는 리드 outcome을 바꾸지 않음(성사율에 섞이지 않게) */
+export const RESULT_TO_LEAD_OUTCOME: Record<Exclude<ConnectionResult, "cancelled">, "completed" | "no_deal"> = {
   success: "completed",
   failed: "no_deal",
-  cancelled: "no_deal",
 };
 
 export const STUCK_MS = 24 * 60 * 60 * 1000;

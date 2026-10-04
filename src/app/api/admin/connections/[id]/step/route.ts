@@ -15,7 +15,8 @@ import {
 //     이력 insert가 실패하면 단계는 이미 바뀐 상태 → 500으로 알리고 감사 로그에 남김.
 //   · 담당자가 없으면 이번에 처리한 관리자가 담당자(보통 ② 접수). 이미 있으면 바꾸지 않음.
 //   · KPI 맞추기: 원본 리드(interests·quick_leads, source_id)를 리드 카드 PATCH와 같은 값으로 — 진행 단계면 contacted=true,
-//     ⑥이면 outcome(성사 completed / 불발·취소 no_deal)·completed_amount·completed_at도. 실패해도 단계 전환은 유지(응답에 표시).
+//     ⑥ 성사·불발이면 outcome(completed / no_deal)·completed_amount·completed_at도. ⑥ 취소는 contacted=true만 — 리드 outcome은
+//     그대로(pending)라 성사율 분모(성사+불발)에 섞이지 않음(내부 시험 연결 정리 등). 실패해도 단계 전환은 유지(응답에 표시).
 //   · ③ 판매자 확인: nameDisclosureOk(판매자가 상호 안내를 허락함)를 deal_seller_private에 저장(매물당 1행, 없으면 만듦).
 //     ④는 허락이 없어도 막지 않음(화면에 "상호 비공개로 안내" 표시만).
 const RACE_MESSAGE = "다른 관리자가 먼저 처리했어요. 새로고침해 주세요.";
@@ -122,8 +123,8 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/admin/conne
   const leadTable = conn.source === "interest" ? "interests" : conn.source === "quick_lead" ? "quick_leads" : null;
   if (leadTable && conn.source_id) {
     const leadPatch: Record<string, unknown> =
-      to === "closed"
-        ? { outcome: RESULT_TO_LEAD_OUTCOME[result!], completed_amount: result === "success" ? amount : null, completed_at: nowIso }
+      to === "closed" && result && result !== "cancelled"
+        ? { outcome: RESULT_TO_LEAD_OUTCOME[result], completed_amount: result === "success" ? amount : null, completed_at: nowIso }
         : { contacted: true };
     const { error: leadError } = await db.from(leadTable).update(leadPatch).eq("id", conn.source_id);
     leadSync = leadError ? "failed" : "ok";

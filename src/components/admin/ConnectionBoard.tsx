@@ -10,7 +10,7 @@ import { formatPhone } from "@/lib/phone";
 import { formatMemberNo, formatPriceInput, parsePriceInput } from "@/lib/format";
 import { formatConsentDate } from "@/lib/consent";
 import {
-  CONNECTION_METHODS, CONNECTION_RESULTS, MEMO_MAX, MEMO_PLACEHOLDER, METHOD_LABEL, RESULT_LABEL, STEP_LABEL,
+  CONNECTION_METHODS, CONNECTION_RESULTS, MEMO_MAX, MEMO_PLACEHOLDER, METHOD_LABEL, RESULT_LABEL, STEP_ACTION_LABEL, STEP_DONE_LABEL, STEP_LABEL, STEP_MARK,
   stepIndex, type ConnectionMethod, type ConnectionResult, type ConnectionStatus,
 } from "@/lib/connectionSteps";
 
@@ -358,6 +358,10 @@ function ConnectionRow({
               const needConsent = s === "contact_sent" && !item.consent_at;
               return (
                 <div key={s} className="flex flex-col gap-1">
+                  <span className="px-1" style={{ ...LABEL, fontSize: rem(13) }}>
+                    {STEP_MARK[s]}
+                    {s === "accepted" && item.assigned_admin_name && ` · 담당 ${item.assigned_admin_name} 그대로`}
+                  </span>
                   <button
                     type="button"
                     onClick={() => submit(s)}
@@ -366,8 +370,7 @@ function ConnectionRow({
                     className="w-full font-bold rounded-lg text-left px-3 disabled:opacity-50"
                     style={{ fontSize: rem(15), minHeight: 40, border: "1.5px solid #D5DAE0", color: "#0B2540", background: passed ? "#F5F6F8" : "#fff" }}
                   >
-                    {passed ? "✓ " : ""}
-                    {STEP_LABEL[s]}
+                    {passed ? STEP_DONE_LABEL[s] : STEP_ACTION_LABEL[s]}
                     {needConsent && !passed && <span className="ml-1.5 text-xs" style={{ color: "#B91C1C" }}>연결 동의 필요</span>}
                   </button>
                   {/* ③: 판매자가 상호를 구매자에게 알려도 된다고 했는지 → deal_seller_private.name_disclosure_ok */}
@@ -386,6 +389,9 @@ function ConnectionRow({
                 </div>
               );
             })}
+            <span className="px-1" style={{ ...LABEL, fontSize: rem(13) }}>
+              {STEP_MARK.closed}
+            </span>
             <button
               type="button"
               onClick={() => setResultOpen((v) => !v)}
@@ -394,7 +400,7 @@ function ConnectionRow({
               className="w-full font-bold rounded-lg text-left px-3 disabled:opacity-50"
               style={{ fontSize: rem(15), minHeight: 40, border: "1.5px solid #D5DAE0", color: "#0B2540", background: resultOpen ? "#EEF2F7" : "#fff" }}
             >
-              {STEP_LABEL.closed} (성사·불발·취소) {resultOpen ? "▲" : "▼"}
+              {STEP_ACTION_LABEL.closed} {resultOpen ? "▲" : "▼"}
             </button>
             {resultOpen && (
               <div className="rounded-xl flex flex-col gap-2" style={{ background: "#F7F9FB", padding: 12 }}>
