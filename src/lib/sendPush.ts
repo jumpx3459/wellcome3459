@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import { isDealAlertVersionCurrent } from "@/lib/consent";
-import { selectDealAlertMembers } from "@/lib/dealMatching";
+import { selectDealAlertMembers, selectNoticeAlertMembers } from "@/lib/dealMatching";
 import { pushPriceParts } from "@/lib/priceMode";
 import { stockTypeBadge } from "@/lib/stockType";
 import { normalizePhone } from "@/lib/phone";
@@ -249,9 +249,9 @@ export async function sendDealPush(dealId: string) {
 }
 
 // 2026-09-28: 긴급 공지(부동산·설비 처분 등) 알림 — 재고 매물 알림(sendDealPush)과
-// 달리 카테고리 매칭이 없고, notice_alerts_opt_in을 켠 회원만 대상. 공지에 지역이
-// 지정돼 있으면 그 지역을 선택한 회원 + 지역 미선택("전국") 회원만, 지역이 없으면
-// (전국 공지) opt-in 회원 전원에게 보낸다.
+// 달리 카테고리 매칭이 없고, notice_alerts_opt_in을 켠 회원만 대상.
+// 2026-10-04: 지역 조건 없음 — 공지의 지역(region_id)은 표시용일 뿐, 대상 = 긴급 공지 알림을 켠 회원 ∩ push_opt_out 아님 ∩
+// deal_alert_ad 최신 agreed·현재 버전 ∩ 구독 보유 전원(매물 알림과 같은 규칙에서 카테고리·지역만 뺌).
 // 2026-09-30: 매물과 같은 규칙 — active 공지만, 1회만(push_sent_at), 야간 보류.
 export async function sendNoticePush(noticeId: string) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -304,21 +304,12 @@ export async function sendNoticePush(noticeId: string) {
     .eq("notice_alerts_opt_in", true)
     .eq("push_opt_out", false);
 
-  // 긴급 공지 opt-in에 더해 매물 알림 수신 동의(광고성 정보)도 있어야 함
-  let memberIds = (optedIn ?? []).map((m) => m.id).filter((id) => agreedIds.has(id));
-
-  if (notice.region_id && memberIds.length > 0) {
-    const { data: regionRows } = await supabaseAdmin
-      .from("member_regions")
-      .select("member_id, region_id")
-      .in("member_id", memberIds);
-
-    const membersWithAnyRegion = new Set((regionRows ?? []).map((r) => r.member_id));
-    const regionMatchIds = new Set(
-      (regionRows ?? []).filter((r) => r.region_id === notice.region_id).map((r) => r.member_id)
-    );
-    memberIds = memberIds.filter((id) => regionMatchIds.has(id) || !membersWithAnyRegion.has(id));
-  }
+  // 긴급 공지 opt-in에 더해 매물 알림 수신 동의(광고성 정보)도 있어야 함. 지역은 보지 않음(단위 시험 scripts/alert-target-test.mts)
+  const memberIds = selectNoticeAlertMembers({
+    noticeOptInIds: (optedIn ?? []).map((m) => m.id),
+    optedOut: new Set<string>(), // 위 조회에서 push_opt_out = false만 가져옴
+    agreed: agreedIds,
+  });
 
   if (memberIds.length === 0) {
     return { sentCount: 0, total: 0 };

@@ -64,6 +64,16 @@ ok(eq(withRegion, targets), "지역 정보가 있어도 결과 동일");
 ok(dm.matchesCategory(3, [1, 3]) === true && dm.matchesCategory(2, [1, 3]) === false && dm.matchesCategory(null, [1]) === false && dm.matchesCategory(1, []) === false, "matchesCategory");
 ok(!("matchesConditions" in dm), "지역을 받는 예전 matchesConditions는 제거됨");
 
+// ---- 긴급 공지(sendNoticePush) 대상: 지역 조건 없음 — 공지 알림을 켠 회원 ∩ opt-out 아님 ∩ 동의(현재 버전) 전원
+const noticeOptIn = ["서울", "부산", "지역없음", "옛버전", "동의없음"]; // notice_alerts_opt_in = true 회원(지역은 제각각)
+const noticeTargets = dm.selectNoticeAlertMembers({ noticeOptInIds: noticeOptIn, optedOut, agreed });
+ok(eq(noticeTargets, ["서울", "부산", "지역없음"]), "공지: 지역이 다른 회원·지역 미선택 회원 모두 대상 → " + noticeTargets.join(","));
+ok(!noticeTargets.includes("옛버전") && !noticeTargets.includes("동의없음"), "공지: 옛 버전·동의 없음 제외");
+ok(!dm.selectNoticeAlertMembers({ noticeOptInIds: ["옵트아웃", "서울"], optedOut, agreed }).includes("옵트아웃"), "공지: push_opt_out 제외");
+ok(dm.selectNoticeAlertMembers({ noticeOptInIds: [], optedOut, agreed }).length === 0, "공지: 공지 알림을 켠 회원이 없으면 0");
+// 공지에 지역이 있어도(region_id) 결과 동일 — 함수가 지역을 읽지 않음
+ok(eq(dm.selectNoticeAlertMembers({ noticeOptInIds: noticeOptIn, optedOut, agreed, noticeRegion: 3, regionsByMember: new Map([["서울", [9]]]) } as never), noticeTargets), "공지: 지역 정보가 있어도 결과 동일");
+
 if (failed) {
   console.error(`\n${failed}건 실패`);
   process.exit(1);

@@ -4034,15 +4034,16 @@ function NoticeForm({ adminKey, onDone }: { adminKey: string; onDone: () => void
         />
       </div>
       <div>
-        <FieldLabel need="optional">지역</FieldLabel>
+        <FieldLabel need="optional">소재지(표시용)</FieldLabel>
         <select className="w-full border-2 border-gray200 rounded-xl px-3.5 outline-none focus:border-navy bg-white" style={{ height: 52, fontSize: FORM_INPUT_FONT_SIZE }} value={region} onChange={(e) => setRegion(e.target.value)}>
-          <option value="">전국 (지역 무관)</option>
+          <option value="">표시 안 함</option>
           {mockRegions.map((r) => (
             <option key={r} value={r}>
               {r}
             </option>
           ))}
         </select>
+        <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }}>공지 목록에 보이는 소재지예요. 알림은 지역과 관계없이 전체 발송돼요.</p>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div className="min-w-0">

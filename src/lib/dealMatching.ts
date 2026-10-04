@@ -7,6 +7,19 @@ export function matchesCategory<T>(dealCategory: T | null | undefined, memberCat
 }
 
 /**
+ * 긴급 공지 알림 발송 대상(구독 보유 확인 전) — 긴급 공지 알림을 켠 회원(notice_alerts_opt_in)(noticeOptInIds) 중
+ *   알림을 끈 회원(push_opt_out)·매물 알림 동의(deal_alert_ad 최신 agreed 이고 현재 버전 이상)가 없는 회원을 뺌.
+ * 2026-10-04: 공지의 지역(region_id)은 표시 정보일 뿐 대상 조건이 아님 — 지역과 관계없이 전체 발송. 카테고리 매칭도 없음.
+ */
+export function selectNoticeAlertMembers(args: {
+  noticeOptInIds: readonly string[];
+  optedOut: ReadonlySet<string>;
+  agreed: ReadonlySet<string>;
+}): string[] {
+  return selectDealAlertMembers({ categoryMemberIds: args.noticeOptInIds, optedOut: args.optedOut, agreed: args.agreed });
+}
+
+/**
  * 매물 알림 발송 대상(구독 보유 확인 전) — 이 카테고리를 고른 회원(categoryMemberIds) 중
  *   알림을 끈 회원(push_opt_out)·매물 알림 동의(deal_alert_ad 최신 agreed 이고 현재 버전 이상)가 없는 회원을 뺌.
  * 지역은 보지 않음. 푸시 구독 보유는 이 결과로 push_subscriptions를 조회하며 걸러짐(구독 없는 회원은 보낼 기기가 없음).
