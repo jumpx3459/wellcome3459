@@ -1987,3 +1987,21 @@ revoke all on public.seller_business_checks from anon, authenticated;
 -- 회원 화면은 interests에 insert·select만 함. 관리자 쓰기(리드 PATCH·연결 단계 전환)는 service role.
 -- ============================================================================
 revoke update on public.interests from anon, authenticated;
+
+-- ============================================================================
+-- 2026-10-04 "가격 협의" 매물 — deals.price_mode + 가격 칸 NOT NULL 해제 (운영 미실행. 순서: SQL 실행 → PR 배포)
+--   원본·실행 전 확인·확인 조회·되돌리기: supabase/migrations/20261004_deal_price_negotiable.sql
+-- ============================================================================
+alter table public.deals add column if not exists price_mode text not null default 'fixed';
+alter table public.deals drop constraint if exists deals_price_mode_check;
+alter table public.deals add constraint deals_price_mode_check check (price_mode in ('fixed', 'negotiable'));
+alter table public.deals alter column deal_price drop not null;
+alter table public.deals alter column original_price drop not null;
+alter table public.deals drop constraint if exists deals_price_by_mode_check;
+alter table public.deals add constraint deals_price_by_mode_check
+  check (
+    (price_mode = 'fixed' and deal_price is not null and original_price is not null)
+    or (price_mode = 'negotiable' and deal_price is null and original_price is null)
+  );
+grant select (price_mode) on public.deals to anon, authenticated;
+notify pgrst, 'reload schema';

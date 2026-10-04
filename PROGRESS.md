@@ -1,12 +1,12 @@
 # PROGRESS
 
-마지막 업데이트: 2026-10-04 (대리 게시 매물 실제 판매자 저장 + 직접 등록 사업자 조회 연결·#63 병합 기록·운영 확인 방법 정정 — 브랜치 `feat/deal-seller-private` / PR #61 F-4 병합 `5ab3bf4`·배포 run 37179769308·운영 확인 통과 기록 + F-1 리드 보안 완료 판정 + PC 비회원 화면 사전 점검 — 브랜치 `docs/progress-61-f1-guest-check` / F-4 관리자 거래 연결 보드 — 브랜치 `feat/f4-connection-board`, interests 권한 회수 SQL은 운영 실행 완료(기록용 파일만) / PR #60 4.5 비회원 가입 버튼 통일 병합 `2d4f492` / PR #59 사업자 조회 상호 미전송 병합 `06f0fe2` / PR #58 판매자 신원 확인 병합 `160d5ef`·SQL·NTS_API_KEY 운영 반영 / PR #57 A안 비회원 가격 비공개 병합 `5dfc47f`·SQL A·B 실행·운영 확인 통과 / PR #56 처리방침·약관 매물 알림 범위 병합 `635d3e5` / PR #55 F-3b 매물 알림 동의 전용 버전 병합 `3a51712` / PR #54 /deals 넘침 방어·홈 카드 배지 병합 `81dac2c` / PR #53 병합 `377bc99` / PR #52 F-3a 병합 `e9ea982`·운영 확인 / PR #51 첫 방문 플로우 병합 `b28659c` / PR-D 관리자 매물 등록 폼 2단 — 커밋 1 2단·판매자 신청 폼 자리 이동·커밋 2 카드 제목·PC 사진 버튼·업로드 오류 상자, 브랜치 `feat/admin-deal-form-2col` / PR #47 PR-B 사진 업로드 병합 `eada5c1` / PR #46 PR-C1 관리자 카드 목록 병합 `9ee5715` / PR #45 /sell PC 2단 병합 `c5aca29` / PR #44 /sell·관리자 레이아웃 정리 병합 `849d069` / PR-A2 영상 업로드 보완 / PR #42 영상 직접 업로드 병합 `bae6df1`·운영 시험 / PR #41 번호 표시 통일 병합 `d5f5e78` / PR #40 F-2 거래 연결 DB 병합 `60646c0`·운영 SQL 실행 완료 / L-8 관리자 매물 [마감] 버튼 — 브랜치 `feat/admin-deal-close` / PR #31 VAPID lazy 초기화 — 병합 `f2dca21` / ① 관리자 역할 기반 최소판 — PR #30, SQL 1~5 실행 완료 / PR용 CI(chore/pr-ci) / J-2 사업자정보 푸터·관리자 대시보드 레이아웃 / J-1 로그인·가입 번호 자동완성 버그 / PR #26 커밋 K KPI 매일 저장·방문 기록·지표 정확도 — 병합 `c0c9c8a`·SQL 실행 완료 / PR #25 커밋 G 비회원 동의 기록·90일 자동 삭제 — 병합 `cf6093d`·SQL 실행 완료 / PR #24 커밋 D 사업자 정보 푸터·문의 경로 — 병합 `f24170c` / PR #23 커밋 E 판매자 표시 — 병합 `6dbe813`·SQL ①②③ 실행 완료 / PR #22 커밋 H: 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내 — 병합 `8cf2f41` / PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
+마지막 업데이트: 2026-10-04 (가격 협의(price_mode) 매물 지원 — 브랜치 `feat/deal-price-negotiable`, 운영 SQL 미실행·공개일 목표 10/12로 정정 / 대리 게시 매물 실제 판매자 저장 + 직접 등록 사업자 조회 연결·#63 병합 기록·운영 확인 방법 정정 — 브랜치 `feat/deal-seller-private` / PR #61 F-4 병합 `5ab3bf4`·배포 run 37179769308·운영 확인 통과 기록 + F-1 리드 보안 완료 판정 + PC 비회원 화면 사전 점검 — 브랜치 `docs/progress-61-f1-guest-check` / F-4 관리자 거래 연결 보드 — 브랜치 `feat/f4-connection-board`, interests 권한 회수 SQL은 운영 실행 완료(기록용 파일만) / PR #60 4.5 비회원 가입 버튼 통일 병합 `2d4f492` / PR #59 사업자 조회 상호 미전송 병합 `06f0fe2` / PR #58 판매자 신원 확인 병합 `160d5ef`·SQL·NTS_API_KEY 운영 반영 / PR #57 A안 비회원 가격 비공개 병합 `5dfc47f`·SQL A·B 실행·운영 확인 통과 / PR #56 처리방침·약관 매물 알림 범위 병합 `635d3e5` / PR #55 F-3b 매물 알림 동의 전용 버전 병합 `3a51712` / PR #54 /deals 넘침 방어·홈 카드 배지 병합 `81dac2c` / PR #53 병합 `377bc99` / PR #52 F-3a 병합 `e9ea982`·운영 확인 / PR #51 첫 방문 플로우 병합 `b28659c` / PR-D 관리자 매물 등록 폼 2단 — 커밋 1 2단·판매자 신청 폼 자리 이동·커밋 2 카드 제목·PC 사진 버튼·업로드 오류 상자, 브랜치 `feat/admin-deal-form-2col` / PR #47 PR-B 사진 업로드 병합 `eada5c1` / PR #46 PR-C1 관리자 카드 목록 병합 `9ee5715` / PR #45 /sell PC 2단 병합 `c5aca29` / PR #44 /sell·관리자 레이아웃 정리 병합 `849d069` / PR-A2 영상 업로드 보완 / PR #42 영상 직접 업로드 병합 `bae6df1`·운영 시험 / PR #41 번호 표시 통일 병합 `d5f5e78` / PR #40 F-2 거래 연결 DB 병합 `60646c0`·운영 SQL 실행 완료 / L-8 관리자 매물 [마감] 버튼 — 브랜치 `feat/admin-deal-close` / PR #31 VAPID lazy 초기화 — 병합 `f2dca21` / ① 관리자 역할 기반 최소판 — PR #30, SQL 1~5 실행 완료 / PR용 CI(chore/pr-ci) / J-2 사업자정보 푸터·관리자 대시보드 레이아웃 / J-1 로그인·가입 번호 자동완성 버그 / PR #26 커밋 K KPI 매일 저장·방문 기록·지표 정확도 — 병합 `c0c9c8a`·SQL 실행 완료 / PR #25 커밋 G 비회원 동의 기록·90일 자동 삭제 — 병합 `cf6093d`·SQL 실행 완료 / PR #24 커밋 D 사업자 정보 푸터·문의 경로 — 병합 `f24170c` / PR #23 커밋 E 판매자 표시 — 병합 `6dbe813`·SQL ①②③ 실행 완료 / PR #22 커밋 H: 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내 — 병합 `8cf2f41` / PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
 
 새 세션을 시작할 때 이 파일을 먼저 읽고, 아래 "다음에 할 일"부터 확인하세요.
 
 ## 공개일
 
-- **정식 공개: 2026-10-07** (2026-09-30 대표 결정으로 10/1 → 10/7 연기). 아래 백로그의 "공개 후 작업"은 10/7 기준.
+- **정식 공개: 목표 2026-10-12 (10/9 판단)** — 예전 10/7은 옛 값(2026-09-30 대표 결정으로 10/1 → 10/7 연기했던 것). 아래 백로그·기록의 "공개 후"·"10/7" 표기는 옛 기준일 수 있음. (참고: 10/12는 매물 알림 동의 버전 `DEAL_ALERT_CONSENT_VERSION` 값이기도 함)
 
 ## 결정 기록 (2026-09-30)
 
@@ -59,6 +59,22 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
   (운영 브라우저에서 직접 재현하진 못함 — 로컬 env가 운영 Supabase라 관리자 화면 시험 불가.)
 - **수정**: `src/lib/bizCheckJump.ts` `scrollToBizCheck`(스크롤 + 테두리 1.8초 강조) — 등록 폼·수정 카드·판매 신청 카드가 같은 함수. 등록 폼·수정 카드의 바로가기는 사업자 조회의
   판매 신청을 **"신청 없이 조회(직접 등록)"으로 되돌린 뒤** 이동(`goToBizCheck`, 기존 `bizPreselect` 재사용, id ""). 판매 신청 카드 [사업자 조회]는 그 신청 선택 + 같은 이동·강조.
+
+## 최근 작업 (2026-10-04) — "가격 협의" 매물(가격 없음) 지원, 관리자 폼만 (브랜치 `feat/deal-price-negotiable`, **운영 SQL 미실행 — SQL 먼저**)
+
+- **모델**: `deals.price_mode` text not null default 'fixed' check in ('fixed','negotiable'). `deal_price`·`original_price` NOT NULL 해제 + CHECK `deals_price_by_mode_check`
+  ((fixed 이고 두 가격 not null) 또는 (negotiable 이고 두 가격 null)). 기존 행 전부 fixed. anon·authenticated에 `price_mode` 칸 select grant(가격 칸은 계속 anon 금지).
+  `discount_pct`(생성 칸)는 가격이 null이면 이미 null이라 변경 없음. `price_unit`은 제약 그대로 — 협의 매물에도 저장될 수 있고 화면은 안 보임.
+- **SQL**: `supabase/migrations/20261004_deal_price_negotiable.sql`(실행 전 확인·1~4·확인 조회·CHECK 동작 시험·되돌리기 포함) + `schema.sql` 끝에 같은 블록. **순서: 대표가 SQL Editor에서 실행 → 확인 조회 → PR merge·배포**
+  (새 코드가 `price_mode`를 select하므로 칸이 없으면 매물 목록·상세·푸시가 오류). SQL만 먼저 실행하면 기존 코드는 영향 없음.
+- **관리자 등록 폼**: "가격 방식 [가격 입력 | 가격 협의]" — 협의면 판매·정상 단가 칸을 감추고 서버로 가격을 보내지 않음. 서버(`POST /api/admin/deals`)는 `priceMode` 분기 검증(협의면 가격 무시, fixed는 `price_mode`를 안 보내 SQL 전에도 등록됨).
+  수정 카드(`dealEdit.ts`·`manage/route.ts`): 방식 전환 허용(협의→가격 입력은 판매가 필수, 한 UPDATE에 가격·price_mode 같이), 정상가=판매가 자동 맞춤은 fixed에서만. 목록 행 `toLocaleString` null 방어.
+- **표시**: "가격 협의 · 점핑매니저가 연결해드려요" — 목록 카드·상세(할인율·취소선 없음)·홈(비회원·회원)·AlertInboxHome·`/p/[slug]`·MY(알림 기록·관심 목록·공유 문구). `dealPriceAccess`는 비회원 가격 숨김(`price_hidden`)과 협의를 구분 —
+  협의는 회원·비회원 모두 `price_hidden=false`·가격 null. 비회원 가입 버튼은 협의 매물에서 "무료 회원가입하고 점핑매니저 연결". 정렬: 할인율 없음은 뒤로(현행).
+- **푸시**(`sendPush.ts` 즉시·아침 공통): `pushPriceParts` — 협의 매물은 할인율 접두어 없이 "가격 협의". 가격이 없거나 0이어도 "0원"이 나가지 않음(단위 시험).
+- **타입**: `Deal.deal_price·original_price`를 `number | null`로 바꿔 컴파일러가 누락을 잡음(tsc 통과).
+- **시험**: `node --experimental-strip-types scripts/price-mode-test.mts` — 푸시 문구 fixed/negotiable·0원 방어·dealPriceFields 분기·수정 검증 전환 규칙. 운영 DB 쓰기 없음.
+- **범위 밖**: "협의 가능"(fixed + 협의) 표시, /sell·seller_requests(항상 fixed).
 
 ## 최근 작업 (2026-10-04) — 대리 게시 매물 실제 판매자 저장 + 직접 등록 사업자 조회 연결 (브랜치 `feat/deal-seller-private`, DB 변경 없음)
 

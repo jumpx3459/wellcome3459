@@ -7,6 +7,8 @@ import StockTypeBadge from "@/components/StockTypeBadge";
 import { isLumpSum } from "@/lib/priceUnit";
 import { formatExpiry, isStorageType, STORAGE_ICONS } from "@/lib/dealFields";
 import { cardDiscountPct } from "@/lib/dealPriceAccess";
+import { dealPriceLabel, isNegotiable } from "@/lib/priceMode";
+import NegotiablePrice from "@/components/NegotiablePrice";
 import MemberPriceTeaser from "@/components/MemberPriceTeaser";
 
 // /deals 목록 카드 — 실매물·예시 공용 (2026-09-29, 예전엔 예시 카드가 따로 있어서 배지 위치가 달랐음).
@@ -31,6 +33,7 @@ export default function DealListCard({
   const accent = gray ? "#6B7480" : color.text;
   const remainPct = d.total_qty ? Math.round((d.remaining_qty / d.total_qty) * 100) : 0;
   const discountPct = cardDiscountPct(d);
+  const negotiable = isNegotiable(d); // 2026-10-04 가격 협의 — 가격 자리에 "가격 협의 · 점핑매니저가 연결해드려요"
   const unit = d.quantity_unit || "개";
   const lump = isLumpSum(d.price_unit); // 일괄 판매면 MOQ 의미 없음
   const expiry = formatExpiry(d.expiry_date); // 2026-10-01 PR-B: "~2026.10.20까지"
@@ -104,17 +107,21 @@ export default function DealListCard({
             {d.min_order_qty && !lump && <span className="whitespace-nowrap">MOQ {d.min_order_qty}{unit}</span>}
           </div>
         )}
-        {priceHidden ? (
+        {negotiable ? (
+          <div className="mt-2">
+            <NegotiablePrice color={accent} className="text-lg" />
+          </div>
+        ) : priceHidden ? (
           <div className="mt-2">
             <MemberPriceTeaser discountPct={discountPct} color={accent} className="text-lg" />
           </div>
         ) : (
           <div className="flex flex-wrap items-baseline gap-x-1.5 mt-2">
             <span className="text-lg font-black" style={{ color: accent }}>
-              <PriceText text={formatDealPrice(d.deal_price, d.quantity_unit, d.price_unit)} />
+              <PriceText text={dealPriceLabel(d)} />
             </span>
             <span className="text-sm text-gray500 font-normal line-through">
-              <PriceText text={formatDealPrice(d.original_price, d.quantity_unit, d.price_unit)} />
+              <PriceText text={d.original_price != null ? formatDealPrice(d.original_price, d.quantity_unit, d.price_unit) : ""} />
             </span>
           </div>
         )}

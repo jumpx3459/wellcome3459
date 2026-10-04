@@ -10,6 +10,7 @@ import { hasAppHistory, goHome } from "@/lib/appNav";
 import { mockDeals, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import CountdownBadge from "@/components/CountdownBadge";
 import { formatPrice, percentOff, formatDealPrice } from "@/lib/format";
+import { dealPriceLabel, isNegotiable, NEGOTIABLE_LABEL, NEGOTIABLE_NOTE, NEGOTIABLE_GUEST_CTA } from "@/lib/priceMode";
 import { SITE_URL } from "@/lib/siteUrl";
 import { withReturnTo } from "@/lib/safeReturnTo";
 import { MESSAGES_ENABLED, JUMPX_BRIDGE_ENABLED, JUMPX_PREVIEW_ENABLED } from "@/lib/features";
@@ -212,6 +213,7 @@ function DealDetailPageInner() {
   const hasManifest = Boolean(deal.manifest_items?.length && Object.keys(deal.manifest_items[0] ?? {}).length > 0);
 
   const remainPct = Math.round((deal.remaining_qty / deal.total_qty) * 100);
+  const hasDiscount = deal.original_price != null && deal.deal_price != null && deal.original_price > deal.deal_price;
   const color = categoryColors[deal.category] ?? categoryColors["기타"];
 
   // 2026-10-01 F-1: 이미 관심 표시한 매물이면 처음부터 "관심 표시 완료" — 회원은 interests(본인 행만 읽힘), 비회원은 이 기기 기록
@@ -537,7 +539,31 @@ function DealDetailPageInner() {
           />
         )}
 
-        {priceHidden ? (
+        {isNegotiable(deal) ? (
+          // 2026-10-04 가격 협의 — 가격·할인율·취소선 없음. 회원·비회원 같은 화면(가려 둘 가격이 없음)
+          <div>
+            <div className="rounded-2xl" style={{ background: "#FFF4EC", border: "1.5px solid #F6D3BF", padding: "14px 16px" }} data-negotiable-price>
+              <p className="text-2xl font-black text-navy">{NEGOTIABLE_LABEL}</p>
+              <p className="text-base font-bold text-gray500 mt-0.5">{NEGOTIABLE_NOTE}</p>
+            </div>
+            <div className="flex items-center justify-between gap-2 mt-2">
+              <span className="text-sm text-gray500">
+                {isLumpSum(deal.price_unit)
+                  ? "전체 일괄 판매"
+                  : deal.min_order_qty
+                    ? `최소주문 ${deal.min_order_qty}${deal.quantity_unit || "개"}`
+                    : null}
+              </span>
+              <button
+                type="button"
+                onClick={handleShare}
+                className="flex-shrink-0 flex items-center gap-1 text-xs font-bold text-gray500 border border-gray200 rounded-full px-3 py-1.5"
+              >
+                {shareCopied ? "링크 복사됨 ✓" : "공유 ↗"}
+              </button>
+            </div>
+          </div>
+        ) : priceHidden ? (
           // 2026-10-03 A안: 비회원 — 가격 상자 대신 가입 안내. 가입 버튼은 하단 고정 버튼 하나(4.5) — returnTo(이 매물)·ref만, autoInterest 같은 자동 관심은 붙이지 않음
           <div>
             {(cardDiscountPct(deal) > 0 || (deal.interest_count ?? 0) >= 3) && (
@@ -582,13 +608,13 @@ function DealDetailPageInner() {
           <div>
             {/* 2026-10-03: 할인율은 한 덩어리, 가격은 숫자·단위 사이에서만 줄바꿈(PriceText) — 큰 글자에서 "-38/%"·"원/k/g"처럼 끊기던 문제 */}
             <div className="flex flex-wrap items-baseline gap-x-2">
-              {percentOff(deal.original_price, deal.deal_price) > 0 && (
+              {deal.original_price != null && deal.deal_price != null && percentOff(deal.original_price, deal.deal_price) > 0 && (
                 <span className="text-xl font-black whitespace-nowrap" style={{ color: "#E25100" }}>
                   -{percentOff(deal.original_price, deal.deal_price)}%
                 </span>
               )}
               <span className="text-3xl font-black" style={{ color: "#0B2540" }}>
-                <PriceText text={formatDealPrice(deal.deal_price, deal.quantity_unit, deal.price_unit)} />
+                <PriceText text={dealPriceLabel(deal)} />
               </span>
               {/* 2026-09-26: 카드 리스트와 동일한 threshold-gating(3건 미만 숨김) */}
               {(deal.interest_count ?? 0) >= 3 && (
@@ -602,13 +628,13 @@ function DealDetailPageInner() {
             </div>
             <div className="flex items-center justify-between gap-2 mt-1">
               <span className="text-sm text-gray500">
-                {deal.original_price > deal.deal_price && (
-                  <span className="line-through"><PriceText text={formatDealPrice(deal.original_price, deal.quantity_unit, deal.price_unit)} /></span>
+                {hasDiscount && (
+                  <span className="line-through"><PriceText text={formatDealPrice(deal.original_price!, deal.quantity_unit, deal.price_unit)} /></span>
                 )}
                 {isLumpSum(deal.price_unit)
-                  ? `${deal.original_price > deal.deal_price ? " · " : ""}전체 일괄 판매`
+                  ? `${hasDiscount ? " · " : ""}전체 일괄 판매`
                   : deal.min_order_qty
-                    ? `${deal.original_price > deal.deal_price ? " · " : ""}최소주문 ${deal.min_order_qty}${deal.quantity_unit || "개"}`
+                    ? `${hasDiscount ? " · " : ""}최소주문 ${deal.min_order_qty}${deal.quantity_unit || "개"}`
                     : null}
               </span>
               <button
@@ -802,7 +828,7 @@ function DealDetailPageInner() {
                 style={btnStyle("primary")}
                 data-guest-signup-cta
               >
-                {isMember ? "덤핑정보 알림 받기" : "무료 회원가입하고 가격 보기"}
+                {isMember ? "덤핑정보 알림 받기" : isNegotiable(deal) ? NEGOTIABLE_GUEST_CTA : "무료 회원가입하고 가격 보기"}
               </Link>
             )}
           </div>
@@ -823,7 +849,7 @@ function DealDetailPageInner() {
                 style={btnStyle("primary")}
                 data-guest-signup-cta
               >
-                {isMember ? "무료 알림받기 →" : "무료 회원가입하고 가격 보기"}
+                {isMember ? "무료 알림받기 →" : isNegotiable(deal) ? NEGOTIABLE_GUEST_CTA : "무료 회원가입하고 가격 보기"}
               </Link>
             )}
           </div>
@@ -945,7 +971,7 @@ function DealDetailPageInner() {
                 style={floatingCtaButtonStyle()}
                 data-guest-signup-cta
               >
-                무료 회원가입하고 가격 보기
+                {isNegotiable(deal) ? NEGOTIABLE_GUEST_CTA : "무료 회원가입하고 가격 보기"}
               </Link>
             ) : interested && connection === "none" && !isPastClose() ? (
               // 2026-10-03 F-3a: 관심 표시는 했지만(autoInterest 포함) 진행 중 연결이 없음 → 같은 동의 시트로

@@ -7,7 +7,8 @@ import BusinessFooter from "@/components/BusinessFooter";
 import { CheckCircle } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockCategories, mockRegions, categoryIcons, categoryColors } from "@/lib/mockData";
-import { formatPrice, formatMemberNo, formatRelativeTime, dealUrgencyState, formatDealPrice } from "@/lib/format";
+import { formatPrice, formatMemberNo, formatRelativeTime, dealUrgencyState } from "@/lib/format";
+import { dealPriceLabel, isNegotiable } from "@/lib/priceMode";
 import { generateRefCode } from "@/lib/refCode";
 import Toast, { useToast } from "@/components/Toast";
 import BusinessLicenseUploader from "@/components/BusinessLicenseUploader";
@@ -38,7 +39,8 @@ type InterestItem = {
   deals: {
     id: string;
     title: string;
-    deal_price: number;
+    deal_price: number | null; // 2026-10-04 가격 협의(price_mode negotiable)면 null
+    price_mode?: string | null;
     quantity_unit: string | null;
     price_unit: string | null;
     status: string;
@@ -65,8 +67,9 @@ type AlertLogItem = {
     id: string;
     title: string;
     category_id: number | null;
-    deal_price: number;
-    original_price: number;
+    deal_price: number | null;
+    original_price: number | null;
+    price_mode?: string | null;
     closes_at: string;
     categories: { name: string } | null;
   } | null;
@@ -95,7 +98,7 @@ export default function MyPage() {
   const [alertLog, setAlertLog] = useState<AlertLogItem[]>([]);
   const [alertLogCount, setAlertLogCount] = useState(0);
   const [referrals, setReferrals] = useState<ReferralItem[]>([]);
-  const [shareDeals, setShareDeals] = useState<{ id: string; title: string; deal_price: number; quantity_unit: string | null; price_unit: string | null }[]>([]);
+  const [shareDeals, setShareDeals] = useState<{ id: string; title: string; deal_price: number | null; price_mode?: string | null; quantity_unit: string | null; price_unit: string | null }[]>([]);
   const [selectedShareDealId, setSelectedShareDealId] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -222,14 +225,14 @@ export default function MyPage() {
 
       const { data: interestRows } = await supabase
         .from("interests")
-        .select("id, deals(id, title, deal_price, quantity_unit, price_unit, status)")
+        .select("id, deals(id, title, deal_price, price_mode, quantity_unit, price_unit, status)")
         .eq("member_id", userId)
         .order("created_at", { ascending: false });
       setInterests((interestRows as unknown as InterestItem[]) ?? []);
 
       const { data: alertLogRows, count: alertLogTotal } = await supabase
         .from("notification_logs")
-        .select("id, sent_at, deals(id, title, category_id, deal_price, original_price, closes_at, categories(name))", { count: "exact" })
+        .select("id, sent_at, deals(id, title, category_id, deal_price, original_price, price_mode, closes_at, categories(name))", { count: "exact" })
         .eq("member_id", userId)
         .order("sent_at", { ascending: false })
         .limit(5);
@@ -274,7 +277,7 @@ export default function MyPage() {
     // 공유 시 앱 홍보 문구 대신 실제 특가를 보여주는 게 더 잘 클릭됨
     supabase
       .from("deals")
-      .select("id, title, deal_price, quantity_unit, price_unit")
+      .select("id, title, deal_price, price_mode, quantity_unit, price_unit")
       .eq("status", "active")
       .gt("closes_at", new Date().toISOString()) // 마감 지난 매물은 공유 목록에서 제외
       .order("created_at", { ascending: false })
@@ -440,7 +443,9 @@ export default function MyPage() {
 
   // 추천 링크 공유 문구 (ReferralShareButtons가 공유창에 넣음)
   const shareText = shareDeal
-    ? `[덤핑점핑] ${shareDeal.title} ${formatDealPrice(shareDeal.deal_price, shareDeal.quantity_unit, shareDeal.price_unit)} 특가! 이런 재고특가 알림 매일 받아보세요 → ${refUrl}`
+    ? isNegotiable(shareDeal)
+      ? `[덤핑점핑] ${shareDeal.title} 가격 협의 매물! 이런 재고 알림 매일 받아보세요 → ${refUrl}`
+      : `[덤핑점핑] ${shareDeal.title} ${dealPriceLabel(shareDeal)} 특가! 이런 재고특가 알림 매일 받아보세요 → ${refUrl}`
     : `점프엑스 덤핑점핑 - 재고 특가 알림 받아보세요! ${refUrl}`;
 
   const save = async () => {
@@ -1099,7 +1104,7 @@ export default function MyPage() {
             >
               {shareDeals.map((d) => (
                 <option key={d.id} value={d.id}>
-                  📦 {d.title} · {formatDealPrice(d.deal_price, d.quantity_unit, d.price_unit)}
+                  📦 {d.title} · {dealPriceLabel(d)}
                 </option>
               ))}
               <option value="">🔗 매물 없이 가입 추천만 보내기</option>
@@ -1445,9 +1450,10 @@ export default function MyPage() {
               {alertLog.map((a) => {
                 if (!a.deals) return null;
                 const { closed, urgent } = dealUrgencyState(a.deals.closes_at);
-                const discount = a.deals.original_price
-                  ? Math.round(((a.deals.original_price - a.deals.deal_price) / a.deals.original_price) * 100)
-                  : 0;
+                const discount =
+                  !isNegotiable(a.deals) && a.deals.original_price && a.deals.deal_price != null
+                    ? Math.round(((a.deals.original_price - a.deals.deal_price) / a.deals.original_price) * 100)
+                    : 0;
                 return (
                   <Link
                     key={a.id}
@@ -1513,7 +1519,7 @@ export default function MyPage() {
                   <div className="min-w-0">
                     <div className="truncate" style={UI_CARD_TITLE}>{i.deals.title}</div>
                     <div className="mt-0.5" style={{ ...UI_LINK, color: "#0B2540" }}>
-                      {formatDealPrice(i.deals.deal_price, i.deals.quantity_unit, i.deals.price_unit)}
+                      {dealPriceLabel(i.deals)}
                     </div>
                   </div>
                   <span

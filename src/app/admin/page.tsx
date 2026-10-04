@@ -9,6 +9,7 @@ import VideoUploader, { type VideoUploadStatus, type VideoUploaderHandle } from 
 import VideoNotUploadedSheet, { PHOTO_FAILED_DESCRIPTION, uploadingLabel, videoNotUploaded } from "@/components/VideoNotUploadedSheet";
 import SellerDisplayPicker from "@/components/SellerDisplayPicker";
 import { scrollToBizCheck } from "@/lib/bizCheckJump";
+import { NEGOTIABLE_TEXT, type PriceMode } from "@/lib/priceMode";
 import SellerPrivateFields, { EMPTY_SELLER_PRIVATE, type SellerPrivateDraft } from "@/components/admin/SellerPrivateFields";
 import DealSellerPrivateEditor from "@/components/admin/DealSellerPrivateEditor";
 import { publicSellerName } from "@/lib/sellerDisplay";
@@ -115,7 +116,8 @@ type PartnerOverviewItem = {
 type ActiveDeal = {
   id: string;
   title: string;
-  deal_price: number;
+  deal_price: number | null; // 2026-10-04 가격 협의 매물은 null
+  price_mode?: PriceMode | null;
   total_qty: number;
   remaining_qty: number;
   quantity_unit: string | null;
@@ -358,7 +360,7 @@ type Interest = {
   outcome: "pending" | "completed" | "no_deal";
   completed_amount: number | null;
   created_at: string;
-  deals: { id: string; title: string; deal_price: number } | null;
+  deals: { id: string; title: string; deal_price: number | null } | null;
   members: {
     phone: string;
     is_business: boolean;
@@ -2385,7 +2387,7 @@ function AdminDashboard({
 // 2026-10-03 feat/admin-deal-edit: 진행 중 매물 수정 칸 공용
 type EditWarnings = { title: string[]; description: string[]; price: string[] };
 const NO_EDIT_WARNINGS: EditWarnings = { title: [], description: [], price: [] };
-const EDIT_FIELDS: DealEditField[] = ["title", "dealPrice", "originalPrice", "minOrderQty", "expiryDate", "description", "closesAt"];
+const EDIT_FIELDS: DealEditField[] = ["priceMode", "title", "dealPrice", "originalPrice", "minOrderQty", "expiryDate", "description", "closesAt"];
 const DAY_MS = 24 * 3600 * 1000;
 const nowMs = () => Date.now(); // 클릭 처리에서만 부름(렌더 중 호출 아님)
 
@@ -2460,6 +2462,7 @@ function ActiveDealCard({
   const editCurrent = {
     title: deal.title,
     deal_price: deal.deal_price,
+    price_mode: deal.price_mode ?? "fixed",
     original_price: deal.original_price ?? null,
     total_qty: deal.total_qty,
     price_unit: deal.price_unit ?? null,
@@ -2471,10 +2474,12 @@ function ActiveDealCard({
   // 정상가 없이 등록하면 original_price = 판매가로 저장됨 → 칸은 비워서 보여줌
   const initialOrig = deal.original_price && deal.original_price !== deal.deal_price ? String(deal.original_price) : "";
   const initialMoq = deal.min_order_qty ? String(deal.min_order_qty) : "";
+  const initialPriceMode: PriceMode = deal.price_mode === "negotiable" ? "negotiable" : "fixed";
+  const [priceMode, setPriceModeRaw] = useState<PriceMode>(initialPriceMode); // 2026-10-04 가격 방식 전환(가격 입력 ↔ 가격 협의)
   const initialExpiry = deal.expiry_date?.slice(0, 10) ?? "";
   const [form, setForm] = useState(() => ({
     title: deal.title,
-    dealPrice: String(deal.deal_price),
+    dealPrice: deal.deal_price != null ? String(deal.deal_price) : "",
     originalPrice: initialOrig,
     minOrderQty: initialMoq,
     expiryDate: initialExpiry,
@@ -2491,14 +2496,24 @@ function ActiveDealCard({
     setEditWarns(NO_EDIT_WARNINGS);
     confirmedRef.current = false;
   };
+  const setPriceMode = (m: PriceMode) => {
+    setPriceModeRaw(m);
+    setEditError(null);
+    setEditWarns(NO_EDIT_WARNINGS);
+    confirmedRef.current = false;
+  };
   const fieldError = (f: DealEditField) => (editError?.field === f ? editError.error : undefined);
   const buildEdit = (): DealEditInput => {
     const e: DealEditInput = {};
     if (normalizeTitle(form.title, { admin: true }) !== deal.title) e.title = form.title;
-    const dealPrice = parsePriceInput(form.dealPrice) ?? null;
-    if (dealPrice !== deal.deal_price || form.originalPrice !== initialOrig) {
-      e.dealPrice = dealPrice;
-      e.originalPrice = parsePriceInput(form.originalPrice) ?? null;
+    if (priceMode !== initialPriceMode) e.priceMode = priceMode;
+    if (priceMode === "fixed") {
+      // 가격 협의 → 가격 입력으로 바꾸면 가격이 없던 매물이라 판매가를 꼭 보냄(서버·validateDealEdit도 같은 규칙)
+      const dealPrice = parsePriceInput(form.dealPrice) ?? null;
+      if (initialPriceMode === "negotiable" || dealPrice !== deal.deal_price || form.originalPrice !== initialOrig) {
+        e.dealPrice = dealPrice;
+        e.originalPrice = parsePriceInput(form.originalPrice) ?? null;
+      }
     }
     if (!lumpSum && form.minOrderQty !== initialMoq) e.minOrderQty = form.minOrderQty.trim() ? Number(form.minOrderQty) : null;
     if (form.expiryDate !== initialExpiry) e.expiryDate = form.expiryDate || null;
@@ -2573,6 +2588,7 @@ function ActiveDealCard({
       }
     }
     if (
+      priceMode === "fixed" &&
       edit.dealPrice != null &&
       edit.originalPrice &&
       edit.dealPrice >= edit.originalPrice &&
@@ -2689,7 +2705,7 @@ function ActiveDealCard({
       </div>
       <div className="text-base font-bold text-gray900 mt-1.5">{deal.title}</div>
       <div className="text-sm text-gray500 mt-1">
-        {deal.deal_price.toLocaleString()}원 · 마감{" "}
+        {deal.price_mode === "negotiable" || deal.deal_price == null ? NEGOTIABLE_TEXT : `${deal.deal_price.toLocaleString()}원`} · 마감{" "}
         {new Date(deal.closes_at).toLocaleString("ko-KR", {
           month: "numeric",
           day: "numeric",
@@ -2746,6 +2762,19 @@ function ActiveDealCard({
               />
               <ConfirmWarnings warnings={editWarns.title} onConfirm={confirmAndSave} busy={saving} />
             </EditField>
+            <div className="flex gap-2" role="radiogroup" aria-label="가격 방식">
+              {(["fixed", "negotiable"] as const).map((m) => (
+                <label
+                  key={m}
+                  className="flex-1 flex items-center gap-2 rounded-lg cursor-pointer"
+                  style={{ border: `2px solid ${priceMode === m ? "#0B2540" : "#E4E7EB"}`, padding: "6px 10px", background: "#fff" }}
+                >
+                  <input type="radio" name={`${idp}-priceMode`} className="w-4 h-4 accent-navy flex-shrink-0" checked={priceMode === m} onChange={() => setPriceMode(m)} />
+                  <span className="text-sm font-bold text-navy">{m === "fixed" ? "가격 입력" : "가격 협의"}</span>
+                </label>
+              ))}
+            </div>
+            {fieldError("priceMode") && <p className="text-xs font-medium" style={{ color: BLOCK_COLOR }}>{fieldError("priceMode")}</p>}
             <div className="grid grid-cols-2 gap-2">
               <EditField label="판매가(원)" htmlFor={`${idp}-dealPrice`} error={fieldError("dealPrice")}>
                 <input
@@ -2753,7 +2782,9 @@ function ActiveDealCard({
                   type="text"
                   inputMode="numeric"
                   className={editInputCls(!!fieldError("dealPrice"))}
-                  value={formatPriceInput(form.dealPrice)}
+                  disabled={priceMode === "negotiable"}
+                  placeholder={priceMode === "negotiable" ? "가격 협의" : undefined}
+                  value={priceMode === "negotiable" ? "" : formatPriceInput(form.dealPrice)}
                   onChange={(e) => setField("dealPrice", e.target.value)}
                 />
               </EditField>
@@ -2764,7 +2795,8 @@ function ActiveDealCard({
                   inputMode="numeric"
                   placeholder="없음"
                   className={editInputCls(!!fieldError("originalPrice"))}
-                  value={formatPriceInput(form.originalPrice)}
+                  disabled={priceMode === "negotiable"}
+                  value={priceMode === "negotiable" ? "" : formatPriceInput(form.originalPrice)}
                   onChange={(e) => setField("originalPrice", e.target.value)}
                 />
               </EditField>
@@ -3055,6 +3087,7 @@ function DealForm({
   const [region, setRegion] = useState(prefill?.region ?? "");
   const [originalPrice, setOriginalPrice] = useState(prefill?.originalPrice ? String(prefill.originalPrice) : "");
   const [dealPrice, setDealPrice] = useState(prefill?.dealPrice ? String(prefill.dealPrice) : "");
+  const [priceMode, setPriceMode] = useState<PriceMode>("fixed"); // 2026-10-04 가격 방식 — 가격 협의면 판매·정상 단가 없이 등록
   const [totalQty, setTotalQty] = useState(prefill?.totalQty ? String(prefill.totalQty) : "");
   const [quantityUnit, setQuantityUnit] = useState(prefill?.quantityUnit || quantityUnits[0]);
   // 2026-09-29: 단가 단위 — 신청서 값 이어받기, 없으면 수량 단위를 따라감(직접 고르면 유지). 정상가·판매가 공통
@@ -3129,7 +3162,7 @@ function DealForm({
 
   // 2026-10-03 PR-D: 입력 중 여부 — 첫 렌더 값과 비교(사진·영상 업로드 상태 포함)
   const snapshot = JSON.stringify([
-    title, stockType, category, region, originalPrice, dealPrice, totalQty, quantityUnit, priceUnit, minOrderQty, location,
+    title, stockType, category, region, priceMode, originalPrice, dealPrice, totalQty, quantityUnit, priceUnit, minOrderQty, location,
     closesInHours, images, videoUrl, videoStatus, photoStatus, description, packageUnit, origin, spec, storageType, expiryDate,
     pid, manifestItems, seller, sellerPrivate,
   ]);
@@ -3152,9 +3185,11 @@ function DealForm({
     }
     if (!category) errs.category = "카테고리를 선택해주세요.";
     if (!region) errs.region = "지역을 선택해주세요.";
-    if (!dealPrice.trim()) errs.dealPrice = "판매가를 입력해주세요.";
-    else if (!deal || deal <= 0) errs.dealPrice = "판매가는 0보다 커야 해요.";
-    if (originalPrice.trim() && (!orig || orig <= 0)) errs.originalPrice = "정상가는 0보다 커야 해요.";
+    if (priceMode === "fixed") {
+      if (!dealPrice.trim()) errs.dealPrice = "판매가를 입력해주세요.";
+      else if (!deal || deal <= 0) errs.dealPrice = "판매가는 0보다 커야 해요.";
+      if (originalPrice.trim() && (!orig || orig <= 0)) errs.originalPrice = "정상가는 0보다 커야 해요.";
+    }
     if (!totalQty.trim()) errs.totalQty = "재고 총수량을 입력해주세요.";
     else if (!Number.isFinite(qty) || qty <= 0) errs.totalQty = "재고 총수량은 0보다 커야 해요.";
     if (!lumpSum && minOrderQty.trim() && !(Number(minOrderQty) > 0)) errs.minOrderQty = "최소 주문량은 0보다 커야 해요.";
@@ -3197,7 +3232,7 @@ function DealForm({
     if (!confirmWarnings) {
       const t = checkTitle(cleanTitle, { admin: true }).warnings;
       const d = checkDescription(description);
-      const pr = priceWarnings(orig, deal);
+      const pr = priceMode === "fixed" ? priceWarnings(orig, deal) : [];
       if (t.length || d.length || pr.length) {
         showWarnings(t, d, pr);
         return;
@@ -3206,7 +3241,7 @@ function DealForm({
     setTitleWarnings([]);
     setDescWarnings([]);
     setPriceWarns([]);
-    if (orig && deal >= orig && !window.confirm("판매가가 정상가보다 높거나 같아요. 할인율이 표시되지 않아요. 그대로 등록할까요?")) {
+    if (priceMode === "fixed" && orig && deal >= orig && !window.confirm("판매가가 정상가보다 높거나 같아요. 할인율이 표시되지 않아요. 그대로 등록할까요?")) {
       focusField("dealPrice");
       return;
     }
@@ -3231,8 +3266,9 @@ function DealForm({
           stockType,
           category,
           region,
-          originalPrice: orig,
-          dealPrice: deal,
+          priceMode,
+          // 가격 협의면 가격 칸은 보내지 않음(서버·DB도 두 가격 null만 허용)
+          ...(priceMode === "fixed" ? { originalPrice: orig, dealPrice: deal } : {}),
           totalQty: parsePriceInput(totalQty),
           quantityUnit,
           priceUnit,
@@ -3346,7 +3382,31 @@ function DealForm({
               <ConfirmWarnings warnings={titleWarnings} onConfirm={() => submit(true)} busy={submitting} />
             </DealFormField>
 
+
+              <div className="min-w-0">
+                <div className="font-bold mb-1" style={{ fontSize: rem(15), color: "#374151" }}>가격 방식</div>
+                <div className="flex gap-2" role="radiogroup" aria-label="가격 방식">
+                  {(["fixed", "negotiable"] as const).map((m) => (
+                    <label
+                      key={m}
+                      className="flex-1 flex items-center gap-2 rounded-xl cursor-pointer"
+                      style={{ border: `2px solid ${priceMode === m ? "#0B2540" : "#E4E7EB"}`, padding: "10px 12px", background: "#fff" }}
+                    >
+                      <input type="radio" name="deal-priceMode" className="w-4 h-4 accent-navy flex-shrink-0" checked={priceMode === m} onChange={() => { setPriceMode(m); setFieldErrors((prev) => ({ ...prev, dealPrice: undefined, originalPrice: undefined })); setPriceWarns([]); }} />
+                      <span className="font-bold text-navy" style={{ fontSize: rem(14) }}>{m === "fixed" ? "가격 입력" : "가격 협의"}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
             {/* 가격 한 줄: [판매 단가 | 원 / 단위] · 정상 단가(같은 단위) · 할인율 — "단가 기준" 칸을 판매 단가 단위로 합침(price_unit 그대로) */}
+            {priceMode === "negotiable" ? (
+              <div className="rounded-xl" style={{ background: "#FFF4EC", border: "1.5px solid #F6D3BF", padding: "12px 14px", fontSize: rem(14), lineHeight: 1.55, color: "#0B2540" }}>
+                <span className="font-bold">{NEGOTIABLE_TEXT}</span>
+                <br />
+                목록·상세·알림에 가격 대신 이렇게 보여요. 판매·정상 단가는 저장하지 않아요.
+              </div>
+            ) : (
             <div className={FORM_ROW3}>
               <DealFormField label="판매 단가" required error={fieldErrors.dealPrice} htmlFor="deal-dealPrice">
                 <div className={groupCls("dealPrice")}>
@@ -3414,6 +3474,7 @@ function DealForm({
                 <ConfirmWarnings warnings={priceWarns} onConfirm={titleWarnings.length ? undefined : () => submit(true)} busy={submitting} />
               </div>
             </div>
+            )}
 
             {/* 재고 총수량+단위(한 덩어리) · 재고 위치 · 지역 상세 */}
             <div className={FORM_ROW3}>
