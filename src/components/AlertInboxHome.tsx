@@ -191,7 +191,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
   };
 
   return (
-    <main className="flex flex-col min-h-screen bg-white" style={{ paddingBottom: 64 }}>
+    <main className="flex flex-col min-h-screen bg-white" style={{ paddingBottom: 64, overflowX: "clip" }}>
       {/* 2026-09-26: position:sticky였는데 실제로는 전혀 안 떠 있던 버그 발견 —
           layout.tsx의 overflow-x-hidden 단독 설정이 overflow-y를 auto로 계산시켜
           이 div가 의도치 않은 sticky 기준 컨테이너가 됐는데, 그 컨테이너 자체는
@@ -345,7 +345,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                         if (e.key === "Enter" || e.key === " ") openViewer(e as unknown as React.MouseEvent, d.images!, d.video_url ?? null);
                       }}
                       className="relative rounded-xl overflow-hidden flex-shrink-0"
-                      style={{ width: 64, height: 64 }}
+                      style={{ width: 96, height: 96 }}
                     >
                       <img src={d.images[0]} alt={d.title} className="w-full h-full object-cover" />
                       {d.video_url && (
@@ -354,7 +354,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                         </span>
                       )}
                       {d.images.length > 1 && (
-                        <span className="absolute bottom-1 right-1 rounded font-bold text-white" style={{ fontSize: rem(10), padding: "1px 5px", background: "rgba(0,0,0,.5)" }}>
+                        <span className="absolute bottom-1 right-1 rounded font-bold text-white" style={{ fontSize: rem(9), padding: "0 4px", background: "rgba(0,0,0,.5)", lineHeight: 1.5 }}>
                           1/{d.images.length}
                         </span>
                       )}
@@ -362,12 +362,12 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                   ) : (
                     <span
                       className="rounded-xl overflow-hidden flex-shrink-0 block"
-                      style={{ width: 64, height: 64 }}
+                      style={{ width: 96, height: 96 }}
                     >
                       <NoPhotoPlaceholder category={d.category} size="sm" />
                     </span>
                   )}
-                  <span className="flex-1 min-w-0">
+                  <span className="flex-1 min-w-0" style={{ overflowX: "clip", overflowWrap: "anywhere" }}>
                     {d.stock_type && d.stock_type !== "general" && <StockTypeBadge value={d.stock_type} className="mb-1" />}
                     <span className="block font-bold leading-snug" style={{ fontSize: rem(16), color: "#1A1F26" }}>{d.title}</span>
                     <span className="block mt-0.5" style={{ fontSize: rem(12.5), color: "#6B7480" }}>
@@ -380,7 +380,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                         {d.min_order_qty && !isLumpSum(d.price_unit) && `MOQ ${d.min_order_qty}${d.quantity_unit || "개"}`}
                       </span>
                     )}
-                    <span className="flex items-baseline gap-1.5 mt-1.5">
+                    <span className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mt-1.5">
                       {isNegotiable(d) ? (
                         <NegotiablePrice color="#0B2540" className="text-lg" />
                       ) : d.price_hidden ? (
@@ -388,12 +388,12 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                       ) : (
                         <>
                           {!wideLayout && pct > 0 && (
-                            <span className="font-black text-white rounded" style={{ fontSize: rem(12), padding: "2px 7px", background: "#E25100" }}>
+                            <span className="font-black text-white rounded whitespace-nowrap" style={{ fontSize: rem(12), padding: "2px 7px", background: "#E25100" }}>
                               -{pct}%
                             </span>
                           )}
-                          <span className="font-black" style={{ fontSize: rem(18), color: "#0B2540" }}>{dealPriceLabel(d)}</span>
-                          <span style={{ fontSize: rem(12.5), color: "#6B7480", textDecoration: "line-through" }}>{d.original_price != null ? formatDealPrice(d.original_price, d.quantity_unit, d.price_unit) : ""}</span>
+                          <span className="font-black whitespace-nowrap" style={{ fontSize: rem(18), color: "#0B2540" }}>{dealPriceLabel(d)}</span>
+                          <span className="whitespace-nowrap" style={{ fontSize: rem(12.5), color: "#6B7480", textDecoration: "line-through" }}>{d.original_price != null ? formatDealPrice(d.original_price, d.quantity_unit, d.price_unit) : ""}</span>
                         </>
                       )}
                     </span>
@@ -459,7 +459,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                     example
                     className="rounded-xl"
                   />
-                  <span className="flex-1 min-w-0">
+                  <span className="flex-1 min-w-0" style={{ overflowX: "clip", overflowWrap: "anywhere" }}>
                     <span className="block font-bold leading-snug" style={{ fontSize: rem(16), color: "#1A1F26" }}>{d.title}</span>
                     <span className="block mt-0.5" style={{ fontSize: rem(12.5), color: "#6B7480" }}>
                       {d.category} · {d.location} · 잔여 {d.remaining_qty}{d.quantity_unit || "개"}
@@ -471,9 +471,9 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                         {d.min_order_qty && !isLumpSum(d.price_unit) && `MOQ ${d.min_order_qty}${d.quantity_unit || "개"}`}
                       </span>
                     )}
-                    <span className="flex items-baseline gap-1.5 mt-1.5">
-                      <span className="font-black" style={{ fontSize: rem(18), color: "#6B7480" }}>{dealPriceLabel(d)}</span>
-                      <span style={{ fontSize: rem(12.5), color: "#9AA3AD", textDecoration: "line-through" }}>{d.original_price != null ? formatDealPrice(d.original_price, d.quantity_unit, d.price_unit) : ""}</span>
+                    <span className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mt-1.5">
+                      <span className="font-black whitespace-nowrap" style={{ fontSize: rem(18), color: "#6B7480" }}>{dealPriceLabel(d)}</span>
+                      <span className="whitespace-nowrap" style={{ fontSize: rem(12.5), color: "#9AA3AD", textDecoration: "line-through" }}>{d.original_price != null ? formatDealPrice(d.original_price, d.quantity_unit, d.price_unit) : ""}</span>
                     </span>
                   </span>
                 </div>

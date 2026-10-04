@@ -116,11 +116,11 @@ export default function DealListCard({
             <MemberPriceTeaser discountPct={discountPct} color={accent} className="text-lg" />
           </div>
         ) : (
-          <div className="flex flex-wrap items-baseline gap-x-1.5 mt-2">
-            <span className="text-lg font-black" style={{ color: accent }}>
+          <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mt-2">
+            <span className="text-lg font-black whitespace-nowrap" style={{ color: accent }}>
               <PriceText text={dealPriceLabel(d)} />
             </span>
-            <span className="text-sm text-gray500 font-normal line-through">
+            <span className="text-sm text-gray500 font-normal line-through whitespace-nowrap">
               <PriceText text={d.original_price != null ? formatDealPrice(d.original_price, d.quantity_unit, d.price_unit) : ""} />
             </span>
           </div>
