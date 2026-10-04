@@ -6,6 +6,10 @@ import { formatDealPrice } from "@/lib/format";
 import { stockTypeBadge } from "@/lib/stockType";
 import { normalizePhone } from "@/lib/phone";
 
+// 2026-10-05: 모든 웹푸시 공통 옵션 — urgency high(기기 절전 중에도 바로 전달), TTL 6시간(지나면 오래된 매물·공지 알림을 버림).
+// 옵션 없이 보내면 urgency 보통·TTL 4주 기본값이라 기기가 알림을 미루거나 한참 뒤 몰아서 띄울 수 있었음.
+export const PUSH_SEND_OPTIONS = { urgency: "high", TTL: 21600 } as const;
+
 // 2026-10-01: VAPID 키는 모듈 로드 때가 아니라 실제 발송 직전에 1회 설정(lazy).
 // 예전엔 파일을 불러오는 순간 setVapidDetails가 돌아, build(GitHub Actions의 vercel build — Sensitive env는 비어 있음) 중
 // "Vapid private key must be a URL safe Base 64"로 build 전체가 실패했음. 이제 키가 없거나 형식이 틀리면 발송만 실패
@@ -246,7 +250,8 @@ export async function sendDealPush(dealId: string) {
             tag: `deal-${deal.id}`,
             image: deal.images?.[0] || undefined,
             logId: logRow?.id,
-          })
+          }),
+          PUSH_SEND_OPTIONS
         );
       }
       sentCount++;
@@ -365,7 +370,8 @@ export async function sendNoticePush(noticeId: string) {
             url: `/notices`,
             tag: `notice-${notice.id}`,
             image: notice.images?.[0] || undefined,
-          })
+          }),
+          PUSH_SEND_OPTIONS
         );
       }
       sentCount++;
@@ -392,7 +398,7 @@ export function adminConnectionTag() {
 // 관리자 알림 받는 사람: admin_users 전원(역할 무관)의 번호와 같은 번호로 가입한 회원 계정의 모든 기기 구독(push_subscriptions).
 // push_opt_out·매물 알림 동의는 보지 않음(운영 알림). 2026-10-03: 번호 비교를 normalizePhone으로 — admin_users.phone이
 // "+8210…"·하이픈 형식이면 members.phone("010…")과 숫자만 비교해선 안 맞아 알림이 안 갔음.
-export async function sendAdminPush(title: string, body: string, url: string, tag = "admin-lead") {
+export async function sendAdminPush(title: string, body: string, url: string, tag = adminConnectionTag()) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceKey || !ensureVapid()) return;
@@ -420,7 +426,8 @@ export async function sendAdminPush(title: string, body: string, url: string, ta
     try {
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
-        JSON.stringify({ title, body, url, tag })
+        JSON.stringify({ title, body, url, tag }),
+        PUSH_SEND_OPTIONS
       );
       delivered.push(sub.id);
     } catch (e) {
