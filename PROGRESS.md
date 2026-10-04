@@ -50,6 +50,16 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
+## 최근 작업 (2026-10-04) — 사업자 조회 바로가기 보완 (브랜치 `fix/business-check-shortcut`, 화면만·DB 변경 없음)
+
+- **증상(운영 91d27ea)**: 매물 수정 카드·등록 폼의 "사업자 조회 바로가기"를 눌러도 반응이 없음.
+- **원인 확인(코드)**: 링크 대상 id `business-check`와 `BusinessCheckSection` 바깥 div id는 **일치**하고, 섹션은 접히는 카드가 아니라 모바일 1열·PC 3단 모두 항상 렌더됨(`AdminListCard` 아님).
+  그래서 "접혀서 안 열림"은 원인이 아님. 확인된 문제 둘: ① PC 3단에서는 섹션이 같은 화면에 이미 보일 수 있어 스크롤만으로는 반응이 없어 보임, ②
+  예전에 판매 신청 카드 [사업자 조회]로 신청을 골라 둔 상태가 남아 있으면, 바로가기로 이동해 조회해도 직접 등록용이 아니라 **그 신청에 붙어 버림**.
+  (운영 브라우저에서 직접 재현하진 못함 — 로컬 env가 운영 Supabase라 관리자 화면 시험 불가.)
+- **수정**: `src/lib/bizCheckJump.ts` `scrollToBizCheck`(스크롤 + 테두리 1.8초 강조) — 등록 폼·수정 카드·판매 신청 카드가 같은 함수. 등록 폼·수정 카드의 바로가기는 사업자 조회의
+  판매 신청을 **"신청 없이 조회(직접 등록)"으로 되돌린 뒤** 이동(`goToBizCheck`, 기존 `bizPreselect` 재사용, id ""). 판매 신청 카드 [사업자 조회]는 그 신청 선택 + 같은 이동·강조.
+
 ## 최근 작업 (2026-10-04) — 대리 게시 매물 실제 판매자 저장 + 직접 등록 사업자 조회 연결 (브랜치 `feat/deal-seller-private`, DB 변경 없음)
 
 - **왜**: 관리자가 직접(대신) 올린 매물은 실제 판매자(상호·담당자·연락처)를 저장할 곳이 등록 시점에 없었고(`deal_seller_private`는 연결 보드에서만 채움),

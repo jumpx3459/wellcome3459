@@ -15,10 +15,12 @@ export default function DealSellerPrivateEditor({
   adminKey,
   dealId,
   onToast,
+  onGoBizCheck,
 }: {
   adminKey: string;
   dealId: string;
   onToast: (message: string) => void;
+  onGoBizCheck: () => void;
 }) {
   const [state, setState] = useState<LoadedState | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -121,7 +123,7 @@ export default function DealSellerPrivateEditor({
         errors={errors}
         showCheckPicker={!state.linkedCheck}
         linkedCheck={state.linkedCheck}
-        onGoBizCheck={() => document.getElementById("business-check")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+        onGoBizCheck={onGoBizCheck}
         disabled={saving}
       />
       {state.prefilled && (

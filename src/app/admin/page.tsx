@@ -8,6 +8,7 @@ import ImageUploader, { type ImageUploadStatus, type ImageUploaderHandle } from 
 import VideoUploader, { type VideoUploadStatus, type VideoUploaderHandle } from "@/components/VideoUploader";
 import VideoNotUploadedSheet, { PHOTO_FAILED_DESCRIPTION, uploadingLabel, videoNotUploaded } from "@/components/VideoNotUploadedSheet";
 import SellerDisplayPicker from "@/components/SellerDisplayPicker";
+import { scrollToBizCheck } from "@/lib/bizCheckJump";
 import SellerPrivateFields, { EMPTY_SELLER_PRIVATE, type SellerPrivateDraft } from "@/components/admin/SellerPrivateFields";
 import DealSellerPrivateEditor from "@/components/admin/DealSellerPrivateEditor";
 import { publicSellerName } from "@/lib/sellerDisplay";
@@ -890,6 +891,13 @@ function AdminDashboard({
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  // 2026-10-04: 매물 등록 폼·수정 카드의 "사업자 조회 바로가기" — 사업자 조회 섹션의 판매 신청을 "선택 안 함(직접 등록)"으로 되돌리고
+  // (예전에 어떤 신청 카드에서 골라 둔 게 남아 있으면 직접 등록용 조회가 그 신청에 붙어 버림) 그 위치로 스크롤 + 잠깐 강조
+  const goToBizCheck = () => {
+    setBizPreselect({ id: "", nonce: Date.now() });
+    scrollToBizCheck();
+  };
+
   // 2026-10-01 (커밋 J): 목록 카드를 변수로 — 📱·자동은 기존 1열 순서 그대로, 💻는 세로로 쌓는 3단(CSS columns)에
   // 중요도 순(재고문의(관심 표시) → 판매 신청 → 진행 중 매물 → 파트너 신청 → 실적 → 찾습니다 → 회원 → 관리자)으로 배치.
   // 예전 3칸 격자는 행 높이가 가장 긴 카드에 맞춰져 빈칸이 컸음. 💻에서 0건 카드는 한 줄(제목 + "없어요")로 줄임.
@@ -1358,7 +1366,7 @@ function AdminDashboard({
             </div>
           )}
           {openFormFor === "new" && (
-            <DealForm key="new" adminKey={adminKey} wide={isDesktop} onDirtyChange={setDealFormDirty} onDone={() => { setOpenFormFor(null); load(); }} />
+            <DealForm key="new" adminKey={adminKey} wide={isDesktop} onDirtyChange={setDealFormDirty} onGoBizCheck={goToBizCheck} onDone={() => { setOpenFormFor(null); load(); }} />
           )}
           {formRequest && (
             <DealForm
@@ -1366,6 +1374,7 @@ function AdminDashboard({
               adminKey={adminKey}
               wide={isDesktop}
               onDirtyChange={setDealFormDirty}
+              onGoBizCheck={goToBizCheck}
               prefill={requestPrefill(formRequest)}
               requestId={formRequest.id}
               onDone={() => { setOpenFormFor(null); load(); }}
@@ -1425,6 +1434,7 @@ function AdminDashboard({
             adminKey={adminKey}
             onChanged={load}
             canDelete={adminRole === "최고관리자"}
+            onGoBizCheck={goToBizCheck}
             onClosed={(title) => showDashToast(`"${title}" 마감했어요 · 매물 상세에서 "마감됨"으로 볼 수 있어요`)}
           />
         )}
@@ -1517,7 +1527,7 @@ function AdminDashboard({
                 type="button"
                 onClick={() => {
                   setBizPreselect({ id: r.id, nonce: Date.now() });
-                  document.getElementById("business-check")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  scrollToBizCheck();
                 }}
                 className="flex-shrink-0 font-bold rounded-lg text-sm px-3 py-1.5 border border-gray200 text-navy"
               >
@@ -2411,12 +2421,14 @@ function ActiveDealCard({
   adminKey,
   onChanged,
   canDelete,
+  onGoBizCheck,
   onClosed,
 }: {
   deal: ActiveDeal;
   adminKey: string;
   onChanged: () => void;
   canDelete: boolean; // 2026-10-01: 영구 삭제 버튼은 최고관리자에게만 (서버도 최고관리자만 허용)
+  onGoBizCheck: () => void; // "사업자 조회 바로가기" — 사업자 조회 섹션으로 이동(판매 신청 선택 안 함)
   onClosed: (title: string) => void; // 마감 성공 안내는 대시보드에서(카드는 목록에서 빠짐)
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -2909,7 +2921,7 @@ function ActiveDealCard({
           </div>
 
           {/* 2026-10-04: 실제 판매자(내부 전용) — 구매자에게 보이지 않음. 매물 내용 저장과 별개로 저장(알림 재발송 없음) */}
-          <DealSellerPrivateEditor adminKey={adminKey} dealId={deal.id} onToast={showToast} />
+          <DealSellerPrivateEditor adminKey={adminKey} dealId={deal.id} onToast={showToast} onGoBizCheck={onGoBizCheck} />
 
           <button
             onClick={() => saveAll()}
@@ -2996,6 +3008,7 @@ function DealForm({
   onDone,
   wide = false,
   onDirtyChange,
+  onGoBizCheck,
 }: {
   adminKey: string;
   prefill?: {
@@ -3030,6 +3043,8 @@ function DealForm({
   wide?: boolean;
   /** 입력 중인지(처음 값과 달라졌거나 사진·영상 상태가 바뀜) — 다른 폼으로 바꿀 때 확인 창용 */
   onDirtyChange?: (dirty: boolean) => void;
+  /** "사업자 조회 바로가기" — 사업자 조회 섹션으로 이동(판매 신청 선택 안 함) */
+  onGoBizCheck?: () => void;
 }) {
   const [title, setTitle] = useState(prefill?.title ?? "");
   // 재고 유형 — 판매신청 승인이면 신청서 값을 이어받음
@@ -3636,7 +3651,7 @@ function DealForm({
                   }}
                   errors={{ company: fieldErrors.sellerPrivateCompany, phone: fieldErrors.sellerPrivatePhone, name: fieldErrors.sellerPrivateName, checkId: fieldErrors.businessCheckId }}
                   showCheckPicker
-                  onGoBizCheck={() => document.getElementById("business-check")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  onGoBizCheck={onGoBizCheck}
                   disabled={submitting}
                 />
               </div>
