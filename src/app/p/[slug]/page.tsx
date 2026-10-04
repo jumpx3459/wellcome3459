@@ -70,8 +70,7 @@ export default function PartnerDemoPage() {
     );
   }
 
-  const signupHref = partner.refCode ? `/signup?ref=${partner.refCode}` : "/signup";
-  // 비회원 "회원가 보기" — 가입 후 이 페이지로(returnTo) + 파트너 ref 유지. 자동 관심 파라미터 없음
+  // 2026-10-04 4.5: 가입 버튼은 아래 하나(상단 버튼은 높이 830px 이상 화면에서 위·아래가 동시에 보여 두지 않음) — 가입 후 이 페이지로(returnTo) + 파트너 ref 유지. 자동 관심 파라미터 없음
   const memberPriceHref = withReturnTo("/signup", `/p/${params.slug}`, partner.refCode ? `ref=${partner.refCode}` : "");
 
   return (
@@ -95,13 +94,6 @@ export default function PartnerDemoPage() {
         <p className="mt-2.5" style={{ fontSize: rem(14), lineHeight: 1.6, color: "rgba(255,255,255,.88)" }}>
           {partner.tagline}
         </p>
-        <Link
-          href={signupHref}
-          className="inline-flex items-center gap-1.5 mt-5 font-bold rounded-2xl"
-          style={{ padding: "13px 22px", fontSize: rem(15), background: "#fff", color: partner.accentColor }}
-        >
-          🔔 지금 무료로 알림받기
-        </Link>
       </div>
 
       <div className="flex-1 px-5 py-5" style={{ background: "#F5F6F8" }}>
@@ -146,11 +138,12 @@ export default function PartnerDemoPage() {
         </div>
 
         <Link
-          href={signupHref}
+          href={memberPriceHref}
           className="w-full block text-center font-bold rounded-2xl text-white mt-6"
           style={{ background: partner.accentColor, padding: "15px 0", fontSize: rem(15) }}
+          data-guest-signup-cta
         >
-          {partner.name} 알림 무료로 받기
+          무료 회원가입하고 가격 보기
         </Link>
         <p className="text-center text-xs mt-3" style={{ color: "#9AA3AD" }}>
           이 페이지는 영업용 데모입니다 · 실제 계약 시 전용 도메인·데이터로 확장됩니다
