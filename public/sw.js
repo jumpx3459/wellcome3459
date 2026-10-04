@@ -24,8 +24,6 @@ self.addEventListener("push", (event) => {
     image: payload.image, // 매물 사진이 있으면 알림에 크게 표시 (지원 브라우저에서)
     data: { url: payload.url || "/deals", logId: payload.logId },
     requireInteraction: false, // 2026-09-30: 광고성 알림이 닫을 때까지 화면에 남지 않도록 (기기 기본 동작)
-    renotify: true, // 같은 매물이어도 매번 다시 진동·소리 울림
-    tag: payload.tag || "jumpingbid-deal",
     silent: false, // 무음 금지 — 기기 기본 알림음 재생
     vibrate: [200, 100, 200], // 짧은 두 번 진동 (모바일, 2026-09-30 약 1.7초 → 0.5초)
     actions: [
@@ -33,6 +31,16 @@ self.addEventListener("push", (event) => {
       { action: "dismiss", title: "닫기" },
     ],
   };
+
+  // tag는 매물별(deal-<id>)·공지별(notice-<id>)로 서로 달라야 함 — 고정 tag로 교체되면 알림음이 안 날 수 있음.
+  // 서버가 tag를 보내면 그대로, 없으면 url(/deals/<id>)에서 매물 id를 뽑고, 그것도 없으면 tag를 아예 넣지 않음.
+  // renotify는 tag가 있을 때만(tag 없이 renotify:true면 showNotification이 TypeError로 실패).
+  const dealMatch = /^\/deals\/([^/?#]+)/.exec(payload.url || "");
+  const tag = payload.tag || (dealMatch ? `deal-${dealMatch[1]}` : "");
+  if (tag) {
+    options.tag = tag;
+    options.renotify = true; // 같은 tag여도 매번 다시 진동·소리 울림
+  }
 
   event.waitUntil(self.registration.showNotification(title, options));
 });
