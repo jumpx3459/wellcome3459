@@ -11,6 +11,7 @@ import { normalizeTitle, checkTitle, checkDescription, DUPLICATE_TITLE_WARNING }
 import { isStorageType, isValidExpiryDate, storageSummary, priceWarnings, isMissingNewColumn, EXPIRY_REQUIRED_MESSAGE } from "@/lib/dealFields";
 import { isPassingCheck, NOT_CHECKED_MESSAGE, ALREADY_HANDLED_MESSAGE } from "@/lib/businessCheck";
 import { ntsStatus } from "@/lib/nts";
+import { isPriceMode } from "@/lib/priceMode";
 import { writeAudit, phoneTail } from "@/lib/adminAudit";
 import { UUID_RE } from "@/lib/rateLimit";
 import {
@@ -41,8 +42,9 @@ export async function POST(req: NextRequest) {
     title,
     category,
     region,
-    originalPrice,
-    dealPrice,
+    priceMode, // 2026-10-04: 'fixed'(기본) | 'negotiable'(가격 협의 — 판매가·정상가 없음)
+    originalPrice: originalPriceIn,
+    dealPrice: dealPriceIn,
     totalQty,
     remainingQty,
     quantityUnit,
@@ -82,9 +84,16 @@ export async function POST(req: NextRequest) {
   if (titleCheck.block) return bad(titleCheck.block, "title");
   if (!category) return bad("카테고리를 선택해주세요.", "category");
   if (!region) return bad("지역을 선택해주세요.", "region");
-  if (dealPrice == null || dealPrice === "") return bad("판매가를 입력해주세요.", "dealPrice");
-  if (!isPositive(dealPrice)) return bad("판매가는 0보다 커야 해요.", "dealPrice");
-  if (originalPrice != null && !isPositive(originalPrice)) return bad("정상가는 0보다 커야 해요.", "originalPrice");
+  // 2026-10-04 가격 협의: negotiable이면 가격 칸은 받지 않음(보내도 무시 — DB CHECK도 두 가격 null만 허용)
+  if (priceMode != null && !isPriceMode(priceMode)) return bad("가격 방식이 올바르지 않아요.", "priceMode");
+  const negotiable = priceMode === "negotiable";
+  const dealPrice = negotiable ? null : dealPriceIn;
+  const originalPrice = negotiable ? null : originalPriceIn;
+  if (!negotiable) {
+    if (dealPrice == null || dealPrice === "") return bad("판매가를 입력해주세요.", "dealPrice");
+    if (!isPositive(dealPrice)) return bad("판매가는 0보다 커야 해요.", "dealPrice");
+    if (originalPrice != null && !isPositive(originalPrice)) return bad("정상가는 0보다 커야 해요.", "originalPrice");
+  }
   if (totalQty == null || totalQty === "") return bad("재고 총수량을 입력해주세요.", "totalQty");
   if (!isPositive(totalQty)) return bad("재고 총수량은 0보다 커야 해요.", "totalQty");
   // 2026-09-29: 단가 단위 — DB check와 같은 값만, 안 보내면 null(= 수량 단위 기준). 일괄이면 최소주문 없음
@@ -189,7 +198,7 @@ export async function POST(req: NextRequest) {
     const { count: dupCount } = await dup;
     const titleWarnings = [...titleCheck.warnings, ...((dupCount ?? 0) > 0 ? [DUPLICATE_TITLE_WARNING] : [])];
     const descriptionWarnings = checkDescription(description);
-    const priceWarns = priceWarnings(originalPrice, dealPrice); // 할인율 80% 이상
+    const priceWarns = negotiable ? [] : priceWarnings(originalPrice, dealPrice); // 할인율 80% 이상
     if (titleWarnings.length || descriptionWarnings.length || priceWarns.length) {
       return NextResponse.json(
         {
@@ -206,8 +215,10 @@ export async function POST(req: NextRequest) {
     title: cleanTitle,
     category_id: catRow?.id,
     region_id: regRow?.id,
-    original_price: originalPrice || dealPrice,
-    deal_price: dealPrice,
+    // 가격 협의: 두 가격 null + price_mode negotiable(DB CHECK deals_price_by_mode_check). fixed는 price_mode를 보내지 않아 칸이 없는 DB(SQL 전)에서도 등록됨(default fixed)
+    original_price: negotiable ? null : originalPrice || dealPrice,
+    deal_price: negotiable ? null : dealPrice,
+    ...(negotiable ? { price_mode: "negotiable" } : {}),
     total_qty: totalQty,
     remaining_qty: remainingQty ?? totalQty,
     quantity_unit: quantityUnit || "개",

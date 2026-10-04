@@ -7,6 +7,8 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockDeals, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import { formatPrice, formatDealPrice } from "@/lib/format";
 import { selectWithPriceAccess, dealPriceFields, cardDiscountPct, memberPriceTeaser } from "@/lib/dealPriceAccess";
+import { dealPriceLabel, isNegotiable } from "@/lib/priceMode";
+import NegotiablePrice from "@/components/NegotiablePrice";
 import { withReturnTo } from "@/lib/safeReturnTo";
 import { getPartner } from "@/lib/partners";
 import { formatDealLocation } from "@/lib/formatDealLocation";
@@ -103,7 +105,7 @@ export default function PartnerDemoPage() {
         <div className="flex flex-col gap-3">
           {deals.slice(0, PREVIEW_COUNT).map((d) => {
             const color = categoryColors[d.category] ?? categoryColors["기타"];
-            const discountPct = d.price_hidden ? cardDiscountPct(d) : d.original_price ? ((d.original_price - d.deal_price) / d.original_price) * 100 : 0;
+            const discountPct = cardDiscountPct(d);
             return (
               <div key={d.id} className="bg-white border border-gray200 rounded-2xl overflow-hidden flex" style={{ borderLeft: `5px solid ${color.solid}` }}>
                 <div className="relative flex-shrink-0" style={{ width: 92, height: 92 }}>
@@ -117,13 +119,15 @@ export default function PartnerDemoPage() {
                 </div>
                 <div className="flex-1 min-w-0 px-3.5 py-2.5">
                   <div className="text-sm font-bold truncate" style={{ color: "#0B2540" }}>{d.title}</div>
-                  {priceHidden || d.price_hidden ? (
+                  {isNegotiable(d) ? (
+                    <div className="mt-1.5"><NegotiablePrice color={color.text} className="text-base" /></div>
+                  ) : priceHidden || d.price_hidden ? (
                     <Link href={memberPriceHref} className="inline-block mt-1.5 text-base font-black" style={{ color: color.text }} data-member-price>
                       {memberPriceTeaser(Math.round(discountPct))}
                     </Link>
                   ) : (
                     <div className="flex items-baseline gap-1.5 mt-1.5">
-                      <span className="text-base font-black" style={{ color: color.text }}>{formatDealPrice(d.deal_price, d.quantity_unit, d.price_unit)}</span>
+                      <span className="text-base font-black" style={{ color: color.text }}>{dealPriceLabel(d)}</span>
                       {discountPct > 0 && (
                         <span className="text-xs font-bold rounded-full" style={{ color: partner.accentColor, background: "#fff", border: `1px solid ${partner.accentColor}`, padding: "1px 7px" }}>
                           -{Math.round(discountPct)}%

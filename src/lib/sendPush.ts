@@ -2,7 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import { isDealAlertVersionCurrent } from "@/lib/consent";
 import { matchesConditions } from "@/lib/dealMatching";
-import { formatDealPrice } from "@/lib/format";
+import { pushPriceParts } from "@/lib/priceMode";
 import { stockTypeBadge } from "@/lib/stockType";
 import { normalizePhone } from "@/lib/phone";
 
@@ -114,7 +114,7 @@ export async function sendDealPush(dealId: string) {
 
   const { data: deal, error: dealError } = await supabaseAdmin
     .from("deals")
-    .select("id, title, category_id, region_id, deal_price, original_price, quantity_unit, price_unit, stock_type, images, status, closes_at, push_sent_at")
+    .select("id, title, category_id, region_id, deal_price, original_price, price_mode, quantity_unit, price_unit, stock_type, images, status, closes_at, push_sent_at")
     .eq("id", dealId)
     .single();
 
@@ -162,11 +162,8 @@ export async function sendDealPush(dealId: string) {
     return { sentCount: 0, total: 0, skipped: "이미 발송됨" };
   }
 
-  // 할인율은 정상가가 있을 때만 (없으면 생략)
-  const discountPct = deal.original_price
-    ? Math.round(((deal.original_price - deal.deal_price) / deal.original_price) * 100)
-    : 0;
-  const discountPrefix = discountPct > 0 ? `${discountPct}%↓ · ` : "";
+  // 할인율은 정상가가 있을 때만 (없으면 생략). 2026-10-04: 가격 협의 매물은 할인율 없이 가격 자리에 "가격 협의"(src/lib/priceMode.ts pushPriceParts)
+  const { discountPrefix, priceText } = pushPriceParts(deal);
   const stockBadge = stockTypeBadge(deal.stock_type);
   const stockTypePrefix = stockBadge ? `${stockBadge} · ` : "";
 
@@ -245,7 +242,7 @@ export async function sendDealPush(dealId: string) {
           JSON.stringify({
             title: "(광고) 덤핑점핑 · 새 매물",
             // 재고 유형 배지를 앞에 (general이면 없음) — 예: "⏰ 소비기한 임박 · 냉동 삼겹살 · 36%↓ · 398,000원/박스\n알림 끄기: MY > 이 기기 푸시 알림"
-            body: `${stockTypePrefix}${deal.title} · ${discountPrefix}${formatDealPrice(Number(deal.deal_price), deal.quantity_unit, deal.price_unit)}\n${OPT_OUT_LINE}`,
+            body: `${stockTypePrefix}${deal.title} · ${discountPrefix}${priceText}\n${OPT_OUT_LINE}`,
             url: `/deals/${deal.id}`,
             tag: `deal-${deal.id}`,
             image: deal.images?.[0] || undefined,

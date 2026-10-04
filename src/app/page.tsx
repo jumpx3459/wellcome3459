@@ -19,6 +19,8 @@ import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 import MemberPriceTeaser from "@/components/MemberPriceTeaser";
 import { GUEST_PRICE_COLS, dealPriceFields, cardDiscountPct } from "@/lib/dealPriceAccess";
+import { isNegotiable } from "@/lib/priceMode";
+import NegotiablePrice from "@/components/NegotiablePrice";
 import { SITE_URL } from "@/lib/siteUrl";
 import { rem } from "@/lib/rem";
 import StockTypeBadge from "@/components/StockTypeBadge";
@@ -435,7 +437,11 @@ export default function Home() {
                     </div>
                     {/* 2026-10-03 A안: 비회원 홈(예시 포함) — 가격 자리에 "-N% · 회원가 보기" */}
                     <div className="mt-1.5">
-                      <MemberPriceTeaser discountPct={discountPct} color={color.text} className="text-lg" />
+                      {isNegotiable(d) ? (
+                        <NegotiablePrice color={color.text} className="text-lg" />
+                      ) : (
+                        <MemberPriceTeaser discountPct={discountPct} color={color.text} className="text-lg" />
+                      )}
                     </div>
                   </div>
                 </Link>

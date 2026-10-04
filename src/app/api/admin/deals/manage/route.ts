@@ -7,7 +7,7 @@ import { checkDealVideoUrl } from "@/lib/videoUploadServer";
 import { normalizeTitle, DUPLICATE_TITLE_WARNING } from "@/lib/titleGuard";
 import { isLumpSum } from "@/lib/priceUnit";
 import { storageSummary } from "@/lib/dealFields";
-import { DEAL_EDIT_KEYS, validateDealEdit, dealEditWarnings, type DealEditInput } from "@/lib/dealEdit";
+import { DEAL_EDIT_KEYS, validateDealEdit, dealEditWarnings, effectivePriceMode, type DealEditInput } from "@/lib/dealEdit";
 
 function getAdminClient() {
   return createClient(
@@ -70,7 +70,7 @@ export async function PATCH(req: NextRequest) {
   if (Object.keys(edit).length > 0) {
     const { data: current } = await supabaseAdmin
       .from("deals")
-      .select("title, deal_price, original_price, min_order_qty, total_qty, price_unit, stock_type, storage_type, expiry_date, storage_condition, description, closes_at, seller_member_id")
+      .select("title, deal_price, original_price, price_mode, min_order_qty, total_qty, price_unit, stock_type, storage_type, expiry_date, storage_condition, description, closes_at, seller_member_id")
       .eq("id", id)
       .maybeSingle();
     if (!current) return NextResponse.json({ error: "매물을 찾을 수 없어요." }, { status: 404 });
@@ -94,11 +94,27 @@ export async function PATCH(req: NextRequest) {
       }
     }
     if (cleanTitle !== undefined) update.title = cleanTitle;
-    const dealPrice = edit.dealPrice ?? current.deal_price;
-    if (edit.dealPrice !== undefined) update.deal_price = edit.dealPrice;
-    // 정상가 없음 = 판매가와 같은 값(등록과 같음). 판매가만 바뀌고 예전에도 정상가가 없었으면 같이 맞춤
-    if (edit.originalPrice !== undefined) update.original_price = edit.originalPrice || dealPrice;
-    else if (edit.dealPrice !== undefined && current.original_price === current.deal_price) update.original_price = dealPrice;
+    // 2026-10-04 가격 협의: 방식 전환은 한 UPDATE에서 가격 칸·price_mode를 같이 바꿈(DB CHECK deals_price_by_mode_check는 문장 끝에서 검사).
+    // negotiable이면 두 가격 null, negotiable→fixed는 판매가(필수, 검증 통과분) + 정상가(없으면 판매가와 같은 값). 정상가=판매가 자동 맞춤은 fixed에서만.
+    const mode = effectivePriceMode(edit, current);
+    const wasNegotiable = current.price_mode === "negotiable";
+    if (mode === "negotiable") {
+      if (!wasNegotiable) {
+        update.price_mode = "negotiable";
+        update.deal_price = null;
+        update.original_price = null;
+      }
+    } else if (wasNegotiable) {
+      update.price_mode = "fixed";
+      update.deal_price = edit.dealPrice;
+      update.original_price = edit.originalPrice || edit.dealPrice;
+    } else {
+      const dealPrice = edit.dealPrice ?? current.deal_price;
+      if (edit.dealPrice !== undefined) update.deal_price = edit.dealPrice;
+      // 정상가 없음 = 판매가와 같은 값(등록과 같음). 판매가만 바뀌고 예전에도 정상가가 없었으면 같이 맞춤
+      if (edit.originalPrice !== undefined) update.original_price = edit.originalPrice || dealPrice;
+      else if (edit.dealPrice !== undefined && current.original_price === current.deal_price) update.original_price = dealPrice;
+    }
     if (edit.minOrderQty !== undefined) update.min_order_qty = isLumpSum(current.price_unit) ? null : edit.minOrderQty || null;
     if (edit.expiryDate !== undefined) {
       const expiry_date = edit.expiryDate || null;

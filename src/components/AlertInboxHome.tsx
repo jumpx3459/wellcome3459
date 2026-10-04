@@ -19,6 +19,8 @@ import StockTypeBadge from "@/components/StockTypeBadge";
 import DealCardMedia from "@/components/DealCardMedia";
 import MemberPriceTeaser from "@/components/MemberPriceTeaser";
 import { selectWithPriceAccess, dealPriceFields, cardDiscountPct } from "@/lib/dealPriceAccess";
+import { dealPriceLabel, isNegotiable } from "@/lib/priceMode";
+import NegotiablePrice from "@/components/NegotiablePrice";
 import type { DealRowLoose } from "@/lib/dealFields";
 import { SECTION_TITLE_STYLE } from "@/components/EcosystemGrid";
 import { isLumpSum } from "@/lib/priceUnit";
@@ -397,7 +399,9 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                       </span>
                     )}
                     <span className="flex items-baseline gap-1.5 mt-1.5">
-                      {d.price_hidden ? (
+                      {isNegotiable(d) ? (
+                        <NegotiablePrice color="#0B2540" className="text-lg" />
+                      ) : d.price_hidden ? (
                         <MemberPriceTeaser discountPct={pct} color="#0B2540" className="text-lg" />
                       ) : (
                         <>
@@ -406,8 +410,8 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                               -{pct}%
                             </span>
                           )}
-                          <span className="font-black" style={{ fontSize: rem(18), color: "#0B2540" }}>{formatDealPrice(d.deal_price, d.quantity_unit, d.price_unit)}</span>
-                          <span style={{ fontSize: rem(12.5), color: "#6B7480", textDecoration: "line-through" }}>{formatDealPrice(d.original_price, d.quantity_unit, d.price_unit)}</span>
+                          <span className="font-black" style={{ fontSize: rem(18), color: "#0B2540" }}>{dealPriceLabel(d)}</span>
+                          <span style={{ fontSize: rem(12.5), color: "#6B7480", textDecoration: "line-through" }}>{d.original_price != null ? formatDealPrice(d.original_price, d.quantity_unit, d.price_unit) : ""}</span>
                         </>
                       )}
                     </span>
@@ -454,7 +458,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
             <span className="text-xs font-bold rounded-full" style={{ padding: "2px 8px", background: "#E9ECEF", color: "#495057" }}>예시</span>
           </div>
           {EXAMPLE_DEALS.map((d) => {
-            const pct = d.original_price ? Math.round(((d.original_price - d.deal_price) / d.original_price) * 100) : 0;
+            const pct = d.original_price && d.deal_price != null ? Math.round(((d.original_price - d.deal_price) / d.original_price) * 100) : 0;
             return (
               <Link key={`example-${d.id}`} href={`/deals/example-${d.id}`} className="block w-full text-left" style={{ borderBottom: "1px solid #F1F3F5", padding: "14px 20px", opacity: 0.8 }}>
                 <div className="flex items-center gap-1.5" style={{ marginBottom: 8 }}>
@@ -486,8 +490,8 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                       </span>
                     )}
                     <span className="flex items-baseline gap-1.5 mt-1.5">
-                      <span className="font-black" style={{ fontSize: rem(18), color: "#6B7480" }}>{formatDealPrice(d.deal_price, d.quantity_unit, d.price_unit)}</span>
-                      <span style={{ fontSize: rem(12.5), color: "#9AA3AD", textDecoration: "line-through" }}>{formatDealPrice(d.original_price, d.quantity_unit, d.price_unit)}</span>
+                      <span className="font-black" style={{ fontSize: rem(18), color: "#6B7480" }}>{dealPriceLabel(d)}</span>
+                      <span style={{ fontSize: rem(12.5), color: "#9AA3AD", textDecoration: "line-through" }}>{d.original_price != null ? formatDealPrice(d.original_price, d.quantity_unit, d.price_unit) : ""}</span>
                     </span>
                   </span>
                 </div>
