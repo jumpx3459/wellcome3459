@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CARD_TITLE_PROPS } from "@/components/admin/cardTitle";
 import AdminListCard from "@/components/admin/AdminListCard";
 import { LABEL } from "@/components/admin/DashboardViz";
-import { UI_SECTION, UI_CARD_TITLE } from "@/lib/uiText";
+import { UI_CARD_TITLE } from "@/lib/uiText";
 import { rem } from "@/lib/rem";
 import { formatPhone } from "@/lib/phone";
 import { formatMemberNo, formatPriceInput, parsePriceInput } from "@/lib/format";
@@ -105,7 +106,7 @@ export default function ConnectionBoard({
       id="connections"
       className={isDesktop ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3" : "px-5 pt-4 flex flex-col gap-3"}
       title={
-        <span style={UI_SECTION}>
+        <span {...CARD_TITLE_PROPS}>
           거래 연결{" "}
           <span style={{ ...LABEL, fontWeight: 400 }}>
             ({(items ?? []).length}건 진행

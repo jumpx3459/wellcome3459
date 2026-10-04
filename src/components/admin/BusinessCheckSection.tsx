@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { rem } from "@/lib/rem";
-import { UI_SECTION, UI_META, BTN_CLASS, btnStyle } from "@/lib/uiText";
+import { UI_META, BTN_CLASS, btnStyle } from "@/lib/uiText";
+import { CARD_TITLE_PROPS } from "@/components/admin/cardTitle";
 import { DEAL_LABEL_STYLE, DEAL_INPUT_FONT_SIZE } from "@/components/FormField";
 import { checkBadge, isPassingCheck, statusLabel, type BusinessCheck, type CheckTone } from "@/lib/businessCheck";
 
@@ -170,7 +171,7 @@ export default function BusinessCheckSection({
 
   return (
     <div id="business-check" className={className} style={{ scrollMarginTop: 12 }}>
-      <div style={UI_SECTION}>사업자 조회</div>
+      <div {...CARD_TITLE_PROPS}>사업자 조회</div>
       <p style={UI_META}>통화로 받은 사업자번호·대표자명·개업일자로 국세청 진위확인을 해요. 판매 신청은 조회가 통과해야 매물로 등록할 수 있어요.</p>
 
       <label className="flex flex-col gap-1">
