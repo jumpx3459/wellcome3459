@@ -126,10 +126,12 @@ export default function InstallAppButton({
   canInstall,
   promptInstall,
   hasNativePrompt = false,
+  oneLine = false,
 }: {
   canInstall: boolean;
   promptInstall: () => Promise<InstallResult>;
   hasNativePrompt?: boolean;
+  oneLine?: boolean; // 비회원 홈 띠: 이모지·글자·[지금 설치]를 한 줄로(줄바꿈 없음)
 }) {
   const [showIOSGuide, setShowIOSGuide] = useState(false);
   const [showManualGuide, setShowManualGuide] = useState(false);
@@ -158,21 +160,21 @@ export default function InstallAppButton({
       <button
         onClick={handleClick}
         // 비회원 홈 카드는 폭이 좁아서(58%) "지금 설치"가 들어갈 자리가 없으면 다음 줄로 내려감
-        className="w-full flex flex-wrap items-center gap-2.5 text-left"
+        className={`w-full flex items-center gap-2.5 text-left ${oneLine ? "flex-nowrap" : "flex-wrap"}`}
         style={{ background: "none", border: "none", padding: 0 }}
       >
         <span className="flex-shrink-0" style={{ fontSize: rem(22) }}>📲</span>
-        <span className="flex-1" style={{ minWidth: 100 }}>
+        <span className="flex-1 min-w-0" style={oneLine ? undefined : { minWidth: 100 }}>
           {/* 2026-09-27: "앱처럼 열 수 있다"는 기능 설명보다, 실제 혜택(마감 임박
               매물을 더 빨리 받는다)을 앞세우는 카피로 변경. 구체적 쿠폰/금액은
               실제 지급 로직이 없어 표기하지 않음. */}
           <span className="block font-bold" style={{ fontSize: rem(13.5), color: "#0B2540" }}>홈 화면에 추가하기</span>
           <span className="block mt-0.5" style={{ fontSize: rem(11.5), color: "#6B7480" }}>
-            {isIOSDevice ? IOS_INSTALL_TITLE : "설치하면 마감 임박 알림을 가장 먼저 받아요"}
+            {isIOSDevice ? IOS_INSTALL_TITLE : oneLine ? "마감 임박 알림을 가장 먼저 받아요" : "설치하면 마감 임박 알림을 가장 먼저 받아요"}
           </span>
         </span>
         {hasNativePrompt && (
-          <span className="flex-shrink-0 font-bold text-white rounded-full whitespace-nowrap" style={{ fontSize: rem(14), padding: "7px 14px", background: "#E25100" }}>
+          <span className="flex-shrink-0 font-bold text-white rounded-full whitespace-nowrap" style={{ fontSize: rem(14), padding: oneLine ? "7px 11px" : "7px 14px", background: "#E25100" }}>
             지금 설치
           </span>
         )}

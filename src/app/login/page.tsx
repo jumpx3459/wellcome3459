@@ -530,10 +530,10 @@ function LoginPageInner() {
               </div>
             )}
 
-            <p className="mt-6 text-center" style={{ fontSize: rem(12.5), color: "#9AA3AD" }}>
+            <p className="mt-4 flex flex-wrap items-center justify-center" style={{ fontSize: rem(15), color: "#6B7480" }}>
               처음이신가요?{" "}
-              <Link href={signupHref} style={{ color: "#0B2540", fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 3 }}>
-                알림 신청하기
+              <Link href={signupHref} className="inline-flex items-center" style={{ color: "#0B2540", fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 3, minHeight: 44, padding: "0 6px" }}>
+                가입하기
               </Link>
             </p>
           </div>
