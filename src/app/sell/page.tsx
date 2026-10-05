@@ -28,6 +28,7 @@ import {
   PACKAGE_UNIT_EXAMPLES, SPEC_EXAMPLES, ORIGIN_EXAMPLES, type StorageType,
 } from "@/lib/dealFields";
 import { SuggestInput, StorageTypeButtons } from "@/components/DealFormInputs";
+import { isPriceMode, type PriceMode } from "@/lib/priceMode";
 import { DEAL_PRICE_UNITS, LUMP_SUM, isDealPriceUnit, isLumpSum, priceUnitSuffix, type DealPriceUnit } from "@/lib/priceUnit";
 import CategoryChips from "@/components/CategoryChips";
 import FloatingCTA, { FloatingCTANote, FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
@@ -46,7 +47,7 @@ const NETWORK_LOST_MESSAGE = "인터넷 연결이 끊겼어요. 연결 후";
 type SellDraft = {
   companyName: string; isAnonymous: boolean; contactName: string; contactPhone: string; category: string;
   categoryTouched: boolean; stockType: string; region: string; productName: string; quantity: string; quantityUnit: string;
-  minOrderQty: string; hopePrice: string; originalPrice: string; priceUnit: string; priceUnitTouched: boolean; hopeDurationHours: string;
+  minOrderQty: string; priceMode?: string; hopePrice: string; originalPrice: string; priceUnit: string; priceUnitTouched: boolean; hopeDurationHours: string;
   description: string; packageUnit: string; origin: string; spec: string; storageType: string; expiryDate: string; pid: string;
   images: string[]; videoUrl: string | null; manifestItems: ManifestRow[];
 };
@@ -170,6 +171,9 @@ export default function SellPage() {
     setMoqError(msg);
     reveal("detail", "sell-minOrderQty");
   };
+  // 2026-10-05: 가격 방식 — "fixed"(가격 입력, 기본) | "negotiable"(가격은 협의할게요 — 희망가·정상가를 보내지 않음, 서버는 null로 저장)
+  const [priceMode, setPriceMode] = useState<PriceMode>("fixed");
+  const negotiable = priceMode === "negotiable";
   const [hopePrice, setHopePrice] = useState("");
   const [originalPrice, setOriginalPrice] = useState(""); // 2026-10-01 PR-B [3]: 정상 단가(선택) — 할인율 표시
   const [priceWarns, setPriceWarns] = useState<string[]>([]); // [12] 할인율 80% 이상
@@ -177,7 +181,7 @@ export default function SellPage() {
   const [priceUnit, setPriceUnit] = useState<DealPriceUnit>(quantityUnits[0] as DealPriceUnit);
   const [priceUnitTouched, setPriceUnitTouched] = useState(false);
   const [priceError, setPriceError] = useState<string | null>(null);
-  const lumpSum = isLumpSum(priceUnit);
+  const lumpSum = !negotiable && isLumpSum(priceUnit); // 협의면 단가 단위 칸이 없어 "일괄"이 남아 최소주문 칸이 숨겨지는 일이 없게
   const [hopeDurationHours, setHopeDurationHours] = useState("24");
   const [description, setDescription] = useState("");
   const [packageUnit, setPackageUnit] = useState("");
@@ -260,6 +264,7 @@ export default function SellPage() {
       if (typeof d.quantity === "string") setQuantity(d.quantity);
       if (typeof d.quantityUnit === "string") setQuantityUnit(d.quantityUnit);
       if (typeof d.minOrderQty === "string") setMinOrderQty(d.minOrderQty);
+      if (isPriceMode(d.priceMode)) setPriceMode(d.priceMode);
       if (typeof d.hopePrice === "string") setHopePrice(d.hopePrice);
       if (typeof d.originalPrice === "string") setOriginalPrice(d.originalPrice);
       if (typeof d.priceUnit === "string" && isDealPriceUnit(d.priceUnit)) setPriceUnit(d.priceUnit);
@@ -282,7 +287,7 @@ export default function SellPage() {
     if (!draftReady || done) return;
     const d: SellDraft = {
       companyName, isAnonymous, contactName, contactPhone, category, categoryTouched, stockType, region, productName,
-      quantity, quantityUnit, minOrderQty, hopePrice, originalPrice, priceUnit, priceUnitTouched, hopeDurationHours, description,
+      quantity, quantityUnit, minOrderQty, priceMode, hopePrice, originalPrice, priceUnit, priceUnitTouched, hopeDurationHours, description,
       packageUnit, origin, spec, storageType, expiryDate, pid, images, videoUrl, manifestItems,
     };
     try {
@@ -290,7 +295,7 @@ export default function SellPage() {
     } catch {}
   }, [
     draftReady, done, companyName, isAnonymous, contactName, contactPhone, category, categoryTouched, stockType, region,
-    productName, quantity, quantityUnit, minOrderQty, hopePrice, originalPrice, priceUnit, priceUnitTouched, hopeDurationHours,
+    productName, quantity, quantityUnit, minOrderQty, priceMode, hopePrice, originalPrice, priceUnit, priceUnitTouched, hopeDurationHours,
     description, packageUnit, origin, spec, storageType, expiryDate, pid, images, videoUrl, manifestItems,
   ]);
 
@@ -356,14 +361,14 @@ export default function SellPage() {
       return;
     }
     // 2026-09-29: 판매(희망) 단가 필수 — 서버(/api/seller-requests)도 같은 검증
-    const price = parsePriceInput(hopePrice);
-    if (!price || price <= 0) {
+    const price = negotiable ? null : parsePriceInput(hopePrice);
+    if (!negotiable && (!price || price <= 0)) {
       setPriceError("판매 단가를 입력해주세요");
       scrollTo("sell-hopePrice");
       return;
     }
     // 2026-10-04: 재고 위치(지역)는 선택 — 알림 매칭 기준이 아님(카테고리만). 비워 두면 점핑매니저가 확인
-    const orig = parsePriceInput(originalPrice);
+    const orig = negotiable ? null : parsePriceInput(originalPrice);
     // 2026-10-01 PR-B: 소비기한 임박 재고는 소비기한 필수 (서버도 같은 규칙) — ③이 접혀 있으면 펼침
     if (stockType === "near_expiry" && !expiryDate) {
       setExpiryError(EXPIRY_REQUIRED_MESSAGE);
@@ -372,7 +377,7 @@ export default function SellPage() {
     }
     if (!confirmWarnings) {
       const d = checkDescription(description);
-      const pr = priceWarnings(orig, price);
+      const pr = negotiable ? [] : priceWarnings(orig, price ?? 0);
       if (nameCheck.warnings.length || d.length || pr.length) {
         showWarnings(nameCheck.warnings, d, pr);
         return;
@@ -423,9 +428,10 @@ export default function SellPage() {
           quantity: parsePriceInput(quantity),
           quantityUnit,
           minOrderQty: !lumpSum && minOrderQty ? Number(minOrderQty) : null, // 일괄 판매면 최소주문 없음
-          priceUnit,
-          hopePrice: parsePriceInput(hopePrice) ?? null,
-          originalPrice: orig ?? null,
+          priceUnit: negotiable ? null : priceUnit,
+          priceMode,
+          hopePrice: negotiable ? null : parsePriceInput(hopePrice) ?? null,
+          originalPrice: negotiable ? null : orig ?? null,
           hopeDurationHours: hopeDurationHours ? Number(hopeDurationHours) : null,
           description,
           packageUnit: packageUnit || null,
@@ -685,7 +691,35 @@ export default function SellPage() {
               <ConfirmWarnings warnings={titleWarnings} onConfirm={() => submit(true)} busy={submitting} />
             </div>
 
+            {/* 2026-10-05 가격 방식 — 기본 "가격 입력", 선택 "가격은 협의할게요"(희망가·정상가 칸을 숨기고 null로 접수) */}
+            <div className="min-w-0">
+              <div className="font-bold mb-1" style={{ fontSize: rem(15), color: "#374151" }}>가격</div>
+              <div className="flex gap-2" role="radiogroup" aria-label="가격 방식">
+                {(["fixed", "negotiable"] as const).map((m) => (
+                  <label
+                    key={m}
+                    className="flex-1 min-w-0 flex items-center gap-2 rounded-xl cursor-pointer"
+                    style={{ border: `2px solid ${priceMode === m ? "#0B2540" : "#E4E7EB"}`, padding: "10px 12px", background: "#fff" }}
+                  >
+                    <input
+                      type="radio"
+                      name="sell-priceMode"
+                      className="w-4 h-4 accent-navy flex-shrink-0"
+                      checked={priceMode === m}
+                      onChange={() => {
+                        setPriceMode(m);
+                        setPriceError(null);
+                        setPriceWarns([]);
+                      }}
+                    />
+                    <span className="font-bold text-navy min-w-0" style={{ fontSize: rem(14) }}>{m === "fixed" ? "가격 입력" : "가격은 협의할게요"}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
             {/* 가격 한 줄: [판매 단가 | 원 / 단위] · 정상 단가(같은 단위, 할인율은 라벨 옆 배지) — 단위 = price_unit(기본 수량 단위, 일괄이면 최소주문 숨김) */}
+            {!negotiable && (
             <div className={FORM_ROW2}>
               <div className="min-w-0">
                 <FieldLabel compact need="required" htmlFor="sell-hopePrice">판매 단가</FieldLabel>
@@ -729,6 +763,7 @@ export default function SellPage() {
                 {priceError && <p className="font-medium mt-1" style={{ fontSize: rem(14), color: BLOCK_COLOR }}>{priceError}</p>}
                 {/* 2026-10-03 A안: 비회원에겐 가격 비공개("회원가 보기") — 판매자에게 미리 알림 */}
                 <p className="mt-1" style={DEAL_HINT_STYLE}>가격은 가입 회원에게만 공개돼요 · 브랜드 없이 올리고 싶으시면 추가 설명에 적어 주세요</p>
+                <p className="mt-1 font-bold" style={{ ...DEAL_HINT_STYLE, color: "#0B2540" }}>가격을 적으면 더 빨리 연결돼요</p>
               </div>
               <div className="min-w-0">
                 <FieldLabel compact need="optional" htmlFor="sell-originalPrice" extra={<SellDiscountBadge original={parsePriceInput(originalPrice)} deal={parsePriceInput(hopePrice)} />}>
@@ -755,6 +790,7 @@ export default function SellPage() {
                 <ConfirmWarnings warnings={priceWarns} onConfirm={titleWarnings.length ? undefined : () => submit(true)} busy={submitting} />
               </div>
             </div>
+            )}
 
             {/* 재고 총수량+단위 · 재고 위치(지역, 선택 — 알림 매칭과 무관) · 연락처 — 2단(lg) 왼쪽은 묶음 내용 680px 이상일 때만 3칸, 미만은 2칸(수량·지역 / 연락처) */}
             <div className={`${FORM_ROW3} lg:@min-[680px]:grid-cols-3!`}>
