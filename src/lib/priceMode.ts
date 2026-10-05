@@ -2,7 +2,7 @@ import { formatDealPrice } from "@/lib/format";
 
 // 2026-10-04 "가격 협의" 매물 — deals.price_mode 'fixed'(판매가·정상가 있음, 지금까지와 같음) | 'negotiable'(두 가격 모두 null).
 // DB: supabase/migrations/20261004_deal_price_negotiable.sql (CHECK deals_price_by_mode_check). 서버·브라우저 모두 import 가능(format.ts 외 import 없음).
-// 이번 범위는 관리자 폼만 — /sell·seller_requests는 그대로(항상 fixed). "협의 가능"(fixed + 협의) 표시는 범위 밖.
+// 2026-10-05: /sell 판매 신청(seller_requests.price_mode)도 같은 개념. "협의 가능"(fixed + 협의) 표시는 범위 밖.
 export type PriceMode = "fixed" | "negotiable";
 
 export const NEGOTIABLE_LABEL = "가격 협의";
@@ -46,4 +46,24 @@ export function pushPriceParts(d: {
     discountPrefix: pct > 0 ? `${pct}%↓ · ` : "",
     priceText: formatDealPrice(Number(d.deal_price), d.quantity_unit, d.price_unit),
   };
+}
+
+// 2026-10-05 /sell 판매 신청 — 가격 방식 검증(서버 /api/seller-requests와 시험이 같이 씀).
+// priceMode 가 없으면(예전 화면·캐시된 스크립트) fixed. 모르는 값은 400. fixed 는 희망가 필수, negotiable 은 보낸 가격과 무관하게 희망가·정상가 null.
+// 정상가의 양수 검사는 호출 쪽에서 fixed 일 때만 함(협의면 정상가를 아예 쓰지 않음).
+export const SELL_PRICE_REQUIRED_MESSAGE = "판매 단가를 입력해주세요";
+export const SELL_PRICE_MODE_INVALID_MESSAGE = "가격 방식이 올바르지 않아요.";
+
+export type SellerRequestPrice =
+  | { ok: true; priceMode: PriceMode; hopePrice: number | null; originalPrice: number | null }
+  | { ok: false; error: string; field: "priceMode" | "hopePrice" };
+
+export function resolveSellerRequestPrice(input: { priceMode?: unknown; hopePrice?: unknown; originalPrice?: unknown }): SellerRequestPrice {
+  const raw = input.priceMode;
+  if (raw != null && !isPriceMode(raw)) return { ok: false, error: SELL_PRICE_MODE_INVALID_MESSAGE, field: "priceMode" };
+  const priceMode: PriceMode = raw === "negotiable" ? "negotiable" : "fixed";
+  if (priceMode === "negotiable") return { ok: true, priceMode, hopePrice: null, originalPrice: null };
+  const hope = input.hopePrice;
+  if (typeof hope !== "number" || !Number.isFinite(hope) || hope <= 0) return { ok: false, error: SELL_PRICE_REQUIRED_MESSAGE, field: "hopePrice" };
+  return { ok: true, priceMode, hopePrice: hope, originalPrice: typeof input.originalPrice === "number" ? input.originalPrice : null };
 }

@@ -9,7 +9,7 @@ import VideoUploader, { type VideoUploadStatus, type VideoUploaderHandle } from 
 import VideoNotUploadedSheet, { PHOTO_FAILED_DESCRIPTION, uploadingLabel, videoNotUploaded } from "@/components/VideoNotUploadedSheet";
 import SellerDisplayPicker from "@/components/SellerDisplayPicker";
 import { scrollToBizCheck } from "@/lib/bizCheckJump";
-import { NEGOTIABLE_TEXT, type PriceMode } from "@/lib/priceMode";
+import { NEGOTIABLE_LABEL, NEGOTIABLE_TEXT, isNegotiable, type PriceMode } from "@/lib/priceMode";
 import SellerPrivateFields, { EMPTY_SELLER_PRIVATE, type SellerPrivateDraft } from "@/components/admin/SellerPrivateFields";
 import DealSellerPrivateEditor from "@/components/admin/DealSellerPrivateEditor";
 import { publicSellerName } from "@/lib/sellerDisplay";
@@ -71,6 +71,7 @@ type SellerRequest = {
   quantity_unit: string | null;
   min_order_qty: number | null;
   hope_price: number | null;
+  price_mode?: PriceMode | null; // 2026-10-05 가격 방식 — "negotiable"이면 희망가·정상가 없음(SQL 전이면 칸 없음 = fixed)
   price_unit?: string | null; // 2026-09-29 단가 단위 (없으면 수량 단위 기준)
   hope_duration_hours: number | null;
   description: string | null;
@@ -1473,7 +1474,7 @@ function AdminDashboard({
             <div className="text-sm text-gray500 mt-1">
               수량 {r.quantity}{r.quantity_unit || "개"}
               {r.min_order_qty ? ` (MOQ ${r.min_order_qty}${r.quantity_unit || "개"})` : ""}
-              {r.hope_price ? ` · 희망단가 ${formatDealPrice(r.hope_price, r.quantity_unit, r.price_unit)}` : ""}
+              {isNegotiable(r) ? ` · ${NEGOTIABLE_LABEL}` : r.hope_price ? ` · 희망단가 ${formatDealPrice(r.hope_price, r.quantity_unit, r.price_unit)}` : ""}
               {r.hope_duration_hours
                 ? ` · 희망 마감 ${
                     r.hope_duration_hours >= 24
@@ -1482,7 +1483,7 @@ function AdminDashboard({
                   } 후`
                 : " · 마감시점 협의 필요"}
             </div>
-            {r.original_price ? (
+            {!isNegotiable(r) && r.original_price ? (
               <div className="text-sm text-gray500 mt-1">정상단가 {formatDealPrice(r.original_price, r.quantity_unit, r.price_unit)}</div>
             ) : null}
             {(r.package_unit || r.spec || r.origin || storageSummary(r)) && (
@@ -3048,6 +3049,7 @@ function DealForm({
     category?: string;
     region?: string;
     dealPrice?: number;
+    priceMode?: PriceMode;
     totalQty?: number;
     quantityUnit?: string;
     priceUnit?: string;
@@ -3087,7 +3089,7 @@ function DealForm({
   const [region, setRegion] = useState(prefill?.region ?? "");
   const [originalPrice, setOriginalPrice] = useState(prefill?.originalPrice ? String(prefill.originalPrice) : "");
   const [dealPrice, setDealPrice] = useState(prefill?.dealPrice ? String(prefill.dealPrice) : "");
-  const [priceMode, setPriceMode] = useState<PriceMode>("fixed"); // 2026-10-04 가격 방식 — 가격 협의면 판매·정상 단가 없이 등록
+  const [priceMode, setPriceMode] = useState<PriceMode>(prefill?.priceMode === "negotiable" ? "negotiable" : "fixed"); // 2026-10-04 가격 방식 — 가격 협의면 판매·정상 단가 없이 등록 (2026-10-05: 협의 신청이면 협의로 시작)
   const [totalQty, setTotalQty] = useState(prefill?.totalQty ? String(prefill.totalQty) : "");
   const [quantityUnit, setQuantityUnit] = useState(prefill?.quantityUnit || quantityUnits[0]);
   // 2026-09-29: 단가 단위 — 신청서 값 이어받기, 없으면 수량 단위를 따라감(직접 고르면 유지). 정상가·판매가 공통
@@ -3819,8 +3821,10 @@ function requestPrefill(r: SellerRequest) {
     // 조용히 들어가 엉뚱한 구독자에게 알림이 갈 수 있었음
     category: r.categories?.name ?? undefined,
     region: r.regions?.name ?? undefined,
-    dealPrice: r.hope_price ?? undefined,
-    originalPrice: r.original_price ?? undefined,
+    // 2026-10-05: 협의 신청은 가격 방식 "가격 협의"로 미리 채움(관리자가 바꿀 수 있음) — 가격은 비워 둠
+    priceMode: (isNegotiable(r) ? "negotiable" : "fixed") as PriceMode,
+    dealPrice: isNegotiable(r) ? undefined : r.hope_price ?? undefined,
+    originalPrice: isNegotiable(r) ? undefined : r.original_price ?? undefined,
     totalQty: r.quantity,
     quantityUnit: r.quantity_unit ?? undefined,
     priceUnit: r.price_unit ?? undefined,

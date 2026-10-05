@@ -2005,3 +2005,18 @@ alter table public.deals add constraint deals_price_by_mode_check
   );
 grant select (price_mode) on public.deals to anon, authenticated;
 notify pgrst, 'reload schema';
+
+-- ============================================================================
+-- 2026-10-05 /sell 판매 신청 "가격 협의" — seller_requests.price_mode (운영 미실행. 순서: SQL 실행 → PR 배포)
+--   원본·실행 전 확인·확인 조회·되돌리기: supabase/migrations/20261005_seller_request_price_negotiable.sql
+-- ============================================================================
+alter table public.seller_requests add column if not exists price_mode text not null default 'fixed';
+alter table public.seller_requests drop constraint if exists seller_requests_price_mode_check;
+alter table public.seller_requests add constraint seller_requests_price_mode_check check (price_mode in ('fixed', 'negotiable'));
+alter table public.seller_requests drop constraint if exists seller_requests_price_by_mode_check;
+alter table public.seller_requests add constraint seller_requests_price_by_mode_check
+  check (
+    (price_mode = 'fixed' and hope_price is not null)
+    or (price_mode = 'negotiable' and hope_price is null and original_price is null)
+  );
+notify pgrst, 'reload schema';
