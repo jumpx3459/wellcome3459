@@ -326,24 +326,24 @@ export default function Home() {
       {/* 2026-10-03: 첫 방문엔 설치 카드를 숨김 — 로그인 회원이거나 두 번째 방문부터 */}
       {canInstall && !installDismissed && (isMember || repeatVisit) && (
         <div className="px-5 pt-5">
-          {/* 2026-09-27: 배너가 전체폭을 다 써서 주목도가 과하다는 피드백 — 폭을
-              절반 정도로 줄이고, 부담 없이 넘길 수 있게 닫기(X) 버튼을 추가. */}
+          {/* 2026-10-05: 전체 폭 한 줄 띠 — 왼쪽 이모지+글자, 오른쪽 [지금 설치], 끝에 닫기(X, 터치 44×44).
+              (예전 2026-09-27 폭 58% 카드는 [지금 설치]가 아랫줄로 내려가 폐기) */}
           <div
-            className="rounded-2xl px-4 py-3.5 relative"
-            style={{ border: "2px solid rgba(255,111,15,0.35)", maxWidth: "58%" }}
+            className="rounded-2xl flex items-center"
+            style={{ border: "2px solid rgba(255,111,15,0.35)", padding: "6px 2px 6px 16px" }}
           >
+            <div className="flex-1 min-w-0">
+              <InstallAppButton oneLine canInstall={canInstall} promptInstall={promptInstall} hasNativePrompt={hasNativePrompt} />
+            </div>
             <button
               type="button"
               onClick={dismissInstallBanner}
               aria-label="닫기"
-              className="absolute flex items-center justify-center"
-              style={{ top: 6, right: 6, width: 20, height: 20, color: "#B8BFC7", fontSize: rem(13), lineHeight: 1 }}
+              className="flex items-center justify-center flex-shrink-0"
+              style={{ width: 44, height: 44, color: "#B8BFC7", fontSize: rem(13), lineHeight: 1 }}
             >
               ✕
             </button>
-            <div className="pr-4">
-              <InstallAppButton canInstall={canInstall} promptInstall={promptInstall} hasNativePrompt={hasNativePrompt} />
-            </div>
           </div>
         </div>
       )}

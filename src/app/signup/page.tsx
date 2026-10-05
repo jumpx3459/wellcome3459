@@ -934,7 +934,7 @@ function SignupPageInner() {
         </FloatingCTA>
       )}
 
-      <Toast message={toastMessage} />
+      <Toast message={toastMessage} fitWidth bottom="calc(var(--nav-bottom) + 12px + 56px + 12px)" />
     </main>
   );
 }
