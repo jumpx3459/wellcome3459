@@ -1,6 +1,6 @@
 # PROGRESS
 
-마지막 업데이트: 2026-10-04 (가격 협의(price_mode) 매물 지원 — 브랜치 `feat/deal-price-negotiable`, 운영 SQL 미실행·공개일 목표 10/12로 정정 / 대리 게시 매물 실제 판매자 저장 + 직접 등록 사업자 조회 연결·#63 병합 기록·운영 확인 방법 정정 — 브랜치 `feat/deal-seller-private` / PR #61 F-4 병합 `5ab3bf4`·배포 run 37179769308·운영 확인 통과 기록 + F-1 리드 보안 완료 판정 + PC 비회원 화면 사전 점검 — 브랜치 `docs/progress-61-f1-guest-check` / F-4 관리자 거래 연결 보드 — 브랜치 `feat/f4-connection-board`, interests 권한 회수 SQL은 운영 실행 완료(기록용 파일만) / PR #60 4.5 비회원 가입 버튼 통일 병합 `2d4f492` / PR #59 사업자 조회 상호 미전송 병합 `06f0fe2` / PR #58 판매자 신원 확인 병합 `160d5ef`·SQL·NTS_API_KEY 운영 반영 / PR #57 A안 비회원 가격 비공개 병합 `5dfc47f`·SQL A·B 실행·운영 확인 통과 / PR #56 처리방침·약관 매물 알림 범위 병합 `635d3e5` / PR #55 F-3b 매물 알림 동의 전용 버전 병합 `3a51712` / PR #54 /deals 넘침 방어·홈 카드 배지 병합 `81dac2c` / PR #53 병합 `377bc99` / PR #52 F-3a 병합 `e9ea982`·운영 확인 / PR #51 첫 방문 플로우 병합 `b28659c` / PR-D 관리자 매물 등록 폼 2단 — 커밋 1 2단·판매자 신청 폼 자리 이동·커밋 2 카드 제목·PC 사진 버튼·업로드 오류 상자, 브랜치 `feat/admin-deal-form-2col` / PR #47 PR-B 사진 업로드 병합 `eada5c1` / PR #46 PR-C1 관리자 카드 목록 병합 `9ee5715` / PR #45 /sell PC 2단 병합 `c5aca29` / PR #44 /sell·관리자 레이아웃 정리 병합 `849d069` / PR-A2 영상 업로드 보완 / PR #42 영상 직접 업로드 병합 `bae6df1`·운영 시험 / PR #41 번호 표시 통일 병합 `d5f5e78` / PR #40 F-2 거래 연결 DB 병합 `60646c0`·운영 SQL 실행 완료 / L-8 관리자 매물 [마감] 버튼 — 브랜치 `feat/admin-deal-close` / PR #31 VAPID lazy 초기화 — 병합 `f2dca21` / ① 관리자 역할 기반 최소판 — PR #30, SQL 1~5 실행 완료 / PR용 CI(chore/pr-ci) / J-2 사업자정보 푸터·관리자 대시보드 레이아웃 / J-1 로그인·가입 번호 자동완성 버그 / PR #26 커밋 K KPI 매일 저장·방문 기록·지표 정확도 — 병합 `c0c9c8a`·SQL 실행 완료 / PR #25 커밋 G 비회원 동의 기록·90일 자동 삭제 — 병합 `cf6093d`·SQL 실행 완료 / PR #24 커밋 D 사업자 정보 푸터·문의 경로 — 병합 `f24170c` / PR #23 커밋 E 판매자 표시 — 병합 `6dbe813`·SQL ①②③ 실행 완료 / PR #22 커밋 H: 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내 — 병합 `8cf2f41` / PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
+마지막 업데이트: 2026-10-05 (/sell 판매 신청 가격 협의(seller_requests.price_mode) — 브랜치 `feat/sell-price-negotiable`, 운영 SQL 미실행 + #63~#69 병합 기록 / 가격 협의(price_mode) 매물 지원 — 브랜치 `feat/deal-price-negotiable`, 운영 SQL 미실행·공개일 목표 10/12로 정정 / 대리 게시 매물 실제 판매자 저장 + 직접 등록 사업자 조회 연결·#63 병합 기록·운영 확인 방법 정정 — 브랜치 `feat/deal-seller-private` / PR #61 F-4 병합 `5ab3bf4`·배포 run 37179769308·운영 확인 통과 기록 + F-1 리드 보안 완료 판정 + PC 비회원 화면 사전 점검 — 브랜치 `docs/progress-61-f1-guest-check` / F-4 관리자 거래 연결 보드 — 브랜치 `feat/f4-connection-board`, interests 권한 회수 SQL은 운영 실행 완료(기록용 파일만) / PR #60 4.5 비회원 가입 버튼 통일 병합 `2d4f492` / PR #59 사업자 조회 상호 미전송 병합 `06f0fe2` / PR #58 판매자 신원 확인 병합 `160d5ef`·SQL·NTS_API_KEY 운영 반영 / PR #57 A안 비회원 가격 비공개 병합 `5dfc47f`·SQL A·B 실행·운영 확인 통과 / PR #56 처리방침·약관 매물 알림 범위 병합 `635d3e5` / PR #55 F-3b 매물 알림 동의 전용 버전 병합 `3a51712` / PR #54 /deals 넘침 방어·홈 카드 배지 병합 `81dac2c` / PR #53 병합 `377bc99` / PR #52 F-3a 병합 `e9ea982`·운영 확인 / PR #51 첫 방문 플로우 병합 `b28659c` / PR-D 관리자 매물 등록 폼 2단 — 커밋 1 2단·판매자 신청 폼 자리 이동·커밋 2 카드 제목·PC 사진 버튼·업로드 오류 상자, 브랜치 `feat/admin-deal-form-2col` / PR #47 PR-B 사진 업로드 병합 `eada5c1` / PR #46 PR-C1 관리자 카드 목록 병합 `9ee5715` / PR #45 /sell PC 2단 병합 `c5aca29` / PR #44 /sell·관리자 레이아웃 정리 병합 `849d069` / PR-A2 영상 업로드 보완 / PR #42 영상 직접 업로드 병합 `bae6df1`·운영 시험 / PR #41 번호 표시 통일 병합 `d5f5e78` / PR #40 F-2 거래 연결 DB 병합 `60646c0`·운영 SQL 실행 완료 / L-8 관리자 매물 [마감] 버튼 — 브랜치 `feat/admin-deal-close` / PR #31 VAPID lazy 초기화 — 병합 `f2dca21` / ① 관리자 역할 기반 최소판 — PR #30, SQL 1~5 실행 완료 / PR용 CI(chore/pr-ci) / J-2 사업자정보 푸터·관리자 대시보드 레이아웃 / J-1 로그인·가입 번호 자동완성 버그 / PR #26 커밋 K KPI 매일 저장·방문 기록·지표 정확도 — 병합 `c0c9c8a`·SQL 실행 완료 / PR #25 커밋 G 비회원 동의 기록·90일 자동 삭제 — 병합 `cf6093d`·SQL 실행 완료 / PR #24 커밋 D 사업자 정보 푸터·문의 경로 — 병합 `f24170c` / PR #23 커밋 E 판매자 표시 — 병합 `6dbe813`·SQL ①②③ 실행 완료 / PR #22 커밋 H: 판매 신청 회원 전용·업로드 인증·동의 상태 표시·확대 안내 — 병합 `8cf2f41` / PR #19 재발송 경로 제거·deals.status 제약 / PR #20 (광고)·수신거부·야간 보류 / PR #21 수신 동의 기록·약관·처리방침·icn1 / 공개일 10/7 연기)
 
 새 세션을 시작할 때 이 파일을 먼저 읽고, 아래 "다음에 할 일"부터 확인하세요.
 
@@ -49,6 +49,24 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
   비공개 옵션 등) — 상세는 아래 "최근 작업 (2026-09-23)" 참고
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
+
+## 최근 작업 (2026-10-05) — /sell 판매 신청 "가격 협의" 선택 (브랜치 `feat/sell-price-negotiable`, **운영 SQL 미실행 — SQL 먼저**)
+
+- **#63~#69 병합 기록**(모두 Deploy to Vercel success): #63 `2b0b6ff` run 37183544800(10/4 06:41Z) · #64 대리 게시 실제 판매자 `91d27ea` run 37195762089(10:33Z) · #65 가격 협의 매물 `42e3a19` run 37198673164(11:25Z) ·
+  #66 사업자 조회 바로가기 `b40083a` run 37197581823(11:06Z) · #67 카드 가격 줄 `1af99e7` run 37201247333(12:11Z) · #68 알림 지역 매칭 해제 + /sell 재고 위치 선택 `ab974ab` run 37200876473(12:04Z) ·
+  #69 카드 레이아웃 2차 `1d1b501` run 37204824436(13:13Z). 운영 확인: #63 robots·소리는 위 #63 기록(대표 전달). #64~#69의 운영 확인·#65 SQL 운영 실행 여부는 이 PR 작성 때까지 기록된 것이 없음(확인되면 다음 PR에).
+- **모델**: `seller_requests.price_mode` text not null default 'fixed' check in ('fixed','negotiable') + CHECK `seller_requests_price_by_mode_check` —
+  fixed는 `hope_price` 필수, negotiable은 `hope_price`·`original_price` null. 두 가격 칸은 원래 NULL 허용이라 NOT NULL 해제 없음. 신청 저장은 서버 service role(`/api/seller-requests`)이라 칸 grant 불필요.
+- **SQL**: `supabase/migrations/20261005_seller_request_price_negotiable.sql`(실행 전 확인·1~2·확인 조회·CHECK 동작 시험·되돌리기) + `schema.sql` 끝에 같은 블록.
+  **순서: 대표가 SQL Editor에서 실행 → 확인 조회 → PR merge·배포**(새 코드가 저장 때 `price_mode`를 넣으므로 칸이 없으면 판매 신청 저장 실패). 실행 전 `null_hope_rows`가 0이어야 함(예전에 희망가 없이 들어온 신청이 있으면 CHECK가 실패해 전체 취소).
+- **/sell**: "가격" 선택 [가격 입력(기본) | 가격은 협의할게요]. 협의면 판매 단가·정상 단가 칸을 숨기고 `priceMode:"negotiable"`·`hopePrice:null`·`originalPrice:null`·`priceUnit:null` 전송(최소주문 칸이 "일괄"로 숨는 일 방지). 가격 입력 쪽에 "가격을 적으면 더 빨리 연결돼요". 작성 중 임시저장(sessionStorage)에 방식 포함.
+- **서버**: `resolveSellerRequestPrice`(`src/lib/priceMode.ts`) — priceMode 없음 = fixed(옛 화면 호환), 모르는 값 400(field priceMode), fixed 희망가 없음·0·비숫자 400(field hopePrice), negotiable은 보낸 가격과 무관하게 둘 다 null, 할인율 80% 경고는 fixed만.
+- **관리자**: 신청 카드에 협의 신청은 "가격 협의"(0원·빈칸·희망단가·정상단가 표시 없음). [매물로 등록하기] 폼이 가격 방식을 협의로 미리 채움(관리자가 가격 입력으로 변경 가능, 협의 등록은 #65 서버 분기). fixed 신청 흐름은 그대로.
+- **영향 점검**: 신청 `select('*')`는 관리자 목록(`/api/admin/seller-requests`) 한 곳뿐 — 새 칸은 목록 화면만 씀. 다른 화면·집계는 칸 이름을 지정해 영향 없음.
+- **시험(운영 호출 0건)**: 가짜 env로 build · `.next`에 운영 Supabase 주소 0건 · `node --experimental-strip-types scripts/seller-price-mode-test.mts`(검증 분기 단위) ·
+  Playwright(로컬 서버 + 가짜 응답, 외부 요청 차단, isMobile·hasTouch, 360px, 글자 130%) a 가격 입력 → fixed·희망가 전송 / b 협의 → 희망가 칸 숨김·null 전송 / c 희망가 비움 → 안내로 막힘 / d 관리자 목록 "가격 협의" / e 승인 폼 협의 미리 채움(fixed 신청은 가격 입력 그대로) / f 360px 가로 넘침 0 — 전부 통과.
+  옛 화면 코드로 되돌리면 b·d·e가 실패함(시험 유효).
+- **범위 밖**: "협의 가능"(fixed + 협의) 표시.
 
 ## 최근 작업 (2026-10-04) — 카드 레이아웃 2차: 사진 확대 + 글자 영역 압축 (브랜치 `feat/card-layout-v2`, 화면만·DB 변경 없음, 관리자 제외)
 
@@ -160,7 +178,8 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
   robots 운영 확인 통과(대표 전달 — 재확인 아님) · 소리 원인은 위 "기기 알림 설정" 확정(켠 뒤 정상, 대표 전달).
 - **운영 확인 방법 정정(10/4)**: 처음엔 "[테스트] 2건 연속 발송"으로 적었으나, **[테스트] 매물도 매물 알림 동의·구독 회원 전원에게 간다**(제목 접두어·`is_test`로 수신 대상을 가르는 코드 없음 —
   `sendPush.ts` sendDealPush, 21~08시는 보류 후 아침 8시 cron). 그래서 확인은 "**실매물을 낮(08~21시)에 등록해서**" 한다:
-  merge + Deploy 초록 → 휴대폰 설치 앱 한 번 열었다 닫기(sw 갱신) → 낮 시간 실매물 등록 → 소리·진동 / https://dumpingjumping.com/robots.txt 에 `Disallow: /api` 확인.
+  merge + Deploy 초록 → 휴대폰 설치 앱 한 번 열었다 닫기(sw 갱신) → 낮 시간 실매물 등록 → 소리·진동 + **`notification_logs` 조회**(방금 매물의 발송 행 status sent·tag 확인) /
+  https://dumpingjumping.com/robots.txt 에 `Disallow: /api` 확인. ("[테스트] 2건 연속 발송" 방식은 폐기.)
 
 ## 최근 작업 (2026-10-04) — PR #61 병합 기록 · F-1 완료 판정 · PC 비회원 화면 사전 점검 (브랜치 `docs/progress-61-f1-guest-check`, 기록만)
 
