@@ -285,7 +285,8 @@ export default function Home() {
         )}
       </div>
 
-      <div className="pt-5">
+      {/* 2026-10-05 여백(px 고정 — 이 앱은 rem이 18px 기준이라 Tailwind 단위는 값이 어긋남): 남색 머리 아래 16px · 카테고리 줄 아래 24px · 제목 아래 12px (카드 안쪽 위아래는 원래 값 py-3 유지) */}
+      <div style={{ paddingTop: 16 }}>
         <div className="px-5 text-lg font-bold text-navy mb-3">어떤 상품을 찾고 계세요?</div>
         {/* 3x3 그리드(약 300px)가 히어로 직후 화면 절반을 차지해 실제 매물 미리보기가
             스크롤 없이 안 보이던 문제 — 가로 스크롤 칩 한 줄로 축소. 카테고리 구분은
@@ -350,8 +351,8 @@ export default function Home() {
 
       {/* 매물 예시 — 실제 매물이 있으면 실제로, 없으면 예시로 "이런 특가가 온다"는 감을 줌 */}
       {preview.length > 0 && (
-        <div className="px-5 pt-8">
-          <div className="flex items-center gap-1.5 mb-3.5">
+        <div className="px-5" style={{ paddingTop: "calc(24px - 0.25rem)" /* 카테고리 줄 아래 pb-1(0.25rem)이 이미 있어 그만큼 빼서 칩 아래 끝→제목 24px */ }}>
+          <div className="flex items-center gap-1.5" style={{ marginBottom: 12 }}>
             <div className="text-base font-bold text-navy">
               {isExample ? "가입하면 이런 특가 알림이 와요" : "오늘 이런 매물이 올라왔어요"}
             </div>

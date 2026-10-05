@@ -74,21 +74,24 @@ export default function ReturningMemberIntro({
         </div>
       </div>
 
-      {/* 흰 영역 — 화면 맨 아래까지. 캐릭터는 남는 공간 가운데, 로그인 버튼·링크는 아래 */}
-      <div className="mx-auto w-full max-w-md flex-1 flex flex-col" style={{ padding: "16px 22px calc(14px + var(--sab))", minHeight: 0 }}>
-        <div className="flex flex-1 items-center justify-center" style={{ minHeight: 0, overflow: "hidden" }}>
-          <img
-            src="/images/manager-cut.png"
-            alt="점핑매니저"
-            style={{ height: "clamp(100px, 24vh, 190px)", width: "auto", maxHeight: "100%", objectFit: "contain" }}
-          />
+      {/* 흰 영역 — 화면 맨 아래까지. 아래부터: 하단 24px → 링크(44) → 22px → [로그인](52) → 12px → 캐릭터.
+          캐릭터 = min(240px, 남는 높이 − 위 여백 16px), 남는 공간은 캐릭터 위에만 생김(2026-10-05 되돌림) */}
+      <div className="mx-auto w-full max-w-md flex-1 flex flex-col" style={{ padding: "0 22px calc(24px + var(--sab))", minHeight: 0 }}>
+        <div className="relative flex-1" style={{ minHeight: 0 }}>
+          <div className="absolute flex items-end justify-center" style={{ top: 16, left: 0, right: 0, bottom: 0 }}>
+            <img
+              src="/images/manager-cut.png"
+              alt="점핑매니저"
+              style={{ height: 240, maxHeight: "100%", width: "auto", maxWidth: "100%", objectFit: "contain" }}
+            />
+          </div>
         </div>
 
-        <div className="flex flex-col gap-1 flex-shrink-0">
+        <div className="flex flex-col flex-shrink-0" style={{ marginTop: 12 }}>
           <Link href="/login" className={`w-full ${BTN_CLASS}`} style={btnStyle("primary")}>
             {method ? LOGIN_LABEL[method] : "로그인"}
           </Link>
-          <div className="flex items-center justify-center gap-2 flex-wrap">
+          <div className="flex items-center justify-center gap-2 flex-wrap" style={{ marginTop: 22 }}>
             <Link href="/signup" style={{ ...LINK_BASE, color: "#0B2540", fontWeight: 700 }}>
               처음이신가요? 가입하기
             </Link>

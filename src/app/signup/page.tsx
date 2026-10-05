@@ -17,7 +17,7 @@ import { getPushBlocker, type PushBlocker } from "@/lib/browserEnv";
 import PushBlockerNotice from "@/components/PushBlockerNotice";
 import { rem } from "@/lib/rem";
 import { clearReturningMember } from "@/lib/returningMember";
-import FloatingCTA, { FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
+import FloatingCTA, { FloatingCTANote, FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 import { CONSENT_TEXT } from "@/lib/consent";
 import { announceConsents, saveConsents } from "@/lib/consentClient";
@@ -53,6 +53,13 @@ function SignupPageInner() {
   // 지나친 뒤 맨 아래 "휴대폰 인증이 필요해요" CTA를 눌러도 그냥 토스트만 뜨고
   // 인증칸이 어딘지 못 찾겠다는 피드백 — 눌렀을 때 그 칸으로 스크롤+포커스.
   const phoneInputRef = useRef<HTMLInputElement>(null);
+  // 2026-10-05: 하단 고정 버튼이 비활성일 때 눌렀을 때 — 흔들림 + 버튼 위 안내(2.5초) + 해당 칸으로 스크롤(자동 포커스 없음)
+  const categoryAreaRef = useRef<HTMLDivElement>(null);
+  const ctaButtonRef = useRef<HTMLButtonElement>(null);
+  const agreeAreaRef = useRef<HTMLDivElement>(null);
+  const [ctaNote, setCtaNote] = useState<string | null>(null);
+  const ctaNoteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (ctaNoteTimerRef.current) clearTimeout(ctaNoteTimerRef.current); }, []);
   // 단계(1↔2)는 같은 페이지의 상태 변경이라 스크롤 위치가 그대로 남는다 — 1단계를 아래까지 내린 뒤
   // [다음]하면 2단계 번호 입력칸이 화면 위로 가려짐. 단계가 바뀔 때(앞·뒤 모두) 맨 위로 이동.
   // 입력칸 자동 포커스는 하지 않음(키보드가 갑자기 뜨는 것 방지). 첫 렌더는 건드리지 않음.
@@ -470,6 +477,36 @@ function SignupPageInner() {
     setObStep((s) => Math.min(TOTAL_STEPS, s + 1));
   };
 
+  // 비활성(aria-disabled) 상태에서 누름 — goNext·submit은 절대 호출하지 않음
+  const onCtaPress = () => {
+    if (!obCtaDisabled) {
+      goNext();
+      return;
+    }
+    const note =
+      obStep === 1
+        ? "위에서 관심 카테고리를 1개 이상 눌러 주세요"
+        : obStep === 2 && !verified
+        ? "휴대폰 번호 인증을 먼저 해 주세요"
+        : obStep === 2
+        ? "위 [필수] 항목에 체크해 주세요"
+        : null;
+    if (!note) return;
+    const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (!reduce) {
+      ctaButtonRef.current?.animate(
+        [{ transform: "translateX(0)" }, { transform: "translateX(-8px)" }, { transform: "translateX(8px)" }, { transform: "translateX(-6px)" }, { transform: "translateX(6px)" }, { transform: "translateX(0)" }],
+        { duration: 350, easing: "ease-in-out" },
+      );
+    }
+    setCtaNote(note);
+    if (ctaNoteTimerRef.current) clearTimeout(ctaNoteTimerRef.current);
+    ctaNoteTimerRef.current = setTimeout(() => setCtaNote(null), 2500);
+    if (obStep === 1) categoryAreaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    else if (!verified) phoneInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    else agreeAreaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const pickAllCategories = () => {
     setCategories([...mockCategories]);
     showToast("전체 카테고리로 받습니다 · 나중에 좁힐 수 있어요");
@@ -607,7 +644,7 @@ function SignupPageInner() {
         {!alreadyMember && obStep === 1 && (
           <div>
             {/* 헤드라인/서브카피는 위 네이비 히어로 블록으로 이동함 (2026-09-27) */}
-            <div className="grid grid-cols-2 gap-2.5">
+            <div ref={categoryAreaRef} className="grid grid-cols-2 gap-2.5" style={{ scrollMarginTop: 16 }}>
               {mockCategories.map((c) => {
                 const picked = categories.includes(c);
                 return (
@@ -721,7 +758,7 @@ function SignupPageInner() {
             )}
 
             {/* 2026-10-05: 미인증 상태의 노란 안내 상자("인증된 번호로만 판매자 연락처를 열람…")는 잘못된 안내라 삭제.
-                인증 완료(verified) 초록 확인 상자만 유지(문구도 사실대로 "✔ 인증 완료"만 — 알림은 기기 푸시). */}
+                인증 완료(verified) 초록 확인 상자만 유지. */}
             {verified && (
               <div className="flex items-center gap-2.5 rounded-2xl mt-4.5" style={{ padding: "14px 16px", background: "#E8F8EC" }}>
                 <span style={{ fontSize: rem(17) }}>📱</span>
@@ -759,7 +796,7 @@ function SignupPageInner() {
                 제출 때 알림 권한을 요청한다(예전엔 앱 푸시 토글이 필수 조건이었음). 카카오톡 채널 추가(친구 추가 링크)는
                 마케팅 동의와 분리한 별도 토글(기본 꺼짐). 선택 항목은 모두 기본 false, 필수는 이용약관·개인정보 2개.
                 동의 기록은 제출 때 /api/consents(member_consents, source signup)로 저장. */}
-            <div className="mt-5 rounded-2xl overflow-hidden" style={{ border: "1.5px solid #E4E7EB" }}>
+            <div ref={agreeAreaRef} className="mt-5 rounded-2xl overflow-hidden" style={{ border: "1.5px solid #E4E7EB", scrollMarginTop: 16 }}>
               <button
                 onClick={() => {
                   const all = allAgreed;
@@ -923,11 +960,19 @@ function SignupPageInner() {
                 약 1.5:1(WCAG 최소 4.5:1)이라 "카테고리를 골라주세요" 문구가 거의
                 안 보인다는 피드백 — 비활성일 때만 텍스트를 앱 표준 보조색
                 gray500(#6B7480)로 바꿔 대비 약 3.3:1로 개선. */}
+            {ctaNote && obCtaDisabled && (
+              <div role="status">
+                <FloatingCTANote>{ctaNote}</FloatingCTANote>
+              </div>
+            )}
+            {/* 비활성은 disabled 대신 aria-disabled — 눌러서 안내를 받게 함(색은 가입 화면 전용: 배경 #FFEDD5·글자 #9A3412 대비 6.38:1) */}
             <button
-              onClick={goNext}
+              ref={ctaButtonRef}
+              onClick={onCtaPress}
               disabled={submitting}
+              aria-disabled={obCtaDisabled}
               className={FLOATING_CTA_BUTTON_CLASS}
-              style={floatingCtaButtonStyle(obCtaDisabled)}
+              style={obCtaDisabled ? { ...floatingCtaButtonStyle(true), background: "#FFEDD5", color: "#9A3412" } : floatingCtaButtonStyle()}
             >
               {submitting ? "처리 중..." : obCtaLabel}
             </button>
