@@ -558,7 +558,7 @@ function SignupPageInner() {
               휴대폰 인증만 하면 끝이에요
             </h2>
             <p className="mt-2" style={{ fontSize: rem(14), lineHeight: 1.6, color: "rgba(255,255,255,.75)" }}>
-              인증된 번호로 알림을 보내고, 판매자 연락처 열람도 이 번호로 확인합니다.
+              인증한 번호로 점핑매니저가 연락드려요
             </p>
           </div>
         )}
@@ -720,16 +720,16 @@ function SignupPageInner() {
               </div>
             )}
 
-            {/* 2026-09-27: 미인증 상태의 안내 문구가 무채색(#F5F6F8/#6B7480)이라
-                "중요한 정보"인데도 눈에 안 띈다는 피드백 — 같은 화면 상단 가입미완료
-                배너에 쓰던 주의 환기 톤(#FFF4E0/#966B00)을 재사용해 존재감을 높임.
-                verified(성공) 상태는 그대로 초록 유지. */}
-            <div className="flex items-center gap-2.5 rounded-2xl mt-4.5" style={{ padding: "14px 16px", background: verified ? "#E8F8EC" : "#FFF4E0" }}>
-              <span style={{ fontSize: rem(17) }}>📱</span>
-              <span className="flex-1 text-xs font-bold" style={{ lineHeight: 1.5, color: verified ? "#2F9E44" : "#966B00" }}>
-                {verified ? "✔ 인증 완료 · 이 번호로 알림을 보냅니다" : "인증된 번호로만 판매자 연락처를 열람할 수 있어요"}
-              </span>
-            </div>
+            {/* 2026-10-05: 미인증 상태의 노란 안내 상자("인증된 번호로만 판매자 연락처를 열람…")는 잘못된 안내라 삭제.
+                인증 완료(verified) 초록 확인 상자만 유지(문구도 사실대로 "✔ 인증 완료"만 — 알림은 기기 푸시). */}
+            {verified && (
+              <div className="flex items-center gap-2.5 rounded-2xl mt-4.5" style={{ padding: "14px 16px", background: "#E8F8EC" }}>
+                <span style={{ fontSize: rem(17) }}>📱</span>
+                <span className="flex-1 text-xs font-bold" style={{ lineHeight: 1.5, color: "#2F9E44" }}>
+                  ✔ 인증 완료
+                </span>
+              </div>
+            )}
 
             {verified && (
               <div className="mt-4.5">
