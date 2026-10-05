@@ -28,7 +28,18 @@ export function floatingCtaButtonStyle(inactive = false): CSSProperties {
 export const FLOATING_CTA_BUTTON_CLASS = "w-full flex items-center justify-center text-center rounded-2xl disabled:opacity-60";
 
 // 버튼 위 짧은 안내·오류 (판이 없어서 글자만 두면 뒤 내용과 섞여 안 읽힘 → 작은 흰 알약)
-export function FloatingCTANote({ children, tone = "error" }: { children: ReactNode; tone?: "error" | "info" }) {
+// tone "dark": 가입 화면 비활성 버튼 누름 안내 전용(2026-10-05 대표 선택 B1) — 짙은 바탕·흰 굵은 글자 16px(대비 17.7:1)
+export function FloatingCTANote({ children, tone = "error" }: { children: ReactNode; tone?: "error" | "info" | "dark" }) {
+  if (tone === "dark") {
+    return (
+      <div
+        className="mx-auto mb-2 w-fit max-w-full text-center"
+        style={{ fontSize: rem(16), fontWeight: 700, color: "#fff", background: "#111827", borderRadius: 12, padding: "12px 16px", boxShadow: "0 4px 12px rgba(11,37,64,.2)" }}
+      >
+        {children}
+      </div>
+    );
+  }
   return (
     <div
       className="mx-auto mb-2 w-fit max-w-full rounded-full bg-white text-center font-medium"
