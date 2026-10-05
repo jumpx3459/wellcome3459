@@ -4,6 +4,7 @@ import { isValidContactPhone } from "@/lib/auth";
 import { sanitizeManifest, sanitizePid } from "@/lib/parseCsv";
 import { isStockType } from "@/lib/stockType";
 import { isDealPriceUnit, isLumpSum } from "@/lib/priceUnit";
+import { resolveSellerRequestPrice } from "@/lib/priceMode";
 import { getPhotoLimit, photoLimitError } from "@/lib/photoLimit";
 import { getMemberFromToken } from "@/lib/photoLimitServer";
 import { checkDealVideoUrl } from "@/lib/videoUploadServer";
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
     quantity,
     quantityUnit,
     minOrderQty,
+    priceMode, // 2026-10-05: "fixed"(기본, 희망가 필수) | "negotiable"(가격 협의 — 희망가·정상가 null)
     hopePrice,
     originalPrice, // 2026-10-01 PR-B: 정상 단가(선택) — 할인율 표시용, 승인 시 관리자 폼으로 이어받음
     hopeDurationHours,
@@ -72,11 +74,11 @@ export async function POST(req: NextRequest) {
   if (region != null && region !== "" && typeof region !== "string") {
     return NextResponse.json({ error: "재고 위치(지역)가 올바르지 않아요.", field: "region" }, { status: 400 });
   }
-  // 2026-09-29: 희망 단가 필수 (sell 폼과 같은 규칙)
-  if (typeof hopePrice !== "number" || !Number.isFinite(hopePrice) || hopePrice <= 0) {
-    return NextResponse.json({ error: "판매 단가를 입력해주세요", field: "hopePrice" }, { status: 400 });
-  }
-  if (originalPrice != null && (typeof originalPrice !== "number" || !Number.isFinite(originalPrice) || originalPrice <= 0)) {
+  // 2026-09-29: 희망 단가 필수 (sell 폼과 같은 규칙) — 2026-10-05: 가격 협의(negotiable)면 희망가·정상가 없이 접수
+  const price = resolveSellerRequestPrice({ priceMode, hopePrice, originalPrice });
+  if (!price.ok) return NextResponse.json({ error: price.error, field: price.field }, { status: 400 });
+  const negotiable = price.priceMode === "negotiable";
+  if (!negotiable && originalPrice != null && (typeof originalPrice !== "number" || !Number.isFinite(originalPrice) || originalPrice <= 0)) {
     return NextResponse.json({ error: "정상 단가는 0보다 커야 해요.", field: "originalPrice" }, { status: 400 });
   }
   // 단가 단위 — DB check와 같은 값만, 안 보내면 null(= 수량 단위 기준)
@@ -143,7 +145,7 @@ export async function POST(req: NextRequest) {
       .eq("title", cleanName);
     const titleWarnings = [...nameCheck.warnings, ...((dupCount ?? 0) > 0 ? [DUPLICATE_TITLE_WARNING] : [])];
     const descriptionWarnings = checkDescription(description);
-    const priceWarns = priceWarnings(originalPrice, hopePrice); // 할인율 80% 이상
+    const priceWarns = negotiable ? [] : priceWarnings(originalPrice, price.hopePrice!); // 할인율 80% 이상
     if (titleWarnings.length || descriptionWarnings.length || priceWarns.length) {
       return NextResponse.json(
         {
@@ -204,8 +206,9 @@ export async function POST(req: NextRequest) {
     quantity_unit: quantityUnit || "개",
     min_order_qty: lumpSum ? null : minOrderQty || null, // 일괄 판매면 최소주문 없음
     price_unit: priceUnit ?? null,
-    hope_price: hopePrice,
-    original_price: originalPrice ?? null,
+    price_mode: price.priceMode,
+    hope_price: price.hopePrice,
+    original_price: price.originalPrice,
     hope_duration_hours: hopeDurationHours ?? null,
     description,
     package_unit: packageUnit || null,
