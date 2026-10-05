@@ -7,6 +7,7 @@ import { rem } from "@/lib/rem";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 import { isStandalone } from "@/lib/browserEnv";
 import { LINK_BASE } from "@/components/ReturningMemberIntro";
+import { CHAR_TOP, charCap, useIntroCompact } from "@/lib/useIntroCompact";
 
 const STORAGE_KEY = "dj_onboarded"; // "1" = 명시적 액션(가입 시작/로그인 이동/둘러보기)으로 닫음 — 영구 억제
 const LAST_SHOWN_KEY = "dj_onboarding_last_shown"; // 버튼 없이 그냥 닫힌 경우 재노출 쿨다운 계산용
@@ -80,9 +81,13 @@ export default function OnboardingIntro({
     router.push(`/login?returnTo=${encodeURIComponent("/mypage#alerts")}`);
   }
 
-  if (!visible) return null;
+  // 캐릭터가 120px보다 작아질 때만 단계별로 공간을 줄임(src/lib/useIntroCompact.ts) — 공간이 충분하면 0단계 = 기본 배치 그대로
+  const hasCount = activeCount !== null && activeCount >= ACTIVE_COUNT_MIN;
+  const { level, areaRef, lineShown: showCount } = useIntroCompact(hasCount, visible);
+  const compactHead = level >= 2;
+  const compactBody = level >= 3;
 
-  const showCount = activeCount !== null && activeCount >= ACTIVE_COUNT_MIN;
+  if (!visible) return null;
 
   return (
     // 2026-10-05: 재방문 화면(ReturningMemberIntro)과 같은 구성 — 위 남색 머리(내용만큼의 높이) + 아래 흰 영역(화면 맨 아래까지).
@@ -94,6 +99,7 @@ export default function OnboardingIntro({
       role="dialog"
       aria-modal="true"
       aria-label="덤핑점핑 시작하기"
+      data-compact={level}
     >
       <div
         data-intro-head
@@ -105,14 +111,14 @@ export default function OnboardingIntro({
           paddingTop: "var(--sat)",
         }}
       >
-        <div className="mx-auto w-full max-w-md" style={{ padding: "20px 22px 22px" }}>
+        <div className="mx-auto w-full max-w-md" style={{ padding: compactHead ? "16px 22px 12px" : "20px 22px 22px" }}>
           <div className="flex items-center justify-between gap-3">
             <div className="bg-white rounded-lg px-2.5 py-1.5 inline-block shadow-sm flex-shrink-0">
               {/* 2026-09-27: 마운트 즉시 애니메이션이면 스플래시(1.8초)에 가려진 채로 끝남 — 스플래시가 사라질 때(logoAnimate) 붙임 */}
               <img
                 src="/images/logo.png"
                 alt="덤핑점핑"
-                className={`h-7 w-auto block${logoAnimate ? " animate-logo-jump" : ""}`}
+                className={logoAnimate ? "h-7 w-auto block animate-logo-jump" : "h-7 w-auto block"}
               />
             </div>
             {/* 2026-09-27: 고정 숫자(890명) 대신 숫자 없는 서술형 */}
@@ -126,33 +132,45 @@ export default function OnboardingIntro({
               </span>
             </div>
           </div>
-          <RotatingUrgencyTag className="mt-3" style={{ color: "var(--color-brandOrangeAccent)" }} />
-          <h1 className="font-display text-2xl mt-2 leading-[1.4]" style={{ wordBreak: "keep-all" }}>
+          <RotatingUrgencyTag
+            className={compactHead ? undefined : "mt-3"}
+            style={{ color: "var(--color-brandOrangeAccent)", ...(compactHead ? { marginTop: 8 } : null) }}
+          />
+          <h1
+            className={compactHead ? "font-display text-2xl leading-[1.4]" : "font-display text-2xl mt-2 leading-[1.4]"}
+            style={{ wordBreak: "keep-all", ...(compactHead ? { marginTop: 8 } : null) }}
+          >
             <span style={{ color: "var(--color-brandOrange)" }}>남는 상품은 빠르게 알리고</span>
             <br />
             급한 상품은 남보다 먼저 잡으세요.
           </h1>
-          <p className="mt-2" style={{ fontSize: rem(15), lineHeight: 1.6, color: "rgba(255,255,255,.88)" }}>
+          <p
+            className={compactHead ? undefined : "mt-2"}
+            style={{ fontSize: rem(15), lineHeight: 1.6, color: "rgba(255,255,255,.88)", ...(compactHead ? { marginTop: 8 } : null) }}
+          >
             임박·과잉·폐업 재고를 가장 먼저 알려드려요.
           </p>
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-md flex-1 flex flex-col" style={{ padding: "0 22px calc(24px + var(--sab))", minHeight: 0 }}>
-        <div className="relative flex-1" style={{ minHeight: 0 }}>
-          <div className="absolute flex items-end justify-center" style={{ top: 16, left: 0, right: 0, bottom: 0 }}>
+      <div
+        className="mx-auto w-full max-w-md flex-1 flex flex-col"
+        style={{ padding: `0 22px calc(${compactBody ? 16 : 24}px + var(--sab))`, minHeight: 0 }}
+      >
+        <div ref={areaRef} className="relative flex-1" style={{ minHeight: 0 }}>
+          <div className="absolute flex items-end justify-center" style={{ top: CHAR_TOP(level), left: 0, right: 0, bottom: 0 }}>
             <img
               src="/images/manager-cut.png"
               alt="점핑매니저"
-              style={{ height: showCount ? 210 : 240, maxHeight: "100%", width: "auto", maxWidth: "100%", objectFit: "contain" }}
+              style={{ height: charCap(showCount), maxHeight: "100%", width: "auto", maxWidth: "100%", objectFit: "contain" }}
             />
           </div>
         </div>
 
-        <div className="flex flex-col flex-shrink-0" style={{ marginTop: 12 }}>
+        <div className="flex flex-col flex-shrink-0" style={{ marginTop: compactBody ? 8 : 12 }}>
           {showCount && (
-            <p className="text-center" style={{ fontSize: rem(14), color: "#5B6470", marginBottom: 10 }}>
-              지금 진행 중인 매물 <b style={{ color: "var(--color-brandOrange)", fontWeight: 800 }}>{activeCount}</b>건
+            <p className="text-center" style={{ fontSize: rem(16), fontWeight: 600, color: "#374151", marginBottom: 10 }}>
+              지금 진행 중인 매물 <b style={{ color: "#C2410C", fontWeight: 800 }}>{activeCount}</b>건
             </p>
           )}
           <button
@@ -163,7 +181,7 @@ export default function OnboardingIntro({
           >
             {standalone ? "🔔 로그인하고 알림 켜기" : "🔔 30초만에 알림 설정하기"}
           </button>
-          <div className="flex items-center justify-center gap-2 flex-wrap" style={{ marginTop: 22 }}>
+          <div className="flex items-center justify-center gap-2 flex-wrap" style={{ marginTop: compactBody ? 12 : 22 }}>
             <button type="button" onClick={standalone ? startSignup : goToLogin} style={{ ...LINK_BASE, color: "#0B2540", fontWeight: 700 }}>
               {standalone ? "처음이에요 · 가입하기" : "이미 가입했어요"}
             </button>
