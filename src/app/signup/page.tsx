@@ -53,6 +53,15 @@ function SignupPageInner() {
   // 지나친 뒤 맨 아래 "휴대폰 인증이 필요해요" CTA를 눌러도 그냥 토스트만 뜨고
   // 인증칸이 어딘지 못 찾겠다는 피드백 — 눌렀을 때 그 칸으로 스크롤+포커스.
   const phoneInputRef = useRef<HTMLInputElement>(null);
+  // 단계(1↔2)는 같은 페이지의 상태 변경이라 스크롤 위치가 그대로 남는다 — 1단계를 아래까지 내린 뒤
+  // [다음]하면 2단계 번호 입력칸이 화면 위로 가려짐. 단계가 바뀔 때(앞·뒤 모두) 맨 위로 이동.
+  // 입력칸 자동 포커스는 하지 않음(키보드가 갑자기 뜨는 것 방지). 첫 렌더는 건드리지 않음.
+  const prevObStepRef = useRef(1);
+  useEffect(() => {
+    if (prevObStepRef.current === obStep) return;
+    prevObStepRef.current = obStep;
+    window.scrollTo(0, 0);
+  }, [obStep]);
 
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
