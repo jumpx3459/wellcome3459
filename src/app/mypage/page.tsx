@@ -663,7 +663,7 @@ export default function MyPage() {
           className="mt-3 text-center"
           style={{ ...UI_LINK, color: "#6B7480", textDecoration: "underline", textUnderlineOffset: 4 }}
         >
-          처음이신가요? 알림 신청하기
+          처음이신가요? 가입하기
         </Link>
         {/* 2026-09-30 (커밋 G): 비로그인 화면에도 사업자 정보 푸터 */}
         <BusinessFooter className="self-stretch -mx-6 mt-10 text-left" />
