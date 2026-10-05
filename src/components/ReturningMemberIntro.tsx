@@ -15,7 +15,8 @@ const LOGIN_LABEL: Record<LoginMethod, string> = {
 };
 
 // 하단 링크 공통 — 글자 15px 이상, 터치 높이 44px 이상(흰 배경용 색: #0B2540 · #5B6470 모두 대비 4.5:1 이상)
-const LINK_BASE = {
+// 첫 방문 화면(OnboardingIntro)도 같은 값을 씀
+export const LINK_BASE = {
   display: "inline-flex",
   alignItems: "center",
   minHeight: 44,
