@@ -29,7 +29,6 @@ import FloatingCTA, { FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCta
 
 const TODAY_BADGE_THRESHOLD = 5; // 이보다 적으면 "오늘 N건" 배너를 아예 숨김 (빈약한 숫자 노출 방지)
 const BUSINESS_COUNT_THRESHOLD = 30; // 이보다 적으면 사업자 수 대신 무숫자 카피로 대체 (빈약한 숫자 노출 방지)
-const AVG_DISCOUNT_MIN_DEALS = 3; // 할인 매물이 이보다 적으면 평균 할인율을 표시하지 않음 (표본이 너무 적음)
 
 const EXAMPLE_DEALS = mockDeals.filter((d) => d.status !== "closed").slice(0, 3);
 
@@ -44,7 +43,8 @@ export default function Home() {
     isSupabaseConfigured ? "unknown" : "guest"
   );
   const isMember = memberState === "member";
-  const [avgDiscount, setAvgDiscount] = useState<number | null>(null);
+  // 첫 방문 화면 "지금 진행 중인 매물 N건" — null = 로딩 중·실패(줄 없음)
+  const [activeCount, setActiveCount] = useState<number | null>(null);
   const [signupPending, setSignupPending] = useState(false);
   const [installDismissed, setInstallDismissed] = useState(false);
   // 2026-09-27: 로고 바운스(animate-logo-jump)가 스플래시(1.8초)와 동시에
@@ -126,7 +126,7 @@ export default function Home() {
       todayStart.setHours(0, 0, 0, 0);
       const nowIso = new Date().toISOString();
 
-      const [{ count }, { data: previewData }, { data: priceRows }] = await Promise.all([
+      const [{ count }, { data: previewData }, { count: activeTotal, error: activeError }] = await Promise.all([
         supabase
           .from("deals")
           .select("id", { count: "exact", head: true })
@@ -147,24 +147,17 @@ export default function Home() {
           const r = await run(DEAL_NEW_COLS);
           return isMissingNewColumn(r.error) ? run("") : r;
         })(),
-        // 온보딩 "평균 할인율" — 진행 중 매물 중 할인율이 있는 것(정상가 > 판매가)만 평균.
-        // 2026-10-03 A안: 비회원은 가격 칸을 못 읽음 → DB discount_pct(정수) 평균
+        // 첫 방문 화면 진행 중 매물 수 — /deals "진행중" 탭과 같은 조건(status=active · closes_at > 지금).
+        // 2026-10-05: 예전 "평균 할인율"(discount_pct 평균) 대신. 개수만(head) 세서 가격 칸(#57 A안)은 읽지 않음
         supabase
           .from("deals")
-          .select(GUEST_PRICE_COLS)
+          .select("id", { count: "exact", head: true })
           .eq("status", "active")
           .gt("closes_at", nowIso),
       ]);
 
       setTodayCount(count ?? 0);
-      const discounts = ((priceRows ?? []) as { discount_pct: number | null }[])
-        .map((d) => d.discount_pct)
-        .filter((p): p is number => p !== null && p > 0);
-      setAvgDiscount(
-        discounts.length >= AVG_DISCOUNT_MIN_DEALS
-          ? Math.round(discounts.reduce((a, b) => a + b, 0) / discounts.length)
-          : null
-      );
+      setActiveCount(activeError || activeTotal == null ? null : activeTotal);
       if (previewData && previewData.length > 0) {
         setPreview(
           previewData.map((d) => ({
@@ -195,20 +188,13 @@ export default function Home() {
     })();
   }, [memberState]);
 
-  // 온보딩 통계는 확인된 실제 값만 — 오늘 등록은 히어로 배지와 같은 기준(5건 이상), 평균 할인율은
-  // 할인 매물 3건 이상일 때만. "평균 알림 속도"는 측정 데이터가 없어 표시하지 않음.
-  const onboardingStats = [
-    todayCount >= TODAY_BADGE_THRESHOLD ? { value: `${todayCount}건`, label: "오늘 등록" } : null,
-    avgDiscount !== null && avgDiscount > 0 ? { value: `평균 ${avgDiscount}%`, label: "할인율" } : null,
-  ].filter((s): s is { value: string; label: string } => s !== null);
-
   return (
     <SplashScreen onFinish={() => setLogoAnimate(true)}>
     {/* hreflang — React 19가 <link>를 <head>로 올려줌. 짝은 /en의 metadata.alternates */}
     <link rel="alternate" hrefLang="ko-KR" href={`${SITE_URL}/`} />
     <link rel="alternate" hrefLang="en" href={`${SITE_URL}/en`} />
     {/* 세션 확인 전(unknown)엔 회원일 수도 있어 온보딩을 띄우지 않음. 재방문 회원(판별 중 포함)도 온보딩 대신 */}
-    <OnboardingIntro logoAnimate={logoAnimate} isMember={memberState !== "guest" || returning !== false} stats={onboardingStats} />
+    <OnboardingIntro logoAnimate={logoAnimate} isMember={memberState !== "guest" || returning !== false} activeCount={activeCount} />
     {memberState === "guest" && returning && !returningBrowse && (
       <ReturningMemberIntro method={returning.method} pushActive={returning.pushActive} onBrowse={browseAsReturning} />
     )}

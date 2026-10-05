@@ -962,7 +962,7 @@ function SignupPageInner() {
                 gray500(#6B7480)로 바꿔 대비 약 3.3:1로 개선. */}
             {ctaNote && obCtaDisabled && (
               <div role="status">
-                <FloatingCTANote>{ctaNote}</FloatingCTANote>
+                <FloatingCTANote tone="dark">{ctaNote}</FloatingCTANote>
               </div>
             )}
             {/* 비활성은 disabled 대신 aria-disabled — 눌러서 안내를 받게 함(색은 가입 화면 전용: 배경 #FFEDD5·글자 #9A3412 대비 6.38:1) */}

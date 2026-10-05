@@ -6,23 +6,25 @@ import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import { rem } from "@/lib/rem";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 import { isStandalone } from "@/lib/browserEnv";
+import { LINK_BASE } from "@/components/ReturningMemberIntro";
+import { CHAR_TOP, charCap, useIntroCompact } from "@/lib/useIntroCompact";
 
 const STORAGE_KEY = "dj_onboarded"; // "1" = 명시적 액션(가입 시작/로그인 이동/둘러보기)으로 닫음 — 영구 억제
 const LAST_SHOWN_KEY = "dj_onboarding_last_shown"; // 버튼 없이 그냥 닫힌 경우 재노출 쿨다운 계산용
 const RESHOW_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000; // 3일
 
-// 2026-09-28: 예전엔 "17건 / 평균 41% / 3분" 고정값이었음 — 실제 값만 부모(page.tsx)에서 받아
-// 표시하고, 기준 미달이거나 측정할 수 없는 항목(알림 속도)은 빠진다. 하나도 없으면 줄 자체를 숨김.
-export type OnboardingStat = { value: string; label: string };
+// 2026-10-05: 통계 칸("오늘 등록"·"평균 할인율") 삭제 → 진행 중 매물 수 한 줄만. 10건 이상일 때만 보여 줌
+// (적은 숫자는 오히려 빈약해 보임). null = 로딩 중·불러오기 실패 → 줄 없음(자리도 안 차지).
+export const ACTIVE_COUNT_MIN = 10;
 
 export default function OnboardingIntro({
   logoAnimate = false,
   isMember = false,
-  stats = [],
+  activeCount = null,
 }: {
   logoAnimate?: boolean;
   isMember?: boolean;
-  stats?: OnboardingStat[];
+  activeCount?: number | null;
 }) {
   const router = useRouter();
   const [visible, setVisible] = useState(false);
@@ -79,148 +81,116 @@ export default function OnboardingIntro({
     router.push(`/login?returnTo=${encodeURIComponent("/mypage#alerts")}`);
   }
 
+  // 캐릭터가 120px보다 작아질 때만 단계별로 공간을 줄임(src/lib/useIntroCompact.ts) — 공간이 충분하면 0단계 = 기본 배치 그대로
+  const hasCount = activeCount !== null && activeCount >= ACTIVE_COUNT_MIN;
+  const { level, areaRef, lineShown: showCount } = useIntroCompact(hasCount, visible);
+  const compactHead = level >= 2;
+  const compactBody = level >= 3;
+
   if (!visible) return null;
 
   return (
-    // 2026-09-29: fixed inset-0이라 AppShell의 max-w-md를 벗어나 PC에서 내용이 전체 폭으로 퍼졌음 —
-    // 배경은 전체 폭 그대로, 내용만 회원 화면 폭(max-w-md) 가운데
+    // 2026-10-05: 재방문 화면(ReturningMemberIntro)과 같은 구성 — 위 남색 머리(내용만큼의 높이) + 아래 흰 영역(화면 맨 아래까지).
+    // 흰 영역은 아래 기준: 하단 24px → 링크(44) → 22px → 주 버튼(52) → [10px ← 진행 중 매물 줄] → 12px → 캐릭터.
+    // 캐릭터 = min(240px(줄 있으면 210px), 남는 높이 − 위 16px), 남는 공간은 캐릭터 위에만 생김.
     <div
-      className="fixed inset-0 z-50 text-white"
-      style={{
-        background: "linear-gradient(155deg,#04101C 0%,#0B2540 58%,#14395C 100%)",
-        overflowY: "auto",
-      }}
+      className="fixed inset-0 z-50 bg-white flex flex-col"
+      style={{ overflowY: "auto" }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="덤핑점핑 시작하기"
+      data-compact={level}
     >
-      <div className="mx-auto w-full max-w-md min-h-full flex flex-col justify-between" style={{ padding: "44px 26px 30px" }}>
-      <div>
-        {/* 2026-09-26 (9): 로고와 890명 필이 세로로 쌓여 상단이 불필요하게 길어지고
-            그만큼 캐릭터/통계가 아래로 밀려 위계가 흐트러진다는 피드백 — 한 줄로 배치. */}
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="bg-white rounded-2xl inline-block" style={{ padding: "10px 14px" }}>
-              {/* 2026-09-27: 홈 헤더 로고와 동일한 문제 — 마운트 즉시 애니메이션이
-                  걸려 스플래시(1.8초)에 가려진 채로 재생·종료됨. 스플래시가 실제로
-                  사라지는 시점(logoAnimate)에야 클래스를 붙이도록 지연. */}
+      <div
+        data-intro-head
+        className="flex-shrink-0 text-white"
+        style={{
+          backgroundImage:
+            "radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(120deg, #04101C, #1A4B78)",
+          backgroundSize: "16px 16px, cover",
+          paddingTop: "var(--sat)",
+        }}
+      >
+        <div className="mx-auto w-full max-w-md" style={{ padding: compactHead ? "16px 22px 12px" : "20px 22px 22px" }}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="bg-white rounded-lg px-2.5 py-1.5 inline-block shadow-sm flex-shrink-0">
+              {/* 2026-09-27: 마운트 즉시 애니메이션이면 스플래시(1.8초)에 가려진 채로 끝남 — 스플래시가 사라질 때(logoAnimate) 붙임 */}
               <img
                 src="/images/logo.png"
                 alt="덤핑점핑"
-                className={logoAnimate ? "animate-logo-jump" : ""}
-                style={{ height: 34, width: "auto", display: "block" }}
+                className={logoAnimate ? "h-7 w-auto block animate-logo-jump" : "h-7 w-auto block"}
               />
             </div>
-            <div className="text-xs mt-2 tracking-wide" style={{ color: "rgba(255,255,255,.75)" }}>
-              Powered by JumpX
-            </div>
-          </div>
-          <div
-            className="inline-flex items-center gap-1.5 rounded-full flex-shrink-0"
-            style={{ background: "rgba(255,255,255,.12)", padding: "7px 13px", marginTop: 2 }}
-          >
-            {/* 2026-09-27 (재검토): 고정 숫자(890명)는 실제 가입자 수와 어긋날 수
-                있는 하드코딩 값이라, 홈과 동일하게 숫자 없는 서술형 카피로 교체. */}
-            <span className="text-xs" style={{ color: "#5EEAD4" }}>✔</span>
-            <span className="text-xs font-bold" style={{ color: "rgba(255,255,255,.92)" }}>
-              지금도 계속 새 매물이 올라와요
-            </span>
-          </div>
-        </div>
-        {/* design-v2: deals 헤더의 긴급성 로테이션 문구를 첫 진입 화면에도 노출해
-            가입 전부터 각인 효과를 줌 (2026-09-26). */}
-        <RotatingUrgencyTag className="mt-4" style={{ color: "var(--color-brandOrangeAccent)" }} />
-        <h1
-          className="font-display mt-4 leading-[1.45]"
-          style={{ fontSize: rem(23), letterSpacing: "-0.02em", wordBreak: "keep-all" }}
-        >
-          <span style={{ color: "var(--color-brandOrange)" }}>남는 상품은 빠르게 알리고</span>
-          <br />
-          급한 상품은 남보다 먼저 잡으세요.
-        </h1>
-        <p className="mt-3.5" style={{ fontSize: rem(14.5), lineHeight: 1.7, color: "rgba(255,255,255,.88)" }}>
-          전국의 임박·과잉·폐업 재고와 &quot;이런 상품 찾습니다&quot; 요청을 가장 먼저 알려드립니다.
-        </p>
-      </div>
-
-      {/* 2026-09-26 (9): 캐릭터가 96~170px로 작고 위쪽 여백만 넓어 화면 하단이
-          휑해 보인다는 피드백 — 존재감을 키움. */}
-      <div
-        className="flex flex-1 items-end justify-center"
-        style={{ minHeight: 0, paddingBottom: 6, overflow: "hidden" }}
-      >
-        <img
-          src="/images/manager-cut.png"
-          alt="점핑매니저"
-          style={{
-            height: "clamp(120px, 26vh, 220px)",
-            width: "auto",
-            maxHeight: "100%",
-            objectFit: "contain",
-            filter: "drop-shadow(0 14px 26px rgba(0,0,0,.5))",
-          }}
-        />
-      </div>
-
-      <div className="flex flex-col gap-3">
-        {/* 2026-09-26 (9): 통계 카드가 CTA 버튼과 시각적 무게가 비슷해 캐릭터/CTA보다
-            우선순위가 높아 보이던 문제 — 패딩·폰트를 줄여 보조 정보로 격하. */}
-        {stats.length > 0 && (
-        <div className="flex gap-1.5">
-          {stats.map((s) => (
+            {/* 2026-09-27: 고정 숫자(890명) 대신 숫자 없는 서술형 */}
             <div
-              key={s.label}
-              className="flex-1 rounded-xl text-center"
-              style={{ background: "rgba(255,255,255,.08)", padding: "8px 8px" }}
+              className="inline-flex items-center gap-1.5 rounded-full"
+              style={{ background: "rgba(255,255,255,.12)", padding: "7px 13px" }}
             >
-              <div className="font-mono text-sm font-bold" style={{ color: "var(--color-brandOrangeAccent)" }}>
-                {s.value}
-              </div>
-              <div className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,.75)" }}>
-                {s.label}
-              </div>
+              <span className="text-xs" style={{ color: "#5EEAD4" }}>✔</span>
+              <span className="text-xs font-bold" style={{ color: "rgba(255,255,255,.92)" }}>
+                지금도 계속 새 매물이 올라와요
+              </span>
             </div>
-          ))}
-        </div>
-        )}
-        <button
-          onClick={standalone ? goToAlertLogin : startSignup}
-          className={`w-full ${BTN_CLASS}`}
-          style={btnStyle("primary")}
-        >
-          {standalone ? "🔔 로그인하고 알림 켜기" : "🔔 30초만에 알림 설정하기"}
-        </button>
-        <div className="flex items-center justify-center gap-1" style={{ padding: "2px 10px 0" }}>
-          <button
-            onClick={standalone ? startSignup : goToLogin}
-            style={{
-              background: "none",
-              border: "none",
-              color: "rgba(255,255,255,.85)",
-              fontSize: rem(13),
-              fontWeight: 700,
-              textDecoration: "underline",
-              textUnderlineOffset: 4,
-              padding: 8,
-            }}
+          </div>
+          <RotatingUrgencyTag
+            className={compactHead ? undefined : "mt-3"}
+            style={{ color: "var(--color-brandOrangeAccent)", ...(compactHead ? { marginTop: 8 } : null) }}
+          />
+          <h1
+            className={compactHead ? "font-display text-2xl leading-[1.4]" : "font-display text-2xl mt-2 leading-[1.4]"}
+            style={{ wordBreak: "keep-all", ...(compactHead ? { marginTop: 8 } : null) }}
           >
-            {standalone ? "처음이에요 · 가입하기" : "이미 가입했어요"}
-          </button>
-          <span style={{ color: "rgba(255,255,255,.35)", fontSize: rem(13) }}>·</span>
-          <button
-            onClick={dismiss}
-            style={{
-              background: "none",
-              border: "none",
-              color: "rgba(255,255,255,.7)",
-              fontSize: rem(13),
-              fontWeight: 500,
-              textDecoration: "underline",
-              textUnderlineOffset: 4,
-              padding: 8,
-            }}
+            <span style={{ color: "var(--color-brandOrange)" }}>남는 상품은 빠르게 알리고</span>
+            <br />
+            급한 상품은 남보다 먼저 잡으세요.
+          </h1>
+          <p
+            className={compactHead ? undefined : "mt-2"}
+            style={{ fontSize: rem(15), lineHeight: 1.6, color: "rgba(255,255,255,.88)", ...(compactHead ? { marginTop: 8 } : null) }}
           >
-            둘러보기
-          </button>
+            임박·과잉·폐업 재고를 가장 먼저 알려드려요.
+          </p>
         </div>
       </div>
+
+      <div
+        className="mx-auto w-full max-w-md flex-1 flex flex-col"
+        style={{ padding: `0 22px calc(${compactBody ? 16 : 24}px + var(--sab))`, minHeight: 0 }}
+      >
+        <div ref={areaRef} className="relative flex-1" style={{ minHeight: 0 }}>
+          <div className="absolute flex items-end justify-center" style={{ top: CHAR_TOP(level), left: 0, right: 0, bottom: 0 }}>
+            <img
+              src="/images/manager-cut.png"
+              alt="점핑매니저"
+              style={{ height: charCap(showCount), maxHeight: "100%", width: "auto", maxWidth: "100%", objectFit: "contain" }}
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col flex-shrink-0" style={{ marginTop: compactBody ? 8 : 12 }}>
+          {showCount && (
+            <p className="text-center" style={{ fontSize: rem(16), fontWeight: 600, color: "#374151", marginBottom: 10 }}>
+              지금 진행 중인 매물 <b style={{ color: "#C2410C", fontWeight: 800 }}>{activeCount}</b>건
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={standalone ? goToAlertLogin : startSignup}
+            className={`w-full ${BTN_CLASS}`}
+            style={btnStyle("primary")}
+          >
+            {standalone ? "🔔 로그인하고 알림 켜기" : "🔔 30초만에 알림 설정하기"}
+          </button>
+          <div className="flex items-center justify-center gap-2 flex-wrap" style={{ marginTop: compactBody ? 12 : 22 }}>
+            <button type="button" onClick={standalone ? startSignup : goToLogin} style={{ ...LINK_BASE, color: "#0B2540", fontWeight: 700 }}>
+              {standalone ? "처음이에요 · 가입하기" : "이미 가입했어요"}
+            </button>
+            <span aria-hidden style={{ color: "#9AA3AD", fontSize: rem(15) }}>·</span>
+            <button type="button" onClick={dismiss} style={{ ...LINK_BASE, color: "#5B6470", fontWeight: 600 }}>
+              둘러보기
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
