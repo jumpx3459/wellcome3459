@@ -1582,6 +1582,7 @@ create table if not exists public.admin_audit_logs (
   admin_role text,
   action text not null,          -- login_success·login_fail·login_locked·deal_delete·partner_approve·partner_reject·
                                  -- notice_send·admin_appoint·admin_remove·admin_role_change·members_list_view·interests_list_view
+                                 -- 2026-10-06 추가(코드만, SQL 변경 없음 — action은 제약 없는 text): members_export·leads_export(CSV 내보내기, 최고관리자만)
   target_type text,
   target_id text,
   detail jsonb not null default '{}'::jsonb,
