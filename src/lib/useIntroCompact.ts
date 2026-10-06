@@ -7,7 +7,10 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 // 단계마다 다시 재서 CHAR_MIN 이상이 되면 멈춤. 3단계까지 줄여도 모자라면 3단계 그대로(캐릭터 숨김 없음).
 //   0 기본 · 1 "진행 중 매물" 줄 숨김 · 2 남색 머리 여백 축소 · 3 흰 영역 간격 축소
 // 글자 크기·주 버튼 높이·링크 누름 영역(44px)·문장·캐릭터 상한은 줄이지 않음.
+// 2026-10-06 말풍선(IntroBubble): 0단계에서 말풍선을 넣고도 캐릭터가 BUBBLE_CHAR_MIN 이상이면 표시, 아니면 말풍선부터 숨긴 뒤 위 단계 그대로.
 export const CHAR_MIN = 120;
+export const BUBBLE_CHAR_MIN = 180;
+export const BUBBLE_SPACE = 84 + 14; // 말풍선 높이 + 말풍선↔캐릭터 간격 (IntroBubble.tsx)
 export const CHAR_TOP = (level: number) => (level >= 3 ? 8 : 16);
 // 캐릭터 상한 — "진행 중 매물" 줄이 보이면 210, 아니면 240
 export const charCap = (lineShown: boolean) => (lineShown ? 210 : 240);
@@ -15,12 +18,14 @@ export const charCap = (lineShown: boolean) => (lineShown ? 210 : 240);
 // hasLine: 줄을 보여 줄 조건(10건 이상)인지 — 1단계부터는 숨김. hasLine이 바뀌면 0단계부터 다시
 export function useIntroCompact(hasLine: boolean, active: boolean) {
   const [level, setLevel] = useState(0);
+  const [bubbleShown, setBubbleShown] = useState(true);
   const [gen, setGen] = useState(0);
   const areaRef = useRef<HTMLDivElement>(null);
 
   // 화면 크기·글자(웹폰트) 변화 → 기본(0단계)부터 다시. 단계 변경으로 바뀌는 건 칸 안쪽이라 화면 크기는 그대로(되먹임 없음)
   const restart = useCallback(() => {
     setLevel(0);
+    setBubbleShown(true);
     setGen((g) => g + 1);
   }, []);
 
@@ -38,9 +43,14 @@ export function useIntroCompact(hasLine: boolean, active: boolean) {
   useLayoutEffect(() => {
     const area = areaRef.current;
     if (!active || !area) return;
-    const charH = Math.min(charCap(hasLine && level < 1), area.clientHeight - CHAR_TOP(level));
-    if (charH < CHAR_MIN && level < 3) setLevel(level + 1);
-  }, [active, hasLine, level, gen]);
+    const cap = charCap(hasLine && level < 1);
+    const room = area.clientHeight - CHAR_TOP(level);
+    if (bubbleShown) {
+      if (Math.min(cap, room - BUBBLE_SPACE) < BUBBLE_CHAR_MIN) setBubbleShown(false);
+      return;
+    }
+    if (Math.min(cap, room) < CHAR_MIN && level < 3) setLevel(level + 1);
+  }, [active, hasLine, level, bubbleShown, gen]);
 
-  return { level, areaRef, lineShown: hasLine && level < 1 };
+  return { level, areaRef, lineShown: hasLine && level < 1, bubbleShown };
 }

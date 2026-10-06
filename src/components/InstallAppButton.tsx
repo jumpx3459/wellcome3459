@@ -168,8 +168,14 @@ export default function InstallAppButton({
           {/* 2026-09-27: "앱처럼 열 수 있다"는 기능 설명보다, 실제 혜택(마감 임박
               매물을 더 빨리 받는다)을 앞세우는 카피로 변경. 구체적 쿠폰/금액은
               실제 지급 로직이 없어 표기하지 않음. */}
-          <span className="block font-bold" style={{ fontSize: rem(13.5), color: "#0B2540" }}>홈 화면에 추가하기</span>
-          <span className="block mt-0.5" style={{ fontSize: rem(11.5), color: "#6B7480" }}>
+          {/* 2026-10-06 홈 띠(oneLine) C안: 제목 16px 700 한 줄 · 설명 14px #4B5563. 다른 곳(카드형)은 그대로 */}
+          <span
+            className={oneLine ? "block font-bold whitespace-nowrap" : "block font-bold"}
+            style={{ fontSize: rem(oneLine ? 16 : 13.5), color: "#0B2540" }}
+          >
+            홈 화면에 추가하기
+          </span>
+          <span className="block mt-0.5" style={oneLine ? { fontSize: rem(14), color: "#4B5563" } : { fontSize: rem(11.5), color: "#6B7480" }}>
             {isIOSDevice ? IOS_INSTALL_TITLE : oneLine ? "마감 임박 알림을 가장 먼저 받아요" : "설치하면 마감 임박 알림을 가장 먼저 받아요"}
           </span>
         </span>

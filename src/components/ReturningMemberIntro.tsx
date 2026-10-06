@@ -4,7 +4,8 @@ import Link from "next/link";
 import { rem } from "@/lib/rem";
 import type { LoginMethod } from "@/lib/returningMember";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
-import { CHAR_TOP, charCap, useIntroCompact } from "@/lib/useIntroCompact";
+import IntroBubble from "@/components/IntroBubble";
+import { BUBBLE_SPACE, CHAR_TOP, charCap, useIntroCompact } from "@/lib/useIntroCompact";
 
 // 재방문 회원 화면 (2026-09-29) — 로그아웃 상태로 돌아온 기존 회원에게 가입 온보딩 대신.
 // 판별은 page.tsx(src/lib/returningMember.ts).
@@ -39,13 +40,14 @@ export default function ReturningMemberIntro({
   onBrowse: () => void;
 }) {
   // 캐릭터가 120px보다 작아질 때만 공간을 줄임(src/lib/useIntroCompact.ts, 첫 방문 화면과 같은 규칙 — 이 화면엔 매물 수 줄 없음)
-  const { level, areaRef } = useIntroCompact(false, true);
+  const { level, areaRef, bubbleShown } = useIntroCompact(false, true);
   const compactHead = level >= 2;
   const compactBody = level >= 3;
   return (
     <div
       className="fixed inset-0 z-50 bg-white flex flex-col"
       style={{ overflowY: "auto" }}
+      data-intro-root
       role="dialog"
       aria-modal="true"
       aria-label="다시 오셨네요"
@@ -59,6 +61,8 @@ export default function ReturningMemberIntro({
             "radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(120deg, #04101C, #1A4B78)",
           backgroundSize: "16px 16px, cover",
           paddingTop: "var(--sat)",
+          borderBottomLeftRadius: 28,
+          borderBottomRightRadius: 28,
         }}
       >
         <div className="mx-auto w-full max-w-md" style={{ padding: compactHead ? "16px 22px 12px" : "20px 22px 22px" }}>
@@ -95,13 +99,24 @@ export default function ReturningMemberIntro({
       <div
         className="mx-auto w-full max-w-md flex-1 flex flex-col"
         style={{ padding: `0 22px calc(${compactBody ? 16 : 24}px + var(--sab))`, minHeight: 0 }}
+        data-intro-body
       >
-        <div ref={areaRef} className="relative flex-1" style={{ minHeight: 0 }}>
-          <div className="absolute flex items-end justify-center" style={{ top: CHAR_TOP(level), left: 0, right: 0, bottom: 0 }}>
+        {/* --intro-group-h: PC(넓은 화면)에서만 쓰는 캐릭터 묶음 높이(globals.css "PC 틀") — 휴대폰 배치에는 영향 없음 */}
+        <div
+          ref={areaRef}
+          className="relative flex-1"
+          style={{ minHeight: 0, ["--intro-group-h" as string]: `${CHAR_TOP(level) + (bubbleShown ? BUBBLE_SPACE : 0) + charCap(false)}px` }}
+          data-intro-area
+        >
+          <div
+            className={bubbleShown ? "absolute flex flex-col items-center justify-end" : "absolute flex items-end justify-center"}
+            style={{ top: CHAR_TOP(level), left: 0, right: 0, bottom: 0 }}
+          >
+            {bubbleShown && <IntroBubble>다시 만나서<br />정말 반가워요!</IntroBubble>}
             <img
               src="/images/manager-cut.png"
               alt="점핑매니저"
-              style={{ height: charCap(false), maxHeight: "100%", width: "auto", maxWidth: "100%", objectFit: "contain" }}
+              style={{ height: charCap(false), maxHeight: bubbleShown ? `calc(100% - ${BUBBLE_SPACE}px)` : "100%", width: "auto", maxWidth: "100%", objectFit: "contain" }}
             />
           </div>
         </div>
