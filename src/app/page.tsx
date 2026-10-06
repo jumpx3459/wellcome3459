@@ -70,7 +70,7 @@ export default function Home() {
 
   // 2026-09-29: 재방문 회원 — 비로그인인데 이 기기에서 로그인한 적 있거나(방식 기억값 포함) 푸시 구독이 있으면
   // 가입 온보딩 대신 "다시 오셨네요" 화면. null = 판별 중(그동안 온보딩도 안 띄움)
-  const [returning, setReturning] = useState<{ method: LoginMethod | null; pushActive: boolean } | null | false>(null);
+  const [returning, setReturning] = useState<{ method: LoginMethod | null } | null | false>(null);
   const [returningBrowse, setReturningBrowse] = useState(false);
   useEffect(() => {
     if (memberState !== "guest") return;
@@ -79,7 +79,7 @@ export default function Home() {
       const pushActive = await hasActivePushSubscription();
       if (cancelled) return;
       if (!pushActive && !hasLoginHistory()) return setReturning(false);
-      setReturning({ method: getRememberedLoginMethod(), pushActive });
+      setReturning({ method: getRememberedLoginMethod() });
       try {
         setReturningBrowse(sessionStorage.getItem("dj_returning_browse") === "1");
       } catch {}
@@ -196,7 +196,7 @@ export default function Home() {
     {/* 세션 확인 전(unknown)엔 회원일 수도 있어 온보딩을 띄우지 않음. 재방문 회원(판별 중 포함)도 온보딩 대신 */}
     <OnboardingIntro logoAnimate={logoAnimate} isMember={memberState !== "guest" || returning !== false} activeCount={activeCount} />
     {memberState === "guest" && returning && !returningBrowse && (
-      <ReturningMemberIntro method={returning.method} pushActive={returning.pushActive} onBrowse={browseAsReturning} />
+      <ReturningMemberIntro method={returning.method} onBrowse={browseAsReturning} />
     )}
     {signupPending && (
       <Link
