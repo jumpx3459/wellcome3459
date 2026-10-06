@@ -18,7 +18,7 @@ import { getFreshAccessToken } from "@/lib/authFetch";
 import { FieldLabel, FieldTag, FORM_INPUT_FONT_SIZE, FORM_HINT_STYLE, FORM_CHIP_FONT_SIZE, FORM_LABEL_STYLE } from "@/components/FormField";
 import CategoryChips from "@/components/CategoryChips";
 import { priceUnitSuffix } from "@/lib/priceUnit";
-import FloatingCTA, { FloatingCTANote, FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
+import FloatingCTA, { FloatingCTANote, FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE_FIT, floatingCtaButtonStyle } from "@/components/FloatingCTA";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
 export default function BuyPage() {
@@ -125,16 +125,25 @@ export default function BuyPage() {
       setContactError(contactProblem);
       setPrivacyConsentError(noConsent);
       setShakeKey((k) => k + 1);
-      // 기존 동작 유지: 연락처 형식 오류가 첫 문제일 때만 연락처 칸에 포커스. 품목·동의 칸은 자동 포커스 없이 스크롤만
-      if (noProduct) {
-        document.getElementById("buy-product")?.scrollIntoView({ behavior: "smooth", block: "center" });
-      } else if (contactProblem) {
-        const el = document.getElementById("contact-phone");
-        if (contactPhone) el?.focus();
-        else el?.scrollIntoView({ behavior: "smooth", block: "center" });
-      } else {
-        document.getElementById("guest-privacy-consent")?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
+      // 첫 빈 칸을 화면 위쪽(위 여백 80px)에 둔다 — 가운데로 두면 하단 안내 알약이 칸 아래 오류 줄을 가렸음.
+      // 빨간 칸이 여럿이라 80px로는 마지막 오류 줄이 알약 영역에 걸리면, 걸리지 않을 만큼(최소 16px)까지 위 여백을 줄인다.
+      // 기존 동작 유지: 연락처 형식 오류가 첫 문제일 때만 연락처 칸에 포커스(스크롤은 직접). 품목·동의 칸은 자동 포커스 없음
+      if (!noProduct && contactProblem && contactPhone) document.getElementById("contact-phone")?.focus({ preventScroll: true });
+      setTimeout(() => {
+        const prod = document.getElementById("buy-product")?.parentElement ?? null;
+        const contact = document.getElementById("contact-phone")?.parentElement?.parentElement ?? null;
+        const consent = document.getElementById("guest-privacy-consent");
+        const first = noProduct ? prod : contactProblem ? contact : consent;
+        const last = noConsent ? consent?.nextElementSibling ?? consent : contactProblem ? contact : prod;
+        if (!first || !last) return;
+        const navTop = document.querySelector("nav")?.getBoundingClientRect().top ?? window.innerHeight;
+        const ctaH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--floating-cta-h")) || 68;
+        const limit = navTop - ctaH - 64; // 버튼 묶음 위 + 알약 높이 여유
+        const f = first.getBoundingClientRect();
+        const span = last.getBoundingClientRect().bottom - f.top;
+        const margin = Math.max(16, Math.min(80, limit - span));
+        window.scrollTo({ top: window.scrollY + f.top - margin, behavior: "smooth" });
+      }, 60);
       setError(noProduct ? "찾는 품목을 적어 주세요" : contactProblem ? "연락처를 확인해 주세요" : "개인정보 수집·이용에 동의해 주세요");
       return;
     }
@@ -297,8 +306,8 @@ export default function BuyPage() {
         </div>
       </div>
 
-      <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: FLOATING_CTA_SPACE }}>
-        <div>
+      <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: FLOATING_CTA_SPACE_FIT }}>
+        <div id="buy-field-product">
           <FieldLabel need="required">무엇을 찾으세요?</FieldLabel>
           <input
             id="buy-product"
@@ -323,7 +332,7 @@ export default function BuyPage() {
           )}
         </div>
 
-        <div>
+        <div id="buy-field-contact">
           <FieldLabel need="required">연락처</FieldLabel>
           <ContactPhoneInput
             value={contactPhone}
