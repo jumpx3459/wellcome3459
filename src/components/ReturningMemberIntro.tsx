@@ -32,11 +32,9 @@ export const LINK_BASE = {
 
 export default function ReturningMemberIntro({
   method,
-  pushActive,
   onBrowse,
 }: {
   method: LoginMethod | null;
-  pushActive: boolean;
   onBrowse: () => void;
 }) {
   // 캐릭터가 120px보다 작아질 때만 공간을 줄임(src/lib/useIntroCompact.ts, 첫 방문 화면과 같은 규칙 — 이 화면엔 매물 수 줄 없음)
@@ -77,20 +75,8 @@ export default function ReturningMemberIntro({
             <br />
             로그인하면 내 조건 매물을 볼 수 있어요
           </h1>
-          {pushActive && (
-            <p
-              className={compactHead ? "inline-flex items-center gap-1.5 rounded-full font-bold" : "mt-3 inline-flex items-center gap-1.5 rounded-full font-bold"}
-              style={{
-                fontSize: rem(15),
-                background: "rgba(255,255,255,.14)",
-                padding: "7px 13px",
-                color: "rgba(255,255,255,.95)",
-                ...(compactHead ? { marginTop: 8 } : null),
-              }}
-            >
-              <span style={{ color: "#5EEAD4" }}>✔</span> 새 매물 알림은 계속 받고 있어요
-            </p>
-          )}
+          {/* 2026-10-07: "새 매물 알림은 계속 받고 있어요" 배지 삭제 — 이 브라우저 구독만 보고 표시해서, 예전 동의 회원(재동의 전)은
+              구독이 있어도 실제로는 알림을 못 받는데 "계속 받고 있어요"로 보였음. 서버·동의 확인 없이 정확히 말할 수 없어 모든 브라우저에서 뺌 */}
         </div>
       </div>
 
