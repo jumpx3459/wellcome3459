@@ -9,7 +9,8 @@ import PushBlockerNotice from "@/components/PushBlockerNotice";
 import { UI_CARD_TITLE, UI_DESC, UI_LINK, BTN_CLASS, btnStyle } from "@/lib/uiText";
 import ConsentSheet from "@/components/ConsentSheet";
 import { CONSENT_TEXT } from "@/lib/consent";
-import { CONSENT_CHANGED_EVENT, announceConsents, fetchMyConsents, saveConsents } from "@/lib/consentClient";
+import { announceConsents, saveConsents } from "@/lib/consentClient";
+import { isAlertsOn, useDealAlertConsent } from "@/lib/useAlertsOn";
 
 // 2026-09-28: 마이페이지 알림 상태 카드. 예전엔 푸시 구독이 가입 화면에서만 가능해서
 // 기존 회원이 알림을 다시 켤 곳이 없었음(구독자 0명). 권한 요청은 반드시 버튼 클릭
@@ -27,23 +28,13 @@ export default function PushStatusCard() {
   const [busy, setBusy] = useState(false);
   const [otherDevices, setOtherDevices] = useState(0); // 이 기기 말고 알림 받는 내 기기 수
   const resynced = useRef(false);
-  const [dealConsent, setDealConsent] = useState<boolean | null>(null); // null = 모름(조회 전·실패)
+  const dealConsent = useDealAlertConsent(); // null = 모름(조회 전·실패) — 회원 홈 "알림 켜짐" 줄과 같은 판정(src/lib/useAlertsOn.ts)
   const [sheetOpen, setSheetOpen] = useState(false);
   const [consentError, setConsentError] = useState<string | null>(null);
   // 2026-10-01: 이 기기 이름·마지막 발송 성공 시각, [이 기기 알림 끄기]
   const [thisDevice, setThisDevice] = useState<string | null>(null);
   const [lastSuccessAt, setLastSuccessAt] = useState<string | null>(null);
   const [turningOff, setTurningOff] = useState(false);
-
-  useEffect(() => {
-    const load = () =>
-      fetchMyConsents().then((c) => {
-        if (c) setDealConsent(Boolean(c.deal_alert_ad?.agreed));
-      });
-    load();
-    window.addEventListener(CONSENT_CHANGED_EVENT, load);
-    return () => window.removeEventListener(CONSENT_CHANGED_EVENT, load);
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -163,7 +154,7 @@ export default function PushStatusCard() {
           {/* 2026-09-29: 배지를 제목 옆으로 — 오른쪽에 두면 설명이 3줄로 꺾였음. 설명은 최대 2줄 */}
           <span className="flex items-center gap-1.5 flex-wrap">
             <span style={UI_CARD_TITLE}>이 기기 푸시 알림</span>
-            {state === "on" && dealConsent === true && (
+            {isAlertsOn(state === "on", dealConsent) && (
               <span className="rounded-full font-bold whitespace-nowrap" style={{ fontSize: rem(14), padding: "2px 9px", background: "#E8F8EC", color: "#1D8A44" }}>
                 알림 받는 중
               </span>

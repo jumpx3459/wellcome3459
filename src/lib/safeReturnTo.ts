@@ -16,7 +16,8 @@ export function safeReturnTo(raw: string | null | undefined): string | null {
 
 /** 현재 경로(+쿼리)를 /signup·/login 링크의 returnTo로 붙인 주소. 현재 경로가 검증을 못 넘으면 returnTo 없이. */
 export function withReturnTo(base: "/signup" | "/login", current: string, extra = ""): string {
-  // 홈("/")은 기본 도착지(/deals)와 달라질 게 없고, /signup·/login 자신으로 돌아오면 고리가 되므로 붙이지 않음
+  // 홈("/")은 가입 기본 도착지(2026-10-06부터 회원 홈 "/")와 같아 붙일 필요가 없고(로그인은 기본 /mypage 그대로),
+  // /signup·/login 자신으로 돌아오면 고리가 되므로 붙이지 않음
   const skip = current === "/" || /^\/(signup|login)(\/|\?|#|$)/.test(current);
   const safe = skip ? null : safeReturnTo(current);
   const params = [safe ? `returnTo=${encodeURIComponent(safe)}` : "", extra].filter(Boolean).join("&");

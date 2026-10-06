@@ -1,6 +1,8 @@
 "use client";
 
 import { safeReturnTo } from "@/lib/safeReturnTo";
+import { useResendCountdown, useWebOtp } from "@/lib/useOtpAssist";
+import Link from "next/link";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -46,6 +48,7 @@ function SignupPageInner() {
   const searchParams = useSearchParams();
   const returnTo = safeReturnTo(searchParams.get("returnTo")); // 같은 출처 경로만 (src/lib/safeReturnTo.ts)
   const refCode = searchParams.get("ref"); // 추천인의 member id (점핑파트너 트래킹용)
+  const loginHref = returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : "/login";
   const { message: toastMessage, showToast } = useToast();
 
   const [obStep, setObStep] = useState(1);
@@ -79,6 +82,9 @@ function SignupPageInner() {
   // (src/lib/auth.ts 참고). 데모/목업과 달리 실제 발송·검증 API를 그대로 호출합니다.
   const [codeSent, setCodeSent] = useState(false);
   const [codeLeft, setCodeLeft] = useState(180);
+  // 2026-10-06: 재발송 카운트(서버 1분 제한) · WebOTP 시작 신호(발송 성공마다 +1) — src/lib/useOtpAssist.ts
+  const resend = useResendCountdown();
+  const [sendNonce, setSendNonce] = useState(0);
   const [otpCode, setOtpCode] = useState("");
   const [otpSending, setOtpSending] = useState(false);
   const [otpVerifying, setOtpVerifying] = useState(false);
@@ -223,12 +229,16 @@ function SignupPageInner() {
     const result = await sendOtp(typed);
     setOtpSending(false);
     if (!result.ok) {
-      setOtpError(result.error);
+      // 1분 재발송 제한은 빨간 문구 대신 [다시 받기 (N초)] 카운트만 맞춤
+      if ("cooldownSeconds" in result) resend.start(result.cooldownSeconds);
+      else setOtpError(result.error);
       return;
     }
     setCodeSent(true);
     setCodeLeft(180);
     setOtpCode("");
+    resend.start();
+    setSendNonce((n) => n + 1);
   };
 
   const handleVerifyOtp = async (code: string) => {
@@ -253,6 +263,8 @@ function SignupPageInner() {
       handleVerifyOtp(v);
     }
   };
+  // 안드로이드 크롬 문자 자동 입력 — 받은 6자리를 칸에 넣고 확인 1회(onCodeChange). 미지원·실패는 조용히 무시
+  useWebOtp(codeSent && !authUserId, sendNonce, onCodeChange);
 
   const tryDifferentNumber = async () => {
     clearReturningMember(); // 명시적 로그아웃 — 재방문 화면 신호도 지움
@@ -306,7 +318,7 @@ function SignupPageInner() {
       }
       await new Promise((r) => setTimeout(r, 500));
       setSubmitting(false);
-      router.push(returnTo || "/deals");
+      router.push(returnTo || "/"); // 2026-10-06: returnTo 없으면 회원 홈(내 조건 매물) — 예전 /deals
       return;
     }
 
@@ -410,7 +422,7 @@ function SignupPageInner() {
         localStorage.removeItem("dj_signup_pending");
       } catch {}
 
-      router.push(returnTo || "/deals");
+      router.push(returnTo || "/"); // 2026-10-06: returnTo 없으면 회원 홈(내 조건 매물) — 예전 /deals
     } catch (e) {
       debugLog(`[signup] submit catch ${e instanceof Error ? e.message : String(e)} closing kakaoWindow=${!!(kakaoWindow && !kakaoRedirected)}`);
       if (kakaoWindow && !kakaoRedirected) kakaoWindow.close();
@@ -586,6 +598,11 @@ function SignupPageInner() {
               <span className="font-bold" style={{ color: "#fff" }}>🔔 고른 카테고리에 매물이 뜨면 빠르게 알려드려요.</span>{" "}
               <span style={{ color: "rgba(255,255,255,.7)" }}>여러 개 고를 수 있어요.</span>
             </p>
+            {/* 2026-10-06: 이미 회원이면 로그인으로(보던 화면 returnTo 그대로) — 누르는 높이 44px */}
+            <Link href={loginHref} className="inline-flex items-center gap-1" style={{ minHeight: 44, fontSize: rem(15), marginTop: 2 }}>
+              <span style={{ color: "rgba(255,255,255,.78)", fontWeight: 600 }}>이미 회원이세요?</span>
+              <span style={{ color: "#fff", fontWeight: 800, textDecoration: "underline", textUnderlineOffset: 4 }}>로그인</span>
+            </Link>
           </div>
         )}
         {/* 2026-09-27: step1과 동일하게 네이비를 헤드라인까지 확장 — 일관성 유지. */}
@@ -597,6 +614,11 @@ function SignupPageInner() {
             <p className="mt-2" style={{ fontSize: rem(14), lineHeight: 1.6, color: "rgba(255,255,255,.75)" }}>
               인증한 번호로 점핑매니저가 연락드려요
             </p>
+            {/* 2026-10-06: 이미 회원이면 로그인으로(보던 화면 returnTo 그대로) — 누르는 높이 44px */}
+            <Link href={loginHref} className="inline-flex items-center gap-1" style={{ minHeight: 44, fontSize: rem(15), marginTop: 2 }}>
+              <span style={{ color: "rgba(255,255,255,.78)", fontWeight: 600 }}>이미 회원이세요?</span>
+              <span style={{ color: "#fff", fontWeight: 800, textDecoration: "underline", textUnderlineOffset: 4 }}>로그인</span>
+            </Link>
           </div>
         )}
       </div>
@@ -625,11 +647,11 @@ function SignupPageInner() {
               </div>
             </div>
             <button
-              onClick={() => router.push(returnTo || "/mypage")}
+              onClick={() => router.push(returnTo || "/")}
               className={`w-full mt-4.5 ${BTN_CLASS}`}
               style={btnStyle("primary")}
             >
-              {returnTo ? "매물 보러 가기" : "마이페이지로 이동"}
+              {returnTo ? "매물 보러 가기" : "내 조건 매물 보기"}
             </button>
             <button
               onClick={tryDifferentNumber}
@@ -710,7 +732,7 @@ function SignupPageInner() {
                   에러 메시지가 뜨도록 수정. */}
               <button
                 onClick={handleSendOtp}
-                disabled={otpSending || verified}
+                disabled={otpSending || verified || resend.left > 0}
                 className="flex-shrink-0 rounded-xl font-bold"
                 style={{
                   border: "1.5px solid #0B2540",
@@ -720,9 +742,10 @@ function SignupPageInner() {
                   color: "#0B2540",
                   whiteSpace: "nowrap",
                   opacity: otpSending || verified || !isValidKoreanPhone(phone) ? 0.6 : 1,
+                  ...(resend.left > 0 ? { background: "#F1F3F5", color: "#6B7480", borderColor: "#E4E7EB", opacity: 1 } : null),
                 }}
               >
-                {otpSending ? "발송 중..." : codeSent ? "다시 받기" : "인증번호 받기"}
+                {otpSending ? "발송 중..." : `${codeSent ? "다시 받기" : "인증번호 받기"}${resend.left > 0 ? ` (${resend.left}초)` : ""}`}
               </button>
             </div>
 
@@ -742,6 +765,7 @@ function SignupPageInner() {
                   className="w-full rounded-xl outline-none text-center font-mono font-bold"
                   style={{ border: "1.5px solid var(--color-brandOrange)", padding: 14, fontSize: rem(20), letterSpacing: "0.32em" }}
                   inputMode="numeric"
+                  autoComplete="one-time-code"
                   maxLength={6}
                   placeholder="000000"
                   value={otpCode}

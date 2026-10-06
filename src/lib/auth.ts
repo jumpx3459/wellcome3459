@@ -35,19 +35,27 @@ export function toLocalPhone(input: string | null | undefined): string {
   return digits;
 }
 
-/** 연락처(매물 등록·구매 희망) 검증 — 휴대폰 + 사무실 번호 허용 (2026-09-29).
+export const CONTACT_MOBILE_ERROR = "휴대폰 번호 11자리를 확인해 주세요";
+export const CONTACT_PHONE_ERROR = "휴대폰 또는 사무실 번호를 정확히 입력해주세요";
+
+/** 연락처(매물 등록·구매 희망) 검증 — 화면(buy·sell)과 서버(/api/buy-requests·seller-requests)가 같이 씀. 통과면 null, 아니면 안내 문구.
  * 로그인/가입 OTP는 휴대폰만 되므로 계속 isValidKoreanPhone을 쓸 것.
- *   휴대폰 01X + 7~8자리 / 서울 02 + 7~8자리 / 지역번호 031~064 + 7~8자리 /
+ *   2026-10-06: 01로 시작하면 010 + 8자리(11자리)만 — 010-000-0000(10자리)·011 옛 번호가 통과하던 문제
+ *   사무실 번호(2026-09-29부터 허용, 그대로): 서울 02 + 7~8자리 / 지역번호 031~064 + 7~8자리 /
  *   인터넷전화 070 + 8자리 / 대표번호 15xx·16xx·18xx + 4자리 */
-export function isValidContactPhone(input: string | null | undefined): boolean {
+export function checkContactPhone(input: string | null | undefined): string | null {
   const d = toLocalPhone(input);
-  return (
-    /^01[016789]\d{7,8}$/.test(d) ||
+  if (d.startsWith("01")) return /^010\d{8}$/.test(d) ? null : CONTACT_MOBILE_ERROR;
+  const office =
     /^02\d{7,8}$/.test(d) ||
     /^0(3[1-3]|4[1-4]|5[1-5]|6[1-4])\d{7,8}$/.test(d) ||
     /^070\d{8}$/.test(d) ||
-    /^1[568]\d{6}$/.test(d)
-  );
+    /^1[568]\d{6}$/.test(d);
+  return office ? null : CONTACT_PHONE_ERROR;
+}
+
+export function isValidContactPhone(input: string | null | undefined): boolean {
+  return checkContactPhone(input) === null;
 }
 
 /** 휴대폰 번호 입력칸용 — 치는 동안 "010-1234-5678"로 하이픈을 넣어줌 (숫자 11자리까지).
@@ -94,7 +102,10 @@ function formatOtpRateLimitMessage(result: OtpRateLimitResult): string {
 
 /** 1단계: 휴대폰 번호로 SMS 인증번호 발송 (요청 전 phone별 rate limit 확인 —
  * 어뷰징으로 인한 SMS 비용 폭탄 방지, otp_request_log/check_and_log_otp_request 참고) */
-export async function sendOtp(phoneInput: string): Promise<Result<null>> {
+// 2026-10-06: 재발송 1분 제한(COOLDOWN)이면 cooldownSeconds를 함께 — 화면은 빨간 문구 대신 [다시 받기 (N초)] 카운트만 맞춤
+export type SendOtpResult = Result<null> | { ok: false; error: string; cooldownSeconds: number };
+
+export async function sendOtp(phoneInput: string): Promise<SendOtpResult> {
   if (!isValidKoreanPhone(phoneInput)) {
     return { ok: false, error: "휴대폰 번호를 정확히 입력해주세요." };
   }
@@ -115,7 +126,11 @@ export async function sendOtp(phoneInput: string): Promise<Result<null>> {
   }
   if (!(rateLimit as OtpRateLimitResult)?.allowed) {
     debugLog(`[sendOtp] app-level rate limit blocked: reason=${(rateLimit as OtpRateLimitResult)?.reason} retryAfter=${(rateLimit as OtpRateLimitResult)?.retry_after_seconds}`);
-    return { ok: false, error: formatOtpRateLimitMessage(rateLimit as OtpRateLimitResult) };
+    const limit = rateLimit as OtpRateLimitResult;
+    if (limit?.reason === "COOLDOWN" && (limit.retry_after_seconds ?? 0) > 0) {
+      return { ok: false, error: formatOtpRateLimitMessage(limit), cooldownSeconds: limit.retry_after_seconds as number };
+    }
+    return { ok: false, error: formatOtpRateLimitMessage(limit) };
   }
 
   const { error } = await supabase.auth.signInWithOtp({ phone: phoneE164 });
