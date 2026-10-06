@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { rem } from "@/lib/rem";
 import FloatingCTAMeasure from "@/components/FloatingCTAMeasure";
+import FloatingCTAShake from "@/components/FloatingCTAShake";
 
 // 하단 고정 버튼 공용 (2026-09-29, 결정 변경: 예전 "흰 반투명 판 + 블러 + 위 그라데이션" 취소).
 // 판 없이 주황 버튼만 그림자로 띄운다. 하단 탭(--nav-bottom, safe-area 포함) 위로 GAP만큼 띄움.
@@ -50,7 +51,8 @@ export function FloatingCTANote({ children, tone = "error" }: { children: ReactN
   );
 }
 
-export default function FloatingCTA({ children, className = "" }: { children: ReactNode; className?: string }) {
+// shakeKey: 값이 바뀔 때마다 버튼이 한 번 흔들림(오류로 제출이 막힌 화면 — /buy·/sell·가입). 안 넘기면 흔들림 없음
+export default function FloatingCTA({ children, className = "", shakeKey }: { children: ReactNode; className?: string; shakeKey?: number }) {
   return (
     <div
       className={`fixed z-10 left-1/2 -translate-x-1/2 w-full max-w-md px-5 pointer-events-none ${className}`}
@@ -58,6 +60,7 @@ export default function FloatingCTA({ children, className = "" }: { children: Re
     >
       <div className="pointer-events-auto">{children}</div>
       <FloatingCTAMeasure gap={FLOATING_CTA_GAP} />
+      {shakeKey !== undefined && <FloatingCTAShake shakeKey={shakeKey} />}
     </div>
   );
 }

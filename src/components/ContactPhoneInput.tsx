@@ -11,18 +11,24 @@ export default function ContactPhoneInput({
   onChange,
   autofilledValue,
   error,
+  strongError = false,
 }: {
   value: string;
   onChange: (v: string) => void;
   autofilledValue?: string | null; // 자동으로 채운 값 — 그대로일 때만 안내 문구 표시
   error?: string | null;
+  strongError?: boolean; // 2026-10-07 /buy 전용: 빨간 2px 테두리·연한 빨강 바탕·굵은 빨강 안내(테스터가 오류를 못 알아봄). 안 넘기면 기존 주황 표시
 }) {
   const showAutofillNote = Boolean(autofilledValue) && value === autofilledValue;
   return (
     <div>
       <div
         className="flex items-center rounded-xl"
-        style={{ border: error ? "1.5px solid var(--color-orange)" : "1.5px solid #E4E7EB" }}
+        style={
+          error && strongError
+            ? { border: "2px solid #DC2626", background: "#FEF2F2" }
+            : { border: error ? "1.5px solid var(--color-orange)" : "1.5px solid #E4E7EB" }
+        }
       >
         <input
           id="contact-phone"
@@ -51,7 +57,11 @@ export default function ContactPhoneInput({
         )}
       </div>
       {error ? (
-        <p className="mt-1.5 font-medium" style={{ fontSize: rem(15), color: "var(--color-orange)" }}>
+        <p
+          className={strongError ? "mt-1.5 font-bold" : "mt-1.5 font-medium"}
+          style={{ fontSize: rem(15), color: strongError ? "#DC2626" : "var(--color-orange)" }}
+          data-field-error
+        >
           {error}
           {/* 예시 번호는 하이픈에서 줄이 끊기지 않게 덩어리로 */}
           <span className="block font-normal" style={{ color: "#4B5563" }}>

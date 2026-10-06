@@ -58,7 +58,7 @@ function SignupPageInner() {
   const phoneInputRef = useRef<HTMLInputElement>(null);
   // 2026-10-05: 하단 고정 버튼이 비활성일 때 눌렀을 때 — 흔들림 + 버튼 위 안내(2.5초) + 해당 칸으로 스크롤(자동 포커스 없음)
   const categoryAreaRef = useRef<HTMLDivElement>(null);
-  const ctaButtonRef = useRef<HTMLButtonElement>(null);
+  const [shakeKey, setShakeKey] = useState(0);
   const agreeAreaRef = useRef<HTMLDivElement>(null);
   const [ctaNote, setCtaNote] = useState<string | null>(null);
   const ctaNoteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -504,13 +504,7 @@ function SignupPageInner() {
         ? "위 [필수] 항목에 체크해 주세요"
         : null;
     if (!note) return;
-    const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (!reduce) {
-      ctaButtonRef.current?.animate(
-        [{ transform: "translateX(0)" }, { transform: "translateX(-8px)" }, { transform: "translateX(8px)" }, { transform: "translateX(-6px)" }, { transform: "translateX(6px)" }, { transform: "translateX(0)" }],
-        { duration: 350, easing: "ease-in-out" },
-      );
-    }
+    setShakeKey((k) => k + 1); // 흔들림은 FloatingCTA가(공용, prefers-reduced-motion이면 없음)
     setCtaNote(note);
     if (ctaNoteTimerRef.current) clearTimeout(ctaNoteTimerRef.current);
     ctaNoteTimerRef.current = setTimeout(() => setCtaNote(null), 2500);
@@ -979,7 +973,7 @@ function SignupPageInner() {
         // 대신 반투명+블러 카드 + 상단 페이드로, 스크롤 중인 폼 내용이 자연스럽게
         // 이어지도록 함.
         // 2026-09-29: 공용 하단 고정 버튼(FloatingCTA) — 판·블러 없이 버튼만 띄움
-        <FloatingCTA>
+        <FloatingCTA shakeKey={shakeKey}>
             {/* 2026-09-27: 비활성 상태에서 흰 텍스트+#C9CFD6 배경 조합이 명도 대비
                 약 1.5:1(WCAG 최소 4.5:1)이라 "카테고리를 골라주세요" 문구가 거의
                 안 보인다는 피드백 — 비활성일 때만 텍스트를 앱 표준 보조색
@@ -991,7 +985,6 @@ function SignupPageInner() {
             )}
             {/* 비활성은 disabled 대신 aria-disabled — 눌러서 안내를 받게 함(색은 가입 화면 전용: 배경 #FFEDD5·글자 #9A3412 대비 6.38:1) */}
             <button
-              ref={ctaButtonRef}
               onClick={onCtaPress}
               disabled={submitting}
               aria-disabled={obCtaDisabled}

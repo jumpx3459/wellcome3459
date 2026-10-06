@@ -206,7 +206,13 @@ export default function SellPage() {
   const busyLabel = uploadingLabel(photoStatus.uploading > 0, videoStatus === "uploading");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setErrorState] = useState<string | null>(null);
+  // 2026-10-07: 오류로 제출이 막힐 때마다(오류 문구가 새로 뜰 때마다) 하단 버튼이 0.35초 흔들림 — 가입·/buy와 같은 공용 동작(FloatingCTA shakeKey)
+  const [shakeKey, setShakeKey] = useState(0);
+  const setError = (v: string | null) => {
+    setErrorState(v);
+    if (v) setShakeKey((k) => k + 1);
+  };
   // 2026-10-02 layout-cleanup: 폼 폭이 2칸 기준(@container 560px~)이면 PC형 — 하단 고정 버튼 대신 폼 맨 끝 인라인 버튼
   const formRef = useRef<HTMLDivElement>(null);
   const [wideForm, setWideForm] = useState(false);
@@ -1231,7 +1237,7 @@ export default function SellPage() {
           이어지도록 함. */}
       {/* 2026-09-29: 공용 하단 고정 버튼 — 판·블러 없이 버튼만 띄움 */}
       {!wideForm && (
-      <FloatingCTA>
+      <FloatingCTA shakeKey={shakeKey}>
           {error && <div ref={setNoteEl}><FloatingCTANote>{errorNote}</FloatingCTANote></div>}
           <button
             onClick={() => submit()}

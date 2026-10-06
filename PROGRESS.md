@@ -50,6 +50,16 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
+## 최근 작업 (2026-10-07) — 테스터 피드백 3건: 환율 · 불러오는 중 화면 · 찾습니다 안내 (#79, 브랜치 `fix/tester-feedback`, 서버 경로 1개 추가·DB 변경 없음)
+
+- **#78 병합 기록**(재방문 화면 배지 삭제·매물 링크 조사): 병합 커밋 `b5e2860` · Deploy to Vercel #282(run 37526676913) 성공 · CI #65(run 37526398224) 성공 · 운영 확인 통과 10/7(설치 앱 재방문 화면 배지 없음 / 카톡 인앱 매물 링크 → 매물 상세 / #77 새 버전 띠 동작 확인).
+- 배경: 테스터 4명(아이폰 2·갤럭시 2) 실기기 시험 중 공개 전 필수 3건. 커밋 2개 — ① 핵심 수정(환율·불러오는 중·폰트·로고) ② 사용 편의(찾습니다 안내·흔들림).
+- [1] **환율 "조회에 실패했어요"**: 원인 = 계산기가 브라우저에서 `api.frankfurter.app`을 직접 불렀는데 그 주소가 `api.frankfurter.dev`로 301 이동하고, 301 응답에 CORS 허용 헤더가 없어 브라우저가 막음. → 새 서버 경로 `/api/fx?currency=`(허용 통화 USD·CNY·JPY·EUR만, 그 외 400)가 서버에서 `api.frankfurter.dev/v1/latest?base=…&symbols=KRW`를 조회. 6시간 캐시(서버 메모리 + CDN s-maxage), 갱신 실패 시 직전 값(`stale`) 유지, 한 번도 못 받았으면 502. env: `FX_API_BASE_URL`(시험용 주소 교체, 기본값 위 주소) · `FX_CACHE_TTL_MS`(시험용), 키 불필요. 실패 문구 "환율을 불러오지 못했어요. 잠시 후 [다시 시도]를 눌러 주세요" + [다시 시도] 버튼, 환율 아래 "기준일 YYYY-MM-DD · 유럽중앙은행 기준"(안내문 "실시간 매매기준율" → "유럽중앙은행이 하루 한 번 발표하는 기준 환율"로 정정). 통화 목록은 `src/lib/fxCurrencies.ts`로 분리.
+- [2] **홈·/deals 불러오는 중**: 불러오는 동안 예시 매물 대신 회색(#E5E7EB) 자리 표시 카드(홈 3·/deals 4, 1.2초 깜빡임, `prefers-reduced-motion`이면 정지), 8초가 지나도 응답이 없거나 실패하면 "인터넷 연결 후 [다시 시도]를 눌러 주세요" + 버튼(`LoadingCards.tsx`). 결과 0건일 때 예시 매물을 쓰는 기존 동작은 그대로. 홈 첫 카드 사진 eager·나머지 lazy(/deals는 기존 eager 첫 장 유지). `logo.png` 888×772 273,361B → 320×278 24,280B(보이는 최대 160px의 2배, 모양 그대로 — 링크 미리보기용 `layout.tsx`의 og·twitter 이미지는 원본 `logo-og.png`로). Pretendard: 통글자 2,057,688B 한 파일 → 글자 범위별 92조각 dynamic subset(`font-display: swap` 그대로, 화면에 쓰인 글자 조각만 받음), `src/lib/fonts.ts` 삭제·`layout.tsx`에서 CSS import. 스플래시(1.8초)는 변경 없음.
+- [3] **찾습니다(/buy) 안내**: 안내 알약을 가입 화면과 같은 `tone="dark"`(16px·굵게·짙은 바탕)로, 2.5초 표시. 필수 칸(품목·연락처·개인정보 동의)을 한꺼번에 검사해 빈 칸마다 빨간 2px 테두리(#DC2626)·연한 빨강 바탕(#FEF2F2)·칸 아래 15px 굵은 빨강 안내. 입력하면 해당 칸 표시 사라짐. 첫 빈 칸으로 스크롤(품목·동의는 자동 포커스 없음, 연락처 형식 오류 때의 기존 포커스 이동은 유지). `ContactPhoneInput`·`GuestPrivacyConsent`에 `strongError` 옵션(안 넘기면 기존 표시 — /sell 등 다른 화면 변화 없음).
+- **버튼 흔들림 공용화**: 가입 화면에만 있던 0.35초 흔들림을 `FloatingCTA`의 `shakeKey` 옵션(`FloatingCTAShake.tsx`)으로 옮김. 적용 화면 = 가입(같은 동작)·/buy·/sell(모바일 하단 고정 버튼). /sell은 흔들림만 추가(오류 표시 방식은 그대로). 매물 상세 버튼·관리자 폼은 변경 없음. PC 인라인 버튼(`wideForm`)은 흔들림 없음.
+- 시험(가짜 env·운영 주소 0건 확인·운영 Supabase 0건): `scripts/fx-route-test.mts` 6건(새 코드 전부 통과 / 옛 코드 6건 실패) · 360×740 글자 100%·130% 전/후 캡처 `captures-tester-feedback`(before·after) · 알약↔버튼·하단탭 겹침 없음 · tsc 0 · lint main과 같음(2 errors·54 warnings).
+
 ## 최근 작업 (2026-10-07) — 재방문 화면 배지 삭제 · 매물 링크 조사 (브랜치 `fix/deeplink-returning`, 화면만, 서버·DB 변경 없음)
 
 - **#77 병합 기록**(가입 흐름·인증번호·연락처 검증·새 버전 띠): 병합 커밋 `417effa` · Deploy to Vercel #281(run 37442025802) 성공 · CI #64(run 37441506088) 성공 · 운영 확인 통과 10/6(WebOTP 실기기 성공 포함, 대표).

@@ -61,6 +61,15 @@ export default function BuyPage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 2026-10-07 테스터 피드백: 필수값이 비었을 때 안내(작은 주황 알약)를 못 봄 →
+  // 가입 화면과 같은 짙은 안내(tone="dark") 2.5초 + 빈 칸 빨간 표시 + 첫 빈 칸으로 스크롤 + 버튼 흔들림
+  const [productError, setProductError] = useState(false);
+  const [shakeKey, setShakeKey] = useState(0);
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => setError(null), 2500);
+    return () => clearTimeout(t);
+  }, [error, shakeKey]);
 
   // 로그인한 회원이면 인증된 번호를 미리 채워준다 — 다른 담당자 연락처로 접수하는
   // 대리 등록 케이스가 있어서 수정은 그대로 허용한다. (sell/page.tsx와 동일 패턴)
@@ -106,20 +115,27 @@ export default function BuyPage() {
 
   const submit = async () => {
     setError(null);
-    if (!productName || !contactPhone) {
-      setError("찾는 품목과 연락처는 꼭 입력해주세요.");
-      return;
-    }
+    // 필수 칸(찾는 품목·연락처·개인정보 동의)을 한꺼번에 검사해 빈 칸을 전부 빨갛게 표시한다
     // 2026-09-29: 사무실 번호(02-, 031-…, 대표번호 15xx 등)도 허용 · 2026-10-06: 휴대폰은 010 + 8자리만 — 서버도 같은 checkContactPhone
-    const contactProblem = checkContactPhone(contactPhone);
-    if (contactProblem) {
+    const noProduct = !productName.trim();
+    const contactProblem = !contactPhone ? "연락처를 적어 주세요" : checkContactPhone(contactPhone);
+    const noConsent = !privacyConsent;
+    if (noProduct || contactProblem || noConsent) {
+      setProductError(noProduct);
       setContactError(contactProblem);
-      document.getElementById("contact-phone")?.focus();
-      return;
-    }
-    if (!privacyConsent) {
-      setPrivacyConsentError(true);
-      setError("개인정보 수집·이용에 동의해주세요.");
+      setPrivacyConsentError(noConsent);
+      setShakeKey((k) => k + 1);
+      // 기존 동작 유지: 연락처 형식 오류가 첫 문제일 때만 연락처 칸에 포커스. 품목·동의 칸은 자동 포커스 없이 스크롤만
+      if (noProduct) {
+        document.getElementById("buy-product")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      } else if (contactProblem) {
+        const el = document.getElementById("contact-phone");
+        if (contactPhone) el?.focus();
+        else el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      } else {
+        document.getElementById("guest-privacy-consent")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      setError(noProduct ? "찾는 품목을 적어 주세요" : contactProblem ? "연락처를 확인해 주세요" : "개인정보 수집·이용에 동의해 주세요");
       return;
     }
     setSubmitting(true);
@@ -146,6 +162,7 @@ export default function BuyPage() {
         const data = await res.json().catch(() => ({}));
         if (data.field === "contactPhone") {
           setContactError(data.error ?? "연락처를 확인해주세요.");
+          setShakeKey((k) => k + 1);
           document.getElementById("contact-phone")?.focus();
           return;
         }
@@ -284,13 +301,26 @@ export default function BuyPage() {
         <div>
           <FieldLabel need="required">무엇을 찾으세요?</FieldLabel>
           <input
+            id="buy-product"
             className="w-full rounded-xl outline-none"
-            style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: FORM_INPUT_FONT_SIZE }}
+            style={
+              productError
+                ? { border: "2px solid #DC2626", background: "#FEF2F2", padding: 14, fontSize: FORM_INPUT_FONT_SIZE }
+                : { border: "1.5px solid #E4E7EB", padding: 14, fontSize: FORM_INPUT_FONT_SIZE }
+            }
             value={productName}
-            onChange={(e) => setProductName(e.target.value)}
+            onChange={(e) => {
+              setProductName(e.target.value);
+              setProductError(false);
+            }}
             onBlur={() => logUnmatchedProductName("buy", productName)}
             placeholder="예: 냉동 삼겹살 500kg 이상"
           />
+          {productError && (
+            <p className="mt-1.5 font-bold" style={{ fontSize: rem(15), color: "#DC2626" }} data-field-error>
+              찾는 품목을 적어 주세요
+            </p>
+          )}
         </div>
 
         <div>
@@ -303,6 +333,7 @@ export default function BuyPage() {
             }}
             autofilledValue={autofilledPhone}
             error={contactError}
+            strongError
           />
           <div className="mt-2.5">
             <GuestPrivacyConsent
@@ -312,6 +343,7 @@ export default function BuyPage() {
                 setPrivacyConsentError(false);
               }}
               error={privacyConsentError}
+              strongError
             />
           </div>
         </div>
@@ -516,8 +548,8 @@ export default function BuyPage() {
           대신 반투명+블러 카드 + 상단 페이드로, 스크롤 중인 폼 내용이 자연스럽게
           이어지도록 함. */}
       {/* 2026-09-29: 공용 하단 고정 버튼 — 판·블러 없이 버튼만 띄움 */}
-      <FloatingCTA>
-          {error && <FloatingCTANote>{error}</FloatingCTANote>}
+      <FloatingCTA shakeKey={shakeKey}>
+          {error && <div role="status"><FloatingCTANote tone="dark">{error}</FloatingCTANote></div>}
           <button
             onClick={submit}
             disabled={submitting}
