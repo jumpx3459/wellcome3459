@@ -9,6 +9,7 @@ import { mockDeals, type Deal } from "@/lib/mockData";
 import { formatPrice, formatDealPrice } from "@/lib/format";
 import { formatCountdown } from "@/lib/format";
 import InstallAppButton, { useInstallPrompt } from "@/components/InstallAppButton";
+import { useAlertsOn } from "@/lib/useAlertsOn";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
@@ -70,6 +71,8 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
   const [outsideCount, setOutsideCount] = useState(0); // 내 조건 밖 진행 중 매물 수
   const [showInstall, setShowInstall] = useState(true);
   const { canInstall, promptInstall, hasNativePrompt } = useInstallPrompt();
+  // 2026-10-06: 알림을 켠 뒤 사라지지 않는 완료 표시 — 이 기기 구독 + 매물 알림 최신 동의가 모두 있을 때만 (PushStatusCard와 같은 판정)
+  const alertsOn = useAlertsOn();
   const [, setTick] = useState(0);
   useEffect(() => {
     try {
@@ -284,6 +287,25 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
         <span className="flex-1 min-w-0 truncate" style={{ fontSize: rem(12.5), color: "#6B7480" }}>{myCondText}</span>
         <span className="flex-shrink-0 font-bold" style={{ fontSize: rem(12), color: "#E25100" }}>조건 수정</span>
       </TabLink>
+
+      {alertsOn && (
+        <div
+          data-alerts-on
+          className="flex items-center gap-2"
+          style={{ background: "#ECFDF3", borderBottom: "1px solid #D1FADF", padding: "11px 20px" }}
+        >
+          <span
+            aria-hidden
+            className="flex-shrink-0 rounded-full flex items-center justify-center font-extrabold text-white"
+            style={{ width: 22, height: 22, background: "#16A34A", fontSize: rem(13) }}
+          >
+            ✓
+          </span>
+          <span className="flex-1 min-w-0" style={{ fontSize: rem(15), color: "#14532D", lineHeight: 1.4 }}>
+            <b style={{ fontWeight: 800 }}>알림 켜짐</b> — 새 매물이 뜨면 바로 알려드려요
+          </span>
+        </div>
+      )}
 
       {showInstall && canInstall && (
         <div className="flex items-center gap-2.5" style={{ borderBottom: "1px solid #F1F3F5", padding: "12px 20px", background: "#FAFBFC" }}>

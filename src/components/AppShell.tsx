@@ -7,6 +7,7 @@ import InAppBanner from "./InAppBanner";
 import AuthExpiredNotice from "./AuthExpiredNotice";
 import ConsentGate from "./ConsentGate";
 import ActiveDayPing from "./ActiveDayPing";
+import UpdateBanner from "./UpdateBanner";
 import DebugPanel from "./DebugPanel"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 import { noteRouteChange, consumeReplaceFlag } from "@/lib/appNav";
 import { supabase } from "@/lib/supabase";
@@ -113,6 +114,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <ConsentGate />
       {/* 2026-09-30 (커밋 K): 회원 방문 기록 — 한국 날짜 하루 1번 (member_active_days) */}
       {!isAdmin && <ActiveDayPing />}
+      {/* 2026-10-06: 배포 뒤 옛 화면이 남아 있으면 "새 버전이 있어요 [새로고침]" — 하단 탭 위(탭 없는 화면은 안전 영역 위) */}
+      <UpdateBanner bottom={isAdmin || isPartnerDemo || isEnglish ? "calc(var(--sab) + 12px)" : "calc(var(--nav-bottom) + 12px)"} />
       <DebugPanel />
     </div>
   );

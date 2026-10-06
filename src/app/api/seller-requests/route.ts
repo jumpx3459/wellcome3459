@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { isValidContactPhone } from "@/lib/auth";
+import { checkContactPhone } from "@/lib/auth";
 import { sanitizeManifest, sanitizePid } from "@/lib/parseCsv";
 import { isStockType } from "@/lib/stockType";
 import { isDealPriceUnit, isLumpSum } from "@/lib/priceUnit";
@@ -86,9 +86,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "단가 단위가 올바르지 않아요.", field: "priceUnit" }, { status: 400 });
   }
   const lumpSum = isLumpSum(priceUnit);
-  // 2026-09-29: 사무실 번호도 허용 (휴대폰 전용 검증은 로그인 OTP에만)
-  if (!isValidContactPhone(contactPhone)) {
-    return NextResponse.json({ error: "휴대폰 또는 사무실 번호를 정확히 입력해주세요", field: "contactPhone" }, { status: 400 });
+  // 2026-09-29: 사무실 번호도 허용 (휴대폰 전용 검증은 로그인 OTP에만) · 2026-10-06: 휴대폰은 010 + 8자리만 — 화면(sell/page.tsx)과 같은 checkContactPhone
+  const contactProblem = checkContactPhone(contactPhone);
+  if (contactProblem) {
+    return NextResponse.json({ error: contactProblem, field: "contactPhone" }, { status: 400 });
   }
   // 2026-09-29: 재고 유형 — 10개 값만 (DB check와 같음), 안 보내면 general
   if (stockType != null && !isStockType(stockType)) {

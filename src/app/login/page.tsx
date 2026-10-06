@@ -1,6 +1,7 @@
 "use client";
 
 import { safeReturnTo } from "@/lib/safeReturnTo";
+import { useResendCountdown, useWebOtp } from "@/lib/useOtpAssist";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -59,6 +60,9 @@ function LoginPageInner() {
 
   const [codeSent, setCodeSent] = useState(false);
   const [codeLeft, setCodeLeft] = useState(180);
+  // 2026-10-06: 재발송 카운트(서버 1분 제한) · WebOTP 시작 신호(발송 성공마다 +1) — src/lib/useOtpAssist.ts
+  const resend = useResendCountdown();
+  const [sendNonce, setSendNonce] = useState(0);
   const [otpCode, setOtpCode] = useState("");
   const [otpSending, setOtpSending] = useState(false);
   const [otpVerifying, setOtpVerifying] = useState(false);
@@ -177,12 +181,16 @@ function LoginPageInner() {
     const result = await sendOtp(typed);
     setOtpSending(false);
     if (!result.ok) {
-      setOtpError(result.error);
+      // 1분 재발송 제한은 빨간 문구 대신 [다시 받기 (N초)] 카운트만 맞춤
+      if ("cooldownSeconds" in result) resend.start(result.cooldownSeconds);
+      else setOtpError(result.error);
       return;
     }
     setCodeSent(true);
     setCodeLeft(180);
     setOtpCode("");
+    resend.start();
+    setSendNonce((n) => n + 1);
   };
 
   const handleVerifyOtp = async (code: string) => {
@@ -242,6 +250,8 @@ function LoginPageInner() {
       handleVerifyOtp(v);
     }
   };
+  // 안드로이드 크롬 문자 자동 입력 — 받은 6자리를 칸에 넣고 확인 1회(onCodeChange). 미지원·실패는 조용히 무시
+  useWebOtp(codeSent && !authUserId, sendNonce, onCodeChange);
 
   if (!authChecked) return null;
 
@@ -379,7 +389,7 @@ function LoginPageInner() {
                   />
                   <button
                     onClick={handleSendOtp}
-                    disabled={otpSending || Boolean(authUserId)}
+                    disabled={otpSending || Boolean(authUserId) || resend.left > 0}
                     className="flex-shrink-0 rounded-xl font-bold disabled:opacity-60"
                     style={{
                       opacity: isValidKoreanPhone(phone) ? undefined : 0.6,
@@ -389,9 +399,10 @@ function LoginPageInner() {
                       fontSize: rem(13.5),
                       color: "#fff",
                       whiteSpace: "nowrap",
+                      ...(resend.left > 0 ? { background: "#F1F3F5", color: "#6B7480", opacity: 1 } : null),
                     }}
                   >
-                    {otpSending ? "발송 중..." : codeSent ? "다시 받기" : "인증번호 받기"}
+                    {otpSending ? "발송 중..." : `${codeSent ? "다시 받기" : "인증번호 받기"}${resend.left > 0 ? ` (${resend.left}초)` : ""}`}
                   </button>
                 </div>
 
@@ -412,6 +423,7 @@ function LoginPageInner() {
                       className="w-full rounded-xl outline-none text-center font-mono font-bold"
                       style={{ border: "1.5px solid var(--color-brandOrange)", padding: 14, fontSize: rem(20), letterSpacing: "0.32em" }}
                       inputMode="numeric"
+                      autoComplete="one-time-code"
                       maxLength={6}
                       placeholder="000000"
                       value={otpCode}

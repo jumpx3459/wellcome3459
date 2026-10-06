@@ -12,7 +12,7 @@ import VideoUploader, { type VideoUploadStatus, type VideoUploaderHandle } from 
 import VideoNotUploadedSheet, { PHOTO_FAILED_DESCRIPTION, uploadingLabel, videoNotUploaded } from "@/components/VideoNotUploadedSheet";
 import ManifestUploader from "@/components/ManifestUploader";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
-import { isValidContactPhone } from "@/lib/auth";
+import { checkContactPhone } from "@/lib/auth";
 import { formatPhone } from "@/lib/phone";
 import ContactPhoneInput from "@/components/ContactPhoneInput";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
@@ -386,9 +386,10 @@ export default function SellPage() {
     setTitleWarnings([]);
     setDescWarnings([]);
     setPriceWarns([]);
-    // 2026-09-29: 사무실 번호(02-, 031-…, 대표번호 15xx 등)도 허용 — 서버도 같은 isValidContactPhone
-    if (!isValidContactPhone(contactPhone)) {
-      setContactError("휴대폰 또는 사무실 번호를 정확히 입력해주세요");
+    // 2026-09-29: 사무실 번호(02-, 031-…, 대표번호 15xx 등)도 허용 · 2026-10-06: 휴대폰은 010 + 8자리만 — 서버도 같은 checkContactPhone
+    const contactProblem = checkContactPhone(contactPhone);
+    if (contactProblem) {
+      setContactError(contactProblem);
       document.getElementById("contact-phone")?.focus();
       return;
     }

@@ -6,6 +6,16 @@
 // 허용하는 Full-Screen Intent 권한이 필요해서 웹에서는 불가능합니다.
 // 아래는 웹 푸시(Notification API)가 낼 수 있는 최대 강도 설정입니다.
 
+// 2026-10-06: 새 sw.js를 받으면 기다리지 않고 바로 적용(설치 즉시 대기 건너뛰기 + 열린 화면도 새 워커가 맡음).
+// 캐시(fetch 처리)는 하지 않으므로 화면 내용에는 영향 없음 — 푸시·알림 클릭 처리만 새 버전으로 바뀜.
+self.addEventListener("install", () => {
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener("push", (event) => {
   if (!event.data) return;
 

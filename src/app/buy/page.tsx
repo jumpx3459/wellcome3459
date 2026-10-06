@@ -7,7 +7,7 @@ import { hasAppHistory, goHome } from "@/lib/appNav";
 import { CheckCircle } from "lucide-react";
 import { mockRegions, categoryIcons, quantityUnits, guessCategory, logUnmatchedProductName } from "@/lib/mockData";
 import { formatPriceInput, parsePriceInput, PRICE_UNITS, formatPriceWithUnit } from "@/lib/format";
-import { isValidContactPhone } from "@/lib/auth";
+import { checkContactPhone } from "@/lib/auth";
 import { formatPhone } from "@/lib/phone";
 import ContactPhoneInput from "@/components/ContactPhoneInput";
 import GuestPrivacyConsent from "@/components/GuestPrivacyConsent";
@@ -110,9 +110,10 @@ export default function BuyPage() {
       setError("찾는 품목과 연락처는 꼭 입력해주세요.");
       return;
     }
-    // 2026-09-29: 사무실 번호(02-, 031-…, 대표번호 15xx 등)도 허용 — 서버도 같은 isValidContactPhone
-    if (!isValidContactPhone(contactPhone)) {
-      setContactError("휴대폰 또는 사무실 번호를 정확히 입력해주세요");
+    // 2026-09-29: 사무실 번호(02-, 031-…, 대표번호 15xx 등)도 허용 · 2026-10-06: 휴대폰은 010 + 8자리만 — 서버도 같은 checkContactPhone
+    const contactProblem = checkContactPhone(contactPhone);
+    if (contactProblem) {
+      setContactError(contactProblem);
       document.getElementById("contact-phone")?.focus();
       return;
     }

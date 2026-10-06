@@ -1,10 +1,11 @@
 "use client";
 
 import { rem } from "@/lib/rem";
+import { CONTACT_MOBILE_ERROR } from "@/lib/auth";
 
 // 매물 등록(sell)·구매 희망(buy) 연락처 칸 공용 (2026-09-29).
 // 로그인 회원은 가입 번호가 자동으로 들어가지만 언제든 고치거나 지울 수 있어야 함 —
-// 사무실 번호(02-, 031- 등, 대표번호 15xx)도 허용 (검증: isValidContactPhone).
+// 사무실 번호(02-, 031- 등, 대표번호 15xx)도 허용, 휴대폰은 010 + 8자리만 (검증: checkContactPhone, 2026-10-06).
 export default function ContactPhoneInput({
   value,
   onChange,
@@ -32,7 +33,7 @@ export default function ContactPhoneInput({
           style={{ border: "none", padding: 14, fontSize: rem(17) }}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="010-0000-0000 또는 02-000-0000"
+          placeholder="010-0000-0000"
         />
         {value && (
           <button
@@ -54,7 +55,12 @@ export default function ContactPhoneInput({
           {error}
           {/* 예시 번호는 하이픈에서 줄이 끊기지 않게 덩어리로 */}
           <span className="block font-normal" style={{ color: "#4B5563" }}>
-            예: <span className="whitespace-nowrap">010-1234-5678</span>, <span className="whitespace-nowrap">02-123-4567</span>
+            예: <span className="whitespace-nowrap">010-1234-5678</span>
+            {error !== CONTACT_MOBILE_ERROR && (
+              <>
+                , <span className="whitespace-nowrap">02-123-4567</span>
+              </>
+            )}
           </span>
         </p>
       ) : showAutofillNote ? (
