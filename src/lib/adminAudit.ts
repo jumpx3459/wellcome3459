@@ -19,6 +19,8 @@ export type AuditAction =
   | "admin_role_change"
   | "members_list_view"
   | "interests_list_view"
+  | "members_export" // 2026-10-06: 회원 CSV 내보내기 — 최고관리자만 (detail: count)
+  | "leads_export" // 2026-10-06: 리드 CSV 내보내기 — 최고관리자만 (detail: count)
   | "lead_update" // 2026-10-01 F-1: 리드 연락완료·성사·불발 변경 (detail: deal_id, before, after)
   | "business_check" // 2026-10-04: 사업자 조회 (detail: b_no는 maskBizNo "123-45-*****"만, result, status_code)
   | "business_check_exception" // 2026-10-04: 사업자 조회 예외 확인 (detail: 마스킹 번호, seller_request_id — 사유는 표에만)

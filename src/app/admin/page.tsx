@@ -231,7 +231,8 @@ async function fetchBizChecks(adminKey: string, ids: string[]): Promise<{ items:
 }
 
 const ADMIN_SESSION_TTL_MS = 6 * 60 * 60 * 1000; // 6시간
-// 2026-10-01: 최고관리자 전용 API(영구 삭제·공식 파트너 승인/거절·긴급 공지)가 403이면 안내 (버튼 숨김은 공개 후)
+// 2026-10-01: 최고관리자 전용 API(영구 삭제·공식 파트너 승인/거절·긴급 공지·데이터 내보내기)가 403이면 안내
+// (2026-10-06: 영구 삭제·긴급 공지 등록·CSV 내보내기 버튼은 최고관리자에게만 보임)
 const SUPER_ONLY_MESSAGE = "최고관리자만 할 수 있어요";
 
 export default function AdminPage() {
@@ -668,10 +669,30 @@ function AdminDashboard({
     (a, b) => Number(a.status !== "pending") - Number(b.status !== "pending")
   );
 
-  const exportMembersCsv = () => {
+  // 2026-10-06: 데이터 내보내기는 최고관리자만 — CSV 버튼도 최고관리자에게만 보이고, 내용은 서버(/api/admin/export, 역할 검사)
+  // 응답으로 만든다(화면 목록 데이터를 그대로 쓰지 않음). 지금 화면의 필터·검색 결과에 있는 행만 담음.
+  const isSuperAdmin = adminRole === "최고관리자";
+  async function fetchExport<T>(type: "members" | "leads"): Promise<T[] | null> {
+    const res = await fetch(`/api/admin/export?type=${type}`, { headers: { "x-admin-key": adminKey } }).catch(() => null);
+    if (res?.status === 403) {
+      showDashToast(SUPER_ONLY_MESSAGE);
+      return null;
+    }
+    const data = res?.ok ? await res.json().catch(() => null) : null;
+    if (!data) {
+      showDashToast("내보내지 못했어요. 다시 시도해주세요");
+      return null;
+    }
+    return (data.items ?? []) as T[];
+  }
+
+  const exportMembersCsv = async () => {
+    const items = await fetchExport<Member>("members");
+    if (!items) return;
+    const shown = new Set(filteredMembers.map((m) => m.id));
     downloadCsv(`members_${new Date().toISOString().slice(0, 10)}.csv`, [
       ["전화번호", "회원번호", "상호명", "사업자여부", "사업자인증", "구독여부", "카테고리", "지역", "가입일"],
-      ...filteredMembers.map((m) => [
+      ...items.filter((m) => shown.has(m.id)).map((m) => [
         m.phone,
         m.member_no != null ? formatMemberNo(m.member_no) : "",
         m.company_name ?? "",
@@ -685,10 +706,13 @@ function AdminDashboard({
     ]);
   };
 
-  const exportLeadsCsv = () => {
+  const exportLeadsCsv = async () => {
+    const items = await fetchExport<Interest>("leads");
+    if (!items) return;
+    const shown = new Set(filteredInterests.map((i) => `${i.source}:${i.id}`));
     downloadCsv(`leads_${new Date().toISOString().slice(0, 10)}.csv`, [
       ["번호", "매물명", "연락상태", "결과", "성사금액", "리드유형", "일시"],
-      ...filteredInterests.map((i) => [
+      ...items.filter((i) => shown.has(`${i.source}:${i.id}`)).map((i) => [
         i.members?.phone ?? i.phone ?? "",
         i.deals?.title ?? "",
         i.contacted ? "연락완료" : "미연락",
@@ -950,9 +974,11 @@ function AdminDashboard({
             </button>
           ))}
         </div>
-        <button onClick={exportMembersCsv} className="self-end text-xs font-bold text-navy underline">
-          CSV 내보내기 ({filteredMembers.length}건)
-        </button>
+        {isSuperAdmin && (
+          <button onClick={exportMembersCsv} className="self-end text-xs font-bold text-navy underline">
+            CSV 내보내기 ({filteredMembers.length}건)
+          </button>
+        )}
         </>
         }
         empty={
@@ -1137,9 +1163,11 @@ function AdminDashboard({
             />
             전체 선택
           </label>
-          <button onClick={exportLeadsCsv} className="text-xs font-bold text-navy underline">
-            CSV 내보내기 ({filteredInterests.length}건)
-          </button>
+          {isSuperAdmin && (
+            <button onClick={exportLeadsCsv} className="text-xs font-bold text-navy underline">
+              CSV 내보내기 ({filteredInterests.length}건)
+            </button>
+          )}
         </div>
         {selectedLeads.size > 0 && (
           <button
@@ -1387,8 +1415,9 @@ function AdminDashboard({
 
         {/* 2026-09-28: 긴급 공지(부동산·설비 처분) — 재고 매물과 별개 등록 경로.
             방향성 확정 전까지는 메모만 해두기로 했던 부동산/설비 아이디어를
-            "긴급 공지"라는 가벼운 트랙으로 구현. 구인/구직은 법률 검토 전까지 제외. */}
-        {openFormFor === "notice" ? (
+            "긴급 공지"라는 가벼운 트랙으로 구현. 구인/구직은 법률 검토 전까지 제외.
+            2026-10-06: 등록(= 푸시 발송) 버튼·폼은 최고관리자만(서버 /api/admin/notices POST도 최고관리자만). 아래 목록·[마감]은 그대로 */}
+        {!isSuperAdmin ? null : openFormFor === "notice" ? (
           <div className="flex items-center justify-between mt-3">
             <span {...CARD_TITLE_PROPS}>긴급 공지 등록</span>
             <button type="button" onClick={() => setOpenFormFor(null)} className={BTN_CLASS} style={{ ...btnStyle("secondary"), minHeight: 40, fontSize: rem(15), padding: "0 16px" }}>
@@ -1400,7 +1429,7 @@ function AdminDashboard({
             + 긴급 공지 등록 (부동산·설비)
           </button>
         )}
-        {openFormFor === "notice" && (
+        {isSuperAdmin && openFormFor === "notice" && (
           <NoticeForm adminKey={adminKey} onDone={() => { setOpenFormFor(null); load(); }} />
         )}
 
