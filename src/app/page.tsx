@@ -23,6 +23,7 @@ import { isNegotiable } from "@/lib/priceMode";
 import NegotiablePrice from "@/components/NegotiablePrice";
 import { SITE_URL } from "@/lib/siteUrl";
 import { rem } from "@/lib/rem";
+import { HomeCardSkeleton, LoadFailNote, useSlowLoad } from "@/components/LoadingCards";
 import ReturningMemberIntro from "@/components/ReturningMemberIntro";
 import { getRememberedLoginMethod, hasActivePushSubscription, hasLoginHistory, type LoginMethod } from "@/lib/returningMember";
 import FloatingCTA, { FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
@@ -35,8 +36,12 @@ const EXAMPLE_DEALS = mockDeals.filter((d) => d.status !== "closed").slice(0, 3)
 export default function Home() {
   const [todayCount, setTodayCount] = useState(0);
   const [businessCount, setBusinessCount] = useState(0);
-  const [preview, setPreview] = useState<Deal[]>(EXAMPLE_DEALS);
-  const [isExample, setIsExample] = useState(true);
+  // 2026-10-07: 처음 불러오는 동안은 예시 대신 회색 자리 표시(데모 모드=Supabase 없음은 예시 그대로)
+  const [preview, setPreview] = useState<Deal[]>(isSupabaseConfigured ? [] : EXAMPLE_DEALS);
+  const [isExample, setIsExample] = useState(!isSupabaseConfigured);
+  const [previewStatus, setPreviewStatus] = useState<"loading" | "ok" | "error">(isSupabaseConfigured ? "loading" : "ok");
+  const [previewRetry, setPreviewRetry] = useState(0);
+  const previewSlow = useSlowLoad(previewStatus === "loading", previewRetry);
   // "unknown" = 세션 확인 전. 비회원 홈 전용 조회는 "guest"로 확정된 뒤에만 실행한다
   // (예전엔 회원도 오늘 건수·미리보기·public-stats를 매번 조회했음).
   const [memberState, setMemberState] = useState<"unknown" | "member" | "guest">(
@@ -121,12 +126,15 @@ export default function Home() {
     if (memberState !== "guest") return; // 회원 홈(AlertInboxHome)은 자체 조회
     if (!isSupabaseConfigured || !supabase) return; // 데모 모드: 예시 매물 그대로 노출
 
+    let cancelled = false;
+    setPreviewStatus("loading");
     (async () => {
+      try {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
       const nowIso = new Date().toISOString();
 
-      const [{ count }, { data: previewData }, { count: activeTotal, error: activeError }] = await Promise.all([
+      const [{ count }, { data: previewData, error: previewError }, { count: activeTotal, error: activeError }] = await Promise.all([
         supabase
           .from("deals")
           .select("id", { count: "exact", head: true })
@@ -156,6 +164,7 @@ export default function Home() {
           .gt("closes_at", nowIso),
       ]);
 
+      if (cancelled) return;
       setTodayCount(count ?? 0);
       setActiveCount(activeError || activeTotal == null ? null : activeTotal);
       if (previewData && previewData.length > 0) {
@@ -185,8 +194,19 @@ export default function Home() {
       }
       // 실제 매물이 아직 없으면 예시(EXAMPLE_DEALS)를 그대로 보여줘서
       // "이런 특가 알림이 온다"는 감을 주고, 빈 화면으로 밋밋해지는 걸 막습니다.
+      if (!previewError && (!previewData || previewData.length === 0)) {
+        setPreview(EXAMPLE_DEALS);
+        setIsExample(true);
+      }
+      setPreviewStatus(previewError ? "error" : "ok");
+      } catch {
+        if (!cancelled) setPreviewStatus("error");
+      }
     })();
-  }, [memberState]);
+    return () => {
+      cancelled = true;
+    };
+  }, [memberState, previewRetry]);
 
   return (
     <SplashScreen onFinish={() => setLogoAnimate(true)}>
@@ -336,20 +356,29 @@ export default function Home() {
       )}
 
       {/* 매물 예시 — 실제 매물이 있으면 실제로, 없으면 예시로 "이런 특가가 온다"는 감을 줌 */}
-      {preview.length > 0 && (
+      {(preview.length > 0 || previewStatus !== "ok") && (
         <div className="px-5" style={{ paddingTop: "calc(24px - 0.25rem)" /* 카테고리 줄 아래 pb-1(0.25rem)이 이미 있어 그만큼 빼서 칩 아래 끝→제목 24px */ }}>
           <div className="flex items-center gap-1.5" style={{ marginBottom: 12 }}>
             <div className="text-base font-bold text-navy">
-              {isExample ? "가입하면 이런 특가 알림이 와요" : "오늘 이런 매물이 올라왔어요"}
+              {isExample && previewStatus === "ok" ? "가입하면 이런 특가 알림이 와요" : "오늘 이런 매물이 올라왔어요"}
             </div>
-            {isExample && (
+            {isExample && previewStatus === "ok" && (
               <span className="text-xs font-bold text-gray500 bg-gray100 px-2 py-0.5 rounded-full">
                 예시
               </span>
             )}
           </div>
+          {previewStatus === "error" || (previewStatus === "loading" && previewSlow) ? (
+            <LoadFailNote onRetry={() => setPreviewRetry((n) => n + 1)} />
+          ) : previewStatus === "loading" ? (
+            <div className="flex flex-col gap-2.5">
+              <HomeCardSkeleton />
+              <HomeCardSkeleton />
+              <HomeCardSkeleton />
+            </div>
+          ) : (
           <div className="flex flex-col gap-2.5">
-            {preview.map((d) => {
+            {preview.map((d, idx) => {
               const color = categoryColors[d.category] ?? categoryColors["기타"];
               const discountPct = cardDiscountPct(d);
               return (
@@ -383,6 +412,7 @@ export default function Home() {
                       <img
                         src={d.images[0]}
                         alt={d.title}
+                        loading={idx === 0 ? "eager" : "lazy"}
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -410,7 +440,8 @@ export default function Home() {
               );
             })}
           </div>
-          {isExample && (
+          )}
+          {isExample && previewStatus === "ok" && (
             <p className="text-xs text-gray500 mt-2.5 text-center leading-relaxed">
               지금 가입하면 이런 특가를 실제로 가장 먼저 알려드려요 🔔
             </p>

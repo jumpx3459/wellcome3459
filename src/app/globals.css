@@ -25,8 +25,8 @@
   /* design-v2 — Claude Design 리디자인 라운드에서 확정 */
   --color-toggleOn: #03C75A; /* 알림 수신 스위치 ON 전용 — 오렌지(CTA)와 색 역할 분리 */
 
-  --font-sans: var(--font-pretendard), -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
-  --font-display: var(--font-pretendard), -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
+  --font-sans: "Pretendard Variable", -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
+  --font-display: "Pretendard Variable", -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
   --font-mono: "Roboto Mono", monospace;
 }
 
@@ -198,5 +198,19 @@ input[type="date"]::-webkit-datetime-edit {
   }
   [data-intro-area] {
     flex: 0 1 var(--intro-group-h);
+  }
+}
+
+/* 2026-10-07 매물 불러오는 중 자리 표시(LoadingCards) — 1.2초 깜빡임 */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.skeleton-pulse {
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-pulse {
+    animation: none;
   }
 }
