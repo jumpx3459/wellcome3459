@@ -246,7 +246,7 @@ export default function Home() {
             3줄로 깨지는 원인 — 카피는 그대로 두고 24px로 한 단계만 낮춰 위계
             개선분은 절반 남기면서 2줄을 유지. */}
         <h1 className="font-display leading-snug drop-shadow-sm break-keep" style={{ fontSize: rem(24) }}>
-          <span style={{ color: "#FF6F0F" }}>남는 상품은 빠르게 알리고,</span>
+          <span style={{ color: "#FF6F0F" }}>남는 재고는 빠르게 알리고,</span>
           <br />
           급한 상품은 남보다 먼저 잡으세요.
         </h1>
@@ -327,7 +327,7 @@ export default function Home() {
               onClick={dismissInstallBanner}
               aria-label="닫기"
               className="flex items-center justify-center flex-shrink-0"
-              style={{ width: 44, height: 44, color: "#B8BFC7", fontSize: rem(13), lineHeight: 1 }}
+              style={{ width: 44, height: 44, color: "#6B7280", fontSize: rem(13), lineHeight: 1 }}
             >
               ✕
             </button>

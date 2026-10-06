@@ -180,3 +180,23 @@ input[type="date"]::-webkit-date-and-time-value {
 input[type="date"]::-webkit-datetime-edit {
   min-width: 0;
 }
+
+/* 2026-10-06 첫 방문·재방문 화면(OnboardingIntro·ReturningMemberIntro) PC 틀 — 화면 폭 505px 이상에서만.
+   다른 화면처럼 가운데 504px 틀(양옆은 body 회색) + 캐릭터 묶음·버튼을 흰 영역 세로 가운데로(맨 아래 붙음·중간 큰 빈칸 해소).
+   px 단위로 둠: 미디어쿼리의 rem/em은 html 글자 크기(112.5%)가 아니라 16px 기준이라 28rem이 448px로 잡힘.
+   504px 이하(휴대폰)는 이 규칙이 전혀 걸리지 않음. --intro-group-h는 캐릭터 칸 위 여백 + 말풍선 + 캐릭터 상한(컴포넌트가 넣음). */
+@media (min-width: 505px) {
+  [data-intro-root] {
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    max-width: 504px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+  [data-intro-body] {
+    justify-content: center;
+  }
+  [data-intro-area] {
+    flex: 0 1 var(--intro-group-h);
+  }
+}

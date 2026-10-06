@@ -7,7 +7,8 @@ import { rem } from "@/lib/rem";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 import { isStandalone } from "@/lib/browserEnv";
 import { LINK_BASE } from "@/components/ReturningMemberIntro";
-import { CHAR_TOP, charCap, useIntroCompact } from "@/lib/useIntroCompact";
+import IntroBubble from "@/components/IntroBubble";
+import { BUBBLE_SPACE, CHAR_TOP, charCap, useIntroCompact } from "@/lib/useIntroCompact";
 
 const STORAGE_KEY = "dj_onboarded"; // "1" = 명시적 액션(가입 시작/로그인 이동/둘러보기)으로 닫음 — 영구 억제
 const LAST_SHOWN_KEY = "dj_onboarding_last_shown"; // 버튼 없이 그냥 닫힌 경우 재노출 쿨다운 계산용
@@ -83,7 +84,7 @@ export default function OnboardingIntro({
 
   // 캐릭터가 120px보다 작아질 때만 단계별로 공간을 줄임(src/lib/useIntroCompact.ts) — 공간이 충분하면 0단계 = 기본 배치 그대로
   const hasCount = activeCount !== null && activeCount >= ACTIVE_COUNT_MIN;
-  const { level, areaRef, lineShown: showCount } = useIntroCompact(hasCount, visible);
+  const { level, areaRef, lineShown: showCount, bubbleShown } = useIntroCompact(hasCount, visible);
   const compactHead = level >= 2;
   const compactBody = level >= 3;
 
@@ -96,6 +97,7 @@ export default function OnboardingIntro({
     <div
       className="fixed inset-0 z-50 bg-white flex flex-col"
       style={{ overflowY: "auto" }}
+      data-intro-root
       role="dialog"
       aria-modal="true"
       aria-label="덤핑점핑 시작하기"
@@ -109,6 +111,8 @@ export default function OnboardingIntro({
             "radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(120deg, #04101C, #1A4B78)",
           backgroundSize: "16px 16px, cover",
           paddingTop: "var(--sat)",
+          borderBottomLeftRadius: 28,
+          borderBottomRightRadius: 28,
         }}
       >
         <div className="mx-auto w-full max-w-md" style={{ padding: compactHead ? "16px 22px 12px" : "20px 22px 22px" }}>
@@ -140,7 +144,7 @@ export default function OnboardingIntro({
             className={compactHead ? "font-display text-2xl leading-[1.4]" : "font-display text-2xl mt-2 leading-[1.4]"}
             style={{ wordBreak: "keep-all", ...(compactHead ? { marginTop: 8 } : null) }}
           >
-            <span style={{ color: "var(--color-brandOrange)" }}>남는 상품은 빠르게 알리고</span>
+            <span style={{ color: "var(--color-brandOrange)" }}>남는 재고는 빠르게 알리고</span>
             <br />
             급한 상품은 남보다 먼저 잡으세요.
           </h1>
@@ -156,13 +160,24 @@ export default function OnboardingIntro({
       <div
         className="mx-auto w-full max-w-md flex-1 flex flex-col"
         style={{ padding: `0 22px calc(${compactBody ? 16 : 24}px + var(--sab))`, minHeight: 0 }}
+        data-intro-body
       >
-        <div ref={areaRef} className="relative flex-1" style={{ minHeight: 0 }}>
-          <div className="absolute flex items-end justify-center" style={{ top: CHAR_TOP(level), left: 0, right: 0, bottom: 0 }}>
+        {/* --intro-group-h: PC(넓은 화면)에서만 쓰는 캐릭터 묶음 높이(globals.css "PC 틀") — 휴대폰 배치에는 영향 없음 */}
+        <div
+          ref={areaRef}
+          className="relative flex-1"
+          style={{ minHeight: 0, ["--intro-group-h" as string]: `${CHAR_TOP(level) + (bubbleShown ? BUBBLE_SPACE : 0) + charCap(showCount)}px` }}
+          data-intro-area
+        >
+          <div
+            className={bubbleShown ? "absolute flex flex-col items-center justify-end" : "absolute flex items-end justify-center"}
+            style={{ top: CHAR_TOP(level), left: 0, right: 0, bottom: 0 }}
+          >
+            {bubbleShown && <IntroBubble>새 매물이 뜨면<br />바로 알려드릴게요!</IntroBubble>}
             <img
               src="/images/manager-cut.png"
               alt="점핑매니저"
-              style={{ height: charCap(showCount), maxHeight: "100%", width: "auto", maxWidth: "100%", objectFit: "contain" }}
+              style={{ height: charCap(showCount), maxHeight: bubbleShown ? `calc(100% - ${BUBBLE_SPACE}px)` : "100%", width: "auto", maxWidth: "100%", objectFit: "contain" }}
             />
           </div>
         </div>
