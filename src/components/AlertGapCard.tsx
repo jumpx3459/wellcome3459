@@ -2,21 +2,15 @@
 
 import { useEffect, useState } from "react";
 import TabLink from "@/components/TabLink";
-import { isKakaoInApp } from "@/lib/browserEnv";
-import { externalTarget } from "@/lib/openExternal";
 import { useAlertGap, type AlertGapKind } from "@/lib/useAlertsOn";
 import { rem } from "@/lib/rem";
 
 // 2026-10-07: 회원 홈 맨 위 1회 카드 — 매물 알림 동의는 저장됐는데 이 기기는 알림을 받을 수 없을 때(가입 직후 포함) 사실대로 알림.
-// ✕로 닫으면 이 기기에서 다시 안 뜸. 알림이 실제로 켜지면(구독 생김) 저절로 사라짐. 권한 요청·저장은 하지 않음(읽기 전용).
+// ✕로 닫으면 이 기기에서 다시 안 뜸. 인앱 브라우저(kind "inapp")에서는 InAppBanner와 중복이라 숨김. 알림이 실제로 켜지면(구독 생김) 저절로 사라짐. 권한 요청·저장은 하지 않음(읽기 전용).
 const DISMISS_KEY = "dj_alert_gap_dismissed";
 
-function causeLine(kind: AlertGapKind): { text: string; link?: string } {
+function causeLine(kind: Exclude<AlertGapKind, "inapp">): { text: string; link?: string } {
   switch (kind) {
-    case "inapp": {
-      const browser = externalTarget()?.browser ?? "사파리";
-      return { text: `${isKakaoInApp() ? "카카오톡" : "이 앱"} 안에서는 알림을 받을 수 없어요. ${browser}에서 열어 알림을 켜 주세요.` };
-    }
     case "ios_needs_install":
       return { text: "아이폰은 홈 화면에 추가해야 알림이 와요.", link: "방법 보기 ›" };
     case "denied":
@@ -41,7 +35,8 @@ export default function AlertGapCard() {
     }
   }, []);
 
-  if (dismissed || consent !== true || kind === null) return null;
+  // 인앱 브라우저에서는 숨김 — 홈 상단 띠(InAppBanner "🔔 알림 받으려면 [크롬으로 열기]")와 같은 안내라 중복
+  if (dismissed || consent !== true || kind === null || kind === "inapp") return null;
   const c = causeLine(kind);
   const close = () => {
     try {
