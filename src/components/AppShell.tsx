@@ -52,8 +52,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     noteRouteChange(path, viaPop ? "pop" : consumeReplaceFlag() ? "replace" : "push");
   }, [pathname]);
   // 2026-10-07: 어떤 페이지든 ?ref=CODE로 들어오면 기기에 저장(30일) — 홈 CTA·재방문 링크·탭·로그인↔가입으로 가도 가입 때 반영 (src/lib/refStore.ts)
+  // 로그인한 회원은 저장하지 않음 — 가입 뒤 returnTo(?ref= 포함)로 돌아와도 방금 지운 값이 다시 저장되지 않게
   useEffect(() => {
-    saveRefFromSearch(window.location.search);
+    if (!window.location.search.includes("ref=")) return;
+    let cancelled = false;
+    (async () => {
+      let loggedIn = false;
+      try {
+        if (supabase) loggedIn = Boolean((await supabase.auth.getSession()).data.session?.user);
+      } catch {}
+      if (!cancelled && !loggedIn) saveRefFromSearch(window.location.search);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [pathname]);
   // 2026-09-27: 점핑파트너 영업용 데모 스킨(/p/[slug])은 실제 내비게이션이 있는
   // 앱 화면이 아니라 단일 랜딩 페이지라 하단 탭바가 어울리지 않음 — admin과
