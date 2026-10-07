@@ -144,7 +144,8 @@ export default function BuyPage() {
         const margin = Math.max(16, Math.min(80, limit - span));
         window.scrollTo({ top: window.scrollY + f.top - margin, behavior: "smooth" });
       }, 60);
-      setError(noProduct ? "찾는 품목을 적어 주세요" : contactProblem ? "연락처를 확인해 주세요" : "개인정보 수집·이용에 동의해 주세요");
+      // 알약 문구 = 첫 오류 칸 아래 안내 문구와 똑같이(빈 칸 "적어 주세요" / 형식 틀림은 checkContactPhone 문구)
+      setError(noProduct ? "찾는 품목을 적어 주세요" : contactProblem ? contactProblem : "개인정보 수집·이용에 동의해 주세요");
       return;
     }
     setSubmitting(true);
