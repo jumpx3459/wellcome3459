@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import BottomNav from "./BottomNav";
 import InAppBanner from "./InAppBanner";
+import InAppExternalGate from "./InAppExternalGate";
 import AuthExpiredNotice from "./AuthExpiredNotice";
 import ConsentGate from "./ConsentGate";
 import ActiveDayPing from "./ActiveDayPing";
@@ -12,6 +13,7 @@ import DebugPanel from "./DebugPanel"; // TEMP DEBUG — 세션 소실 버그 �
 import { noteRouteChange, consumeReplaceFlag } from "@/lib/appNav";
 import { supabase } from "@/lib/supabase";
 import { markReturningMember } from "@/lib/returningMember";
+import { saveRefFromSearch } from "@/lib/refStore";
 
 // 관리자 화면은 운영자 전용 도구라 회원용 하단 탭바를 보여주지 않습니다.
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -48,6 +50,22 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const viaPop = popPath.current === path;
     popPath.current = null;
     noteRouteChange(path, viaPop ? "pop" : consumeReplaceFlag() ? "replace" : "push");
+  }, [pathname]);
+  // 2026-10-07: 어떤 페이지든 ?ref=CODE로 들어오면 기기에 저장(30일) — 홈 CTA·재방문 링크·탭·로그인↔가입으로 가도 가입 때 반영 (src/lib/refStore.ts)
+  // 로그인한 회원은 저장하지 않음 — 가입 뒤 returnTo(?ref= 포함)로 돌아와도 방금 지운 값이 다시 저장되지 않게
+  useEffect(() => {
+    if (!window.location.search.includes("ref=")) return;
+    let cancelled = false;
+    (async () => {
+      let loggedIn = false;
+      try {
+        if (supabase) loggedIn = Boolean((await supabase.auth.getSession()).data.session?.user);
+      } catch {}
+      if (!cancelled && !loggedIn) saveRefFromSearch(window.location.search);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [pathname]);
   // 2026-09-27: 점핑파트너 영업용 데모 스킨(/p/[slug])은 실제 내비게이션이 있는
   // 앱 화면이 아니라 단일 랜딩 페이지라 하단 탭바가 어울리지 않음 — admin과
@@ -97,6 +115,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       style={{ overflowX: "clip" }}
     >
       {showInAppBanner && <InAppBanner />}
+      {/* 2026-10-07: 인앱 브라우저로 가입·로그인에 들어오면 바깥 브라우저로 먼저 안내(진입 한 곳) */}
+      {(pathname === "/signup" || pathname === "/login") && <InAppExternalGate />}
       {/* iPhone 홈 화면 앱: 상태 표시줄 밑(black-translucent)을 네이비로 칠해 시계·배터리가 보이게 */}
       <div aria-hidden className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ height: "var(--sat)", background: "#0B2540" }} />
       <div

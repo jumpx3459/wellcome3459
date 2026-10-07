@@ -12,6 +12,7 @@ import { fmtLeft } from "@/lib/format";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 import { NAV_BOTTOM } from "@/components/BottomNav";
 import { rem } from "@/lib/rem";
+import { isStandalone } from "@/lib/browserEnv";
 import { authFetch } from "@/lib/authFetch";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
@@ -53,6 +54,9 @@ function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = safeReturnTo(searchParams.get("returnTo")); // 같은 출처 경로만 (src/lib/safeReturnTo.ts)
+  // 2026-10-07: 홈 화면 앱(standalone)은 사파리와 로그인 저장소가 달라 처음 한 번 다시 로그인해야 함 — 머리 아래 한 줄 안내
+  const [standalone, setStandalone] = useState(false);
+  useEffect(() => setStandalone(isStandalone()), []);
 
   const [authChecked, setAuthChecked] = useState(false);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
@@ -306,6 +310,15 @@ function LoginPageInner() {
           )}
         </div>
       </div>
+
+      {standalone && (
+        <div
+          data-standalone-login-note
+          style={{ background: "#FFF4E0", borderBottom: "1px solid #F5D9A8", padding: "11px 22px", fontSize: rem(15), fontWeight: 700, color: "#1A1F26", lineHeight: 1.45 }}
+        >
+          🏠 홈 화면 앱은 처음 한 번 다시 로그인해야 해요 <span style={{ fontWeight: 500, color: "#495057" }}>(사파리와 로그인이 따로예요)</span>
+        </div>
+      )}
 
       <div className="flex-1 flex flex-col" style={{ padding: "24px 22px 20px" }}>
         {membership === "not_member" ? (

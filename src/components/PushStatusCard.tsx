@@ -6,6 +6,9 @@ import { deviceLabel } from "@/lib/deviceLabel";
 import { SITE_URL } from "@/lib/siteUrl";
 import { rem } from "@/lib/rem";
 import PushBlockerNotice from "@/components/PushBlockerNotice";
+import IosInstallSteps from "@/components/IosInstallSteps";
+import { copyCurrentUrl, externalTarget, openExternal } from "@/lib/openExternal";
+import { isKakaoInApp } from "@/lib/browserEnv";
 import { UI_CARD_TITLE, UI_DESC, UI_LINK, BTN_CLASS, btnStyle } from "@/lib/uiText";
 import ConsentSheet from "@/components/ConsentSheet";
 import { CONSENT_TEXT } from "@/lib/consent";
@@ -35,6 +38,7 @@ export default function PushStatusCard() {
   const [thisDevice, setThisDevice] = useState<string | null>(null);
   const [lastSuccessAt, setLastSuccessAt] = useState<string | null>(null);
   const [turningOff, setTurningOff] = useState(false);
+  const [linkCopied, setLinkCopied] = useState<boolean | null>(null); // 아이폰 기타 인앱 — 링크 복사 결과
 
   useEffect(() => {
     let cancelled = false;
@@ -145,6 +149,89 @@ export default function PushStatusCard() {
   if (state === "loading") return null;
   const thisDeviceOff = state !== "on";
   const needsConsent = state === "on" && dealConsent === false;
+
+  // 2026-10-07: 매물 알림 동의는 true인데 이 기기는 알림을 받을 수 없는 4가지(인앱 / 아이폰 미설치 / 권한 거부(팝업 닫기 포함) / 구독 저장 실패) —
+  // "동의는 저장됐어요 · 이 기기는 아직 알림을 받을 수 없어요" 한 틀로 사실대로 표시(초록 "알림 받는 중"은 안 씀). 동의 저장 로직은 그대로.
+  const gapState = dealConsent === true && (state === "inapp" || state === "ios_needs_install" || state === "denied" || state === "saveFailed");
+  if (gapState) {
+    const target = externalTarget();
+    const hardDenied = typeof Notification !== "undefined" && Notification.permission === "denied";
+    return (
+      <div data-push-gap={state} className="rounded-2xl p-4" style={{ border: "1px solid #E4E7EB", background: "#fff" }}>
+        <div className="flex items-center gap-3">
+          <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 38, height: 38, background: "#FDEEE8", fontSize: rem(17) }}>📲</span>
+          <span className="flex items-center gap-1.5 flex-wrap">
+            <span style={UI_CARD_TITLE}>이 기기 푸시 알림</span>
+            <span className="rounded-full font-bold whitespace-nowrap" style={{ fontSize: rem(14), padding: "2px 9px", background: "#FEF3C7", color: "#92400E" }}>
+              받을 수 없음
+            </span>
+          </span>
+        </div>
+        <p className="mt-3 font-extrabold" style={{ fontSize: rem(15), color: "#1A1F26", lineHeight: 1.5 }}>동의는 저장됐어요 · 이 기기는 아직 알림을 받을 수 없어요</p>
+
+        {state === "inapp" && (
+          <>
+            <p className="mt-1" style={{ fontSize: rem(15), color: "#4B5563", lineHeight: 1.55 }}>
+              {isKakaoInApp() ? "카카오톡" : "이 앱"} 안에서는 알림을 받을 수 없어요. {target ? `${target.browser}에서 열어 알림을 켜 주세요.` : "사파리에서 열어 알림을 켜 주세요."}
+            </p>
+            {target ? (
+              <button type="button" onClick={() => openExternal()} className={`mt-3 w-full ${BTN_CLASS}`} style={btnStyle("primary")}>
+                {target.browser}에서 열기
+              </button>
+            ) : (
+              <>
+                <p className="mt-2" style={{ fontSize: rem(14), color: "#495057" }}>화면 오른쪽 위 <b>···</b> 메뉴 → <b>사파리로 열기</b>를 눌러주세요.</p>
+                <button
+                  type="button"
+                  onClick={async () => setLinkCopied(await copyCurrentUrl())}
+                  className={`mt-3 w-full ${BTN_CLASS}`}
+                  style={btnStyle("secondary")}
+                >
+                  {linkCopied ? "링크 복사됨 ✓" : "링크 복사"}
+                </button>
+              </>
+            )}
+          </>
+        )}
+
+        {state === "ios_needs_install" && (
+          <>
+            <p className="mt-1" style={{ fontSize: rem(15), color: "#4B5563", lineHeight: 1.55 }}>아이폰은 홈 화면에 추가해야 알림이 와요.</p>
+            <div className="mt-3 rounded-lg" style={{ background: "#F5F6F8", padding: "12px 14px" }}>
+              <IosInstallSteps />
+            </div>
+          </>
+        )}
+
+        {state === "denied" && (
+          <>
+            <p className="mt-1" style={{ fontSize: rem(15), color: "#4B5563", lineHeight: 1.55 }}>
+              알림 권한이 꺼져 있어요. (권한 팝업을 닫은 경우도 같아요)
+            </p>
+            <button type="button" onClick={subscribe} disabled={busy} className={`mt-3 w-full ${BTN_CLASS}`} style={btnStyle("primary")}>
+              {busy ? "켜는 중…" : "다시 시도"}
+            </button>
+            <p className="mt-3 rounded-lg leading-relaxed" style={{ fontSize: rem(14), color: "#4B5563", background: "#F5F6F8", padding: "10px 12px" }}>
+              {hardDenied ? "브라우저에서 알림을 막아 둔 상태예요. " : ""}계속 안 되면: 주소창 왼쪽 자물쇠(또는 ⋮ 메뉴 → 사이트 설정) → <b style={{ color: "#1A1F26" }}>알림 → 허용</b> 후 새로고침
+            </p>
+          </>
+        )}
+
+        {state === "saveFailed" && (
+          <>
+            <p className="mt-1" style={{ fontSize: rem(15), color: "#4B5563", lineHeight: 1.55 }}>알림 등록 중 문제가 생겼어요. 잠시 후 다시 시도해 주세요.</p>
+            <button type="button" onClick={enable} disabled={busy} className={`mt-3 w-full ${BTN_CLASS}`} style={btnStyle("primary")}>
+              {busy ? "켜는 중…" : "다시 시도"}
+            </button>
+          </>
+        )}
+
+        {consentError && (
+          <p className="mt-3 font-medium" style={{ fontSize: rem(14), color: "var(--color-orange)" }}>{consentError}</p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-2xl p-4" style={{ border: "1px solid #E4E7EB", background: "#fff" }}>
