@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import BottomNav from "./BottomNav";
 import InAppBanner from "./InAppBanner";
+import InAppExternalGate from "./InAppExternalGate";
 import AuthExpiredNotice from "./AuthExpiredNotice";
 import ConsentGate from "./ConsentGate";
 import ActiveDayPing from "./ActiveDayPing";
@@ -102,6 +103,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       style={{ overflowX: "clip" }}
     >
       {showInAppBanner && <InAppBanner />}
+      {/* 2026-10-07: 인앱 브라우저로 가입·로그인에 들어오면 바깥 브라우저로 먼저 안내(진입 한 곳) */}
+      {(pathname === "/signup" || pathname === "/login") && <InAppExternalGate />}
       {/* iPhone 홈 화면 앱: 상태 표시줄 밑(black-translucent)을 네이비로 칠해 시계·배터리가 보이게 */}
       <div aria-hidden className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ height: "var(--sat)", background: "#0B2540" }} />
       <div
