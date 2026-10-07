@@ -6,13 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
-// 환율 계산기에서 지원하는 통화 목록 (B2B 소싱에서 실사용 빈도가 높은 순)
-const CURRENCIES = [
-  { code: "USD", label: "미국 달러", flag: "🇺🇸" },
-  { code: "CNY", label: "중국 위안", flag: "🇨🇳" },
-  { code: "JPY", label: "일본 엔 (100엔)", flag: "🇯🇵" },
-  { code: "EUR", label: "유럽 유로", flag: "🇪🇺" },
-];
+import { FX_CURRENCIES as CURRENCIES } from "@/lib/fxCurrencies";
 
 // 관세율 프리셋 — 정확한 세율은 품목별 HS코드에 따라 다르므로 참고용 기본값만 제공
 const TARIFF_PRESETS = [
@@ -147,17 +141,22 @@ function FxCalculator() {
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [retryNonce, setRetryNonce] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(false);
 
-    fetch(`https://api.frankfurter.app/latest?from=${currency}&to=KRW`)
-      .then((res) => res.json())
+    // 2026-10-07: 브라우저에서 외부 환율 API를 직접 부르면 주소 이동(301)·CORS로 막혀서 우리 서버 경로(/api/fx)를 거침
+    fetch(`/api/fx?currency=${currency}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("fx " + res.status);
+        return res.json();
+      })
       .then((data) => {
         if (cancelled) return;
-        const raw = data?.rates?.KRW;
+        const raw = data?.rate;
         if (!raw) throw new Error("no rate");
         setRate(currency === "JPY" ? raw * 100 : raw);
         setUpdatedAt(data.date);
@@ -168,7 +167,7 @@ function FxCalculator() {
     return () => {
       cancelled = true;
     };
-  }, [currency]);
+  }, [currency, retryNonce]);
 
   const amount = parsePriceInput(amountRaw) ?? 0;
   const converted = rate ? Math.round(amount * rate) : null;
@@ -221,7 +220,15 @@ function FxCalculator() {
           <div className="text-center text-gray500 text-sm py-4">환율 조회 중...</div>
         ) : error ? (
           <div className="text-center text-sm py-4" style={{ color: "#C2410C" }}>
-            환율 조회에 실패했어요. 잠시 후 다시 시도해주세요.
+            환율을 불러오지 못했어요. 잠시 후 [다시 시도]를 눌러 주세요
+            <button
+              type="button"
+              onClick={() => setRetryNonce((n) => n + 1)}
+              className="block mx-auto mt-3 rounded-xl font-bold"
+              style={{ minHeight: 44, padding: "0 20px", background: "#fff", border: "1.5px solid #C2410C", color: "#C2410C" }}
+            >
+              다시 시도
+            </button>
           </div>
         ) : (
           <>
@@ -231,14 +238,17 @@ function FxCalculator() {
             </div>
             <div className="text-xs text-gray500 mt-2">
               1 {currency} ≈ {rate?.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}원
-              {currency === "JPY" && " (100엔 기준)"} · {updatedAt} 기준
+              {currency === "JPY" && " (100엔 기준)"}
+            </div>
+            <div className="text-xs text-gray500 mt-1">
+              기준일 {updatedAt} · 유럽중앙은행 기준
             </div>
           </>
         )}
       </div>
 
       <p className="text-[0.7222rem] text-gray500 leading-relaxed">
-        ※ 실시간 매매기준율이며, 실제 송금·결제 시 은행/카드사 수수료가 추가로 붙을 수 있어요.
+        ※ 유럽중앙은행이 하루 한 번 발표하는 기준 환율이며, 실제 송금·결제 시 은행/카드사 수수료가 추가로 붙을 수 있어요.
       </p>
     </div>
   );

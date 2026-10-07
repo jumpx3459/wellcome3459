@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import AppShell from "@/components/AppShell";
-import { pretendard } from "@/lib/fonts";
+// 2026-10-07: 통글자 2MB 파일 대신 글자 범위별로 쪼갠 Pretendard(92조각, 화면에 쓰인 글자 조각만 받음) — font-display: swap
+import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 import { SITE_URL as BASE_URL } from "@/lib/siteUrl";
 
 const DEFAULT_DESCRIPTION =
@@ -31,13 +32,13 @@ export const metadata: Metadata = {
     siteName: "덤핑점핑",
     locale: "ko_KR",
     type: "website",
-    images: ["/images/logo.png"],
+    images: ["/images/logo-og.png"],
   },
   twitter: {
     card: "summary",
     title: "덤핑점핑 - B2B 덤핑 재고 특가 알림",
     description: DEFAULT_DESCRIPTION,
-    images: ["/images/logo.png"],
+    images: ["/images/logo-og.png"],
   },
 };
 
@@ -56,7 +57,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ko" className={pretendard.variable}>
+    <html lang="ko">
       <body className="font-sans overflow-x-hidden">
         {/* 앱 폭 제한 래퍼(max-w-md)는 경로별로 달라야 해서 AppShell이 그림 */}
         <AppShell>{children}</AppShell>

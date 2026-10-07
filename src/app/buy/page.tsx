@@ -18,7 +18,7 @@ import { getFreshAccessToken } from "@/lib/authFetch";
 import { FieldLabel, FieldTag, FORM_INPUT_FONT_SIZE, FORM_HINT_STYLE, FORM_CHIP_FONT_SIZE, FORM_LABEL_STYLE } from "@/components/FormField";
 import CategoryChips from "@/components/CategoryChips";
 import { priceUnitSuffix } from "@/lib/priceUnit";
-import FloatingCTA, { FloatingCTANote, FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
+import FloatingCTA, { FloatingCTANote, FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE_FIT, floatingCtaButtonStyle } from "@/components/FloatingCTA";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
 export default function BuyPage() {
@@ -61,6 +61,15 @@ export default function BuyPage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 2026-10-07 테스터 피드백: 필수값이 비었을 때 안내(작은 주황 알약)를 못 봄 →
+  // 가입 화면과 같은 짙은 안내(tone="dark") 2.5초 + 빈 칸 빨간 표시 + 첫 빈 칸으로 스크롤 + 버튼 흔들림
+  const [productError, setProductError] = useState(false);
+  const [shakeKey, setShakeKey] = useState(0);
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => setError(null), 2500);
+    return () => clearTimeout(t);
+  }, [error, shakeKey]);
 
   // 로그인한 회원이면 인증된 번호를 미리 채워준다 — 다른 담당자 연락처로 접수하는
   // 대리 등록 케이스가 있어서 수정은 그대로 허용한다. (sell/page.tsx와 동일 패턴)
@@ -106,20 +115,37 @@ export default function BuyPage() {
 
   const submit = async () => {
     setError(null);
-    if (!productName || !contactPhone) {
-      setError("찾는 품목과 연락처는 꼭 입력해주세요.");
-      return;
-    }
+    // 필수 칸(찾는 품목·연락처·개인정보 동의)을 한꺼번에 검사해 빈 칸을 전부 빨갛게 표시한다
     // 2026-09-29: 사무실 번호(02-, 031-…, 대표번호 15xx 등)도 허용 · 2026-10-06: 휴대폰은 010 + 8자리만 — 서버도 같은 checkContactPhone
-    const contactProblem = checkContactPhone(contactPhone);
-    if (contactProblem) {
+    const noProduct = !productName.trim();
+    const contactProblem = !contactPhone ? "연락처를 적어 주세요" : checkContactPhone(contactPhone);
+    const noConsent = !privacyConsent;
+    if (noProduct || contactProblem || noConsent) {
+      setProductError(noProduct);
       setContactError(contactProblem);
-      document.getElementById("contact-phone")?.focus();
-      return;
-    }
-    if (!privacyConsent) {
-      setPrivacyConsentError(true);
-      setError("개인정보 수집·이용에 동의해주세요.");
+      setPrivacyConsentError(noConsent);
+      setShakeKey((k) => k + 1);
+      // 첫 빈 칸을 화면 위쪽(위 여백 80px)에 둔다 — 가운데로 두면 하단 안내 알약이 칸 아래 오류 줄을 가렸음.
+      // 빨간 칸이 여럿이라 80px로는 마지막 오류 줄이 알약 영역에 걸리면, 걸리지 않을 만큼(최소 16px)까지 위 여백을 줄인다.
+      // 기존 동작 유지: 연락처 형식 오류가 첫 문제일 때만 연락처 칸에 포커스(스크롤은 직접). 품목·동의 칸은 자동 포커스 없음
+      if (!noProduct && contactProblem && contactPhone) document.getElementById("contact-phone")?.focus({ preventScroll: true });
+      setTimeout(() => {
+        const prod = document.getElementById("buy-product")?.parentElement ?? null;
+        const contact = document.getElementById("contact-phone")?.parentElement?.parentElement ?? null;
+        const consent = document.getElementById("guest-privacy-consent");
+        const first = noProduct ? prod : contactProblem ? contact : consent;
+        const last = noConsent ? consent?.nextElementSibling ?? consent : contactProblem ? contact : prod;
+        if (!first || !last) return;
+        const navTop = document.querySelector("nav")?.getBoundingClientRect().top ?? window.innerHeight;
+        const ctaH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--floating-cta-h")) || 68;
+        const limit = navTop - ctaH - 64; // 버튼 묶음 위 + 알약 높이 여유
+        const f = first.getBoundingClientRect();
+        const span = last.getBoundingClientRect().bottom - f.top;
+        const margin = Math.max(16, Math.min(80, limit - span));
+        window.scrollTo({ top: window.scrollY + f.top - margin, behavior: "smooth" });
+      }, 60);
+      // 알약 문구 = 첫 오류 칸 아래 안내 문구와 똑같이(빈 칸 "적어 주세요" / 형식 틀림은 checkContactPhone 문구)
+      setError(noProduct ? "찾는 품목을 적어 주세요" : contactProblem ? contactProblem : "개인정보 수집·이용에 동의해 주세요");
       return;
     }
     setSubmitting(true);
@@ -146,6 +172,7 @@ export default function BuyPage() {
         const data = await res.json().catch(() => ({}));
         if (data.field === "contactPhone") {
           setContactError(data.error ?? "연락처를 확인해주세요.");
+          setShakeKey((k) => k + 1);
           document.getElementById("contact-phone")?.focus();
           return;
         }
@@ -280,20 +307,33 @@ export default function BuyPage() {
         </div>
       </div>
 
-      <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: FLOATING_CTA_SPACE }}>
-        <div>
+      <div className="flex-1 px-5 py-4.5 flex flex-col gap-4.5" style={{ paddingBottom: FLOATING_CTA_SPACE_FIT }}>
+        <div id="buy-field-product">
           <FieldLabel need="required">무엇을 찾으세요?</FieldLabel>
           <input
+            id="buy-product"
             className="w-full rounded-xl outline-none"
-            style={{ border: "1.5px solid #E4E7EB", padding: 14, fontSize: FORM_INPUT_FONT_SIZE }}
+            style={
+              productError
+                ? { border: "2px solid #DC2626", background: "#FEF2F2", padding: 14, fontSize: FORM_INPUT_FONT_SIZE }
+                : { border: "1.5px solid #E4E7EB", padding: 14, fontSize: FORM_INPUT_FONT_SIZE }
+            }
             value={productName}
-            onChange={(e) => setProductName(e.target.value)}
+            onChange={(e) => {
+              setProductName(e.target.value);
+              setProductError(false);
+            }}
             onBlur={() => logUnmatchedProductName("buy", productName)}
             placeholder="예: 냉동 삼겹살 500kg 이상"
           />
+          {productError && (
+            <p className="mt-1.5 font-bold" style={{ fontSize: rem(15), color: "#DC2626" }} data-field-error>
+              찾는 품목을 적어 주세요
+            </p>
+          )}
         </div>
 
-        <div>
+        <div id="buy-field-contact">
           <FieldLabel need="required">연락처</FieldLabel>
           <ContactPhoneInput
             value={contactPhone}
@@ -303,6 +343,7 @@ export default function BuyPage() {
             }}
             autofilledValue={autofilledPhone}
             error={contactError}
+            strongError
           />
           <div className="mt-2.5">
             <GuestPrivacyConsent
@@ -312,6 +353,7 @@ export default function BuyPage() {
                 setPrivacyConsentError(false);
               }}
               error={privacyConsentError}
+              strongError
             />
           </div>
         </div>
@@ -516,8 +558,8 @@ export default function BuyPage() {
           대신 반투명+블러 카드 + 상단 페이드로, 스크롤 중인 폼 내용이 자연스럽게
           이어지도록 함. */}
       {/* 2026-09-29: 공용 하단 고정 버튼 — 판·블러 없이 버튼만 띄움 */}
-      <FloatingCTA>
-          {error && <FloatingCTANote>{error}</FloatingCTANote>}
+      <FloatingCTA shakeKey={shakeKey}>
+          {error && <div role="status"><FloatingCTANote tone="dark">{error}</FloatingCTANote></div>}
           <button
             onClick={submit}
             disabled={submitting}

@@ -8,6 +8,7 @@ import BusinessFooter from "@/components/BusinessFooter";
 import { useSearchParams } from "next/navigation";
 import { useCurrentPath } from "@/lib/useCurrentPath";
 import { withReturnTo } from "@/lib/safeReturnTo";
+import { DealListCardSkeleton, LoadFailNote, useSlowLoad } from "@/components/LoadingCards";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockDeals, mockCategories, mockRegions, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import AdSlot from "@/components/AdSlot";
@@ -38,7 +39,11 @@ function DealsPageInner() {
   const searchParams = useSearchParams();
   const initialCat = searchParams.get("category");
   const [view, setView] = useState<"active" | "closed">("active");
-  const [deals, setDeals] = useState<Deal[]>(mockDeals.filter((d) => d.status !== "closed"));
+  // 2026-10-07: 처음 불러오는 동안은 예시(mockDeals) 대신 회색 자리 표시 카드(데모 모드=Supabase 없음은 예시 그대로)
+  const [deals, setDeals] = useState<Deal[]>(isSupabaseConfigured ? [] : mockDeals.filter((d) => d.status !== "closed"));
+  const [dealsStatus, setDealsStatus] = useState<"loading" | "ok" | "error">(isSupabaseConfigured ? "loading" : "ok");
+  const [dealsRetry, setDealsRetry] = useState(0);
+  const dealsSlow = useSlowLoad(dealsStatus === "loading", dealsRetry);
   const [closedDeals, setClosedDeals] = useState<Deal[]>(
     mockDeals.filter((d) => d.status === "closed")
   );
@@ -77,7 +82,10 @@ function DealsPageInner() {
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return; // 데모 모드: mockDeals 사용
 
+    let cancelled = false;
+    setDealsStatus("loading");
     (async () => {
+      try {
       // 2026-10-01 PR-B: 카드에 소비기한 — SQL 전이면 새 컬럼 빼고 다시 조회
       const run = (priceCols: string, extra: string) => supabase!
         .from("deals")
@@ -92,7 +100,12 @@ function DealsPageInner() {
         return isMissingNewColumn(r.error) ? run(cols, "") : r;
       });
 
-      if (!error && data) {
+      if (cancelled) return;
+      if (error || !data) {
+        setDealsStatus("error");
+        return;
+      }
+      if (data) {
         setPriceHidden(hidden);
         setDeals(
           data.map((d) => ({
@@ -117,9 +130,16 @@ function DealsPageInner() {
             interest_count: d.interest_count ?? 0,
           }))
         );
+        setDealsStatus("ok");
+      }
+      } catch {
+        if (!cancelled) setDealsStatus("error");
       }
     })();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [dealsRetry]);
 
   // "지난 매물" 탭을 처음 열 때만 조회 (기본 탭에서 불필요한 요청을 안 하도록)
   useEffect(() => {
@@ -220,7 +240,8 @@ function DealsPageInner() {
     return discountSortKey(b) - discountSortKey(a);
   });
 
-  const showExamples = view === "active" && shouldShowExamples(filtered.length, isSupabaseConfigured);
+  const activeSettled = view !== "active" || dealsStatus === "ok";
+  const showExamples = view === "active" && activeSettled && shouldShowExamples(filtered.length, isSupabaseConfigured);
 
   // 카테고리 평균 할인율 — 표본 10건 이상인 카테고리만 (미달이면 배지 숨김)
   const avgDiscount = now ? avgDiscountByCategory(avgSamples, now) : {};
@@ -405,7 +426,7 @@ function DealsPageInner() {
           </span>
         </Link>
 
-        {filtered.length > 0 && (
+        {filtered.length > 0 && activeSettled && (
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-gray500">{filtered.length}건</span>
             <button
@@ -416,14 +437,26 @@ function DealsPageInner() {
             </button>
           </div>
         )}
-        {filtered.length === 0 && (
+        {view === "active" && !activeSettled && (
+          dealsStatus === "error" || dealsSlow ? (
+            <LoadFailNote onRetry={() => setDealsRetry((n) => n + 1)} />
+          ) : (
+            <>
+              <DealListCardSkeleton />
+              <DealListCardSkeleton />
+              <DealListCardSkeleton />
+              <DealListCardSkeleton />
+            </>
+          )
+        )}
+        {filtered.length === 0 && activeSettled && (
           view === "active" ? (
             <EmptyState category={activeCat} region={activeRegion} isMember={isMember} />
           ) : (
             <div className="text-center text-gray500 text-base py-10">아직 마감된 매물이 없어요.</div>
           )
         )}
-        {filtered.flatMap((d, idx) => {
+        {activeSettled && filtered.flatMap((d, idx) => {
           const isClosed = view === "closed";
           const card = (
             <DealListCard
