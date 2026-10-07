@@ -37,20 +37,17 @@ import SellGuestNotice from "@/components/SellGuestNotice";
 import { normalizeTitle, checkTitle, checkDescription } from "@/lib/titleGuard";
 import ConfirmWarnings, { BLOCK_COLOR, WARN_COLOR } from "@/components/ConfirmWarnings";
 import { COMPANY_DISCLOSURE_TEXT, CONSENT_TEXT } from "@/lib/consent";
+import SellDraftSheet from "@/components/SellDraftSheet";
+import {
+  readSellDraft, writeSellDraft, clearSellDraft, migrateLegacySellDraft, draftHasContent, markSellDraftResume, takeSellDraftResume,
+  type SellDraft, type StoredSellDraft,
+} from "@/lib/sellDraft";
 
-// 2026-09-30: 작성 중 내용 (sessionStorage) — 사진·영상은 이미 올라간 URL만 보관
-// 2026-10-03 fix/offline-auth-misjudge: 매니페스트 표도 보관(로그인 다녀와도 유지). 판매자 동의 체크는 다시 받으므로 제외
-const SELL_DRAFT_KEY = "dj_sell_draft";
 // 2026-10-03: 제출이 401·인터넷 끊김이어도 폼은 그대로 — 예전엔 401이면 비회원 화면으로 바뀌어 폼이 사라졌음(오프라인 가짜 401 포함)
 const AUTH_LOST_MESSAGE = "로그인이 풀렸어요. 입력한 내용은 그대로 있어요";
 const NETWORK_LOST_MESSAGE = "인터넷 연결이 끊겼어요. 연결 후";
-type SellDraft = {
-  companyName: string; isAnonymous: boolean; contactName: string; contactPhone: string; category: string;
-  categoryTouched: boolean; stockType: string; region: string; productName: string; quantity: string; quantityUnit: string;
-  minOrderQty: string; priceMode?: string; hopePrice: string; originalPrice: string; priceUnit: string; priceUnitTouched: boolean; hopeDurationHours: string;
-  description: string; packageUnit: string; origin: string; spec: string; storageType: string; expiryDate: string; pid: string;
-  images: string[]; videoUrl: string | null; manifestItems: ManifestRow[];
-};
+// 작성 중 내용 자동 저장 간격 — 화면이 가려질 때(visibilitychange·pagehide)는 기다리지 않고 바로 저장
+const DRAFT_SAVE_DEBOUNCE_MS = 500;
 
 export default function SellPage() {
   const router = useRouter();
@@ -83,7 +80,6 @@ export default function SellPage() {
   // 2026-09-30: 판매 신청은 회원 전용 — 비회원(로그인 안 함·가입 전)이면 폼 대신 SellGuestNotice.
   // checking 동안은 폼을 그리지 않음(작성 중 내용 복원 전 업로더가 먼저 마운트되지 않게).
   const [authState, setAuthState] = useState<"checking" | "member" | "guest">("checking");
-  const draftPhoneRef = useRef<string | null>(null); // 복원한 작성 중 연락처가 있으면 회원 번호로 덮어쓰지 않음
 
   // 로그인한 회원이면 인증된 번호를 미리 채워준다 — 대리 등록(다른 담당자
   // 연락처로 접수) 케이스가 있어서 수정은 그대로 허용한다.
@@ -110,7 +106,8 @@ export default function SellPage() {
       }
       setMemberId(userData.user.id);
       setAuthState("member");
-      if (member.phone && !draftPhoneRef.current) {
+      // 작성 중 내용은 회원 확인 뒤에 복원하므로, 이어서 쓰기를 고르면 초안의 연락처가 이 값을 덮어씀(초안 우선 — 예전과 같음)
+      if (member.phone) {
         const filled = formatPhone(member.phone);
         setContactPhone(filled);
         setAutofilledPhone(filled);
@@ -217,10 +214,16 @@ export default function SellPage() {
   const formRef = useRef<HTMLDivElement>(null);
   const [wideForm, setWideForm] = useState(false);
 
-  // 2026-09-30: 작성 중 내용 유지 — 제출 중 세션이 끊겨 로그인·가입을 다녀와도(returnTo=/sell) 이어서 쓰게
-  // sessionStorage에 보관. 저장소가 막혀 있으면(사생활 보호 모드 등) 조용히 넘어감. 카테고리 자동 추천 effect보다
-  // 뒤에 둬야 첫 렌더의 추천 effect가 복원한 카테고리를 비우지 않음.
+  // 2026-09-30: 작성 중 내용 유지 — 제출 중 세션이 끊겨 로그인·가입을 다녀와도(returnTo=/sell) 이어서 쓰게.
+  // 2026-10-07 PR 3: 탭 단위(sessionStorage) → 이 기기(localStorage, 회원별 키, 3일) — src/lib/sellDraft.ts.
+  // 전화·카메라 앱을 다녀오다 탭이 다시 열려도 남게. 회원 확인 뒤에 읽고, 알맹이가 있으면 SellDraftSheet로 묻는다.
+  // draftReady = 폼 그리기, draftSaving = 저장 켜짐(창에서 고르기 전엔 꺼서 뒤의 빈 폼이 초안을 덮어쓰지 않게)
   const [draftReady, setDraftReady] = useState(false);
+  const [draftSaving, setDraftSaving] = useState(false);
+  const [draftOffer, setDraftOffer] = useState<StoredSellDraft | null>(null);
+  // 이어서 쓰기로 복원하면 업로더(사진·영상·매니페스트)를 다시 마운트 — 처음 값(initialUrls 등)을 마운트 때만 읽어서
+  const [restoreKey, setRestoreKey] = useState(0);
+  const draftOwner = authState === "member" ? (memberId ?? (isSupabaseConfigured ? null : "local")) : null;
   // 측정 전 기본값 = 모바일(하단 고정 버튼). 첫 페인트 전에 한 번 재서 PC형이면 바로 인라인으로 바꿈
   useLayoutEffect(() => {
     const el = formRef.current;
@@ -247,20 +250,13 @@ export default function SellPage() {
     ro.observe(noteEl);
     return () => ro.disconnect();
   }, [noteEl]);
-  useEffect(() => {
-    let d: Partial<SellDraft> | null = null;
-    try {
-      const raw = window.sessionStorage.getItem(SELL_DRAFT_KEY);
-      d = raw ? (JSON.parse(raw) as Partial<SellDraft>) : null;
-    } catch {}
+  // 판매자 확인 동의(sellerTermsAgreed)는 초안에 없음 — 복원해도 다시 체크
+  const applyDraft = (d: Partial<SellDraft>) => {
     if (d) {
       if (typeof d.companyName === "string") setCompanyName(d.companyName);
       if (typeof d.isAnonymous === "boolean") setIsAnonymous(d.isAnonymous);
       if (typeof d.contactName === "string") setContactName(d.contactName);
-      if (typeof d.contactPhone === "string" && d.contactPhone) {
-        setContactPhone(d.contactPhone);
-        draftPhoneRef.current = d.contactPhone;
-      }
+      if (typeof d.contactPhone === "string" && d.contactPhone) setContactPhone(d.contactPhone);
       if (typeof d.categoryTouched === "boolean") setCategoryTouched(d.categoryTouched);
       if (typeof d.category === "string") setCategory(d.category);
       if (d.category) setCategoryEditing(false);
@@ -287,23 +283,78 @@ export default function SellPage() {
       if (typeof d.videoUrl === "string") setVideoUrl(d.videoUrl);
       if (Array.isArray(d.manifestItems)) setManifestItems(d.manifestItems.filter((r): r is ManifestRow => !!r && typeof r === "object"));
     }
-    setDraftReady(true);
-  }, []);
+    setRestoreKey((k) => k + 1);
+  };
+  // 회원 확인 뒤 한 번: 옛 탭 단위 초안 옮기기 → 읽기. 401로 로그인을 다녀온 길이면 묻지 않고 바로 복원(예전 동작)
   useEffect(() => {
-    if (!draftReady || done) return;
-    const d: SellDraft = {
-      companyName, isAnonymous, contactName, contactPhone, category, categoryTouched, stockType, region, productName,
-      quantity, quantityUnit, minOrderQty, priceMode, hopePrice, originalPrice, priceUnit, priceUnitTouched, hopeDurationHours, description,
-      packageUnit, origin, spec, storageType, expiryDate, pid, images, videoUrl, manifestItems,
-    };
-    try {
-      window.sessionStorage.setItem(SELL_DRAFT_KEY, JSON.stringify(d));
-    } catch {}
+    if (!draftOwner) return;
+    migrateLegacySellDraft(draftOwner);
+    const stored = readSellDraft(draftOwner);
+    const resume = takeSellDraftResume();
+    if (stored && resume) {
+      applyDraft(stored.data);
+      setDraftSaving(true);
+    } else if (stored && draftHasContent(stored.data)) {
+      setDraftOffer(stored); // 고를 때까지 폼은 빈 채로, 저장도 꺼 둠
+    } else {
+      setDraftSaving(true); // 초안 없음·연락처만 있는 초안(묻지 않고 무시 — 곧 지금 폼 값으로 덮어씀)
+    }
+    setDraftReady(true);
+  }, [draftOwner]);
+  const resumeDraft = () => {
+    if (draftOffer) applyDraft(draftOffer.data);
+    setDraftOffer(null);
+    setDraftSaving(true);
+  };
+  const discardDraft = () => {
+    if (draftOwner) clearSellDraft(draftOwner);
+    setDraftOffer(null);
+    setDraftSaving(true);
+  };
+  // 저장: 입력이 멈추고 0.5초 뒤. 아직 안 쓴 값은 pendingDraftRef에 두고, 화면이 가려지거나(앱 전환·잠금)
+  // 페이지를 떠나거나(pagehide) 이 화면을 벗어날 때(언마운트) 바로 씀
+  const pendingDraftRef = useRef<SellDraft | null>(null);
+  // 사진·영상은 올라간 URL만 들어 있음(업로드 중·실패한 사진은 images에 없음)
+  const currentDraft = (): SellDraft => ({
+    companyName, isAnonymous, contactName, contactPhone, category, categoryTouched, stockType, region, productName,
+    quantity, quantityUnit, minOrderQty, priceMode, hopePrice, originalPrice, priceUnit, priceUnitTouched, hopeDurationHours, description,
+    packageUnit, origin, spec, storageType, expiryDate, pid, images, videoUrl, manifestItems,
+  });
+  useEffect(() => {
+    if (!draftSaving || done || !draftOwner) return;
+    const d = currentDraft();
+    pendingDraftRef.current = d;
+    const t = setTimeout(() => {
+      pendingDraftRef.current = null;
+      writeSellDraft(draftOwner, d);
+    }, DRAFT_SAVE_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+    // currentDraft가 읽는 칸 전부를 아래에 나열(함수 자체는 매 렌더 새로 만들어져 넣지 않음)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    draftReady, done, companyName, isAnonymous, contactName, contactPhone, category, categoryTouched, stockType, region,
+    draftSaving, draftOwner, done, companyName, isAnonymous, contactName, contactPhone, category, categoryTouched, stockType, region,
     productName, quantity, quantityUnit, minOrderQty, priceMode, hopePrice, originalPrice, priceUnit, priceUnitTouched, hopeDurationHours,
     description, packageUnit, origin, spec, storageType, expiryDate, pid, images, videoUrl, manifestItems,
   ]);
+  useEffect(() => {
+    if (!draftSaving || done || !draftOwner) return;
+    const flush = () => {
+      const d = pendingDraftRef.current;
+      if (!d) return;
+      pendingDraftRef.current = null;
+      writeSellDraft(draftOwner, d);
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", flush);
+      flush(); // 이 화면을 벗어남(다른 탭·로그인 화면으로 이동) — 등록 성공 땐 pendingDraftRef를 먼저 비워 다시 쓰지 않음
+    };
+  }, [draftSaving, done, draftOwner]);
 
   // 2026-10-01 PR-A [11]: 매물명 막기(빨강)·확인 후 저장(주황) — 관리자 폼과 같은 규칙(src/lib/titleGuard.ts), 서버도 다시 검사
   const [titleError, setTitleError] = useState<string | null>(null);
@@ -455,8 +506,13 @@ export default function SellPage() {
         },
       });
       if (res.status === 401) {
-        // 세션이 끊김 — 폼은 그대로 두고 AuthExpiredNotice [로그인]으로 안내. 작성 중 내용은 sessionStorage에 남아 있어
-        // 로그인 후 /sell로 돌아오면 그대로 이어짐
+        // 세션이 끊김 — 폼은 그대로 두고 AuthExpiredNotice [로그인]으로 안내. 작성 중 내용은 지금 바로 저장하고
+        // "로그인 다녀오는 길" 표시를 남겨, 로그인 후 /sell로 돌아오면 묻지 않고 그대로 이어짐(sellDraft.ts)
+        if (draftOwner) {
+          pendingDraftRef.current = null;
+          writeSellDraft(draftOwner, currentDraft());
+          markSellDraftResume();
+        }
         setError(AUTH_LOST_MESSAGE);
         window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
         return;
@@ -516,10 +572,9 @@ export default function SellPage() {
         }
         throw new Error();
       }
+      pendingDraftRef.current = null; // 화면 전환(done) 때 남은 값을 다시 쓰지 않게
       setDone(true);
-      try {
-        window.sessionStorage.removeItem(SELL_DRAFT_KEY);
-      } catch {}
+      if (draftOwner) clearSellDraft(draftOwner);
     } catch (e) {
       setError(isAuthNetworkError(e) ? NETWORK_LOST_MESSAGE : "신청 처리 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");
     } finally {
@@ -1117,7 +1172,7 @@ export default function SellPage() {
                 placeholder="예: P809200159651 (리퀴데이션 파렛트라면 적어주세요)"
               />
             </div>
-            <ManifestUploader onChange={setManifestItems} initialRows={manifestItems} />
+            <ManifestUploader key={restoreKey} onChange={setManifestItems} initialRows={manifestItems} />
           </div>
         </FormAccordion>
 
@@ -1186,10 +1241,10 @@ export default function SellPage() {
             <FormSectionTitle hint="사진이 있으면 더 빨리 연결돼요">사진·영상</FormSectionTitle>
             <div className="flex flex-col gap-5">
               <div id="sell-photos">
-                <ImageUploader ref={imageUploaderRef} onChange={setImages} onStatusChange={setPhotoStatus} globalPaste initialUrls={images} max={getPhotoLimit({ bonus_photo_slots: bonusPhotoSlots })} />
+                <ImageUploader key={restoreKey} ref={imageUploaderRef} onChange={setImages} onStatusChange={setPhotoStatus} globalPaste initialUrls={images} max={getPhotoLimit({ bonus_photo_slots: bonusPhotoSlots })} />
               </div>
               <div id="sell-video">
-                <VideoUploader ref={videoUploaderRef} onChange={setVideoUrl} initialUrl={videoUrl} onStatusChange={setVideoStatus} />
+                <VideoUploader key={restoreKey} ref={videoUploaderRef} onChange={setVideoUrl} initialUrl={videoUrl} onStatusChange={setVideoStatus} />
               </div>
             </div>
           </section>
@@ -1283,6 +1338,7 @@ export default function SellPage() {
           submit(confirmWarnings, true);
         }}
       />
+      {draftOffer && <SellDraftSheet draft={draftOffer} onResume={resumeDraft} onDiscard={discardDraft} />}
       </>
       )}
     </main>
