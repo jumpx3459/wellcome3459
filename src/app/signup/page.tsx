@@ -10,6 +10,7 @@ import { sendOtp, verifyOtp, isValidKoreanPhone, toLocalPhone, formatPhoneTyping
 import { mockCategories, categoryIcons, categoryColors } from "@/lib/mockData";
 import { subscribeToPush, savePushSubscription } from "@/lib/pushClient";
 import { generateRefCode } from "@/lib/refCode";
+import { clearSavedRef, resolveSignupRef } from "@/lib/refStore";
 import Toast, { useToast } from "@/components/Toast";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 import { fmtLeft } from "@/lib/format";
@@ -327,12 +328,14 @@ function SignupPageInner() {
 
       // 추천 링크(?ref=짧은코드)로 들어왔으면 코드를 추천인의 실제 회원 id로 변환
       let referredById: string | null = null;
-      if (refCode) {
+      // 2026-10-07: URL ref가 우선, 없으면 이 기기에 저장해 둔 ref(다른 화면을 거쳐 와도 유지, src/lib/refStore.ts)
+      const effectiveRef = resolveSignupRef(refCode);
+      if (effectiveRef) {
         try {
           const res = await fetch("/api/resolve-ref", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ code: refCode }),
+            body: JSON.stringify({ code: effectiveRef }),
           });
           const resolved = await res.json();
           if (resolved.id && resolved.id !== userId) referredById = resolved.id;
@@ -371,6 +374,7 @@ function SignupPageInner() {
         return;
       }
 
+      clearSavedRef(); // 가입 성공 — 저장해 둔 추천 코드는 쓴 것
       if (kakaoWindow) {
         debugLog(`[signup] redirecting kakaoWindow -> ${KAKAO_CHANNEL_URL}`);
         kakaoWindow.location.href = KAKAO_CHANNEL_URL;

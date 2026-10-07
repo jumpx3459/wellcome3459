@@ -12,6 +12,7 @@ import DebugPanel from "./DebugPanel"; // TEMP DEBUG — 세션 소실 버그 �
 import { noteRouteChange, consumeReplaceFlag } from "@/lib/appNav";
 import { supabase } from "@/lib/supabase";
 import { markReturningMember } from "@/lib/returningMember";
+import { saveRefFromSearch } from "@/lib/refStore";
 
 // 관리자 화면은 운영자 전용 도구라 회원용 하단 탭바를 보여주지 않습니다.
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -48,6 +49,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const viaPop = popPath.current === path;
     popPath.current = null;
     noteRouteChange(path, viaPop ? "pop" : consumeReplaceFlag() ? "replace" : "push");
+  }, [pathname]);
+  // 2026-10-07: 어떤 페이지든 ?ref=CODE로 들어오면 기기에 저장(30일) — 홈 CTA·재방문 링크·탭·로그인↔가입으로 가도 가입 때 반영 (src/lib/refStore.ts)
+  useEffect(() => {
+    saveRefFromSearch(window.location.search);
   }, [pathname]);
   // 2026-09-27: 점핑파트너 영업용 데모 스킨(/p/[slug])은 실제 내비게이션이 있는
   // 앱 화면이 아니라 단일 랜딩 페이지라 하단 탭바가 어울리지 않음 — admin과
