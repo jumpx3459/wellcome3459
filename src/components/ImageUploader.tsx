@@ -53,6 +53,7 @@ export default function ImageUploader({
   initialUrls = [],
   adminKey,
   globalPaste = false,
+  cameraButtons = false,
   ref,
 }: {
   onChange: (urls: string[]) => void;
@@ -66,6 +67,9 @@ export default function ImageUploader({
   // 2026-10-02 PR-B: 업로더가 하나뿐인 화면(/sell)만 — 사진 영역에 포커스가 없어도 문서 어디서든 Ctrl+V로 사진을 받음
   // (글자 칸·contenteditable에 포커스가 있으면 무시). 끄면 사진 영역을 클릭·포커스했을 때만 받음
   globalPaste?: boolean;
+  // 2026-10-07 PR 3: 터치 기기에서 고르기 칸 대신 [카메라로 찍기]·[앨범에서 고르기] 두 버튼(/sell만). PC(마우스)는 기존 칸 그대로.
+  // 끄면(기본) 예전과 똑같음 — 관리자·MY 화면 영향 없음
+  cameraButtons?: boolean;
   ref?: Ref<ImageUploaderHandle>;
 }) {
   const [items, setItems] = useState<Item[]>(() =>
@@ -302,7 +306,15 @@ export default function ImageUploader({
       </div>
       <p className="mb-2" style={FORM_HINT_STYLE}>{displayHint}</p>
 
-      {items.length < max && (
+      {cameraButtons && !pointerFine ? (
+        <>
+          <div className="flex" style={{ gap: 8 }}>
+            <PickButton kind="camera" disabled={items.length >= max} onFiles={addFiles} />
+            <PickButton kind="album" disabled={items.length >= max} onFiles={addFiles} />
+          </div>
+          {items.length >= max && <p className="mt-1.5" style={FORM_HINT_STYLE}>최대 {max}장까지 올릴 수 있어요</p>}
+        </>
+      ) : items.length < max && (
         <label
           className="flex flex-col items-center justify-center border-2 border-dashed rounded-xl text-sm cursor-pointer text-center px-3"
           style={{
@@ -457,5 +469,61 @@ export default function ImageUploader({
       ))}
       <Toast message={toastMessage} />
     </div>
+  );
+}
+
+// cameraButtons 두 버튼 — 카메라는 capture="environment"(뒤 카메라 바로 열기, 한 장씩), 앨범은 기존 고르기 칸과 같은 input(여러 장)
+const PICK_BUTTONS = {
+  camera: { icon: "📷", text: "카메라로 찍기", border: "#f26a0d", background: "#fff7ed", color: "#c2410c" },
+  album: { icon: "🖼", text: "앨범에서 고르기", border: "#cbd5e1", background: "#fff", color: "#0B2540" },
+} as const;
+
+function PickButton({ kind, disabled, onFiles }: { kind: keyof typeof PICK_BUTTONS; disabled: boolean; onFiles: (files: File[]) => void }) {
+  const b = PICK_BUTTONS[kind];
+  return (
+    <label
+      aria-disabled={disabled || undefined}
+      className="flex-1 min-w-0 flex flex-col items-center justify-center text-center"
+      style={{
+        height: 64,
+        borderRadius: 14,
+        border: `1.5px solid ${disabled ? "#E5E7EB" : b.border}`,
+        background: disabled ? "#F3F4F6" : b.background,
+        color: disabled ? "#9CA3AF" : b.color,
+        cursor: disabled ? "not-allowed" : "pointer",
+      }}
+    >
+      <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1, filter: disabled ? "grayscale(1)" : undefined, opacity: disabled ? 0.6 : 1 }}>
+        {b.icon}
+      </span>
+      <span className="mt-1" style={{ fontSize: rem(15), fontWeight: 800, lineHeight: 1.2 }}>{b.text}</span>
+      {kind === "camera" ? (
+        <input
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          disabled={disabled}
+          data-pick="camera"
+          onChange={(e) => {
+            onFiles(Array.from(e.target.files ?? []));
+            e.target.value = "";
+          }}
+        />
+      ) : (
+        <input
+          type="file"
+          accept="image/*,.heic,.heif"
+          multiple
+          className="hidden"
+          disabled={disabled}
+          data-pick="album"
+          onChange={(e) => {
+            onFiles(Array.from(e.target.files ?? []));
+            e.target.value = ""; // 같은 파일을 다시 선택할 수 있도록 초기화
+          }}
+        />
+      )}
+    </label>
   );
 }

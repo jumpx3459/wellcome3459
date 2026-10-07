@@ -1241,7 +1241,7 @@ export default function SellPage() {
             <FormSectionTitle hint="사진이 있으면 더 빨리 연결돼요">사진·영상</FormSectionTitle>
             <div className="flex flex-col gap-5">
               <div id="sell-photos">
-                <ImageUploader key={restoreKey} ref={imageUploaderRef} onChange={setImages} onStatusChange={setPhotoStatus} globalPaste initialUrls={images} max={getPhotoLimit({ bonus_photo_slots: bonusPhotoSlots })} />
+                <ImageUploader key={restoreKey} ref={imageUploaderRef} onChange={setImages} onStatusChange={setPhotoStatus} globalPaste cameraButtons initialUrls={images} max={getPhotoLimit({ bonus_photo_slots: bonusPhotoSlots })} />
               </div>
               <div id="sell-video">
                 <VideoUploader key={restoreKey} ref={videoUploaderRef} onChange={setVideoUrl} initialUrl={videoUrl} onStatusChange={setVideoStatus} />
