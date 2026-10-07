@@ -9,14 +9,22 @@ import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
 // 웹푸시를 받을 수 없는 환경(인앱 브라우저 / iPhone 홈 화면 미설치) 안내 — PushStatusCard·가입 화면 공용.
 // 이 상태에선 [알림 켜기]를 누르게 하지 않는다(눌러도 실패).
-export default function PushBlockerNotice({ kind }: { kind: PushBlocker }) {
+// context="signup": 가입 화면 동의 아래 — 동의는 가입 때 저장되지만 기기 알림은 홈 화면 추가 뒤에야 온다는 사실을 먼저 알림 (2026-10-07)
+export default function PushBlockerNotice({ kind, context }: { kind: PushBlocker; context?: "signup" }) {
   const [manual, setManual] = useState(false); // iOS 인앱(카톡 외) — 자동으로 못 여는 경우
   const [copied, setCopied] = useState<boolean | null>(null);
 
   if (kind === "ios_needs_install") {
     return (
       <div className="rounded-lg leading-relaxed" style={{ background: "#F5F6F8", padding: "12px 14px", fontSize: rem(14), color: "#1A1F26" }}>
-        <p className="font-bold mb-2.5">{IOS_INSTALL_TITLE}</p>
+        {context === "signup" ? (
+          <div className="mb-2.5">
+            <p className="font-extrabold">알림 받기 동의는 저장돼요.</p>
+            <p className="font-bold">아이폰은 홈 화면에 추가해야 알림이 와요.</p>
+          </div>
+        ) : (
+          <p className="font-bold mb-2.5">{IOS_INSTALL_TITLE}</p>
+        )}
         <IosInstallSteps />
       </div>
     );

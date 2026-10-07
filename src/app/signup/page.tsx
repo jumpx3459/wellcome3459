@@ -889,7 +889,7 @@ function SignupPageInner() {
 
             {agreeDealAlert && pushBlocker && (
               <div className="mt-2">
-                <PushBlockerNotice kind={pushBlocker} />
+                <PushBlockerNotice kind={pushBlocker} context="signup" />
               </div>
             )}
             {agreeDealAlert && !pushBlocker && nonCanonicalHost && (

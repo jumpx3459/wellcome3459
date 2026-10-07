@@ -10,6 +10,7 @@ import { formatPrice, formatDealPrice } from "@/lib/format";
 import { formatCountdown } from "@/lib/format";
 import InstallAppButton, { useInstallPrompt } from "@/components/InstallAppButton";
 import { useAlertsOn } from "@/lib/useAlertsOn";
+import AlertGapCard from "@/components/AlertGapCard";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
@@ -287,6 +288,9 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
         <span className="flex-1 min-w-0 truncate" style={{ fontSize: rem(12.5), color: "#6B7480" }}>{myCondText}</span>
         <span className="flex-shrink-0 font-bold" style={{ fontSize: rem(12), color: "#E25100" }}>조건 수정</span>
       </TabLink>
+
+      {/* 2026-10-07: 동의는 있는데 이 기기는 알림을 못 받는 경우(가입 직후 포함) 사실 안내 — 알림 켜짐 줄과 함께 뜰 수 없음(구독 있으면 숨김) */}
+      <AlertGapCard />
 
       {alertsOn && (
         <div

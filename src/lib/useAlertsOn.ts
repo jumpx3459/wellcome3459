@@ -52,3 +52,27 @@ export function useAlertsOn(): boolean {
   }, []);
   return isAlertsOn(deviceSubscribed, dealConsent);
 }
+
+/** 매물 알림 동의는 true인데 이 기기엔 구독이 없는 이유 (2026-10-07). null = 구독 있음·조회 전 */
+export type AlertGapKind = "inapp" | "ios_needs_install" | "denied" | "off" | "unsupported" | "noncanonical";
+
+/** 회원 홈 "알림 받기 동의는 저장됐어요" 카드용 읽기 전용 판정 — 권한 요청·저장 없음. 화면이 다시 보일 때 다시 확인 */
+export function useAlertGap(): { consent: boolean | null; kind: AlertGapKind | null } {
+  const consent = useDealAlertConsent();
+  const [kind, setKind] = useState<AlertGapKind | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      const s = await getPushState();
+      if (!cancelled) setKind(s.status === "subscribed" ? null : s.status);
+    };
+    check();
+    const onVisible = () => document.visibilityState === "visible" && check();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
+  return { consent, kind };
+}
