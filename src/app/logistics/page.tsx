@@ -8,14 +8,6 @@ import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 
 import { FX_CURRENCIES as CURRENCIES } from "@/lib/fxCurrencies";
 
-// 관세율 프리셋 — 정확한 세율은 품목별 HS코드에 따라 다르므로 참고용 기본값만 제공
-const TARIFF_PRESETS = [
-  { label: "식품/농수산", rate: 8 },
-  { label: "의류/잡화", rate: 13 },
-  { label: "전자제품", rate: 0 },
-  { label: "직접 입력", rate: null },
-];
-
 // 물류 날씨용 17개 지역 대표 좌표 (도청/시청 소재지 기준)
 const REGION_COORDS: Record<string, { lat: number; lon: number }> = {
   서울: { lat: 37.5665, lon: 126.978 },
@@ -55,12 +47,12 @@ const TABS = [
   { key: "pallet", label: "📐 파렛트 적재" },
   { key: "weather", label: "🌤 물류 날씨" },
   { key: "fx", label: "💱 환율" },
-  { key: "tariff", label: "📦 관부가세" },
+  // 2026-10-08 4b-1: 관부가세 탭 삭제 — 예전 ?tab=tariff 링크는 TAB_KEYS 검사에서 걸러져 기본 탭(운송 매칭)으로 열림
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
 
-// 점핑전국물류 전용 보조 브랜드 컬러 (덤핑점핑 본체의 네이비/오렌지와 구분되는 틸 계열)
+// 점핑 도구함(2026-10-08, 예전 이름 "점핑전국물류") 전용 보조 브랜드 컬러 (덤핑점핑 본체의 네이비/오렌지와 구분되는 틸 계열)
 const TEAL = "#0E7490";
 const TEAL_LIGHT = "#5EEAD4";
 
@@ -93,9 +85,9 @@ function LogisticsPageInner() {
           </TabLink>
           <span className="text-white/70 text-xs tracking-wide">Powered by JumpX</span>
         </div>
-        <h1 className="font-display text-[1.2222rem] leading-tight">점핑전국물류</h1>
+        <h1 className="font-display text-[1.2222rem] leading-tight">점핑 도구함</h1>
         <p className="text-white/70 text-xs mt-1.5 leading-relaxed">
-          소싱부터 배송까지, 물류 실무 도구를 한 곳에 모았어요.
+          거래할 때 필요한 계산·날씨를 한 곳에 모았어요.
         </p>
       </div>
 
@@ -124,7 +116,6 @@ function LogisticsPageInner() {
 
       <div className="flex-1 px-5 py-5">
         {tab === "fx" && <FxCalculator />}
-        {tab === "tariff" && <TariffCalculator />}
         {tab === "weather" && <WeatherWidget />}
         {tab === "pallet" && <PalletCalculator />}
         {tab === "shipping" && <ShippingMatchTeaser />}
@@ -249,122 +240,6 @@ function FxCalculator() {
 
       <p className="text-[0.7222rem] text-gray500 leading-relaxed">
         ※ 유럽중앙은행이 하루 한 번 발표하는 기준 환율이며, 실제 송금·결제 시 은행/카드사 수수료가 추가로 붙을 수 있어요.
-      </p>
-    </div>
-  );
-}
-
-// ── 관부가세 계산기 ────────────────────────────────────────────
-function TariffCalculator() {
-  const [priceRaw, setPriceRaw] = useState("1,000,000");
-  const [freightRaw, setFreightRaw] = useState("100,000");
-  const [tariffRate, setTariffRate] = useState<number>(8);
-  const [customRate, setCustomRate] = useState("8");
-  const [includeVat, setIncludeVat] = useState(true);
-
-  const price = parsePriceInput(priceRaw) ?? 0;
-  const freight = parsePriceInput(freightRaw) ?? 0;
-  const cif = price + freight;
-  const tariff = Math.round((cif * tariffRate) / 100);
-  const vatBase = cif + tariff;
-  const vat = includeVat ? Math.round(vatBase * 0.1) : 0;
-  const totalTax = tariff + vat;
-  const totalCost = cif + totalTax;
-
-  return (
-    <div className="flex flex-col gap-5">
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-sm font-bold text-navy mb-2 block">상품가 (원)</label>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={priceRaw}
-            onChange={(e) => setPriceRaw(formatPriceInput(e.target.value))}
-            className="w-full border-2 border-gray200 rounded-xl px-3 py-3 text-base font-bold text-navy focus:outline-none focus:border-navy"
-          />
-        </div>
-        <div>
-          <label className="text-sm font-bold text-navy mb-2 block">운임+보험 (원)</label>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={freightRaw}
-            onChange={(e) => setFreightRaw(formatPriceInput(e.target.value))}
-            className="w-full border-2 border-gray200 rounded-xl px-3 py-3 text-base font-bold text-navy focus:outline-none focus:border-navy"
-          />
-        </div>
-      </div>
-      <p className="text-[0.7222rem] text-gray500 -mt-3">
-        💡 환율 계산기에서 나온 원화 환산액을 상품가에 입력하면 편해요.
-      </p>
-
-      <div>
-        <label className="text-sm font-bold text-navy mb-2 block">관세율</label>
-        <div className="flex flex-wrap gap-2">
-          {TARIFF_PRESETS.map((p) => (
-            <button
-              key={p.label}
-              onClick={() => {
-                if (p.rate !== null) setTariffRate(p.rate);
-                else setTariffRate(Number(customRate) || 0);
-              }}
-              className="text-sm px-3.5 py-2 rounded-full border-2 font-bold"
-              style={
-                (p.rate !== null && tariffRate === p.rate) || (p.rate === null && tariffRate === Number(customRate))
-                  ? { background: TEAL, borderColor: TEAL, color: "#fff" }
-                  : { borderColor: "#E4E7EB", color: "#6B7480" }
-              }
-            >
-              {p.label}
-              {p.rate !== null && ` ${p.rate}%`}
-            </button>
-          ))}
-          <input
-            type="text"
-            inputMode="decimal"
-            value={customRate}
-            onChange={(e) => {
-              const v = e.target.value.replace(/[^\d.]/g, "");
-              setCustomRate(v);
-              setTariffRate(Number(v) || 0);
-            }}
-            className="w-16 border-2 border-gray200 rounded-full px-2 py-2 text-sm font-bold text-center text-navy focus:outline-none focus:border-navy"
-          />
-          <span className="text-sm font-bold text-gray500 self-center">%</span>
-        </div>
-      </div>
-
-      <button
-        onClick={() => setIncludeVat((v) => !v)}
-        className="flex items-center gap-2 text-sm font-bold text-navy"
-      >
-        <span
-          className="w-5 h-5 rounded-md flex items-center justify-center text-xs"
-          style={includeVat ? { background: TEAL, color: "#fff" } : { border: "2px solid #E4E7EB" }}
-        >
-          {includeVat && "✓"}
-        </span>
-        부가세(10%) 포함해서 계산
-      </button>
-
-      <div className="rounded-2xl px-5 py-5 flex flex-col gap-2.5" style={{ background: "#F5F6F8" }}>
-        <Row label="과세가격 (CIF)" value={cif} />
-        <Row label={`관세 (${tariffRate}%)`} value={tariff} />
-        {includeVat && <Row label="부가세 (10%)" value={vat} />}
-        <div className="border-t border-gray200 my-1" />
-        <Row label="예상 세금 합계" value={totalTax} bold />
-        <div className="rounded-xl px-4 py-4 mt-1" style={{ background: TEAL }}>
-          <div className="text-xs font-bold" style={{ color: TEAL_LIGHT }}>
-            예상 총 수입원가
-          </div>
-          <div className="font-display text-2xl text-white mt-1">{totalCost.toLocaleString("ko-KR")}원</div>
-        </div>
-      </div>
-
-      <p className="text-[0.7222rem] text-gray500 leading-relaxed">
-        ※ 실제 관세율은 HS코드·품목·협정세율(FTA)에 따라 달라져요. 이 계산기는 사전 마진 검토용
-        참고자료이며, 정확한 세액은 관세청 또는 관세사를 통해 확인해주세요.
       </p>
     </div>
   );

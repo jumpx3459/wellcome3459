@@ -1503,7 +1503,7 @@ function AdminDashboard({
             <div className="text-sm text-gray500 mt-1">
               수량 {r.quantity}{r.quantity_unit || "개"}
               {r.min_order_qty ? ` (MOQ ${r.min_order_qty}${r.quantity_unit || "개"})` : ""}
-              {isNegotiable(r) ? ` · ${NEGOTIABLE_LABEL}` : r.hope_price ? ` · 희망단가 ${formatDealPrice(r.hope_price, r.quantity_unit, r.price_unit)}` : ""}
+              {isNegotiable(r) ? ` · ${NEGOTIABLE_LABEL}` : r.hope_price ? ` · 희망단가 ${formatDealPrice(r.hope_price, r.quantity_unit, r.price_unit, { exact: true })}` : ""}
               {r.hope_duration_hours
                 ? ` · 희망 마감 ${
                     r.hope_duration_hours >= 24
@@ -1513,7 +1513,7 @@ function AdminDashboard({
                 : " · 마감시점 협의 필요"}
             </div>
             {!isNegotiable(r) && r.original_price ? (
-              <div className="text-sm text-gray500 mt-1">정상단가 {formatDealPrice(r.original_price, r.quantity_unit, r.price_unit)}</div>
+              <div className="text-sm text-gray500 mt-1">정상단가 {formatDealPrice(r.original_price, r.quantity_unit, r.price_unit, { exact: true })}</div>
             ) : null}
             {(r.package_unit || r.spec || r.origin || storageSummary(r)) && (
               <div className="text-sm text-gray500 mt-1">
@@ -1782,7 +1782,7 @@ function AdminDashboard({
                 <span>연락처 삭제됨 (수집 90일 경과)</span>
               )}
               {b.quantity ? ` · 희망수량 ${b.quantity}` : ""}
-              {b.hope_price ? ` · 희망가 ${formatPriceWithUnit(b.hope_price, b.hope_price_unit)} 이하` : ""}
+              {b.hope_price ? ` · 희망가 ${formatPriceWithUnit(b.hope_price, b.hope_price_unit, { exact: true })} 이하` : ""}
             </div>
             {b.description && (
               <div className="text-sm text-gray500 mt-1 bg-gray100 rounded-lg px-3 py-2">
@@ -3475,7 +3475,7 @@ function DealForm({
                   </select>
                 </div>
                 <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }}>
-                  목록에 &quot;{formatDealPrice(30000, quantityUnit, priceUnit)}&quot;처럼 보여요 · 창고 출고가(배송비 별도)
+                  목록에 &quot;{formatDealPrice(30000, quantityUnit, priceUnit, { exact: true })}&quot;처럼 보여요 · 창고 출고가(배송비 별도)
                 </p>
               </DealFormField>
               <DealFormField label="정상 단가" error={fieldErrors.originalPrice} htmlFor="deal-originalPrice">

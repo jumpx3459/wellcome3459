@@ -84,9 +84,26 @@ export function priceUnitLabel(unit: string): string {
   return unit === "총액" || unit === "일괄" ? "일괄(전체)" : `${unit}당`;
 }
 
-// "30,000원/kg", "5,000,000원(일괄)"(예전 "총액"도 같게), 단위 없으면 "30,000원"
-export function formatPriceWithUnit(price: number, unit?: string | null): string {
-  const base = `${price.toLocaleString()}원`;
+// 금액 글자 (2026-10-08 4b-1) — 1억 이상만 한글 단위: 100,000,000 → "1억원", 120,000,000 → "1억 2,000만원",
+// 123,456,789 → "1억 2,345만 6,789원"(만 미만 자리가 있으면 원까지). 1억 미만은 예전 그대로 "30,000원".
+// 사용자 화면·푸시용. 관리자 화면은 정확한 원 단위가 필요해 formatPriceWithUnit(…, { exact: true })로 예전 형식.
+export const EOK = 100_000_000;
+export function formatKrwAmount(price: number): string {
+  if (!Number.isFinite(price) || Math.abs(price) < EOK) return `${price.toLocaleString()}원`;
+  const sign = price < 0 ? "-" : "";
+  const n = Math.round(Math.abs(price));
+  const eok = Math.floor(n / EOK);
+  const man = Math.floor((n % EOK) / 10_000);
+  const won = n % 10_000;
+  const parts = [`${eok.toLocaleString()}억`];
+  if (man) parts.push(`${man.toLocaleString()}만`);
+  if (won) parts.push(won.toLocaleString());
+  return `${sign}${parts.join(" ")}원`;
+}
+
+// "30,000원/kg", "5,000,000원(일괄)"(예전 "총액"도 같게), 단위 없으면 "30,000원". 1억 이상은 formatKrwAmount("1억 2,000만원/kg")
+export function formatPriceWithUnit(price: number, unit?: string | null, opts?: { exact?: boolean }): string {
+  const base = opts?.exact ? `${price.toLocaleString()}원` : formatKrwAmount(price);
   if (!unit) return base;
   // 예전 buy 저장값 "총액"도 "일괄"로 보여줌 (2026-09-29 이름 통일)
   return unit === "총액" || unit === "일괄" ? `${base}(일괄)` : `${base}/${unit}`;
@@ -96,6 +113,6 @@ export function formatPriceWithUnit(price: number, unit?: string | null): string
 // 기준 단위(quantity_unit)를 붙여 "2,000원/kg"으로 표시 (2026-09-29, 예전엔 "2,000원"만 보였음).
 // quantity_unit이 비어 있으면 등록 기본값("개").
 // 2026-09-29: 단가 단위(price_unit)를 따로 고를 수 있게 됨 — 있으면 그 단위, 없으면(기존 행) 수량 단위.
-export function formatDealPrice(price: number, quantityUnit?: string | null, priceUnit?: string | null): string {
-  return formatPriceWithUnit(price, priceUnit || quantityUnit || "개");
+export function formatDealPrice(price: number, quantityUnit?: string | null, priceUnit?: string | null, opts?: { exact?: boolean }): string {
+  return formatPriceWithUnit(price, priceUnit || quantityUnit || "개", opts);
 }

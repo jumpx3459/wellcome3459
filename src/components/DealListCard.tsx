@@ -4,7 +4,7 @@ import { formatDealPrice } from "@/lib/format";
 import DealCardMedia from "@/components/DealCardMedia";
 import PriceText from "@/components/PriceText";
 import { stockTypeBadge } from "@/lib/stockType";
-import { cardDiscountPct } from "@/lib/dealPriceAccess";
+import { cardDiscountPct, showStrikePrice } from "@/lib/dealPriceAccess";
 import { dealPriceLabel, isNegotiable } from "@/lib/priceMode";
 import NegotiablePrice from "@/components/NegotiablePrice";
 import MemberPriceTeaser from "@/components/MemberPriceTeaser";
@@ -51,6 +51,7 @@ export default function DealListCard({
     >
       <DealCardMedia
         image={d.images?.[0]}
+        imageCount={d.images?.length ?? 0}
         alt={d.title}
         category={d.category}
         discountPct={discountPct}
@@ -80,9 +81,12 @@ export default function DealListCard({
             <span className="text-lg font-black whitespace-nowrap" style={{ color: accent }}>
               <PriceText text={dealPriceLabel(d)} />
             </span>
-            <span className="text-sm text-gray500 font-normal line-through whitespace-nowrap">
-              <PriceText text={d.original_price != null ? formatDealPrice(d.original_price, d.quantity_unit, d.price_unit) : ""} />
-            </span>
+            {/* 2026-10-08 4b-1: 정상가가 없음·0·판매가 이하·판매가 없음이면 줄 그은 가격을 그리지 않음(할인율 배지와 같은 기준) */}
+            {showStrikePrice(d) && (
+              <span className="text-sm text-gray500 font-normal line-through whitespace-nowrap">
+                <PriceText text={formatDealPrice(d.original_price!, d.quantity_unit, d.price_unit)} />
+              </span>
+            )}
           </div>
         )}
         <div className="text-sm font-medium mt-1 flex items-center gap-x-1 min-w-0" style={{ color: "#495057" }}>

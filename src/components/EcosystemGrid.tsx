@@ -9,19 +9,21 @@ import { rem } from "@/lib/rem";
 // 2026-09-28: 긴급 공지(부동산·설비 처분) 추가 — 재고 매물과 톤이 달라 이 "부가 서비스"
 // 타일 자리에 둠. 4개가 돼서 3열 → 2열(2x2).
 // 2026-09-29 (가독성 2차): 제목 16px 굵게, 설명 14px #4B5563, 아이콘 34px·박스 60px.
+// 2026-10-08 4b-1: /logistics 이름이 "점핑 도구함"으로 바뀜 — 그 입구 타일(예전 "화물배차 · 3분 신청")도 같은 이름.
+// 설명 기준(대표 확정): 누르면 실제로 나오는 탭·기능 이름, 두 타일끼리 같은 단어 없음, 준비중 기능(운송 매칭)은 넣지 않음.
+//   점핑 도구함(/logistics, 탭: 운송 매칭[준비중]·파렛트 적재·물류 날씨·환율) → 환율은 계산기 타일 몫이라 빼고 "파렛트 적재·물류 날씨"
+//   계산기(/logistics?tab=fx → 환율 탭) → "환율"
+// 점핑 도구함 타일은 ?tab=pallet — /logistics 기본 탭(운송 매칭)은 준비중이라 설명대로 파렛트 적재가 바로 열리게(대표 확정). /logistics 기본 탭은 그대로
 const TILES = [
-  { href: "/logistics", icon: "🚚", title: "화물배차", desc: "3분 신청" },
-  { href: "/logistics?tab=fx", icon: "🧮", title: "계산기", desc: "환율·관부가세" },
+  { href: "/logistics?tab=pallet", icon: "🧰", title: "점핑 도구함", desc: "파렛트 적재·물류 날씨" },
+  { href: "/logistics?tab=fx", icon: "🧮", title: "계산기", desc: "환율" },
   { href: "/support", icon: "🏛️", title: "정부지원금", desc: "지원사업 찾기" },
   { href: "/notices", icon: "📋", title: "긴급 공지", desc: "부동산·설비 처분" },
 ];
 
 // 매물 상세 하단 "점핑 서비스" 컴팩트 2칸 (2026-09-29) — 링크는 위 TILES와 같은 경로를 그대로 씀.
-// 계산기 설명만 매물 맥락에 맞춰 "운임·관부가세".
-const COMPACT_TILES = [
-  { ...TILES[0] },
-  { ...TILES[1], desc: "운임·관부가세" },
-];
+// 2026-10-08 4b-1: 예전 계산기 설명 "운임·관부가세"(매물 맥락용)는 관부가세 탭 삭제로 위와 같은 설명
+const COMPACT_TILES = [{ ...TILES[0] }, { ...TILES[1] }];
 
 // 홈·마이페이지 "점핑 서비스" 섹션으로 가는 앵커 id — "전체 보기" 링크가 씀
 export const SERVICES_ANCHOR_ID = "services";
@@ -50,7 +52,7 @@ export function ServiceTilesCompact() {
           key={t.href}
           href={t.href}
           className="flex flex-col items-center justify-center text-center rounded-2xl bg-white border border-gray200 min-w-0"
-          style={{ height: 96, padding: "8px 6px" }}
+          style={{ minHeight: 96, padding: "8px 6px" }} // 2026-10-08: 고정 높이 → 최소 높이(설명이 두 줄이 돼도 칸 밖으로 안 넘침)
         >
           <span className="leading-none" style={{ fontSize: rem(32) }} aria-hidden>
             {t.icon}

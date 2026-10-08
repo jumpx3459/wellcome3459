@@ -940,7 +940,7 @@ function DealDetailPageInner() {
               <JumpxPreviewSheet dealId={deal.id} memberId={memberId} returnTo={`/deals/${deal.id}`} onClose={() => setJumpxSheetOpen(false)} />
             )}
 
-            {/* 2026-09-29: "🚚 화물이 필요하세요?" 카드 → "점핑 서비스" 컴팩트 섹션 (화물배차·계산기 2칸).
+            {/* 2026-09-29: "🚚 화물이 필요하세요?" 카드 → "점핑 서비스" 컴팩트 섹션 (화물배차·계산기 2칸 → 2026-10-08 점핑 도구함·계산기).
                 순서: 가격·정보 → 점핑매니저 카드 → (관심있어요 CTA는 하단 고정) → JUMP X(꺼짐) → 점핑 서비스.
                 "전체 보기"는 회원이면 MY, 비회원이면 홈의 같은 섹션 (MY는 비회원에게 로그인 화면만 보여서). */}
             <div className="mt-6" data-section="detail-services">
