@@ -21,7 +21,7 @@ import StockTypeBadge from "@/components/StockTypeBadge";
 import PriceText from "@/components/PriceText";
 import DealCardMedia from "@/components/DealCardMedia";
 import MemberPriceTeaser from "@/components/MemberPriceTeaser";
-import { selectWithPriceAccess, dealPriceFields, cardDiscountPct } from "@/lib/dealPriceAccess";
+import { selectWithPriceAccess, dealPriceFields, cardDiscountPct, showStrikePrice } from "@/lib/dealPriceAccess";
 import { dealPriceLabel, isNegotiable } from "@/lib/priceMode";
 import NegotiablePrice from "@/components/NegotiablePrice";
 import type { DealRowLoose } from "@/lib/dealFields";
@@ -412,7 +412,10 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                             </span>
                           )}
                           <span className="font-black" style={{ fontSize: rem(18), color: "#0B2540" }}><PriceText text={dealPriceLabel(d)} /></span>
-                          <span style={{ fontSize: rem(12.5), color: "#6B7480", textDecoration: "line-through" }}><PriceText text={d.original_price != null ? formatDealPrice(d.original_price, d.quantity_unit, d.price_unit) : ""} /></span>
+                          {/* 2026-10-08 4b-1: 정상가가 판매가보다 클 때만(할인율 배지와 같은 기준) */}
+                          {showStrikePrice(d) && (
+                            <span style={{ fontSize: rem(12.5), color: "#6B7480", textDecoration: "line-through" }}><PriceText text={formatDealPrice(d.original_price!, d.quantity_unit, d.price_unit)} /></span>
+                          )}
                         </>
                       )}
                     </span>
@@ -485,7 +488,9 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                     </span>
                     <span className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mt-1.5">
                       <span className="font-black" style={{ fontSize: rem(18), color: "#6B7480" }}><PriceText text={dealPriceLabel(d)} /></span>
-                      <span style={{ fontSize: rem(12.5), color: "#9AA3AD", textDecoration: "line-through" }}><PriceText text={d.original_price != null ? formatDealPrice(d.original_price, d.quantity_unit, d.price_unit) : ""} /></span>
+                      {showStrikePrice(d) && (
+                        <span style={{ fontSize: rem(12.5), color: "#9AA3AD", textDecoration: "line-through" }}><PriceText text={formatDealPrice(d.original_price!, d.quantity_unit, d.price_unit)} /></span>
+                      )}
                     </span>
                   </span>
                 </div>

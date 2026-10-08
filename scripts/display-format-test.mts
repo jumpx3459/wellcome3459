@@ -23,6 +23,7 @@ writeFileSync(join(dir, "split.ts"), splitSrc);
 const fm = await import(pathToFileURL(join(dir, "lib/format.ts")).href);
 const pm = await import(pathToFileURL(join(dir, "lib/priceMode.ts")).href);
 const sp = await import(pathToFileURL(join(dir, "split.ts")).href);
+const da = await import(pathToFileURL(join(dir, "lib/dealPriceAccess.ts")).href);
 
 let failed = 0;
 const eq = (got: unknown, want: unknown, msg: string) => {
@@ -62,6 +63,22 @@ eq(sp.splitPriceText("1억 2,345만 6,789원(일괄)"), ["1억 2,345만 6,789", 
 eq(sp.splitPriceText("1억원/kg"), ["1억", "원/kg"], "PriceText 1억원");
 eq(sp.splitPriceText("128,000원/박스"), ["128,000", "원/박스"], "PriceText 예전 형식 그대로");
 eq(sp.splitPriceText("가격 협의"), null, "PriceText 원 없음");
+
+// ── 정상가 숨김(줄 그은 가격·할인율 배지) — 5경우 + 정상
+const row = (original_price: number | null, deal_price: number | null) => ({ original_price, deal_price, price_mode: "fixed", price_hidden: false });
+for (const [name, r] of [
+  ["정상가 없음", row(null, 30_000)],
+  ["정상가 0", row(0, 30_000)],
+  ["정상가 = 판매가", row(30_000, 30_000)],
+  ["정상가 < 판매가", row(20_000, 30_000)],
+  ["판매가 없음", row(50_000, null)],
+  ["판매가 0(예전엔 100% 배지)", row(50_000, 0)],
+] as const) {
+  eq([da.showStrikePrice(r), da.cardDiscountPct(r)], [false, 0], `${name} → 줄 그은 가격·배지 없음`);
+}
+eq([da.showStrikePrice(row(50_000, 30_000)), da.cardDiscountPct(row(50_000, 30_000))], [true, 40], "정상가 > 판매가 → 둘 다 표시(40%)");
+eq(da.showStrikePrice({ original_price: 50_000, deal_price: 30_000, price_mode: "negotiable" }), false, "협의 매물은 줄 그은 가격 없음");
+eq([da.showStrikePrice({ original_price: 0, deal_price: 0, discount_pct: 30, price_hidden: true }), da.cardDiscountPct({ original_price: 0, deal_price: 0, discount_pct: 30, price_hidden: true })], [false, 30], "비회원 행은 DB 할인율 배지만");
 
 console.log(failed ? `\n${failed}건 실패` : "\n전부 통과");
 process.exit(failed ? 1 : 0);

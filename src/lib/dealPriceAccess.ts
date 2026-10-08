@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { isNegotiable, type PriceMode } from "@/lib/priceMode";
+import { discountPercent } from "@/lib/dealFields";
 
 // 2026-10-03 A안: 비회원 가격 비공개 — 판매가·정상가는 가입 회원(authenticated)에게만.
 // DB(supabase/migrations/20261003_*): anon은 deals.deal_price·original_price select 권한이 없고(B),
@@ -58,12 +59,18 @@ export function dealPriceFields(row: Record<string, any>, priceHidden: boolean):
     : { deal_price: row.deal_price as number, original_price: row.original_price as number, price_mode: "fixed", price_hidden: false };
 }
 
-/** 카드 할인율(정수, 0이면 배지 없음) — 회원 행은 지금까지와 같은 계산, 가격 없는 행은 DB discount_pct */
+/** 카드 할인율(정수, 0이면 배지 없음) — 가격 없는 행은 DB discount_pct.
+ *  2026-10-08 4b-1: 회원 행은 discountPercent(정상가 없음·0·판매가 이하·판매가 없음/0이면 배지 없음) — 예전엔 판매가 0이면 100%가 나왔음 */
 type PctRow = { original_price: number | null; deal_price: number | null; discount_pct?: number | null; price_hidden?: boolean; price_mode?: PriceMode };
 export function cardDiscountPct(d: PctRow): number {
   if (isNegotiable(d)) return 0;
   if (d.price_hidden) return d.discount_pct ?? 0;
-  return d.original_price && d.deal_price != null ? Math.round(((d.original_price - d.deal_price) / d.original_price) * 100) : 0;
+  return discountPercent(d.original_price, d.deal_price) ?? 0;
+}
+
+/** 정상가 줄 그은 가격을 그릴지 — 할인율 배지와 같은 기준(정상가가 판매가보다 클 때만). 협의·비회원 행은 가격 칸이 따로라 false */
+export function showStrikePrice(d: PctRow): boolean {
+  return !isNegotiable(d) && !d.price_hidden && discountPercent(d.original_price, d.deal_price) !== null;
 }
 
 /** 할인율순 정렬 키(비율) — 회원 행은 지금까지와 같은 계산 */
