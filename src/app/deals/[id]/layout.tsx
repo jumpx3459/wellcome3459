@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockDeals } from "@/lib/mockData";
 import { discountPercent } from "@/lib/dealFields";
+import { DEFAULT_OG_IMAGE } from "@/lib/ogImage";
 
 const GUEST_DESCRIPTION = "회원가 공개 · 덤핑점핑";
 
@@ -45,19 +46,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const ogTitle = discountPct && discountPct > 0 ? `${name} · ${discountPct}% ↓` : name;
   const title = `${ogTitle} | 덤핑점핑`;
 
+  // 2026-10-08 4b-1: 여기 openGraph·twitter는 루트 값을 통째로 덮어써서, 사진 없는 매물은 og 이미지가 아예 없었음 → 기본 이미지로 명시
+  const ogImages = image ? [image] : [DEFAULT_OG_IMAGE];
   return {
     title,
     description,
     openGraph: {
       title,
       description,
-      images: image ? [image] : undefined,
+      images: ogImages,
     },
     twitter: {
-      card: image ? "summary_large_image" : "summary",
+      card: "summary_large_image",
       title,
       description,
-      images: image ? [image] : undefined,
+      images: ogImages,
     },
   };
 }
