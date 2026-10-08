@@ -360,7 +360,8 @@ export default function Home() {
         <div className="px-5" style={{ paddingTop: "calc(24px - 0.25rem)" /* 카테고리 줄 아래 pb-1(0.25rem)이 이미 있어 그만큼 빼서 칩 아래 끝→제목 24px */ }}>
           <div className="flex items-center gap-1.5" style={{ marginBottom: 12 }}>
             <div className="text-base font-bold text-navy">
-              {isExample && previewStatus === "ok" ? "가입하면 이런 특가 알림이 와요" : "오늘 이런 매물이 올라왔어요"}
+              {/* 2026-10-08 4b-1: 실매물 제목 "오늘 이런 매물이 올라왔어요" → "최근 올라온 매물"(오늘 매물이 없을 때도 맞는 말). 예시 제목은 그대로 */}
+              {isExample && previewStatus === "ok" ? "가입하면 이런 특가 알림이 와요" : "최근 올라온 매물"}
             </div>
             {isExample && previewStatus === "ok" && (
               <span className="text-xs font-bold text-gray500 bg-gray100 px-2 py-0.5 rounded-full">

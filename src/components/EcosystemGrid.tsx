@@ -9,19 +9,18 @@ import { rem } from "@/lib/rem";
 // 2026-09-28: 긴급 공지(부동산·설비 처분) 추가 — 재고 매물과 톤이 달라 이 "부가 서비스"
 // 타일 자리에 둠. 4개가 돼서 3열 → 2열(2x2).
 // 2026-09-29 (가독성 2차): 제목 16px 굵게, 설명 14px #4B5563, 아이콘 34px·박스 60px.
+// 2026-10-08 4b-1: /logistics 이름이 "점핑 도구함"으로 바뀜 — 그 입구 타일(예전 "화물배차 · 3분 신청")도 같은 이름.
+// 관부가세 탭 삭제로 계산기 설명은 남은 계산 도구(환율·파렛트 적재)로
 const TILES = [
-  { href: "/logistics", icon: "🚚", title: "화물배차", desc: "3분 신청" },
-  { href: "/logistics?tab=fx", icon: "🧮", title: "계산기", desc: "환율·관부가세" },
+  { href: "/logistics", icon: "🧰", title: "점핑 도구함", desc: "계산·날씨" },
+  { href: "/logistics?tab=fx", icon: "🧮", title: "계산기", desc: "환율·파렛트" },
   { href: "/support", icon: "🏛️", title: "정부지원금", desc: "지원사업 찾기" },
   { href: "/notices", icon: "📋", title: "긴급 공지", desc: "부동산·설비 처분" },
 ];
 
 // 매물 상세 하단 "점핑 서비스" 컴팩트 2칸 (2026-09-29) — 링크는 위 TILES와 같은 경로를 그대로 씀.
-// 계산기 설명만 매물 맥락에 맞춰 "운임·관부가세".
-const COMPACT_TILES = [
-  { ...TILES[0] },
-  { ...TILES[1], desc: "운임·관부가세" },
-];
+// 2026-10-08 4b-1: 예전 계산기 설명 "운임·관부가세"(매물 맥락용)는 관부가세 탭 삭제로 위와 같은 설명
+const COMPACT_TILES = [{ ...TILES[0] }, { ...TILES[1] }];
 
 // 홈·마이페이지 "점핑 서비스" 섹션으로 가는 앵커 id — "전체 보기" 링크가 씀
 export const SERVICES_ANCHOR_ID = "services";
