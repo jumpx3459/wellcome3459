@@ -1,6 +1,11 @@
 // 회원 홈 카드 D안 글자 규칙 단위 시험 — src/lib/homeCard.ts (2026-10-09 4b-2).
 // 실행: node --experimental-strip-types scripts/home-card-test.mts   (Node 24 — 별도 패키지 없음, 운영 접속 없음)
-import { isTimerRed, regionQtyText, TIMER_RED_MS } from "../src/lib/homeCard.ts";
+import { join, dirname } from "node:path";
+import { pathToFileURL, fileURLToPath } from "node:url";
+
+// 앱 빌드의 타입 검사가 ".ts" 확장자 import를 막아서(다른 시험과 같게) 경로 문자열로 불러옴 — homeCard.ts는 다른 모듈 import 없음
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const { isTimerRed, regionQtyText, TIMER_RED_MS } = await import(pathToFileURL(join(root, "src/lib/homeCard.ts")).href);
 
 let failed = 0;
 const eq = (got: unknown, want: unknown, msg: string) => {
