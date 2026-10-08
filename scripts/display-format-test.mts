@@ -57,11 +57,12 @@ eq(pm.dealPriceLabel({ deal_price: null, quantity_unit: "kg" }), "가격 협의"
 // ── 푸시 본문(sendPush.ts가 쓰는 pushPriceParts)
 eq(pm.pushPriceParts({ deal_price: 120_000_000, original_price: 150_000_000, quantity_unit: "박스", price_unit: "일괄" }), { discountPrefix: "20%↓ · ", priceText: "1억 2,000만원(일괄)" }, "푸시 가격 억 표기");
 eq(pm.pushPriceParts({ deal_price: 30_000, original_price: null, quantity_unit: "kg" }), { discountPrefix: "", priceText: "30,000원/kg" }, "푸시 1억 미만 그대로");
-// ── PriceText 나누기: 금액 덩어리가 통째로 한 칸(띄어쓰기 포함) — 금액 중간에서 안 끊김
-eq(sp.splitPriceText("1억 2,000만원/박스"), ["1억 2,000만", "원/박스"], "PriceText 1억 2,000만원");
-eq(sp.splitPriceText("1억 2,345만 6,789원(일괄)"), ["1억 2,345만 6,789", "원(일괄)"], "PriceText 만 미만 자리");
-eq(sp.splitPriceText("1억원/kg"), ["1억", "원/kg"], "PriceText 1억원");
-eq(sp.splitPriceText("128,000원/박스"), ["128,000", "원/박스"], "PriceText 예전 형식 그대로");
+// ── PriceText 나누기: "원"은 금액 쪽, 줄바꿈은 단위 앞(+ 금액 안 억·만 사이 띄어쓰기)에서만 — 숫자 중간은 안 끊김
+eq(sp.splitPriceText("1억 2,000만원(일괄)"), { amount: ["1억", "2,000만원"], unit: "(일괄)" }, "PriceText 1억 2,000만원(일괄)");
+eq(sp.splitPriceText("1억 2,345만 6,789원/박스"), { amount: ["1억", "2,345만", "6,789원"], unit: "/박스" }, "PriceText 만 미만 자리");
+eq(sp.splitPriceText("1억원/kg"), { amount: ["1억원"], unit: "/kg" }, "PriceText 1억원");
+eq(sp.splitPriceText("30,000원/kg"), { amount: ["30,000원"], unit: "/kg" }, "PriceText 1억 미만 — 원은 금액 쪽");
+eq(sp.splitPriceText("30,000원"), { amount: ["30,000원"], unit: "" }, "PriceText 단위 없음");
 eq(sp.splitPriceText("가격 협의"), null, "PriceText 원 없음");
 
 // ── 정상가 숨김(줄 그은 가격·할인율 배지) — 5경우 + 정상
