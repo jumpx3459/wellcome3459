@@ -13,8 +13,9 @@ import { rem } from "@/lib/rem";
 // 설명 기준(대표 확정): 누르면 실제로 나오는 탭·기능 이름, 두 타일끼리 같은 단어 없음, 준비중 기능(운송 매칭)은 넣지 않음.
 //   점핑 도구함(/logistics, 탭: 운송 매칭[준비중]·파렛트 적재·물류 날씨·환율) → 환율은 계산기 타일 몫이라 빼고 "파렛트 적재·물류 날씨"
 //   계산기(/logistics?tab=fx → 환율 탭) → "환율"
+// 점핑 도구함 타일은 ?tab=pallet — /logistics 기본 탭(운송 매칭)은 준비중이라 설명대로 파렛트 적재가 바로 열리게(대표 확정). /logistics 기본 탭은 그대로
 const TILES = [
-  { href: "/logistics", icon: "🧰", title: "점핑 도구함", desc: "파렛트 적재·물류 날씨" },
+  { href: "/logistics?tab=pallet", icon: "🧰", title: "점핑 도구함", desc: "파렛트 적재·물류 날씨" },
   { href: "/logistics?tab=fx", icon: "🧮", title: "계산기", desc: "환율" },
   { href: "/support", icon: "🏛️", title: "정부지원금", desc: "지원사업 찾기" },
   { href: "/notices", icon: "📋", title: "긴급 공지", desc: "부동산·설비 처분" },
