@@ -71,18 +71,28 @@ export default function DealCardMedia({
           <span style={{ fontSize: rem(30), color: "#fff" }}>▶</span>
         </span>
       )}
-      {image && imageCount > 1 && (
-        <span className="absolute bottom-1.5 right-1.5 rounded font-bold text-white pointer-events-none" style={{ fontSize: rem(13), padding: "1px 6px", background: "rgba(0,0,0,.5)" }}>
-          1/{imageCount}
-        </span>
-      )}
-      {tag && (
-        <div
-          className="absolute bottom-2 left-2 rounded-full font-bold text-white pointer-events-none truncate"
-          style={{ maxWidth: "calc(100% - 72px)", background: "rgba(11,37,64,0.74)", fontSize: rem(13), lineHeight: 1.3, padding: "3px 10px" }}
-          data-media-tag
-        >
-          {tag}
+      {/* 아래 줄: 왼쪽 태그 · 오른쪽 사진 장수 — 한 줄(flex)에 두어 큰 글자·긴 태그에서도 겹치지 않음(태그가 말줄임으로 줄어듦).
+          2026-10-08 4b-1: 장수는 "1/N" 대신 "📷 N장", 2장 이상일 때만 */}
+      {(tag || (image && imageCount > 1)) && (
+        <div className="absolute bottom-2 left-2 right-2 flex items-end gap-2 pointer-events-none">
+          {tag && (
+            <div
+              className="min-w-0 rounded-full font-bold text-white truncate"
+              style={{ background: "rgba(11,37,64,0.74)", fontSize: rem(13), lineHeight: 1.3, padding: "3px 10px" }}
+              data-media-tag
+            >
+              {tag}
+            </div>
+          )}
+          {image && imageCount > 1 && (
+            <span
+              className="ml-auto flex-shrink-0 rounded font-bold text-white whitespace-nowrap"
+              style={{ fontSize: rem(13), lineHeight: 1.3, padding: "3px 7px", background: "rgba(0,0,0,.5)" }}
+              data-photo-count
+            >
+              📷 {imageCount}장
+            </span>
+          )}
         </div>
       )}
       {!closed && discountPct > 0 && (

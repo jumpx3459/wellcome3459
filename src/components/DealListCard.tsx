@@ -51,6 +51,7 @@ export default function DealListCard({
     >
       <DealCardMedia
         image={d.images?.[0]}
+        imageCount={d.images?.length ?? 0}
         alt={d.title}
         category={d.category}
         discountPct={discountPct}

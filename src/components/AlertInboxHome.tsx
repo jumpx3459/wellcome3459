@@ -380,8 +380,8 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                         </span>
                       )}
                       {d.images.length > 1 && (
-                        <span className="absolute bottom-1 right-1 rounded font-bold text-white" style={{ fontSize: rem(8), padding: "0 3px", background: "rgba(0,0,0,.5)", lineHeight: 1.5 }}>
-                          1/{d.images.length}
+                        <span className="absolute bottom-1 right-1 rounded font-bold text-white whitespace-nowrap" style={{ fontSize: rem(8), padding: "0 3px", background: "rgba(0,0,0,.5)", lineHeight: 1.5 }} data-photo-count>
+                          📷 {d.images.length}장
                         </span>
                       )}
                     </div>
