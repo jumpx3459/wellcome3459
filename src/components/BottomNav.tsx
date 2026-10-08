@@ -3,8 +3,6 @@
 import TabLink from "@/components/TabLink";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Flame } from "lucide-react";
-import { HouseIcon, MagnifyingGlassIcon, UserPlusIcon, HandshakeIcon, UserIcon } from "@phosphor-icons/react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { rem } from "@/lib/rem";
 import { withReturnTo } from "@/lib/safeReturnTo";
@@ -13,22 +11,22 @@ export const NAV_HEIGHT = 64;
 // 하단 탭 위에 붙는 고정 요소의 bottom 값 — 탭 높이 + iPhone 홈 인디케이터 (globals.css --nav-bottom)
 export const NAV_BOTTOM = "var(--nav-bottom)";
 
-// Flame(매물)만 lucide 유지 — 단일 도형이라 fill 전환에 문제없음.
-// 나머지는 진짜 solid weight를 지원하는 phosphor-icons로 교체
-// (lucide는 outline 전용이라 fill 강제 적용 시 아이콘이 깨짐 — Search/Bell/
-// Handshake/User는 손잡이·추·어깨 등 선으로만 된 디테일이 사라져 버림).
+// 2026-10-09 4b-2: 아이콘을 Microsoft Fluent Emoji 3D PNG(MIT, public/icons/nav/LICENSE)로 — 이모지 문자는 기기마다 모양이 달라 쓰지 않음.
+// 96×96 파일을 30×30 칸(안 여백 2px, 모서리 10px)에 표시. 현재 탭: 이름 #ea580c 800 + 아이콘 뒤 바탕 #ffedd5
+const NAV_ICON = (name: string) => `/icons/nav/${name}.png`;
 const BASE_TABS = [
-  { href: "/", label: "홈", icon: HouseIcon, lib: "phosphor" as const },
-  { href: "/deals", label: "매물", icon: Flame, lib: "lucide" as const },
-  { href: "/buy", label: "찾습니다", icon: MagnifyingGlassIcon, lib: "phosphor" as const },
+  { href: "/", label: "홈", icon: NAV_ICON("home") },
+  { href: "/deals", label: "매물", icon: NAV_ICON("deals") },
+  { href: "/buy", label: "찾습니다", icon: NAV_ICON("buy") },
 ];
 
 // 2026-10-04 4.5: 비회원 4번째 탭 "알림" → "가입" — 관심있어요(번호 입력)와 알림을 헷갈리지 않게 가입 경로를 하나로
-const SIGNUP_TAB = { href: "/signup", label: "가입", icon: UserPlusIcon, lib: "phosphor" as const };
-const SHARE_TAB = { href: "/mypage#referral", label: "공유", icon: HandshakeIcon, lib: "phosphor" as const };
-const MY_TAB = { href: "/mypage", label: "MY", icon: UserIcon, lib: "phosphor" as const };
+// 비회원 "가입" 탭 아이콘은 지시 5종 밖이라 같은 Fluent 3D의 Memo(가입서 쓰기)
+const SIGNUP_TAB = { href: "/signup", label: "가입", icon: NAV_ICON("signup") };
+const SHARE_TAB = { href: "/mypage#referral", label: "공유", icon: NAV_ICON("share") };
+const MY_TAB = { href: "/mypage", label: "MY", icon: NAV_ICON("my") };
 
-type Tab = (Omit<typeof MY_TAB, "href"> & { href: string }) | (typeof BASE_TABS)[number];
+type Tab = { href: string; label: string; icon: string };
 
 export default function BottomNav() {
   const pathname = usePathname();
@@ -95,7 +93,7 @@ export default function BottomNav() {
         if (!tab) {
           return (
             <div key={`placeholder-${i}`} className="flex-1 flex flex-col items-center justify-center gap-1" aria-hidden>
-              <span className="w-5 h-5 rounded-full bg-gray200" />
+              <span className="bg-gray200" style={{ width: 30, height: 30, borderRadius: 10 }} />
               <span className="rounded bg-gray200" style={{ width: 22, height: 8 }} />
             </div>
           );
@@ -107,23 +105,16 @@ export default function BottomNav() {
             href={tab.href}
             onClick={() => setHash(tab.href.includes("#") ? `#${tab.href.split("#")[1]}` : "")}
             className="flex-1 flex flex-col items-center justify-center gap-0.5"
+            aria-current={active ? "page" : undefined}
+            data-nav-active={active ? "1" : undefined}
           >
-            {tab.lib === "phosphor" ? (
-              <tab.icon
-                weight="fill"
-                className={active ? "w-5 h-5 text-brandOrange" : "w-5 h-5 text-gray500"}
-              />
-            ) : (
-              <tab.icon
-                fill="currentColor"
-                strokeWidth={0}
-                className={active ? "w-5 h-5 text-brandOrange" : "w-5 h-5 text-gray500"}
-              />
-            )}
             <span
-              className="font-bold"
-              style={{ fontSize: rem(14), color: active ? "#0B2540" : "#4B5563" }}
+              className="flex items-center justify-center flex-shrink-0"
+              style={{ width: 30, height: 30, padding: 2, borderRadius: 10, background: active ? "#ffedd5" : "transparent" }}
             >
+              <img src={tab.icon} alt="" width={26} height={26} draggable={false} style={{ width: 26, height: 26, display: "block" }} />
+            </span>
+            <span style={{ fontSize: rem(13), fontWeight: active ? 800 : 700, color: active ? "#ea580c" : "#475569", lineHeight: 1.2 }}>
               {tab.label}
             </span>
           </TabLink>
