@@ -10,10 +10,12 @@ import { rem } from "@/lib/rem";
 // 타일 자리에 둠. 4개가 돼서 3열 → 2열(2x2).
 // 2026-09-29 (가독성 2차): 제목 16px 굵게, 설명 14px #4B5563, 아이콘 34px·박스 60px.
 // 2026-10-08 4b-1: /logistics 이름이 "점핑 도구함"으로 바뀜 — 그 입구 타일(예전 "화물배차 · 3분 신청")도 같은 이름.
-// 관부가세 탭 삭제로 계산기 설명은 남은 계산 도구(환율·파렛트 적재)로
+// 설명 기준(대표 확정): 누르면 실제로 나오는 탭·기능 이름, 두 타일끼리 같은 단어 없음, 준비중 기능(운송 매칭)은 넣지 않음.
+//   점핑 도구함(/logistics, 탭: 운송 매칭[준비중]·파렛트 적재·물류 날씨·환율) → 환율은 계산기 타일 몫이라 빼고 "파렛트 적재·물류 날씨"
+//   계산기(/logistics?tab=fx → 환율 탭) → "환율"
 const TILES = [
-  { href: "/logistics", icon: "🧰", title: "점핑 도구함", desc: "계산·날씨" },
-  { href: "/logistics?tab=fx", icon: "🧮", title: "계산기", desc: "환율·파렛트" },
+  { href: "/logistics", icon: "🧰", title: "점핑 도구함", desc: "파렛트 적재·물류 날씨" },
+  { href: "/logistics?tab=fx", icon: "🧮", title: "계산기", desc: "환율" },
   { href: "/support", icon: "🏛️", title: "정부지원금", desc: "지원사업 찾기" },
   { href: "/notices", icon: "📋", title: "긴급 공지", desc: "부동산·설비 처분" },
 ];
@@ -49,7 +51,7 @@ export function ServiceTilesCompact() {
           key={t.href}
           href={t.href}
           className="flex flex-col items-center justify-center text-center rounded-2xl bg-white border border-gray200 min-w-0"
-          style={{ height: 96, padding: "8px 6px" }}
+          style={{ minHeight: 96, padding: "8px 6px" }} // 2026-10-08: 고정 높이 → 최소 높이(설명이 두 줄이 돼도 칸 밖으로 안 넘침)
         >
           <span className="leading-none" style={{ fontSize: rem(32) }} aria-hidden>
             {t.icon}
