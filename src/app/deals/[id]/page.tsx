@@ -20,7 +20,7 @@ import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 import { rem } from "@/lib/rem";
 import { authFetch, getFreshAccessToken, isAuthNetworkError } from "@/lib/authFetch";
 import { SECTION_TITLE_STYLE, SERVICES_ANCHOR_ID, ServiceTilesCompact } from "@/components/EcosystemGrid";
-import StockTypeBadge from "@/components/StockTypeBadge";
+import { stockTypeBadge } from "@/lib/stockType";
 import { isLumpSum } from "@/lib/priceUnit";
 import { CONNECTION_CONSENT_VERSION } from "@/lib/consent";
 import ConnectionConsentSheet from "@/components/ConnectionConsentSheet";
@@ -492,8 +492,10 @@ function DealDetailPageInner() {
 
       {/* 2026-09-29: 사진이 있으면 화면 폭 전체 1:1 + 옆으로 넘기기 + "1/N", 누르면 전체 화면(핀치 확대).
           사진이 없으면 예전처럼 3:1 자리표시 */}
+      {/* 2026-10-09 PR 4a 상세 첫 화면 B안: 사진은 위 여백 없이 3:2(360폭 → 240px), 썸네일 줄 대신 사진 아래 점 + 오른쪽 아래 "1/N".
+          사진 탭 = 전체 화면 보기(그대로). 목표: 카톡 인앱 360×640에서 매물명 끝이 하단 버튼 윗선보다 위 */}
       {hasPhotos ? (
-        <div className="pt-3">
+        <div>
           <PhotoCarousel
             ref={carouselRef}
             images={images}
@@ -501,6 +503,7 @@ function DealDetailPageInner() {
             index={photoIndex}
             onIndexChange={setPhotoIndex}
             onOpen={(i) => setViewerIndex(i)}
+            ratio="3/2"
             overlay={
               <div className="absolute top-2.5 right-2.5 pointer-events-none">
                 {deal.status === "closed" ? (
@@ -531,43 +534,14 @@ function DealDetailPageInner() {
         </div>
       )}
 
-      {images.length > 1 && (
-        <div className="flex gap-2 px-5 pt-3 overflow-x-auto">
-          {images.map((url, i) => (
-            <button
-              key={i}
-              onClick={() => {
-                setPhotoIndex(i);
-                carouselRef.current?.scrollToIndex(i);
-              }}
-              aria-label={`사진 ${i + 1} 보기`}
-              className="rounded-lg overflow-hidden flex-shrink-0"
-              style={{
-                width: "56px",
-                height: "56px",
-                border: photoIndex === i ? `2px solid ${color.solid}` : "2px solid transparent",
-              }}
-            >
-              <img src={url} alt={`사진 ${i + 1}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
-            </button>
-          ))}
+      <div className="px-5" style={{ paddingTop: hasPhotos ? 6 : 12 }}>
+        {/* 카테고리·재고 유형·예시 표시를 한 줄 13px 글자로(예전 알약 칩 줄) */}
+        <div className="truncate font-bold" style={{ fontSize: rem(13), color: color.text, marginBottom: 4 }} data-category-line>
+          {categoryIcons[deal.category] ?? "🗂️"} {deal.category}
+          {stockTypeBadge(deal.stock_type) && <span style={{ color: "#6B7480" }}> · {stockTypeBadge(deal.stock_type)}</span>}
+          {isExampleId && <span style={{ color: "#E25100" }}> · 예시 미리보기</span>}
         </div>
-      )}
-
-      <div className="px-5 pt-3">
-        <div className="flex items-center flex-wrap gap-1.5 mb-2">
-          <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: color.bg, color: color.text }}>
-            <span className="text-sm">{categoryIcons[deal.category] ?? "🗂️"}</span>
-            {deal.category}
-          </span>
-          <StockTypeBadge value={deal.stock_type} />
-          {isExampleId && (
-            <span className="inline-flex items-center gap-1 text-xs font-bold text-white px-2.5 py-1 rounded-full" style={{ background: "rgba(226,81,0,.85)" }}>
-              예시 미리보기
-            </span>
-          )}
-        </div>
-        <h1 className="font-display text-navy text-2xl leading-snug">{deal.title}</h1>
+        <h1 className="font-display text-navy text-2xl leading-snug" data-deal-title>{deal.title}</h1>
       </div>
 
       <div className="flex-1 p-5 flex flex-col gap-4" style={{ paddingBottom: "24px" }}>
