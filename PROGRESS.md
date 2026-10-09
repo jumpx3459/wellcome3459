@@ -62,6 +62,7 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - **[5] og 병합**: 매물 상세 openGraph가 공통 값(`BASE_OPEN_GRAPH`)을 펼친 뒤 덮어씀 — og:url = 매물 절대 주소, og:type = website, siteName 채움.
 - **[6] 4b-2 후속**: 회원 홈 카드 글 묶음 세로 가운데(카드 높이 그대로) · 하단 탭 현재 표시 바탕 #fdba74 + 맨 위 3px 막대 #ea580c · "＋ 매물 등록"은 같은 화면 주황 등록 배너가 보이면 숨김(IntersectionObserver, 0.2초 페이드).
 - 시험(가짜 env·`next build --webpack`·`.next`에 운영 Supabase 주소 0건·외부 요청 차단 — Google Fonts만): 화면 시험 115건 통과(새 4a 30 — ♡ 표시/해제·1.5초·비로그인 복귀·연결 요청 → ②·② 고정·재요청·마감 ③·FAB 숨김/표시·하단 탭 5·카드 가운데·상세 사진/카톡 인앱 실측 / 기존 4b-2 32(하단 탭 바탕 기대값 #fdba74로) · 4b-1 29 · /sell 24) · 단위 시험 13건(새 `heart-count`·`deal-cta`·`push-gone`) + PGlite SQL 8건 · tsc 0 · lint 오류 2(main과 같음). 캡처 `captures-pr4a`(360px·글자 100/115%).
+- **하트 집계 SQL `deal_heart_counts` 운영 DB 실행 완료(10/10, 대표 — 확인 조회 ①② 정상).** 배너 [무료 등록 →]를 흰 바탕·#c2410c 800·7px 12px·그림자로(글자 크기 그대로), 배너 자동 확인 6경우 재통과.
 - 마무리 시험(10/10): 화면 4a 30 + 추가 19 + 4b-2 32 + 4b-1 29 + /sell 24 통과 · 단위 14 · PGlite SQL 8 · tsc 0 · lint 오류 2(main과 같음). push·PR 생성(merge 안 함). 운영 SQL `20261009_deal_heart_counts.sql`은 merge 전에 실행해도 되고(함수만 추가), 실행 전엔 하트가 안 보임.
 - **4a 추가 지시(대표 확정: 사진 위 머리줄 유지·♥ 고정은 화면에서만·130% 매물명 3줄은 공개 후)**:
   - 상세 하단 ♡·주 버튼 줄을 흰 바탕 띠로(위 테두리 1px #e2e8f0, 8px 16px, 하단 탭 바로 위 — `FloatingCTA bar`, 본문 아래 여백은 띠 실제 높이). 카톡 인앱 360×640 실측: 매물명 끝 396px · 버튼 윗선 416px(여유 20px) · 흰 띠 윗선 407px. 글자 115%: 매물명 끝 410px — 버튼 윗선(416)보다는 위, 흰 띠 윗선(407)보다 3px 아래(마지막 줄 아래 여백이 띠에 살짝 겹침).
