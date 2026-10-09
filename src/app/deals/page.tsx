@@ -12,6 +12,10 @@ import { DealListCardSkeleton, LoadFailNote, useSlowLoad } from "@/components/Lo
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockDeals, mockCategories, mockRegions, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import AdSlot from "@/components/AdSlot";
+import SellFab from "@/components/SellFab";
+
+// 2026-10-09 4b-2: 카드 6장마다 넣던 "AD 광고 영역" 자리표시는 화면에서만 숨김(코드·AdSlot은 유지 — 광고 붙일 때 true)
+const SHOW_AD_SLOTS = false;
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import DealListCard from "@/components/DealListCard";
@@ -469,7 +473,7 @@ function DealsPageInner() {
             />
           );
 
-          return (idx + 1) % 6 === 0
+          return SHOW_AD_SLOTS && (idx + 1) % 6 === 0
             ? [card, <AdSlot key={`ad-${d.id}`} />]
             : [card];
         })}
@@ -497,6 +501,9 @@ function DealsPageInner() {
         </a>
         <BusinessFooter className="-mx-4 -mb-3.5 mt-2" />
       </div>
+      {/* 2026-10-09 4b-2: 떠 있는 "＋ 매물 등록" — 마지막 내용이 가리지 않게 맨 아래 90px */}
+      <div aria-hidden style={{ height: 90 }} />
+      <SellFab />
     </main>
   );
 }

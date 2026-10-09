@@ -6,36 +6,26 @@ import TabLink from "@/components/TabLink";
 import BusinessFooter from "@/components/BusinessFooter";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockDeals, type Deal } from "@/lib/mockData";
-import { formatPrice, formatDealPrice } from "@/lib/format";
-import { formatCountdown } from "@/lib/format";
 import InstallAppButton, { useInstallPrompt } from "@/components/InstallAppButton";
 import { useAlertsOn } from "@/lib/useAlertsOn";
 import AlertGapCard from "@/components/AlertGapCard";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import { formatDealLocation } from "@/lib/formatDealLocation";
-import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 import { matchesCategory } from "@/lib/dealMatching";
 import { EXAMPLE_DEALS, shouldShowExamples } from "@/lib/exampleDeals";
 import { rem } from "@/lib/rem";
-import StockTypeBadge from "@/components/StockTypeBadge";
-import PriceText from "@/components/PriceText";
-import DealCardMedia from "@/components/DealCardMedia";
-import MemberPriceTeaser from "@/components/MemberPriceTeaser";
-import { selectWithPriceAccess, dealPriceFields, cardDiscountPct, showStrikePrice } from "@/lib/dealPriceAccess";
-import { dealPriceLabel, isNegotiable } from "@/lib/priceMode";
-import NegotiablePrice from "@/components/NegotiablePrice";
+import HomeDealCard from "@/components/HomeDealCard";
+import SellFab from "@/components/SellFab";
+import { selectWithPriceAccess, dealPriceFields } from "@/lib/dealPriceAccess";
 import type { DealRowLoose } from "@/lib/dealFields";
 import { SECTION_TITLE_STYLE } from "@/components/EcosystemGrid";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 import { useBackToClose } from "@/lib/useBackToClose";
 
-// 헤더(점핑매니저 안내줄)의 실측 높이 — 아래 콘텐츠의 paddingTop 보정에 사용.
-// 2026-09-26 로컬 Playwright 실측 77.3px(360/390/430px 폭 동일) → 78로 올림.
-// 2026-09-26 (8) 타이틀 15.5px→20px로 키우며 재실측 83px(360/390/430px 폭 동일,
-// Playwright headless Chromium) → 그대로 반영.
-// 헤더 문구/폰트를 바꾸면 다시 재야 함. 원래 있던 헤더-콘텐츠 간격 14px은 별도로 더함.
-const INBOX_HEADER_HEIGHT = 83;
+// 헤더-콘텐츠 간격. 2026-10-09 4b-2: 헤더 고정(fixed) 해제 — 예전 실측 높이(83px) paddingTop 보정은 필요 없어짐
 const INBOX_HEADER_GAP = 14;
+// 떠 있는 "＋ 매물 등록" 버튼에 마지막 카드가 가리지 않게 목록 맨 아래에 더하는 여백
+const FAB_CLEARANCE = 90;
 
 const INSTALL_DISMISS_KEY = "dj_home_install_dismissed";
 // 2026-09-28: 회원 홈 = 내 조건에 맞는 진행 중 매물만 (전체는 /deals). 매칭 규칙은 푸시 발송과
@@ -178,8 +168,6 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
   useBackToClose(viewer !== null, () => setViewer(null));
 
   const groups = bucketDeals(deals);
-  // 매물 수 적을 땐 큰 카드(임팩트), 많아지면 촘촘한 리스트로 자동 전환
-  const wideLayout = deals.length <= 4;
 
   const openViewer = (e: React.MouseEvent, images: string[], video: string | null, index = 0) => {
     e.preventDefault();
@@ -195,7 +183,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
   };
 
   return (
-    <main className="flex flex-col min-h-screen bg-white" style={{ paddingBottom: 64, overflowX: "clip" }}>
+    <main className="flex flex-col min-h-screen bg-white" style={{ paddingBottom: 64 + FAB_CLEARANCE, overflowX: "clip" }}>
       {/* 2026-09-26: position:sticky였는데 실제로는 전혀 안 떠 있던 버그 발견 —
           layout.tsx의 overflow-x-hidden 단독 설정이 overflow-y를 auto로 계산시켜
           이 div가 의도치 않은 sticky 기준 컨테이너가 됐는데, 그 컨테이너 자체는
@@ -212,11 +200,10 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
           2026-09-27: manager.png는 불투명 흰 배경이 박혀있어 네이비 상단바
           위에서 흰 사각형이 그대로 보이는 문제 — buy 페이지와 동일하게 투명
           컷아웃(manager-cut.png)으로 교체, 뱃지처럼 마감하던 rounded-lg도 제거. */}
+      {/* 2026-10-09 4b-2: 고정(fixed) 해제 — 스크롤과 함께 사라짐(다시 나타나는 애니메이션 없음). 인앱 띠는 AppShell 자리 칸이 이미 밀어 줌 */}
       <div
-        className="fixed z-10 left-1/2 -translate-x-1/2 w-full max-w-md"
+        className="w-full"
         style={{
-          // 인앱 브라우저 배너(InAppBanner)가 떠 있으면 그 아래로
-          top: "calc(var(--sat) + var(--inapp-banner-h, 0px))",
           backgroundImage:
             "radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(120deg, #04101C, #1A4B78)",
           backgroundSize: "16px 16px, cover",
@@ -263,7 +250,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
         </div>
       </div>
 
-      <div style={{ padding: `${INBOX_HEADER_HEIGHT + INBOX_HEADER_GAP}px 20px 2px` }}>
+      <div style={{ padding: `${INBOX_HEADER_GAP}px 20px 2px` }}>
         <Link
           href="/sell"
           className="flex items-center justify-between rounded-xl"
@@ -322,110 +309,23 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
         </div>
       )}
 
-      {groups.map((g, gi) => (
-        <div key={g.label}>
-          <div className="flex items-center gap-2" style={{ padding: "12px 20px 6px" }}>
-            <span className="font-black" style={{ fontSize: rem(14), color: "#0B2540", letterSpacing: "0.02em" }}>{g.label}</span>
-            <span className="flex-1" style={{ height: 1, background: "#EEF0F2" }} />
-            <span className="font-mono font-bold" style={{ fontSize: rem(13), color: "#6B7480" }}>{g.items.length}건</span>
-          </div>
-          {g.items.map((d, di) => {
-            const cd = formatCountdown(d.closes_at);
-            const pct = cardDiscountPct(d);
-            return (
-              <Link
-                key={d.id}
-                href={`/deals/${d.id}`}
-                className="block w-full text-left"
-                style={{ borderBottom: "1px solid #F1F3F5", padding: "10px 20px", background: "#fff" }}
-              >
-                <div className="flex items-center gap-1.5" style={{ marginBottom: 6 }}>
-                  <span style={{ fontSize: rem(12), color: "#6B7480" }}>{d.location}</span>
-                  {/* 넓은 카드는 남은 시간이 사진 오른쪽 위(DealCardMedia), 좁은 썸네일 카드만 여기 */}
-                  {!wideLayout && (
-                    <span className="font-mono font-bold ml-auto" style={{ fontSize: rem(12), color: cd.urgent ? "var(--color-urgent)" : "#6B7480" }}>
-                      ⏱ {cd.label}
-                    </span>
-                  )}
-                </div>
-                <div className={wideLayout ? "flex flex-col gap-2.5" : "flex items-start gap-2.5"}>
-                  {wideLayout ? (
-                    <DealCardMedia
-                      image={d.images?.[0]}
-                      alt={d.title}
-                      category={d.category}
-                      discountPct={pct}
-                      closesAt={d.closes_at}
-                      videoUrl={d.video_url ?? null}
-                      imageCount={d.images?.length ?? 0}
-                      onMediaClick={d.images && d.images.length > 0 ? (e) => openViewer(e, d.images!, d.video_url ?? null) : undefined}
-                      eager={gi === 0 && di === 0}
-                      className="rounded-xl"
-                    />
-                  ) : d.images && d.images.length > 0 ? (
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => openViewer(e, d.images!, d.video_url ?? null)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") openViewer(e as unknown as React.MouseEvent, d.images!, d.video_url ?? null);
-                      }}
-                      className="relative rounded-xl overflow-hidden flex-shrink-0"
-                      style={{ width: 140, height: 140 }}
-                    >
-                      <img src={d.images[0]} alt={d.title} className="w-full h-full object-cover" />
-                      {d.video_url && (
-                        <span className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,.25)" }}>
-                          <span style={{ fontSize: wideLayout ? rem(32) : rem(18), color: "#fff" }}>▶</span>
-                        </span>
-                      )}
-                      {d.images.length > 1 && (
-                        <span className="absolute bottom-1 right-1 rounded font-bold text-white whitespace-nowrap" style={{ fontSize: rem(8), padding: "0 3px", background: "rgba(0,0,0,.5)", lineHeight: 1.5 }} data-photo-count>
-                          📷 {d.images.length}장
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <span
-                      className="rounded-xl overflow-hidden flex-shrink-0 block"
-                      style={{ width: 140, height: 140 }}
-                    >
-                      <NoPhotoPlaceholder category={d.category} size="sm" />
-                    </span>
-                  )}
-                  <span className="flex-1 min-w-0" style={{ overflowX: "clip", overflowWrap: "anywhere" }}>
-                    {d.stock_type && d.stock_type !== "general" && <StockTypeBadge value={d.stock_type} className="mb-1" />}
-                    <span className="block font-bold leading-snug" data-title style={{ fontSize: rem(17), color: "#1A1F26", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{d.title}</span>
-                    <span className="block mt-0.5" style={{ fontSize: rem(14), color: "#374151" }}>
-                      {d.category} · 잔여 {d.remaining_qty}{d.quantity_unit || "개"}
-                    </span>
-                    <span className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mt-1.5">
-                      {isNegotiable(d) ? (
-                        <NegotiablePrice color="#0B2540" className="text-lg" />
-                      ) : d.price_hidden ? (
-                        <MemberPriceTeaser discountPct={pct} color="#0B2540" className="text-lg" />
-                      ) : (
-                        <>
-                          {!wideLayout && pct > 0 && (
-                            <span className="font-black text-white rounded whitespace-nowrap" style={{ fontSize: rem(12), padding: "2px 7px", background: "#E25100" }}>
-                              -{pct}%
-                            </span>
-                          )}
-                          <span className="font-black" style={{ fontSize: rem(18), color: "#0B2540" }}><PriceText text={dealPriceLabel(d)} /></span>
-                          {/* 2026-10-08 4b-1: 정상가가 판매가보다 클 때만(할인율 배지와 같은 기준) */}
-                          {showStrikePrice(d) && (
-                            <span style={{ fontSize: rem(12.5), color: "#6B7480", textDecoration: "line-through" }}><PriceText text={formatDealPrice(d.original_price!, d.quantity_unit, d.price_unit)} /></span>
-                          )}
-                        </>
-                      )}
-                    </span>
-                  </span>
-                </div>
-              </Link>
-            );
-          })}
+      {/* 2026-10-09 4b-2 회원 홈 카드 D안 — 목록 바탕 #0d2943·바깥 여백 8px, 카드 흰 바탕·모서리 14px·사이 8px (src/components/HomeDealCard.tsx) */}
+      {groups.length > 0 && (
+        <div className="flex flex-col" style={{ background: "#0d2943", padding: 8, gap: 8 }} data-home-list>
+          {groups.map((g, gi) => (
+            <div key={g.label} className="flex flex-col" style={{ gap: 8 }}>
+              <div className="flex items-center gap-2" style={{ padding: "6px 6px 0" }}>
+                <span className="font-black" style={{ fontSize: rem(14), color: "#fff", letterSpacing: "0.02em" }}>{g.label}</span>
+                <span className="flex-1" style={{ height: 1, background: "rgba(255,255,255,0.18)" }} />
+                <span className="font-bold" style={{ fontSize: rem(13), color: "rgba(255,255,255,0.75)", fontVariantNumeric: "tabular-nums" }}>{g.items.length}건</span>
+              </div>
+              {g.items.map((d, di) => (
+                <HomeDealCard key={d.id} deal={d} eager={gi === 0 && di === 0} onOpenPhotos={(e, images, video) => openViewer(e, images, video)} />
+              ))}
+            </div>
+          ))}
         </div>
-      ))}
+      )}
 
       {loaded && groups.length === 0 && (
         <div className="text-center" style={{ padding: "40px 20px 28px" }}>
@@ -461,42 +361,11 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
             <span className="flex-1" style={{ height: 1, background: "#EEF0F2" }} />
             <span className="text-xs font-bold rounded-full" style={{ padding: "2px 8px", background: "#E9ECEF", color: "#495057" }}>예시</span>
           </div>
-          {EXAMPLE_DEALS.map((d) => {
-            const pct = d.original_price && d.deal_price != null ? Math.round(((d.original_price - d.deal_price) / d.original_price) * 100) : 0;
-            return (
-              <Link key={`example-${d.id}`} href={`/deals/example-${d.id}`} className="block w-full text-left" style={{ borderBottom: "1px solid #F1F3F5", padding: "10px 20px", opacity: 0.8 }}>
-                <div className="flex items-center gap-1.5" style={{ marginBottom: 6 }}>
-                  <span className="font-black rounded" style={{ fontSize: rem(11.5), padding: "3px 8px", background: "#E9ECEF", color: "#495057" }}>예시</span>
-                  <span style={{ fontSize: rem(12), color: "#6B7480" }}>{d.location}</span>
-                </div>
-                <div className="flex flex-col gap-2.5">
-                  <DealCardMedia
-                    image={d.images?.[0]}
-                    alt={d.title}
-                    category={d.category}
-                    discountPct={pct}
-                    closesAt={d.closes_at}
-                    videoUrl={d.video_url ?? null}
-                    imageCount={d.images?.length ?? 0}
-                    example
-                    className="rounded-xl"
-                  />
-                  <span className="flex-1 min-w-0" style={{ overflowX: "clip", overflowWrap: "anywhere" }}>
-                    <span className="block font-bold leading-snug" data-title style={{ fontSize: rem(17), color: "#1A1F26", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{d.title}</span>
-                    <span className="block mt-0.5" style={{ fontSize: rem(14), color: "#374151" }}>
-                      {d.category} · 잔여 {d.remaining_qty}{d.quantity_unit || "개"}
-                    </span>
-                    <span className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mt-1.5">
-                      <span className="font-black" style={{ fontSize: rem(18), color: "#6B7480" }}><PriceText text={dealPriceLabel(d)} /></span>
-                      {showStrikePrice(d) && (
-                        <span style={{ fontSize: rem(12.5), color: "#9AA3AD", textDecoration: "line-through" }}><PriceText text={formatDealPrice(d.original_price!, d.quantity_unit, d.price_unit)} /></span>
-                      )}
-                    </span>
-                  </span>
-                </div>
-              </Link>
-            );
-          })}
+          <div className="flex flex-col" style={{ background: "#0d2943", padding: 8, gap: 8 }}>
+            {EXAMPLE_DEALS.map((d) => (
+              <HomeDealCard key={`example-${d.id}`} deal={d} example />
+            ))}
+          </div>
           <p className="text-center" style={{ padding: "10px 20px 4px", fontSize: rem(11.5), color: "#9AA3AD" }}>
             실제 매물이 아닌 예시예요 · 매물이 등록되면 빠르게 알려드려요
           </p>
@@ -516,6 +385,9 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
 
       {/* 2026-09-30 (커밋 D): 단독 English 링크 → 사업자 정보 푸터의 링크 줄로 이동 */}
       <BusinessFooter className="mt-2" />
+
+      {/* 2026-10-09 4b-2: 떠 있는 "＋ 매물 등록" — 맨 아래 여백(FAB_CLEARANCE)은 main paddingBottom에 */}
+      <SellFab />
 
       {viewer && (
         <div
