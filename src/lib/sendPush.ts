@@ -5,6 +5,7 @@ import { selectDealAlertMembers, selectNoticeAlertMembers } from "@/lib/dealMatc
 import { pushPriceParts } from "@/lib/priceMode";
 import { stockTypeBadge } from "@/lib/stockType";
 import { normalizePhone } from "@/lib/phone";
+import { isGoneSubscription, isKeyMismatch } from "@/lib/pushGone";
 
 // 2026-10-05: 모든 웹푸시 공통 옵션 — urgency high(기기 절전 중에도 바로 전달), TTL 6시간(지나면 오래된 매물·공지 알림을 버림).
 // 옵션 없이 보내면 urgency 보통·TTL 4주 기본값이라 기기가 알림을 미루거나 한참 뒤 몰아서 띄울 수 있었음.
@@ -72,12 +73,8 @@ export function isQuietHoursKST(now = new Date()) {
 // 매물당 1회만 — push_sent_at이 이미 있으면 skip, 발송 직전에 push_sent_at을 조건부로 채워 중복 발송(등록+cron 동시 실행)을 막는다.
 // 2026-09-30 (커밋 K): 발송 결과 410 Gone·404 Not Found = 브라우저에서 구독이 영구 해지됨 → 그 구독 행 삭제.
 // 다른 오류(일시 장애·429·5xx 등)는 다음 발송에서 다시 시도하도록 유지. 예전엔 만료 구독이 남아 "알림 활성"에 계속 잡혔음.
-// 2026-10-01: 403도 죽은 구독 — VAPID 키가 바뀐 뒤 예전 키로 만든 구독은 푸시 서비스가 403(키 불일치)을 돌려줌.
-// (9/28 구독이 키 변경 전 키라 발송은 failed인데 MY는 "알림 받는 중"이었던 사례) 브라우저는 다음 방문 때 새 키로 자동 재구독.
-function isGoneSubscription(e: unknown) {
-  const code = (e as { statusCode?: number } | null)?.statusCode;
-  return code === 410 || code === 404 || code === 403;
-}
+// 2026-10-01: 403도 죽은 구독으로 지웠음(VAPID 키 변경 뒤 예전 키 구독). 2026-10-09 4a: 403은 삭제 중지·기록만 —
+// 키 환경변수를 잘못 바꾸면 정상 구독이 한꺼번에 지워질 수 있어서(대표 결정). 판정은 src/lib/pushGone.ts
 
 // 발송 실패 이유(notification_logs.error_code·error_message) — 비밀값 없이 짧게
 function pushErrorInfo(e: unknown) {
@@ -100,7 +97,7 @@ async function pruneGoneSubscriptions(supabaseAdmin: SupabaseClient, endpoints: 
     .delete({ count: "exact" })
     .in("endpoint", endpoints);
   if (error) console.error(`[${label}] 만료 구독 삭제 실패 ${endpoints.length}건`, error.message);
-  else console.info(`[${label}] 만료·키 불일치 구독 삭제 ${count ?? endpoints.length}건 (410/404/403)`);
+  else console.info(`[${label}] 만료 구독 삭제 ${count ?? endpoints.length}건 (404/410)`);
 }
 
 export async function sendDealPush(dealId: string) {
@@ -397,8 +394,9 @@ export async function sendAdminPush(title: string, body: string, url: string, ta
       );
       delivered.push(sub.id);
     } catch (e) {
-      // 운영자 알림은 베스트에포트 — 영구 해지(410/404)만 정리
+      // 운영자 알림은 베스트에포트 — 영구 해지(410/404)만 정리. 403(키 불일치)은 지우지 않고 기록만
       if (isGoneSubscription(e)) gone.push(sub.endpoint);
+      else if (isKeyMismatch(e)) console.warn("[sendAdminPush] 403 키 불일치 — 구독 유지", pushErrorInfo(e));
     }
   }
   await markDelivered(supabaseAdmin, delivered, "sendAdminPush");
