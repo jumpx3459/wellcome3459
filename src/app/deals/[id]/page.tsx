@@ -558,9 +558,9 @@ function DealDetailPageInner() {
         </div>
       )}
 
-      <div className="px-5" style={{ paddingTop: 12 }}>
+      <div className="px-5" style={{ paddingTop: hasPhotos ? 8 : 12 }}>
         {/* 카테고리·재고 유형·예시 표시를 한 줄 13px 글자로(예전 알약 칩 줄) */}
-        <div className="truncate font-bold" style={{ fontSize: rem(13), color: color.text, marginBottom: 4 }} data-category-line>
+        <div className="truncate font-bold" style={{ fontSize: rem(13), color: color.text, marginBottom: 2 }} data-category-line>
           {categoryIcons[deal.category] ?? "🗂️"} {deal.category}
           {stockTypeBadge(deal.stock_type) && <span style={{ color: "#6B7480" }}> · {stockTypeBadge(deal.stock_type)}</span>}
           {isExampleId && <span style={{ color: "#E25100" }}> · 예시 미리보기</span>}
