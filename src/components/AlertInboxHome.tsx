@@ -7,7 +7,7 @@ import BusinessFooter from "@/components/BusinessFooter";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockDeals, type Deal } from "@/lib/mockData";
 import InstallAppButton, { useInstallPrompt } from "@/components/InstallAppButton";
-import { useAlertsOn } from "@/lib/useAlertsOn";
+import { useAlertsOffNotice } from "@/lib/useAlertsOn";
 import AlertGapCard from "@/components/AlertGapCard";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import { formatDealLocation } from "@/lib/formatDealLocation";
@@ -26,6 +26,8 @@ import { useBackToClose } from "@/lib/useBackToClose";
 const INBOX_HEADER_GAP = 14;
 // 떠 있는 "＋ 매물 등록" 버튼에 마지막 카드가 가리지 않게 목록 맨 아래에 더하는 여백
 const FAB_CLEARANCE = 90;
+// 매물 목록 바탕(2026-10-09 4a: 네이비 → 밝은 회색) — 예시 카드 영역도 같은 바탕
+const HOME_LIST_BG = "#eef1f5";
 
 const INSTALL_DISMISS_KEY = "dj_home_install_dismissed";
 // 2026-09-28: 회원 홈 = 내 조건에 맞는 진행 중 매물만 (전체는 /deals). 매칭 규칙은 푸시 발송과
@@ -56,14 +58,14 @@ function bucketDeals(deals: Deal[]): FeedGroup[] {
 }
 
 export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: boolean }) {
-  const [categories, setCategories] = useState<string[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [outsideCount, setOutsideCount] = useState(0); // 내 조건 밖 진행 중 매물 수
   const [showInstall, setShowInstall] = useState(true);
   const { canInstall, promptInstall, hasNativePrompt } = useInstallPrompt();
   // 2026-10-06: 알림을 켠 뒤 사라지지 않는 완료 표시 — 이 기기 구독 + 매물 알림 최신 동의가 모두 있을 때만 (PushStatusCard와 같은 판정)
-  const alertsOn = useAlertsOn();
+  // 2026-10-09 PR 4a: 초록 "✓ 알림 켜짐" 줄 삭제 — 확실히 꺼졌을 때만 배너 아래 "🔕 알림이 꺼져 있어요"(src/lib/alertsNotice.ts)
+  const alertsOff = useAlertsOffNotice();
   const [, setTick] = useState(0);
   useEffect(() => {
     try {
@@ -127,11 +129,6 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
       const dealRows = (matchRes.data ?? []).filter((d) => matchesCategory(d.category_id as number, catIds));
       setOutsideCount(Math.max(0, (totalCount ?? 0) - (matchRes.count ?? dealRows.length)));
 
-      setCategories(
-        (catRows ?? [])
-          .map((r) => (r.categories as unknown as { name: string } | null)?.name)
-          .filter((n): n is string => Boolean(n))
-      );
       setDeals(
         (dealRows ?? []).map((d) => ({
           id: d.id,
@@ -157,11 +154,6 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
     })();
   }, []);
 
-  const condCats =
-    categories.length > 0
-      ? categories.slice(0, 2).join("·") + (categories.length > 2 ? ` 외 ${categories.length - 2}` : "")
-      : "전체 카테고리";
-  const myCondText = condCats; // 2026-10-04: 매물 알림은 카테고리만 — 지역은 조건이 아님
 
   const [viewer, setViewer] = useState<{ images: string[]; video: string | null; index: number } | null>(null);
   // 2026-10-01 PR-C: 열려 있으면 안드로이드 뒤로가기 = 이것만 닫기 (src/lib/useBackToClose.ts)
@@ -239,9 +231,10 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
                   두 줄→한 줄로 바뀌며 바 높이(83px 실측 튜닝값)도 어긋나 빈 틈이
                   생기는 걸 확인 — 제목 폭·바 높이를 그대로 지키기 위해 태그는
                   다시 둘째 줄로 되돌리되, 그 줄 안에서만 justify-end로 우측 정렬. */}
-              <div className="font-display truncate" style={{ fontSize: rem(18), color: "#fff" }}>
+              {/* 2026-10-09 PR 4a: 누르면 MY 관심 카테고리 구역(펼친 상태)으로 — 조건 줄을 지운 대신. 모양은 그대로(새 버튼 없음) */}
+              <TabLink href="/mypage#categories" className="block font-display truncate" style={{ fontSize: rem(18), color: "#fff" }} data-cond-link>
                 {deals.length > 0 ? `내 조건 긴급매물 ${deals.length}건` : "내 조건 긴급매물"}
-              </div>
+              </TabLink>
               <div className="flex justify-end">
                 <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
               </div>
@@ -251,53 +244,52 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
       </div>
 
       <div style={{ padding: `${INBOX_HEADER_GAP}px 20px 2px` }}>
+        {/* 2026-10-09 PR 4a: 두 줄일 때 둘째 줄을 이모지 뒤로 들여씀(내어쓰기 1.6em, 낱말 중간 줄바꿈 없음). 한 줄이면 그대로 */}
         <Link
           href="/sell"
-          className="flex items-center justify-between rounded-xl"
-          style={{ background: "#FF6F0F", padding: "13px 16px", boxShadow: "0 2px 10px rgba(255,111,15,0.35)" }}
+          className="flex items-center justify-between gap-2 rounded-xl text-sm"
+          style={{ background: "#FF6F0F", padding: "13px 14px", boxShadow: "0 2px 10px rgba(255,111,15,0.35)" }}
           data-sell-banner
         >
-          <span className="text-sm font-bold text-white">📦 잠든 재고, 깨워서 현금으로</span>
+          <span className="min-w-0 font-bold text-white" style={{ paddingLeft: "1.6em", textIndent: "-1.6em", wordBreak: "keep-all" }} data-sell-banner-text>
+            📦 잠든 재고, 깨워서 현금으로
+          </span>
           <span
-            className="text-xs font-bold text-white rounded-full flex-shrink-0"
-            style={{ background: "rgba(255,255,255,0.25)", padding: "4px 10px" }}
+            className="font-bold text-white rounded-full flex-shrink-0 whitespace-nowrap"
+            style={{ background: "rgba(255,255,255,0.25)", padding: "6px 10px", fontSize: "0.76em" }}
           >
             무료 등록 →
           </span>
         </Link>
+        {alertsOff && (
+          <div
+            role="status"
+            data-alerts-off
+            className="flex items-center gap-2.5"
+            style={{ marginTop: 10, background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 12, padding: "10px 12px" }}
+          >
+            <div className="flex-1 min-w-0" style={{ color: "#9a3412" }}>
+              <div className="font-bold" style={{ fontSize: rem(15), lineHeight: 1.35 }}>🔕 알림이 꺼져 있어요</div>
+              <div style={{ fontSize: rem(13), lineHeight: 1.35, marginTop: 2 }}>새 매물을 놓칠 수 있어요</div>
+            </div>
+            {/* 기존 알림 켜기 흐름 그대로 — MY 알림 구역(PushStatusCard)에서 켬 */}
+            <TabLink
+              href="/mypage#alerts"
+              className="flex-shrink-0 rounded-full text-white whitespace-nowrap"
+              style={{ background: "#ea580c", fontWeight: 800, fontSize: rem(15), padding: "8px 16px" }}
+              data-alerts-on-button
+            >
+              켜기
+            </TabLink>
+          </div>
+        )}
       </div>
 
-      <TabLink
-        href="/mypage#alerts"
-        className="flex items-center gap-2 w-full text-left"
-        style={{ borderBottom: "1px solid #F1F3F5", padding: "9px 20px" }}
-      >
-        <span style={{ fontSize: rem(12) }}>⚙️</span>
-        <span className="flex-1 min-w-0 truncate" style={{ fontSize: rem(12.5), color: "#6B7480" }}>{myCondText}</span>
-        <span className="flex-shrink-0 font-bold" style={{ fontSize: rem(12), color: "#E25100" }}>조건 수정</span>
-      </TabLink>
+      {/* 2026-10-09 PR 4a: 조건 줄("⚙️ 카테고리 · 조건 수정") 삭제 — 머리 제목을 누르면 MY 관심 카테고리로 */}
 
       {/* 2026-10-07: 동의는 있는데 이 기기는 알림을 못 받는 경우(가입 직후 포함) 사실 안내 — 알림 켜짐 줄과 함께 뜰 수 없음(구독 있으면 숨김) */}
       <AlertGapCard />
 
-      {alertsOn && (
-        <div
-          data-alerts-on
-          className="flex items-center gap-2"
-          style={{ background: "#ECFDF3", borderBottom: "1px solid #D1FADF", padding: "11px 20px" }}
-        >
-          <span
-            aria-hidden
-            className="flex-shrink-0 rounded-full flex items-center justify-center font-extrabold text-white"
-            style={{ width: 22, height: 22, background: "#16A34A", fontSize: rem(13) }}
-          >
-            ✓
-          </span>
-          <span className="flex-1 min-w-0" style={{ fontSize: rem(15), color: "#14532D", lineHeight: 1.4 }}>
-            <b style={{ fontWeight: 800 }}>알림 켜짐</b> — 새 매물이 뜨면 바로 알려드려요
-          </span>
-        </div>
-      )}
 
       {showInstall && canInstall && (
         <div className="flex items-center gap-2.5" style={{ borderBottom: "1px solid #F1F3F5", padding: "12px 20px", background: "#FAFBFC" }}>
@@ -310,15 +302,16 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
         </div>
       )}
 
-      {/* 2026-10-09 4b-2 회원 홈 카드 D안 — 목록 바탕 #0d2943·바깥 여백 8px, 카드 흰 바탕·모서리 14px·사이 8px (src/components/HomeDealCard.tsx) */}
+      {/* 2026-10-09 4b-2 회원 홈 카드 D안 — 바깥 여백 8px, 카드 흰 바탕·모서리 14px·사이 8px (src/components/HomeDealCard.tsx).
+          2026-10-09 4a: 목록 바탕 네이비 #0d2943 → 밝은 회색 #eef1f5, 묶음 제목 다시 진한 글자 */}
       {groups.length > 0 && (
-        <div className="flex flex-col" style={{ background: "#0d2943", padding: 8, gap: 8 }} data-home-list>
+        <div className="flex flex-col" style={{ background: HOME_LIST_BG, padding: 8, gap: 8 }} data-home-list>
           {groups.map((g, gi) => (
             <div key={g.label} className="flex flex-col" style={{ gap: 8 }}>
               <div className="flex items-center gap-2" style={{ padding: "6px 6px 0" }}>
-                <span className="font-black" style={{ fontSize: rem(14), color: "#fff", letterSpacing: "0.02em" }}>{g.label}</span>
-                <span className="flex-1" style={{ height: 1, background: "rgba(255,255,255,0.18)" }} />
-                <span className="font-bold" style={{ fontSize: rem(13), color: "rgba(255,255,255,0.75)", fontVariantNumeric: "tabular-nums" }}>{g.items.length}건</span>
+                <span className="font-black" style={{ fontSize: rem(14), color: "#0f1f3d", letterSpacing: "0.02em" }}>{g.label}</span>
+                <span className="flex-1" style={{ height: 1, background: "#d5dbe3" }} />
+                <span className="font-bold" style={{ fontSize: rem(13), color: "#64748b", fontVariantNumeric: "tabular-nums" }}>{g.items.length}건</span>
               </div>
               {g.items.map((d, di) => (
                 <HomeDealCard key={d.id} deal={d} eager={gi === 0 && di === 0} onOpenPhotos={(e, images, video) => openViewer(e, images, video)} />
@@ -362,7 +355,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
             <span className="flex-1" style={{ height: 1, background: "#EEF0F2" }} />
             <span className="text-xs font-bold rounded-full" style={{ padding: "2px 8px", background: "#E9ECEF", color: "#495057" }}>예시</span>
           </div>
-          <div className="flex flex-col" style={{ background: "#0d2943", padding: 8, gap: 8 }}>
+          <div className="flex flex-col" style={{ background: HOME_LIST_BG, padding: 8, gap: 8 }}>
             {EXAMPLE_DEALS.map((d) => (
               <HomeDealCard key={`example-${d.id}`} deal={d} example />
             ))}

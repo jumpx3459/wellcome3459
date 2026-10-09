@@ -39,7 +39,7 @@ export default function HomeDealCard({
     <Link
       href={example ? `/deals/example-${d.id}` : `/deals/${d.id}`}
       className="block w-full text-left"
-      style={{ background: "#fff", borderRadius: 14, padding: 12, opacity: example ? 0.85 : 1 }}
+      style={{ background: "#fff", borderRadius: 14, padding: 12, opacity: example ? 0.85 : 1, boxShadow: "0 1px 2px rgba(15,31,61,.06)" }}
       data-home-card
     >
       <div className="flex" style={{ gap: 12 }}>

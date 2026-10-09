@@ -259,6 +259,11 @@ export default function MyPage() {
         document.getElementById("alerts")?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     }
+    // 2026-10-09 PR 4a: 회원 홈 머리 "내 조건 긴급매물 N건" → 알림 조건을 펼친 채 관심 카테고리 구역으로(펼친 뒤 그려지길 기다렸다가)
+    if (window.location.hash === "#categories") {
+      setAlertsOpen(true);
+      setTimeout(() => document.getElementById("alert-categories")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+    }
   }, [loading]);
 
   useEffect(() => {
@@ -1286,7 +1291,7 @@ export default function MyPage() {
 
           {alertsOpen && (
             <div className="mt-3.5 flex flex-col gap-5">
-              <div>
+              <div id="alert-categories" style={{ scrollMarginTop: 12 }}>
                 <div className="flex items-center justify-between mb-2">
                   <span style={UI_CARD_TITLE}>관심 카테고리</span>
                   <button
