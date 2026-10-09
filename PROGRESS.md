@@ -63,6 +63,13 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - **[6] 4b-2 후속**: 회원 홈 카드 글 묶음 세로 가운데(카드 높이 그대로) · 하단 탭 현재 표시 바탕 #fdba74 + 맨 위 3px 막대 #ea580c · "＋ 매물 등록"은 같은 화면 주황 등록 배너가 보이면 숨김(IntersectionObserver, 0.2초 페이드).
 - 시험(가짜 env·`next build --webpack`·`.next`에 운영 Supabase 주소 0건·외부 요청 차단 — Google Fonts만): 화면 시험 115건 통과(새 4a 30 — ♡ 표시/해제·1.5초·비로그인 복귀·연결 요청 → ②·② 고정·재요청·마감 ③·FAB 숨김/표시·하단 탭 5·카드 가운데·상세 사진/카톡 인앱 실측 / 기존 4b-2 32(하단 탭 바탕 기대값 #fdba74로) · 4b-1 29 · /sell 24) · 단위 시험 13건(새 `heart-count`·`deal-cta`·`push-gone`) + PGlite SQL 8건 · tsc 0 · lint 오류 2(main과 같음). 캡처 `captures-pr4a`(360px·글자 100/115%).
 - push·PR 전(대표 확인 대기). 운영 SQL `20261009_deal_heart_counts.sql`은 merge 전에 실행해도 되고(함수만 추가), 실행 전엔 하트가 안 보임.
+- **4a 추가 지시(대표 확정: 사진 위 머리줄 유지·♥ 고정은 화면에서만·130% 매물명 3줄은 공개 후)**:
+  - 상세 하단 ♡·주 버튼 줄을 흰 바탕 띠로(위 테두리 1px #e2e8f0, 8px 16px, 하단 탭 바로 위 — `FloatingCTA bar`, 본문 아래 여백은 띠 실제 높이). 카톡 인앱 360×640 실측: 매물명 끝 396px · 버튼 윗선 416px(여유 20px) · 흰 띠 윗선 407px. 글자 115%: 매물명 끝 410px — 버튼 윗선(416)보다는 위, 흰 띠 윗선(407)보다 3px 아래(마지막 줄 아래 여백이 띠에 살짝 겹침).
+  - 판매자 연결 동의 거절 안내를 사실대로("동의하지 않으면 판매자 연결은 진행되지 않아요. 관심 목록 담기(♡)는 동의와 관계없이 할 수 있어요.") + `CONNECTION_CONSENT_VERSION` 2026-10-07 → **2026-10-09**. 조사: 이 버전은 이 동의 전용 — 연결 요청 때마다 `deal_connections.consent_version`에 저장, 서버(`/api/connections`·`/api/quick-interest`)는 화면 버전이 같은지만 검사(다르면 새로고침 안내). `member_consents`·ConsentGate·`deal_alert_ad`(`DEAL_ALERT_CONSENT_VERSION`)·`TERMS_VERSION`과 무관 → 재동의 없음. `docs/legal/consent-texts-2026-10-07.md` 7-1도 지금 화면으로(예전 문구 기록).
+  - 하트 SQL: `not coalesce(m.is_test, false)`, `where coalesce(t.is_test, false)` — PGlite 재시험 통과(is_test null 회원은 일반 회원으로 셈).
+  - 회원 홈: 목록 바탕 #eef1f5(예시 영역도)·카드 그림자·묶음 제목 진한 글자, 조건 줄·초록 "알림 켜짐" 줄 삭제, 확실히 꺼졌을 때만 배너 아래 "🔕 알림이 꺼져 있어요 / 새 매물을 놓칠 수 있어요 [켜기]"(→ `/mypage#alerts`), 머리 "내 조건 긴급매물 N건" → `/mypage#categories`(알림 조건 펼친 채 관심 카테고리), 주황 배너 두 줄이면 둘째 줄 1.6em 들여쓰기·[무료 등록 →] 0.76em. 알림 꺼짐 판정(`src/lib/alertsNotice.ts`): 권한 거부·이 기기 구독 없음·서버 "알림 끔"·동의 없음/옛 버전 = 꺼짐, 조회 전·실패·서버 저장 전 = 안 띄움, 인앱·아이폰 홈 화면 전·미지원·정식 주소 아님 = 기존 안내. AlertGapCard는 denied·off를 새 안내에 넘김(중복 방지).
+  - 비회원 홈 히어로 신뢰 띠("✔ 지금도 계속 새 매물이 올라와요" / 사업자 수) 삭제, `/api/public-stats` 조회 뺌(API는 그대로).
+  - 시험: 새 화면 16건(흰 띠·동의 문구·회원 홈 회색/꺼짐 안내/켜짐/불확실/권한 거부/카톡 인앱·제목 → MY 관심 카테고리·배너 100/115/130%·비회원 홈) + 기존 115건 통과 · 단위 14건(새 `alerts-notice`) · PGlite SQL 8건 · tsc 0 · lint 오류 2(main과 같음). 캡처 `captures-pr4a` 09~13.
 
 ## 최근 작업 (2026-10-09) — 4b-2 회원 홈 카드 D안 · 히어로 고정 해제 · 매물 등록 버튼 · 하단 탭 3D 아이콘 (브랜치 `feat/home-card-d`)
 
