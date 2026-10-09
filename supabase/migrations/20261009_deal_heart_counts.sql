@@ -6,7 +6,7 @@
 -- 무엇: deal id 목록을 받아 deal별 하트 수만 돌려줌(회원·번호 등 다른 값 없음).
 --   · p_since: 집계 시작 시각 — 앱 코드 상수 하나(src/lib/heartCount.ts HEART_COUNT_START = 2026-10-18T15:00:00Z
 --     = 2026-10-19 00:00 KST)가 넘김. 시작일을 바꿀 때 SQL을 다시 실행할 필요 없음.
---   · 회원 관심(interests): p_since 이후 생성 + 그 회원이 is_test 아님
+--   · 회원 관심(interests): p_since 이후 생성 + 그 회원이 is_test 아님(null도 일반 회원으로 — coalesce)
 --   · 비회원 리드(quick_leads): p_since 이후 생성 + 번호가 테스트 회원 번호와 같지 않음(kpi_norm_phone 비교).
 --     (2026-10-04 4.5부터 화면에서 quick_leads를 새로 만들지 않아 실제로는 0에 가까움. 90일 지나 번호가 지워진 행은 비교 없이 셈)
 --   · 한 번에 최대 200개(그 뒤는 무시) — 목록 화면 1회 조회 분량
@@ -34,7 +34,7 @@ as $$
       join public.members m on m.id = i.member_id
      where i.deal_id in (select id from ids)
        and i.created_at >= p_since
-       and not m.is_test
+       and not coalesce(m.is_test, false)
      group by i.deal_id
   ),
   guest_hearts as (
@@ -44,7 +44,7 @@ as $$
        and q.created_at >= p_since
        and not exists (
          select 1 from public.members t
-          where t.is_test
+          where coalesce(t.is_test, false)
             and q.phone is not null
             and public.kpi_norm_phone(t.phone) = public.kpi_norm_phone(q.phone)
        )
