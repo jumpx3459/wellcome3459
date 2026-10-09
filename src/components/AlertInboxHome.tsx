@@ -244,19 +244,22 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
       </div>
 
       <div style={{ padding: `${INBOX_HEADER_GAP}px 20px 2px` }}>
-        {/* 2026-10-09 PR 4a: 두 줄일 때 둘째 줄을 이모지 뒤로 들여씀(내어쓰기 1.6em, 낱말 중간 줄바꿈 없음). 한 줄이면 그대로 */}
+        {/* 2026-10-09 PR 4a: 문구를 두 덩어리("📦 잠든 재고," / "깨워서 현금으로", 각각 줄바꿈 없음)로 — 한 줄에 들어가면 한 줄,
+            안 들어가면 "재고," 뒤에서만 줄이 바뀌고 둘째 줄은 이모지 뒤로 들여씀(내어쓰기 1.6em) */}
         <Link
           href="/sell"
           className="flex items-center justify-between gap-2 rounded-xl text-sm"
           style={{ background: "#FF6F0F", padding: "13px 14px", boxShadow: "0 2px 10px rgba(255,111,15,0.35)" }}
           data-sell-banner
         >
-          <span className="min-w-0 font-bold text-white" style={{ paddingLeft: "1.6em", textIndent: "-1.6em", wordBreak: "keep-all" }} data-sell-banner-text>
-            📦 잠든 재고, 깨워서 현금으로
+          <span className="min-w-0 font-bold text-white" style={{ paddingLeft: "1.6em", textIndent: "-1.6em" }} data-sell-banner-text>
+            <span className="inline-block whitespace-nowrap" style={{ textIndent: 0 }} data-banner-part>📦 잠든 재고,</span>{" "}
+            <span className="inline-block whitespace-nowrap" style={{ textIndent: 0 }} data-banner-part>깨워서 현금으로</span>
           </span>
           <span
             className="font-bold text-white rounded-full flex-shrink-0 whitespace-nowrap"
-            style={{ background: "rgba(255,255,255,0.25)", padding: "6px 10px", fontSize: "0.76em" }}
+            style={{ background: "rgba(255,255,255,0.25)", padding: "6px 10px", fontSize: "max(13px, 0.76em)" }}
+            data-sell-banner-button
           >
             무료 등록 →
           </span>
