@@ -53,6 +53,11 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 ## 최근 작업 (2026-10-09) — 4b-2 회원 홈 카드 D안 · 히어로 고정 해제 · 매물 등록 버튼 · 하단 탭 3D 아이콘 (브랜치 `feat/home-card-d`)
 
 - **#82 병합 기록**(PR 4b-1 표시 정리): 병합 커밋 `4d8063b`(10/8 07:55 UTC, merge commit) · Deploy to Vercel #286(run 37746493142) 성공 · PR CI #69(run 37743499821, head `05c51d1`) 성공 · main 병합 뒤 CI run 없음(`ci.yml` pull_request 전용). 운영 확인 (n)(카카오 공유 디버거 캐시 초기화 포함)은 대표 확인 대기.
+- **[1] 회원 홈 카드 D안**(`src/components/HomeDealCard.tsx`, 회원 홈 전용 — `/deals`·비회원 홈 `DealListCard`는 그대로): 가로 2열 — 왼쪽 134px(타이머 15px 700 #334155 tabular-nums, 24시간 미만 #dc2626 → 사진 134×134 모서리 12·📷 N장·▶) / 오른쪽(태그 → 제목 19px 600 2줄 → "지역 · 수량" 15px #64748b → 할인율 15px 800 + 가격 21.5px 800 → 정상가 13px #94a3b8 줄긋기). "지역 · 수량"은 카테고리·"잔여" 없이 천 단위 쉼표(`src/lib/homeCard.ts` `regionQtyText`, 예 "경기 · 7,200개"·"경기 · 남양주 · 1박스"). 목록 바탕 #0d2943·여백 8px, 카드 흰 바탕·모서리 14·안 여백 12·사이 8. 카드 위 "지역 + 타이머" 줄 삭제. 예전 시:분:초만 `font-mono`였던 타이머 글꼴 통일.
+- **[2] 히어로 고정 해제 + "＋ 매물 등록"**: 회원 홈 네이비 히어로 `fixed` 해제(스크롤과 함께 사라짐, 주황 배너도 흐름 그대로 — 예전 83px paddingTop 보정 삭제). `/deals` 히어로는 원래 고정 아님(변경 없음). `SellFab`(회원 홈·/deals만): 오른쪽 14px·하단 탭 위 14px(safe-area 포함), 48px 알약 #f97316·17px 800·그림자, z-index 하단 탭 위, 링크 `/sell`(주황 배너와 같음). 두 화면 맨 아래 90px.
+- **[3] 하단 탭 아이콘**: Microsoft Fluent Emoji 3D PNG(MIT) 96×96을 `public/icons/nav/`에(LICENSE에 MIT 원문·출처), 30×30 칸(안 여백 2·모서리 10), 이름 13px #475569, 현재 탭 #ea580c 800 + 아이콘 뒤 #ffedd5. 이모지 문자 안 씀. 비회원 4번째 "가입" 탭은 지시 5종 밖이라 같은 세트의 Memo.
+- **[4] /deals "AD 광고 영역" 숨김**: `SHOW_AD_SLOTS = false`(카드 6장마다 넣던 자리표시, `AdSlot` 코드 유지). 생긴 시점: `0575084`(2026-08-10, "Add ad slot placeholder for launch-day monetization") — PR 흐름 이전 main 직접 커밋(PR 없음). 매물 상세 og:url·og:type 빈칸은 `deals/[id]/layout.tsx` 처음 커밋 `c6e23e9`(2026-08-04)부터 — 자식 openGraph가 루트(url·type 있음)를 통째로 덮어써서 생김, #82와 무관(수정 안 함).
+- 시험(가짜 env·`next build --webpack`·`.next`에 운영 Supabase 주소 0건·외부 요청 차단 — Google Fonts만): 기존 화면 시험 53건(/sell 24·4b-1 29) 통과 · 새 화면 시험 32건 통과(360·412 × 글자 100·115·130% 7화면 가로 넘침 0, 115% 잘리는 글자 0, 회원 홈·/deals 스크롤 뒤 히어로 화면 밖·버튼 위치·크기·/sell·마지막 카드 안 가림, 다른 6화면 버튼 없음, 하단 탭 5화면 현재 표시, 카드 D안 치수·타이머·지역 · 수량·가격 규칙) · 단위 시험 10건(새 `scripts/home-card-test.mts` 포함) · tsc 0 · lint 오류 2(main과 같음). 캡처 `captures-pr4b2`(360px·글자 100/115%).
 
 ## 최근 작업 (2026-10-08) — 표시 정리 4b-1 (브랜치 `feat/display-cleanup`, 공개 10/19)
 
