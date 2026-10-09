@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockDeals } from "@/lib/mockData";
 import { discountPercent } from "@/lib/dealFields";
-import { DEFAULT_OG_IMAGE } from "@/lib/ogImage";
+import { BASE_OPEN_GRAPH, DEFAULT_OG_IMAGE } from "@/lib/ogImage";
+import { SITE_URL } from "@/lib/siteUrl";
 
 const GUEST_DESCRIPTION = "회원가 공개 · 덤핑점핑";
 
@@ -51,9 +52,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description,
+    // 2026-10-09 PR 4a: 공통 칸을 펼친 뒤 덮어씀 — 예전엔 og:url·og:type·siteName이 비었음. url = 이 매물의 정식 절대 주소
     openGraph: {
+      ...BASE_OPEN_GRAPH,
       title,
       description,
+      url: `${SITE_URL}/deals/${id}`,
+      type: "website",
       images: ogImages,
     },
     twitter: {
