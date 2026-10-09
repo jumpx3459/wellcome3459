@@ -68,7 +68,10 @@ export const CONSENT_TEXT = {
 // 2026-10-03 F-3a: 관심있어요 — 판매자 연결(거래 상담 제3자 제공) 동의 (consent-texts 7-1).
 // 버전은 이 동의 전용 — 문구를 바꾸면 이 값만 올린다(TERMS_VERSION과 별개). deal_connections.consent_version에 서버가 저장.
 // 화면이 보낸 버전은 서버가 같은지만 검사(다르면 예전 화면 → 새로고침 안내).
-export const CONNECTION_CONSENT_VERSION = "2026-10-07";
+// 2026-10-09 PR 4a: "2026-10-07" → "2026-10-09" — 거절 안내 문장을 사실대로(관심 담기 ♡가 동의와 분리됨).
+//   연결 요청 때마다 deal_connections에 저장되는 동의라 기존 회원 재동의·다른 동의(deal_alert_ad 등)에는 영향 없음.
+//   (예전 버전으로 이미 저장된 연결 기록은 그대로 "2026-10-07")
+export const CONNECTION_CONSENT_VERSION = "2026-10-09";
 export const CONNECTION_CONSENT_TEXT = {
   title: "판매자와 연결해 드릴까요?",
   label: "거래 상담을 위한 개인정보 제3자 제공 동의",
@@ -78,9 +81,8 @@ export const CONNECTION_CONSENT_TEXT = {
     ["이용 목적", "이 매물의 거래 상담"],
     ["보유 기간", "거래 상담 종료 시까지"],
   ],
-  refuse: "동의하지 않을 수 있으며, 이 경우 관심 표시만 되고 판매자 연결은 되지 않아요.",
+  refuse: "동의하지 않으면 판매자 연결은 진행되지 않아요. 관심 목록 담기(♡)는 동의와 관계없이 할 수 있어요.",
   agree: "동의하고 연결 요청",
-  interestOnly: "관심 표시만 할게요",
 } as const;
 
 // 판매 신청 업체명 공개 설정 (consent-texts 7-2) — 기본 비공개
