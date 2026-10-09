@@ -12,7 +12,8 @@ export const NAV_HEIGHT = 64;
 export const NAV_BOTTOM = "var(--nav-bottom)";
 
 // 2026-10-09 4b-2: 아이콘을 Microsoft Fluent Emoji 3D PNG(MIT, public/icons/nav/LICENSE)로 — 이모지 문자는 기기마다 모양이 달라 쓰지 않음.
-// 96×96 파일을 30×30 칸(안 여백 2px, 모서리 10px)에 표시. 현재 탭: 이름 #ea580c 800 + 아이콘 뒤 바탕 #ffedd5
+// 96×96 파일을 30×30 칸(안 여백 2px, 모서리 10px)에 표시. 현재 탭: 이름 #ea580c 800 + 아이콘 뒤 바탕 #fdba74 + 탭 맨 위 3px 주황 막대
+// (2026-10-09 4a: 바탕 #ffedd5 → #fdba74, 막대 추가 — 연한 바탕만으로는 현재 탭이 잘 안 보였음). 선택 안 된 탭 아이콘은 원래 색 그대로
 const NAV_ICON = (name: string) => `/icons/nav/${name}.png`;
 const BASE_TABS = [
   { href: "/", label: "홈", icon: NAV_ICON("home") },
@@ -104,13 +105,16 @@ export default function BottomNav() {
             key={tab.href}
             href={tab.href}
             onClick={() => setHash(tab.href.includes("#") ? `#${tab.href.split("#")[1]}` : "")}
-            className="flex-1 flex flex-col items-center justify-center gap-0.5"
+            className="relative flex-1 flex flex-col items-center justify-center gap-0.5"
             aria-current={active ? "page" : undefined}
             data-nav-active={active ? "1" : undefined}
           >
+            {active && (
+              <span aria-hidden data-nav-bar className="absolute" style={{ top: 0, left: 10, right: 10, height: 3, background: "#ea580c", borderRadius: "0 0 3px 3px" }} />
+            )}
             <span
               className="flex items-center justify-center flex-shrink-0"
-              style={{ width: 30, height: 30, padding: 2, borderRadius: 10, background: active ? "#ffedd5" : "transparent" }}
+              style={{ width: 30, height: 30, padding: 2, borderRadius: 10, background: active ? "#fdba74" : "transparent" }}
             >
               <img src={tab.icon} alt="" width={26} height={26} draggable={false} style={{ width: 26, height: 26, display: "block" }} />
             </span>

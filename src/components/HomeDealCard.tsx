@@ -96,7 +96,8 @@ export default function HomeDealCard({
           </div>
         </div>
 
-        <div className="flex-1 min-w-0" style={{ overflowWrap: "anywhere" }}>
+        {/* 2026-10-09 4a: 오른쪽 글 묶음을 카드 세로 가운데로(카드 높이는 왼쪽 열이 정함 — 변화 없음) */}
+        <div className="flex-1 min-w-0 flex flex-col justify-center" style={{ overflowWrap: "anywhere" }} data-home-card-body>
           {(example || (d.stock_type && d.stock_type !== "general")) && (
             <div className="flex flex-wrap items-center gap-1" style={{ marginBottom: 4 }}>
               {example && (

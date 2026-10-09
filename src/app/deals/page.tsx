@@ -425,6 +425,7 @@ function DealsPageInner() {
           href="/sell"
           className="flex items-center justify-between rounded-xl"
           style={{ background: "#FF6F0F", padding: "12px 16px", boxShadow: "0 2px 10px rgba(255,111,15,0.35)" }}
+          data-sell-banner
         >
           <span className="text-sm font-bold text-white">📦 나도 긴급 매물 등록하기</span>
           <span
