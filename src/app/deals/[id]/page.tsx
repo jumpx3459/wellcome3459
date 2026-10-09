@@ -1005,13 +1005,16 @@ function DealDetailPageInner() {
               반투명+블러 카드 + 상단 페이드로, 스크롤 중인 상세 콘텐츠가 자연스럽게
               이어지도록 함. */}
           {/* 2026-09-29: 공용 하단 고정 버튼 — 판·블러 없이 버튼만 띄움 */}
-          <FloatingCTA>
+          <FloatingCTA bar>
             {/* 2026-10-09 PR 4a: 하단 한 줄 = ♡ 찜(48×48) + 주 버튼(flex 1), 간격 8px·높이 48px.
+                뒤 내용이 비치지 않게 흰 바탕 띠(위 테두리 1px #e2e8f0, 위아래 8px·좌우 16px) — 하단 탭 바로 위(안전 영역은 하단 탭이 맡음).
+                본문 아래 여백은 FLOATING_CTA_SPACE_FIT(띠 실제 높이 + 여유)이 그대로 맞춤.
                 주 버튼: ①판매자 연결 요청(주황) ②✓ 연결 요청함(반응 없음) ③마감된 매물이에요(회색, 반응 없음) — src/lib/dealCta.ts.
                 예전 고정 안내 "관심 표시 완료 · 판매자 연결은 동의 후 진행돼요"는 삭제(안내는 누른 직후 1.5초만) */}
             {!authKnown ? null : (
               <>
                 {(toast || interestError) && (
+                  <div className="px-5">
                   <FloatingCTANote tone={toast ? "info" : "error"}>
                     <span data-cta-toast>{toast ?? interestError}</span>
                     {!toast && interestNeedsReauth && (
@@ -1023,7 +1026,9 @@ function DealDetailPageInner() {
                       </>
                     )}
                   </FloatingCTANote>
+                  </div>
                 )}
+                <div style={{ background: "#ffffff", borderTop: "1px solid #e2e8f0", padding: "8px 16px" }} data-cta-bar>
                 <div className="flex items-stretch" style={{ gap: 8 }} data-cta-row>
                   <button
                     type="button"
@@ -1079,6 +1084,7 @@ function DealDetailPageInner() {
                       마감된 매물이에요
                     </div>
                   )}
+                </div>
                 </div>
               </>
             )}
