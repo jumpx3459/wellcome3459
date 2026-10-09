@@ -428,9 +428,11 @@ function DealsPageInner() {
           data-sell-banner
         >
           <span className="text-sm font-bold text-white">📦 나도 긴급 매물 등록하기</span>
+          {/* 2026-10-10 PR 4a: 회원 홈 배너와 같은 흰 알약(흰 바탕·#c2410c 800·7px 12px·그림자). 글자 크기는 그대로 text-xs(13.5px) */}
           <span
-            className="text-xs font-bold text-white rounded-full flex-shrink-0"
-            style={{ background: "rgba(255,255,255,0.25)", padding: "4px 10px" }}
+            className="text-xs rounded-full flex-shrink-0 whitespace-nowrap"
+            style={{ background: "#ffffff", color: "#c2410c", fontWeight: 800, padding: "7px 12px", boxShadow: "0 1px 3px rgba(0,0,0,.12)" }}
+            data-sell-banner-button
           >
             무료 등록 →
           </span>
