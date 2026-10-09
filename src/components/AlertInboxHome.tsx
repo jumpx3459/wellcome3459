@@ -256,9 +256,10 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
             <span className="inline-block whitespace-nowrap" style={{ textIndent: 0 }} data-banner-part>📦 잠든 재고,</span>{" "}
             <span className="inline-block whitespace-nowrap" style={{ textIndent: 0 }} data-banner-part>깨워서 현금으로</span>
           </span>
+          {/* 2026-10-10 PR 4a: 흰 바탕·#c2410c 800 — 반투명 흰 바탕보다 누를 곳이 잘 보이게 */}
           <span
-            className="font-bold text-white rounded-full flex-shrink-0 whitespace-nowrap"
-            style={{ background: "rgba(255,255,255,0.25)", padding: "6px 10px", fontSize: "max(13px, 0.76em)" }}
+            className="rounded-full flex-shrink-0 whitespace-nowrap"
+            style={{ background: "#ffffff", color: "#c2410c", fontWeight: 800, padding: "7px 12px", boxShadow: "0 1px 3px rgba(0,0,0,.12)", fontSize: "max(13px, 0.76em)" }}
             data-sell-banner-button
           >
             무료 등록 →
