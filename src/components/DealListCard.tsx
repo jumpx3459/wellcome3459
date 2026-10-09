@@ -7,6 +7,7 @@ import { stockTypeBadge } from "@/lib/stockType";
 import { cardDiscountPct, showStrikePrice } from "@/lib/dealPriceAccess";
 import { dealPriceLabel, isNegotiable } from "@/lib/priceMode";
 import NegotiablePrice from "@/components/NegotiablePrice";
+import { heartToShow } from "@/lib/heartCount";
 import MemberPriceTeaser from "@/components/MemberPriceTeaser";
 
 // /deals 목록 카드 — 실매물·예시 공용 (2026-09-29, 예전엔 예시 카드가 따로 있어서 배지 위치가 달랐음).
@@ -97,9 +98,10 @@ export default function DealListCard({
               <span className="whitespace-nowrap flex-shrink-0">잔여 {d.remaining_qty}{unit}</span>
               <span aria-hidden className="flex-shrink-0">·</span>
               <span className="truncate min-w-0">{d.location}</span>
-              {/* 2026-09-26: 관심표시 3건 미만은 숨김 — "관심 0~2명"은 오히려 인기 없어 보임 */}
-              {!example && (d.interest_count ?? 0) >= 3 && (
-                <span className="flex-shrink-0 whitespace-nowrap font-bold" style={{ color: "#C2410C" }}>· ❤️ {d.interest_count}</span>
+              {/* 2026-09-26: 관심표시 3건 미만은 숨김 — "관심 0~2명"은 오히려 인기 없어 보임.
+                  2026-10-09 PR 4a: 누계(interest_count) 대신 공개 하트 수(heart_count — 집계 시작 이후·테스트 회원 제외) */}
+              {!example && heartToShow(d.heart_count) !== null && (
+                <span className="flex-shrink-0 whitespace-nowrap font-bold" style={{ color: "#C2410C" }}>· ❤️ {heartToShow(d.heart_count)}</span>
               )}
             </>
           )}

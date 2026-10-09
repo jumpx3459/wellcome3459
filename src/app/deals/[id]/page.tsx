@@ -32,6 +32,8 @@ import ZoomTip from "@/components/ZoomTip";
 import { PRIVATE_SELLER_NAME, PRIVATE_SELLER_NOTE, publicSellerName } from "@/lib/sellerDisplay";
 import FloatingCTA, { FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE_FIT, FloatingCTANote, floatingCtaButtonStyle } from "@/components/FloatingCTA";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
+import { heartToShow } from "@/lib/heartCount";
+import { fetchHeartCounts } from "@/lib/heartCountClient";
 
 // 값이 없거나 공백뿐이면 섹션/행 자체를 그리지 않는다 (빈 공간 방지)
 function hasText(v: string | null | undefined): boolean {
@@ -204,6 +206,10 @@ function DealDetailPageInner() {
           is_anonymous: data.is_anonymous ?? null,
           seller_display_name: data.seller_display_name ?? null,
         });
+        // 2026-10-09 PR 4a: 공개 하트 수(deal_heart_counts — 집계 시작 이후·테스트 회원 제외). 실패하면 하트 안 그림
+        const hearts = await fetchHeartCounts([data.id as string]);
+        const hc = hearts[data.id as string];
+        if (hc !== undefined) setDeal((prev) => (prev.id === data.id ? { ...prev, heart_count: hc } : prev));
       }
     })();
   }, [params.id, isExampleId]);
@@ -566,19 +572,19 @@ function DealDetailPageInner() {
         ) : priceHidden ? (
           // 2026-10-03 A안: 비회원 — 가격 상자 대신 가입 안내. 가입 버튼은 하단 고정 버튼 하나(4.5) — returnTo(이 매물)·ref만, autoInterest 같은 자동 관심은 붙이지 않음
           <div>
-            {(cardDiscountPct(deal) > 0 || (deal.interest_count ?? 0) >= 3) && (
+            {(cardDiscountPct(deal) > 0 || heartToShow(deal.heart_count) !== null) && (
               <div className="flex flex-wrap items-baseline gap-x-2 mb-2">
                 {cardDiscountPct(deal) > 0 && (
                   <span className="text-xl font-black whitespace-nowrap" style={{ color: "#E25100" }}>
                     -{cardDiscountPct(deal)}%
                   </span>
                 )}
-                {(deal.interest_count ?? 0) >= 3 && (
+                {heartToShow(deal.heart_count) !== null && (
                   <span
                     className="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full flex-shrink-0"
                     style={{ background: "#FDEEE8", color: "#C2410C" }}
                   >
-                    ❤️ {deal.interest_count}명 관심
+                    ❤️ {heartToShow(deal.heart_count)}명 관심
                   </span>
                 )}
               </div>
@@ -617,12 +623,12 @@ function DealDetailPageInner() {
                 <PriceText text={dealPriceLabel(deal)} />
               </span>
               {/* 2026-09-26: 카드 리스트와 동일한 threshold-gating(3건 미만 숨김) */}
-              {(deal.interest_count ?? 0) >= 3 && (
+              {heartToShow(deal.heart_count) !== null && (
                 <span
                   className="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full flex-shrink-0"
                   style={{ background: "#FDEEE8", color: "#C2410C" }}
                 >
-                  ❤️ {deal.interest_count}명 관심
+                  ❤️ {heartToShow(deal.heart_count)}명 관심
                 </span>
               )}
             </div>

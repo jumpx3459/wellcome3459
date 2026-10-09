@@ -13,6 +13,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockDeals, mockCategories, mockRegions, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import AdSlot from "@/components/AdSlot";
 import SellFab from "@/components/SellFab";
+import { fetchHeartCounts } from "@/lib/heartCountClient";
 
 // 2026-10-09 4b-2: 카드 6장마다 넣던 "AD 광고 영역" 자리표시는 화면에서만 숨김(코드·AdSlot은 유지 — 광고 붙일 때 true)
 const SHOW_AD_SLOTS = false;
@@ -111,6 +112,9 @@ function DealsPageInner() {
       }
       if (data) {
         setPriceHidden(hidden);
+        // 2026-10-09 PR 4a: 공개 하트 수(deal_heart_counts) — 실패하면 빈 값(하트 안 그림)
+        const hearts = await fetchHeartCounts(data.map((d) => d.id as string));
+        if (cancelled) return;
         setDeals(
           data.map((d) => ({
             id: d.id,
@@ -132,6 +136,7 @@ function DealsPageInner() {
             storage_type: d.storage_type ?? null,
             expiry_date: d.expiry_date ?? null,
             interest_count: d.interest_count ?? 0,
+            heart_count: hearts[d.id as string],
           }))
         );
         setDealsStatus("ok");
