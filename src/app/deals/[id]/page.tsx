@@ -464,6 +464,8 @@ function DealDetailPageInner() {
 
   return (
     <main className="flex flex-col min-h-screen">
+      {/* 2026-10-09 PR 4a: 사진이 있으면 이 머리줄 대신 사진 위에 뒤로·로고를 얹음(사진을 화면 맨 위 여백 없이) — 아래 PhotoCarousel overlay */}
+      {!hasPhotos && (
       <div className="flex-shrink-0 flex items-center justify-between gap-2 px-5 py-3" style={{ borderBottom: "1px solid #EEF0F2" }}>
         <div className="flex items-center gap-1 min-w-0">
           <button
@@ -487,8 +489,7 @@ function DealDetailPageInner() {
           </div>
         )}
       </div>
-
-      <ZoomTip />
+      )}
 
       {/* 2026-09-29: 사진이 있으면 화면 폭 전체 1:1 + 옆으로 넘기기 + "1/N", 누르면 전체 화면(핀치 확대).
           사진이 없으면 예전처럼 3:1 자리표시 */}
@@ -505,15 +506,38 @@ function DealDetailPageInner() {
             onOpen={(i) => setViewerIndex(i)}
             ratio="3/2"
             overlay={
-              <div className="absolute top-2.5 right-2.5 pointer-events-none">
-                {deal.status === "closed" ? (
-                  <span className="font-bold text-white bg-gray500 rounded-full shadow" style={{ fontSize: rem(16), padding: "2px 10px" }}>마감됨</span>
-                ) : (
-                  <div className="rounded-full shadow" style={{ background: "rgba(255,255,255,0.94)" }}>
-                    <CountdownBadge closesAt={deal.closes_at} tone={isExampleId ? "muted" : "urgent"} />
-                  </div>
-                )}
-              </div>
+              <>
+                <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5" data-hero-head>
+                  <button
+                    type="button"
+                    onClick={goBack}
+                    aria-label="뒤로 가기"
+                    className="flex-shrink-0 flex items-center justify-center rounded-full shadow"
+                    style={{ width: 36, height: 36, background: "rgba(255,255,255,0.94)", color: "#0B2540" }}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M15 18l-6-6 6-6" />
+                    </svg>
+                  </button>
+                  <TabLink href="/" className="flex items-center rounded-full shadow" style={{ height: 36, padding: "0 10px", background: "rgba(255,255,255,0.94)" }}>
+                    <img src="/images/logo.png" alt="덤핑점핑" className="h-6 w-auto flex-shrink-0" />
+                  </TabLink>
+                </div>
+                <div className="absolute top-2.5 right-2.5 flex flex-col items-end gap-1.5 pointer-events-none">
+                  {deal.status === "closed" ? (
+                    <span className="font-bold text-white bg-gray500 rounded-full shadow" style={{ fontSize: rem(16), padding: "2px 10px" }}>마감됨</span>
+                  ) : (
+                    <div className="rounded-full shadow" style={{ background: "rgba(255,255,255,0.94)" }}>
+                      <CountdownBadge closesAt={deal.closes_at} tone={isExampleId ? "muted" : "urgent"} />
+                    </div>
+                  )}
+                  {remainPct <= 30 && (
+                    <div className="text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow" style={{ background: "#FF6F0F", color: "#fff" }}>
+                      🔥 소진임박 · {deal.remaining_qty}{deal.quantity_unit || "개"} 남음
+                    </div>
+                  )}
+                </div>
+              </>
             }
           />
         </div>
@@ -534,7 +558,7 @@ function DealDetailPageInner() {
         </div>
       )}
 
-      <div className="px-5" style={{ paddingTop: hasPhotos ? 6 : 12 }}>
+      <div className="px-5" style={{ paddingTop: 12 }}>
         {/* 카테고리·재고 유형·예시 표시를 한 줄 13px 글자로(예전 알약 칩 줄) */}
         <div className="truncate font-bold" style={{ fontSize: rem(13), color: color.text, marginBottom: 4 }} data-category-line>
           {categoryIcons[deal.category] ?? "🗂️"} {deal.category}
@@ -543,6 +567,9 @@ function DealDetailPageInner() {
         </div>
         <h1 className="font-display text-navy text-2xl leading-snug" data-deal-title>{deal.title}</h1>
       </div>
+
+      {/* 확대 안내(처음 1번)는 매물명 아래로 — 예전엔 머리줄과 사진 사이에 있어 첫 화면을 밀어냈음 */}
+      <ZoomTip />
 
       <div className="flex-1 p-5 flex flex-col gap-4" style={{ paddingBottom: "24px" }}>
         {hasText(deal.video_url) && (
