@@ -4,7 +4,7 @@ import AppShell from "@/components/AppShell";
 // 2026-10-07: 통글자 2MB 파일 대신 글자 범위별로 쪼갠 Pretendard(92조각, 화면에 쓰인 글자 조각만 받음) — font-display: swap
 import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 import { SITE_URL as BASE_URL } from "@/lib/siteUrl";
-import { DEFAULT_OG_IMAGE } from "@/lib/ogImage";
+import { BASE_OPEN_GRAPH, DEFAULT_OG_IMAGE } from "@/lib/ogImage";
 
 const DEFAULT_DESCRIPTION =
   "전국 B2B 덤핑 재고·이월상품·반품 특가 정보를 관심 카테고리만 등록하면 가장 먼저 알려드립니다. Powered by JumpX.";
@@ -27,13 +27,10 @@ export const metadata: Metadata = {
     apple: "/icon-192.png",
   },
   openGraph: {
+    ...BASE_OPEN_GRAPH, // siteName·locale·type·기본 이미지 1200×630(2026-10-08 4b-1) — 매물 상세도 같은 값을 펼침
     title: "덤핑점핑 - B2B 덤핑 재고 특가 알림",
     description: DEFAULT_DESCRIPTION,
     url: BASE_URL,
-    siteName: "덤핑점핑",
-    locale: "ko_KR",
-    type: "website",
-    images: [DEFAULT_OG_IMAGE], // 2026-10-08 4b-1: 1200×630(예전 logo-og.png 888×772는 카톡에서 잘림)
   },
   twitter: {
     card: "summary_large_image",

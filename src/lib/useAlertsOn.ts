@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { fetchPushStatus, getPushState } from "@/lib/pushClient";
 import { CONSENT_CHANGED_EVENT, fetchMyConsents } from "@/lib/consentClient";
+import { alertsOffNotice, type PushKind, type PushServerStatus } from "@/lib/alertsNotice";
 
 // "알림 켜짐" 판정 공용 (2026-10-06) — 마이페이지 PushStatusCard("알림 받는 중" 배지)와 회원 홈 AlertInboxHome("✓ 알림 켜짐" 줄).
 // 기준: 이 기기 푸시 구독 + 매물 알림(deal_alert_ad) 최신 동의(현재 버전)가 모두 있을 때만.
@@ -75,4 +76,31 @@ export function useAlertGap(): { consent: boolean | null; kind: AlertGapKind | n
     };
   }, []);
   return { consent, kind };
+}
+
+/** 2026-10-09 PR 4a: 회원 홈 "🔕 알림이 꺼져 있어요" — 확실히 꺼진 경우에만 true(판정 src/lib/alertsNotice.ts).
+ * 읽기 전용(권한 요청·저장 없음). 화면이 다시 보일 때 다시 확인. 예전 초록 "✓ 알림 켜짐" 줄(useAlertsOn) 대신 회원 홈이 씀 */
+export function useAlertsOffNotice(): boolean {
+  const consent = useDealAlertConsent();
+  const [kind, setKind] = useState<PushKind | null>(null);
+  const [server, setServer] = useState<PushServerStatus>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      const s = await getPushState();
+      if (cancelled) return;
+      setKind(s.status);
+      if (s.status !== "subscribed") return setServer(null);
+      const st = await fetchPushStatus(s.subscription.endpoint ?? null);
+      if (!cancelled) setServer(st ? { thisDeviceSaved: Boolean(st.thisDeviceSaved), optedOut: Boolean(st.optedOut) } : null);
+    };
+    check();
+    const onVisible = () => document.visibilityState === "visible" && check();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
+  return alertsOffNotice(kind, consent, server);
 }

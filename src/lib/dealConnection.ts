@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CONNECTION_CONSENT_VERSION } from "@/lib/consent";
+import { connectionRequested } from "@/lib/dealCta";
 
 // 2026-10-03 F-3a: 거래 연결 기록(deal_connections) 생성 — 회원(/api/connections)·비회원(/api/quick-interest) 공용. 서버(service role) 전용.
 // 동의 시각은 서버 지금 시각, 버전은 서버 상수(CONNECTION_CONSENT_VERSION). 화면이 보낸 버전은 호출 전에 isCurrentConnectionConsent로 검사만.
@@ -44,6 +45,16 @@ export async function createDealConnection(
   });
   if (eventError) console.error("[dealConnection] 이력 저장 실패", eventError.code, eventError.message);
   return "created";
+}
+
+/** 2026-10-09 PR 4a: 상세 주 버튼 "✓ 연결 요청함" 판정 — 진행 중 연결 또는 성사로 끝난 연결이 있는지(src/lib/dealCta.ts). 조회 실패는 null */
+export async function memberConnectionRequested(db: SupabaseClient, dealId: string, memberId: string): Promise<boolean | null> {
+  const { data, error } = await db.from("deal_connections").select("status, result").eq("deal_id", dealId).eq("buyer_member_id", memberId).limit(50);
+  if (error) {
+    console.error("[dealConnection] 조회 실패", error.code, error.message);
+    return null;
+  }
+  return connectionRequested(data ?? []);
 }
 
 /** 회원의 이 매물 진행 중(closed 아님) 연결이 있는지. 조회 실패는 null */

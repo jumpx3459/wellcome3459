@@ -33,7 +33,8 @@ export type Deal = {
   min_order_qty?: number | null; // 최소주문수량(MOQ)
   price_unit?: string | null; // 2026-09-29 단가 단위 (src/lib/priceUnit.ts) — 없으면 수량 단위 기준
   created_at?: string; // ISO — mock 데이터엔 없음
-  interest_count?: number; // 2026-09-26: 관심표시(interests+quick_leads) 합산 카운트, deals.interest_count 비정규화 컬럼
+  interest_count?: number; // 2026-09-26: 관심표시(interests+quick_leads) 합산 카운트, deals.interest_count 비정규화 컬럼 — 2026-10-09부터 공개 화면엔 안 씀(관리자용)
+  heart_count?: number; // 2026-10-09 PR 4a: 공개 하트 수(deal_heart_counts — 집계 시작 이후·테스트 회원 제외). 화면은 heartToShow로 3 이상만
   pid?: string | null; // 2026-09-26: 리퀴데이션 파렛트 등의 매니페스트/PID 번호 (선택)
   manifest_items?: Record<string, string>[] | null; // 혼합매물 구성품 CSV 목록 (헤더 그대로)
 };

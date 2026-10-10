@@ -13,6 +13,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockDeals, mockCategories, mockRegions, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import AdSlot from "@/components/AdSlot";
 import SellFab from "@/components/SellFab";
+import { fetchHeartCounts } from "@/lib/heartCountClient";
 
 // 2026-10-09 4b-2: 카드 6장마다 넣던 "AD 광고 영역" 자리표시는 화면에서만 숨김(코드·AdSlot은 유지 — 광고 붙일 때 true)
 const SHOW_AD_SLOTS = false;
@@ -111,6 +112,9 @@ function DealsPageInner() {
       }
       if (data) {
         setPriceHidden(hidden);
+        // 2026-10-09 PR 4a: 공개 하트 수(deal_heart_counts) — 실패하면 빈 값(하트 안 그림)
+        const hearts = await fetchHeartCounts(data.map((d) => d.id as string));
+        if (cancelled) return;
         setDeals(
           data.map((d) => ({
             id: d.id,
@@ -132,6 +136,7 @@ function DealsPageInner() {
             storage_type: d.storage_type ?? null,
             expiry_date: d.expiry_date ?? null,
             interest_count: d.interest_count ?? 0,
+            heart_count: hearts[d.id as string],
           }))
         );
         setDealsStatus("ok");
@@ -420,11 +425,14 @@ function DealsPageInner() {
           href="/sell"
           className="flex items-center justify-between rounded-xl"
           style={{ background: "#FF6F0F", padding: "12px 16px", boxShadow: "0 2px 10px rgba(255,111,15,0.35)" }}
+          data-sell-banner
         >
           <span className="text-sm font-bold text-white">📦 나도 긴급 매물 등록하기</span>
+          {/* 2026-10-10 PR 4a: 회원 홈 배너와 같은 흰 알약(흰 바탕·#c2410c 800·7px 12px·그림자). 글자 크기는 그대로 text-xs(13.5px) */}
           <span
-            className="text-xs font-bold text-white rounded-full flex-shrink-0"
-            style={{ background: "rgba(255,255,255,0.25)", padding: "4px 10px" }}
+            className="text-xs rounded-full flex-shrink-0 whitespace-nowrap"
+            style={{ background: "#ffffff", color: "#c2410c", fontWeight: 800, padding: "7px 12px", boxShadow: "0 1px 3px rgba(0,0,0,.12)" }}
+            data-sell-banner-button
           >
             무료 등록 →
           </span>

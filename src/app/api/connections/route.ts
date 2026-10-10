@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { adminConnectionTag, sendAdminPush } from "@/lib/sendPush";
 import { overLimit, UUID_RE } from "@/lib/rateLimit";
-import { createDealConnection, hasOpenMemberConnection, isCurrentConnectionConsent } from "@/lib/dealConnection";
+import { createDealConnection, hasOpenMemberConnection, isCurrentConnectionConsent, memberConnectionRequested } from "@/lib/dealConnection";
 
 // 2026-10-03 F-3a: 회원 "관심있어요" → 판매자 연결 동의(7-1) → 거래 연결 기록(deal_connections) 생성.
 // body: { accessToken, dealId, connectionConsent: true, connectionConsentVersion }
@@ -10,7 +10,8 @@ import { createDealConnection, hasOpenMemberConnection, isCurrentConnectionConse
 //   · 동의 시각 = 서버 지금 시각, 버전 = 서버 상수. 화면이 보낸 버전은 같은지만 검사(다르면 예전 화면 → 새로고침 안내)
 //   · 관심 표시(interests)는 화면이 지금처럼 먼저 저장 — 여기선 그 행 id를 source_id로만 이음(없으면 null)
 //   · 진행 중 연결이 이미 있으면(23505) 200 { duplicate: true }
-// body에 check: true면 저장 없이 진행 중 연결 여부만 { open } — 상세 화면 [판매자 연결 요청] 표시용
+// body에 check: true면 저장 없이 { open, requested } — open = 진행 중 연결, requested = 진행 중 또는 성사로 끝난 연결
+//   (2026-10-09 PR 4a: 상세 주 버튼 ②"✓ 연결 요청함" 판정. 불발·취소로 끝난 연결만 있으면 requested false → 다시 요청 가능)
 const MEMBER_LIMIT = 10;
 
 export async function POST(req: NextRequest) {
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceKey) {
     if (process.env.NODE_ENV === "production") return NextResponse.json({ error: "서버 설정 오류입니다." }, { status: 500 });
-    return NextResponse.json(check === true ? { open: false, demo: true } : { ok: true, demo: true });
+    return NextResponse.json(check === true ? { open: false, requested: false, demo: true } : { ok: true, demo: true });
   }
 
   const db = createClient(supabaseUrl, serviceKey);
@@ -45,9 +46,9 @@ export async function POST(req: NextRequest) {
   const memberId = userData.user.id;
 
   if (check === true) {
-    const open = await hasOpenMemberConnection(db, dealId, memberId);
-    if (open === null) return NextResponse.json({ error: "조회에 실패했어요." }, { status: 500 });
-    return NextResponse.json({ open });
+    const [open, requested] = await Promise.all([hasOpenMemberConnection(db, dealId, memberId), memberConnectionRequested(db, dealId, memberId)]);
+    if (open === null || requested === null) return NextResponse.json({ error: "조회에 실패했어요." }, { status: 500 });
+    return NextResponse.json({ open, requested });
   }
 
   if (overLimit(`conn-member:${memberId}`, MEMBER_LIMIT)) {

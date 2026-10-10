@@ -52,14 +52,16 @@ export function FloatingCTANote({ children, tone = "error" }: { children: ReactN
 }
 
 // shakeKey: 값이 바뀔 때마다 버튼이 한 번 흔들림(오류로 제출이 막힌 화면 — /buy·/sell·가입). 안 넘기면 흔들림 없음
-export default function FloatingCTA({ children, className = "", shakeKey }: { children: ReactNode; className?: string; shakeKey?: number }) {
+// bar: 하단 탭 바로 위에 붙는 띠 모양(2026-10-09 PR 4a, 매물 상세 ♡·주 버튼 줄) — 간격·좌우 여백 없이, 띠 모양(흰 바탕·테두리)은 쓰는 쪽이 그림
+export default function FloatingCTA({ children, className = "", shakeKey, bar = false }: { children: ReactNode; className?: string; shakeKey?: number; bar?: boolean }) {
+  const gap = bar ? 0 : FLOATING_CTA_GAP;
   return (
     <div
-      className={`fixed z-10 left-1/2 -translate-x-1/2 w-full max-w-md px-5 pointer-events-none ${className}`}
-      style={{ bottom: `calc(var(--nav-bottom) + ${FLOATING_CTA_GAP}px)` }}
+      className={`fixed z-10 left-1/2 -translate-x-1/2 w-full max-w-md ${bar ? "" : "px-5 "}pointer-events-none ${className}`}
+      style={{ bottom: `calc(var(--nav-bottom) + ${gap}px)` }}
     >
       <div className="pointer-events-auto">{children}</div>
-      <FloatingCTAMeasure gap={FLOATING_CTA_GAP} />
+      <FloatingCTAMeasure gap={gap} />
       {shakeKey !== undefined && <FloatingCTAShake shakeKey={shakeKey} />}
     </div>
   );

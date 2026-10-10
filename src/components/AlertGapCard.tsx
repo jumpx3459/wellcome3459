@@ -36,7 +36,9 @@ export default function AlertGapCard() {
   }, []);
 
   // 인앱 브라우저에서는 숨김 — 홈 상단 띠(InAppBanner "🔔 알림 받으려면 [크롬으로 열기]")와 같은 안내라 중복
-  if (dismissed || consent !== true || kind === null || kind === "inapp") return null;
+  // 2026-10-09 PR 4a: 권한 거부(denied)·이 기기 구독 없음(off)은 회원 홈 "🔕 알림이 꺼져 있어요"(배너 아래)가 맡아서 숨김 —
+  //   이 카드는 알림이 안 되는 환경(아이폰 홈 화면 추가 전·미지원 브라우저·정식 주소 아님)만
+  if (dismissed || consent !== true || kind === null || kind === "inapp" || kind === "denied" || kind === "off") return null;
   const c = causeLine(kind);
   const close = () => {
     try {

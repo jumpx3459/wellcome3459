@@ -20,7 +20,7 @@ import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 import { rem } from "@/lib/rem";
 import { authFetch, getFreshAccessToken, isAuthNetworkError } from "@/lib/authFetch";
 import { SECTION_TITLE_STYLE, SERVICES_ANCHOR_ID, ServiceTilesCompact } from "@/components/EcosystemGrid";
-import StockTypeBadge from "@/components/StockTypeBadge";
+import { stockTypeBadge } from "@/lib/stockType";
 import { isLumpSum } from "@/lib/priceUnit";
 import { CONNECTION_CONSENT_VERSION } from "@/lib/consent";
 import ConnectionConsentSheet from "@/components/ConnectionConsentSheet";
@@ -32,6 +32,9 @@ import ZoomTip from "@/components/ZoomTip";
 import { PRIVATE_SELLER_NAME, PRIVATE_SELLER_NOTE, publicSellerName } from "@/lib/sellerDisplay";
 import FloatingCTA, { FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE_FIT, FloatingCTANote, floatingCtaButtonStyle } from "@/components/FloatingCTA";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
+import { heartToShow } from "@/lib/heartCount";
+import { ctaState, isDealClosed } from "@/lib/dealCta";
+import { fetchHeartCounts } from "@/lib/heartCountClient";
 
 // 값이 없거나 공백뿐이면 섹션/행 자체를 그리지 않는다 (빈 공간 방지)
 function hasText(v: string | null | undefined): boolean {
@@ -63,13 +66,12 @@ function DealDetailPageInner() {
   const [shareCopied, setShareCopied] = useState(false);
   const [interestError, setInterestError] = useState<string | null>(null);
   const [interestNeedsReauth, setInterestNeedsReauth] = useState(false);
-  // 2026-10-01 F-1: 이미 접수된 리드(비회원 같은 번호 재접수) 안내
-  const [interestNotice, setInterestNotice] = useState<string | null>(null);
   const [manifestOpen, setManifestOpen] = useState(false);
   // 2026-10-03 A안: 비회원(가격 없이 받은 매물·예시)은 가격 상자 대신 "가입하면 회원가를 볼 수 있어요" — 첫 화면도 숨김으로 시작
   const [priceHidden, setPriceHidden] = useState(isSupabaseConfigured);
   // 2026-10-03 F-3a: 판매자 연결 동의(7-1) — 진행 중 연결 여부(unknown = 조회 전·실패), 동의 시트, 비회원 "이미 관심 → 연결 요청" 폼
-  const [connection, setConnection] = useState<"unknown" | "none" | "open">("unknown");
+  // 2026-10-09 PR 4a: 주 버튼 ②"✓ 연결 요청함" 판정(진행 중 또는 성사로 끝난 연결) — null = 조회 전·실패(①로 보임)
+  const [requested, setRequested] = useState<boolean | null>(null);
   const [connectSheet, setConnectSheet] = useState<null | "member">(null);
   const [connectBusy, setConnectBusy] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
@@ -204,6 +206,10 @@ function DealDetailPageInner() {
           is_anonymous: data.is_anonymous ?? null,
           seller_display_name: data.seller_display_name ?? null,
         });
+        // 2026-10-09 PR 4a: 공개 하트 수(deal_heart_counts — 집계 시작 이후·테스트 회원 제외). 실패하면 하트 안 그림
+        const hearts = await fetchHeartCounts([data.id as string]);
+        const hc = hearts[data.id as string];
+        if (hc !== undefined) setDeal((prev) => (prev.id === data.id ? { ...prev, heart_count: hc } : prev));
       }
     })();
   }, [params.id, isExampleId]);
@@ -216,28 +222,43 @@ function DealDetailPageInner() {
   const hasDiscount = deal.original_price != null && deal.deal_price != null && deal.original_price > deal.deal_price;
   const color = categoryColors[deal.category] ?? categoryColors["기타"];
 
-  // 2026-10-01 F-1: 이미 관심 표시한 매물이면 처음부터 "관심 표시 완료" — 회원은 interests(본인 행만 읽힘), 비회원은 이 기기 기록
+  // 2026-10-01 F-1: 이미 관심 표시한 매물이면 처음부터 ♥ — 회원은 interests(본인 행만 읽힘).
+  // 2026-10-09 PR 4a: 회원이면 관심 여부와 별개로 연결 요청 상태(✓ 연결 요청함)도 처음에 확인(/api/connections check의 requested)
   useEffect(() => {
     if (isExampleId || !params.id) return;
     if (!isSupabaseConfigured || !supabase) return;
     (async () => {
       const { data: userData } = await supabase!.auth.getUser();
       if (!userData.user) return;
-      const { data } = await supabase!.from("interests").select("id").eq("deal_id", params.id).eq("member_id", userData.user.id).limit(1);
-      if (data?.length) {
-        setInterested(true);
-        const open = await fetchMemberConnectionOpen(params.id);
-        if (open !== null) setConnection(open ? "open" : "none");
-      }
+      const [{ data }, req] = await Promise.all([
+        supabase!.from("interests").select("id").eq("deal_id", params.id).eq("member_id", userData.user.id).limit(1),
+        fetchMemberConnectionRequested(params.id),
+      ]);
+      if (data?.length) setInterested(true);
+      if (req !== null) setRequested(req);
     })();
   }, [params.id, isExampleId]);
 
-  // 마감 시각이 지난 매물(아직 status는 active일 수 있음) — 관심 접수 막음. 회원 직접 저장은 RLS가 마감을 안 보므로 화면에서 막음(DB 정책은 F-2 SQL)
-  const isPastClose = () => !!deal.closes_at && new Date(deal.closes_at).getTime() <= Date.now();
+  // 마감 시각이 지난 매물(아직 status는 active일 수 있음)도 마감 — 회원 직접 저장은 RLS가 마감 시각까지 보지만 화면에서도 먼저 막음
+  const dealClosed = isDealClosed(deal.status, deal.closes_at);
+  const cta = ctaState(dealClosed, requested === true);
 
+  // 하단 안내 1.5초 (♡ 담기·빼기·연결 요청 완료)
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = (text: string) => {
+    setToast(text);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), TOAST_MS);
+  };
+  useEffect(() => () => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+  }, []);
+
+  // 주 버튼 ①"판매자 연결 요청" — 회원은 동의 시트, 세션이 끊겼으면 가입·로그인 화면으로(돌아올 주소 유지)
   const handleInterest = async () => {
     setInterestError(null);
-    if (deal.status === "closed" || isPastClose()) {
+    if (isDealClosed(deal.status, deal.closes_at)) {
       setInterestError("이미 마감된 매물이에요.");
       return;
     }
@@ -249,24 +270,25 @@ function DealDetailPageInner() {
       router.push(withReturnTo("/signup", `/deals/${deal.id}`, ref ? `ref=${ref}` : ""));
       return;
     }
-    // 2026-10-03 F-3a: 회원은 판매자 연결 동의 시트부터 — [동의하고 연결 요청] / [관심 표시만 할게요]
     setConnectError(null);
     setConnectSheet("member");
   };
 
-  // 가입 직후 돌아온 경우(autoInterest=1) — 동의는 자동으로 받을 수 없으니 관심 표시만 하고, 상세의 [판매자 연결 요청]으로 안내
+  // ♡로 로그인하러 갔다가 돌아온 경우(autoInterest=1) — 관심만 자동 반영(연결 요청은 동의가 필요해 자동으로 하지 않음)
   const autoInterest = async () => {
-    if (deal.status === "closed" || isPastClose() || !isSupabaseConfigured || !supabase) return handleInterest();
+    if (isDealClosed(deal.status, deal.closes_at) || !isSupabaseConfigured || !supabase) return;
     const { data: userData } = await supabase.auth.getUser();
-    // 2026-10-04 4.5: 세션이 없으면(옛 링크·가입 안 마침) 아무것도 기록하지 않고 그대로 — 하단 가입 버튼만 보임
+    // 2026-10-04 4.5: 세션이 없으면(옛 링크·가입 안 마침) 아무것도 기록하지 않음
     if (!userData.user) return;
-    if (await recordInterest(userData.user.id)) {
-      const open = await fetchMemberConnectionOpen(deal.id);
-      if (open !== null) setConnection(open ? "open" : "none");
+    const { data: existing } = await supabase.from("interests").select("id").eq("deal_id", deal.id).eq("member_id", userData.user.id).limit(1);
+    if (existing?.length) {
+      setInterested(true);
+      return;
     }
+    if (await recordInterest(userData.user.id)) showToast(HEART_ADDED_TOAST);
   };
 
-  // 회원 관심 표시 저장(interests, 브라우저 직접 — 기존 흐름 그대로). 성공하면 true, 실패 문구는 interestError
+  // 회원 관심 표시 저장(interests, 브라우저 직접 — RLS: 본인 행·진행 중 매물만 insert). 성공하면 true, 실패 문구는 interestError
   const recordInterest = async (userId: string): Promise<boolean> => {
     if (!supabase) return false;
     setInterestError(null);
@@ -302,21 +324,48 @@ function DealDetailPageInner() {
     return !error;
   };
 
+  // ♡ 버튼 — 1번 누름 = 관심 표시/해제(interests 본인 행 insert/delete, RLS: insert는 진행 중 매물만·delete는 본인 행이면 마감 매물도 가능).
+  //   비회원 → 로그인 화면(돌아오면 autoInterest=1로 자동 반영). 연결 요청 중(②)에는 ♥ 고정. 마감 매물은 빼기만.
+  const [heartBusy, setHeartBusy] = useState(false);
+  const toggleHeart = async () => {
+    if (heartBusy || !isSupabaseConfigured || !supabase) return;
+    setInterestError(null);
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      const back = `/deals/${deal.id}?${new URLSearchParams({ autoInterest: "1", ...(ref ? { ref } : {}) }).toString()}`;
+      router.push(withReturnTo("/login", back));
+      return;
+    }
+    if (interested) {
+      if (cta === "requested") {
+        showToast("연결 요청 중에는 관심을 뺄 수 없어요");
+        return;
+      }
+      setHeartBusy(true);
+      const { error } = await supabase.from("interests").delete().eq("deal_id", deal.id).eq("member_id", userData.user.id);
+      setHeartBusy(false);
+      if (error) {
+        setInterestError("처리 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");
+        return;
+      }
+      setInterested(false);
+      showToast("관심 목록에서 뺐어요");
+      return;
+    }
+    if (isDealClosed(deal.status, deal.closes_at)) {
+      showToast("마감된 매물은 관심 목록에 담을 수 없어요");
+      return;
+    }
+    setHeartBusy(true);
+    const ok = await recordInterest(userData.user.id);
+    setHeartBusy(false);
+    if (ok) showToast(HEART_ADDED_TOAST);
+  };
+
   const closeConnectSheet = () => {
     if (connectBusy) return;
     setConnectSheet(null);
     setConnectError(null);
-  };
-
-  // 회원 [관심 표시만 할게요] — 연결 기록 없이 지금 흐름(이미 관심 표시했으면 닫기만)
-  const memberInterestOnly = async () => {
-    if (interested || !supabase) return closeConnectSheet();
-    setConnectBusy(true);
-    const { data: userData } = await supabase.auth.getUser();
-    const ok = userData.user ? await recordInterest(userData.user.id) : false;
-    setConnectBusy(false);
-    setConnectSheet(null);
-    if (ok) setConnection("none");
   };
 
   // 회원 [동의하고 연결 요청] — 관심 표시(아직이면) → /api/connections. 실패하면 시트 유지 + 문구
@@ -348,10 +397,10 @@ function DealDetailPageInner() {
         );
         return;
       }
-      setConnection("open");
-      // 2026-10-03: 완료 안내는 하단 버튼("연결 요청 완료 · 점핑매니저가 빠르게 연락드려요") 한 곳만 — 중복이면 그 사실만 알림
-      setInterestNotice(data.duplicate ? "이미 연결을 요청하셨어요" : null);
+      setRequested(true);
+      setInterested(true);
       setConnectSheet(null);
+      showToast(data.duplicate ? "이미 연결을 요청하셨어요" : "✓ 연결 요청을 보냈어요 · 담당 매니저가 확인 후 연락드려요");
     } catch (e) {
       setConnectError(
         isAuthNetworkError(e) ? "인터넷 연결이 끊겼어요. 연결 후 다시 시도해주세요." : "연결 요청을 저장하지 못했어요. 잠시 후 다시 시도해주세요."
@@ -359,13 +408,6 @@ function DealDetailPageInner() {
     } finally {
       setConnectBusy(false);
     }
-  };
-
-  // 관심 표시 후 [판매자 연결 요청] — 회원은 시트, 비회원은 번호 폼(번호·개인정보 동의) → 시트
-  const requestConnection = () => {
-    setConnectError(null);
-    setInterestNotice(null);
-    setConnectSheet("member");
   };
 
   const sendMessage = async () => {
@@ -422,6 +464,8 @@ function DealDetailPageInner() {
 
   return (
     <main className="flex flex-col min-h-screen">
+      {/* 2026-10-09 PR 4a: 사진이 있으면 이 머리줄 대신 사진 위에 뒤로·로고를 얹음(사진을 화면 맨 위 여백 없이) — 아래 PhotoCarousel overlay */}
+      {!hasPhotos && (
       <div className="flex-shrink-0 flex items-center justify-between gap-2 px-5 py-3" style={{ borderBottom: "1px solid #EEF0F2" }}>
         <div className="flex items-center gap-1 min-w-0">
           <button
@@ -445,13 +489,14 @@ function DealDetailPageInner() {
           </div>
         )}
       </div>
-
-      <ZoomTip />
+      )}
 
       {/* 2026-09-29: 사진이 있으면 화면 폭 전체 1:1 + 옆으로 넘기기 + "1/N", 누르면 전체 화면(핀치 확대).
           사진이 없으면 예전처럼 3:1 자리표시 */}
+      {/* 2026-10-09 PR 4a 상세 첫 화면 B안: 사진은 위 여백 없이 3:2(360폭 → 240px), 썸네일 줄 대신 사진 아래 점 + 오른쪽 아래 "1/N".
+          사진 탭 = 전체 화면 보기(그대로). 목표: 카톡 인앱 360×640에서 매물명 끝이 하단 버튼 윗선보다 위 */}
       {hasPhotos ? (
-        <div className="pt-3">
+        <div>
           <PhotoCarousel
             ref={carouselRef}
             images={images}
@@ -459,16 +504,40 @@ function DealDetailPageInner() {
             index={photoIndex}
             onIndexChange={setPhotoIndex}
             onOpen={(i) => setViewerIndex(i)}
+            ratio="3/2"
             overlay={
-              <div className="absolute top-2.5 right-2.5 pointer-events-none">
-                {deal.status === "closed" ? (
-                  <span className="font-bold text-white bg-gray500 rounded-full shadow" style={{ fontSize: rem(16), padding: "2px 10px" }}>마감됨</span>
-                ) : (
-                  <div className="rounded-full shadow" style={{ background: "rgba(255,255,255,0.94)" }}>
-                    <CountdownBadge closesAt={deal.closes_at} tone={isExampleId ? "muted" : "urgent"} />
-                  </div>
-                )}
-              </div>
+              <>
+                <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5" data-hero-head>
+                  <button
+                    type="button"
+                    onClick={goBack}
+                    aria-label="뒤로 가기"
+                    className="flex-shrink-0 flex items-center justify-center rounded-full shadow"
+                    style={{ width: 36, height: 36, background: "rgba(255,255,255,0.94)", color: "#0B2540" }}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M15 18l-6-6 6-6" />
+                    </svg>
+                  </button>
+                  <TabLink href="/" className="flex items-center rounded-full shadow" style={{ height: 36, padding: "0 10px", background: "rgba(255,255,255,0.94)" }}>
+                    <img src="/images/logo.png" alt="덤핑점핑" className="h-6 w-auto flex-shrink-0" />
+                  </TabLink>
+                </div>
+                <div className="absolute top-2.5 right-2.5 flex flex-col items-end gap-1.5 pointer-events-none">
+                  {deal.status === "closed" ? (
+                    <span className="font-bold text-white bg-gray500 rounded-full shadow" style={{ fontSize: rem(16), padding: "2px 10px" }}>마감됨</span>
+                  ) : (
+                    <div className="rounded-full shadow" style={{ background: "rgba(255,255,255,0.94)" }}>
+                      <CountdownBadge closesAt={deal.closes_at} tone={isExampleId ? "muted" : "urgent"} />
+                    </div>
+                  )}
+                  {remainPct <= 30 && (
+                    <div className="text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow" style={{ background: "#FF6F0F", color: "#fff" }}>
+                      🔥 소진임박 · {deal.remaining_qty}{deal.quantity_unit || "개"} 남음
+                    </div>
+                  )}
+                </div>
+              </>
             }
           />
         </div>
@@ -489,44 +558,18 @@ function DealDetailPageInner() {
         </div>
       )}
 
-      {images.length > 1 && (
-        <div className="flex gap-2 px-5 pt-3 overflow-x-auto">
-          {images.map((url, i) => (
-            <button
-              key={i}
-              onClick={() => {
-                setPhotoIndex(i);
-                carouselRef.current?.scrollToIndex(i);
-              }}
-              aria-label={`사진 ${i + 1} 보기`}
-              className="rounded-lg overflow-hidden flex-shrink-0"
-              style={{
-                width: "56px",
-                height: "56px",
-                border: photoIndex === i ? `2px solid ${color.solid}` : "2px solid transparent",
-              }}
-            >
-              <img src={url} alt={`사진 ${i + 1}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
-            </button>
-          ))}
+      <div className="px-5" style={{ paddingTop: hasPhotos ? 8 : 12 }}>
+        {/* 카테고리·재고 유형·예시 표시를 한 줄 13px 글자로(예전 알약 칩 줄) */}
+        <div className="truncate font-bold" style={{ fontSize: rem(13), color: color.text, marginBottom: 2 }} data-category-line>
+          {categoryIcons[deal.category] ?? "🗂️"} {deal.category}
+          {stockTypeBadge(deal.stock_type) && <span style={{ color: "#6B7480" }}> · {stockTypeBadge(deal.stock_type)}</span>}
+          {isExampleId && <span style={{ color: "#E25100" }}> · 예시 미리보기</span>}
         </div>
-      )}
-
-      <div className="px-5 pt-3">
-        <div className="flex items-center flex-wrap gap-1.5 mb-2">
-          <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: color.bg, color: color.text }}>
-            <span className="text-sm">{categoryIcons[deal.category] ?? "🗂️"}</span>
-            {deal.category}
-          </span>
-          <StockTypeBadge value={deal.stock_type} />
-          {isExampleId && (
-            <span className="inline-flex items-center gap-1 text-xs font-bold text-white px-2.5 py-1 rounded-full" style={{ background: "rgba(226,81,0,.85)" }}>
-              예시 미리보기
-            </span>
-          )}
-        </div>
-        <h1 className="font-display text-navy text-2xl leading-snug">{deal.title}</h1>
+        <h1 className="font-display text-navy text-2xl leading-snug" data-deal-title>{deal.title}</h1>
       </div>
+
+      {/* 확대 안내(처음 1번)는 매물명 아래로 — 예전엔 머리줄과 사진 사이에 있어 첫 화면을 밀어냈음 */}
+      <ZoomTip />
 
       <div className="flex-1 p-5 flex flex-col gap-4" style={{ paddingBottom: "24px" }}>
         {hasText(deal.video_url) && (
@@ -566,19 +609,19 @@ function DealDetailPageInner() {
         ) : priceHidden ? (
           // 2026-10-03 A안: 비회원 — 가격 상자 대신 가입 안내. 가입 버튼은 하단 고정 버튼 하나(4.5) — returnTo(이 매물)·ref만, autoInterest 같은 자동 관심은 붙이지 않음
           <div>
-            {(cardDiscountPct(deal) > 0 || (deal.interest_count ?? 0) >= 3) && (
+            {(cardDiscountPct(deal) > 0 || heartToShow(deal.heart_count) !== null) && (
               <div className="flex flex-wrap items-baseline gap-x-2 mb-2">
                 {cardDiscountPct(deal) > 0 && (
                   <span className="text-xl font-black whitespace-nowrap" style={{ color: "#E25100" }}>
                     -{cardDiscountPct(deal)}%
                   </span>
                 )}
-                {(deal.interest_count ?? 0) >= 3 && (
+                {heartToShow(deal.heart_count) !== null && (
                   <span
                     className="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full flex-shrink-0"
                     style={{ background: "#FDEEE8", color: "#C2410C" }}
                   >
-                    ❤️ {deal.interest_count}명 관심
+                    ❤️ {heartToShow(deal.heart_count)}명 관심
                   </span>
                 )}
               </div>
@@ -617,12 +660,12 @@ function DealDetailPageInner() {
                 <PriceText text={dealPriceLabel(deal)} />
               </span>
               {/* 2026-09-26: 카드 리스트와 동일한 threshold-gating(3건 미만 숨김) */}
-              {(deal.interest_count ?? 0) >= 3 && (
+              {heartToShow(deal.heart_count) !== null && (
                 <span
                   className="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full flex-shrink-0"
                   style={{ background: "#FDEEE8", color: "#C2410C" }}
                 >
-                  ❤️ {deal.interest_count}명 관심
+                  ❤️ {heartToShow(deal.heart_count)}명 관심
                 </span>
               )}
             </div>
@@ -962,67 +1005,90 @@ function DealDetailPageInner() {
               반투명+블러 카드 + 상단 페이드로, 스크롤 중인 상세 콘텐츠가 자연스럽게
               이어지도록 함. */}
           {/* 2026-09-29: 공용 하단 고정 버튼 — 판·블러 없이 버튼만 띄움 */}
-          <FloatingCTA>
-            {!authKnown ? null : !isMember ? (
-              // 2026-10-04 4.5: 비회원은 번호 입력 폼·"정식으로 가입하고…" 없이 가입 버튼 하나 — 가입 시 관심·리드 자동 기록 없음(#57 규칙)
-              <Link
-                href={withReturnTo("/signup", `/deals/${deal.id}`, ref ? `ref=${ref}` : "")}
-                className={FLOATING_CTA_BUTTON_CLASS}
-                style={floatingCtaButtonStyle()}
-                data-guest-signup-cta
-              >
-                {isNegotiable(deal) ? NEGOTIABLE_GUEST_CTA : "무료 회원가입하고 가격 보기"}
-              </Link>
-            ) : interested && connection === "none" && !isPastClose() ? (
-              // 2026-10-03 F-3a: 관심 표시는 했지만(autoInterest 포함) 진행 중 연결이 없음 → 같은 동의 시트로
+          <FloatingCTA bar>
+            {/* 2026-10-09 PR 4a: 하단 한 줄 = ♡ 찜(48×48) + 주 버튼(flex 1), 간격 8px·높이 48px.
+                뒤 내용이 비치지 않게 흰 바탕 띠(위 테두리 1px #e2e8f0, 위아래 8px·좌우 16px) — 하단 탭 바로 위(안전 영역은 하단 탭이 맡음).
+                본문 아래 여백은 FLOATING_CTA_SPACE_FIT(띠 실제 높이 + 여유)이 그대로 맞춤.
+                주 버튼: ①판매자 연결 요청(주황) ②✓ 연결 요청함(반응 없음) ③마감된 매물이에요(회색, 반응 없음) — src/lib/dealCta.ts.
+                예전 고정 안내 "관심 표시 완료 · 판매자 연결은 동의 후 진행돼요"는 삭제(안내는 누른 직후 1.5초만) */}
+            {!authKnown ? null : (
               <>
-                {interestNotice && <FloatingCTANote tone="info">{interestNotice}</FloatingCTANote>}
-                <button type="button" onClick={requestConnection} className={FLOATING_CTA_BUTTON_CLASS} style={floatingCtaButtonStyle()}>
-                  판매자 연결 요청
-                </button>
-                <div className="mx-auto mt-2 w-fit max-w-full rounded-full bg-white text-center" style={{ fontSize: rem(14), padding: "6px 12px", color: "#4B5563", boxShadow: "0 4px 12px rgba(11,37,64,.15)" }}>
-                  관심 표시 완료 · 판매자 연결은 동의 후 진행돼요
-                </div>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={handleInterest}
-                  disabled={interested}
-                  // 2026-10-01 F-1: 완료 상태는 안내라 흐리게(opacity) 두지 않고 불투명 흰 바탕 — 뒤 내용과 섞여 안 읽히던 문제
-                  className={`${FLOATING_CTA_BUTTON_CLASS}${interested ? " disabled:opacity-100" : ""}`}
-                  style={interested ? { ...floatingCtaButtonStyle(true), background: "#fff", color: "#0B2540", border: "1.5px solid #C9CFD6", fontSize: rem(16) } : floatingCtaButtonStyle()}
-                >
-                  {interested
-                    ? connection === "open"
-                      ? "연결 요청 완료 · 점핑매니저가 빠르게 연락드려요"
-                      : "관심 표시 완료 · 점핑매니저가 빠르게 연락드려요"
-                    : "관심있어요 · 점핑매니저 연결"}
-                </button>
-                {interestNotice && (
-                  <div className="mx-auto mt-2 w-fit max-w-full rounded-full bg-white text-center font-bold" style={{ fontSize: rem(14), padding: "6px 12px", color: "#0B2540", boxShadow: "0 4px 12px rgba(11,37,64,.15)" }}>
-                    {interestNotice}
-                  </div>
-                )}
-                {interestError && (
-                  <div className="mx-auto mt-2 w-fit max-w-full rounded-full bg-white text-center text-orange" style={{ fontSize: rem(14), padding: "6px 12px", boxShadow: "0 4px 12px rgba(11,37,64,.15)" }}>
-                    {interestError}
-                    {interestNeedsReauth && (
+                {(toast || interestError) && (
+                  <div className="px-5">
+                  <FloatingCTANote tone={toast ? "info" : "error"}>
+                    <span data-cta-toast>{toast ?? interestError}</span>
+                    {!toast && interestNeedsReauth && (
                       <>
                         {" "}
-                        <Link
-                          href={`/signup?returnTo=${encodeURIComponent(`/deals/${deal.id}`)}`}
-                          className="underline font-bold"
-                        >
+                        <Link href={`/signup?returnTo=${encodeURIComponent(`/deals/${deal.id}`)}`} className="underline font-bold">
                           인증하기 →
                         </Link>
                       </>
                     )}
+                  </FloatingCTANote>
                   </div>
                 )}
+                <div style={{ background: "#ffffff", borderTop: "1px solid #e2e8f0", padding: "8px 16px" }} data-cta-bar>
+                <div className="flex items-stretch" style={{ gap: 8 }} data-cta-row>
+                  <button
+                    type="button"
+                    onClick={toggleHeart}
+                    disabled={heartBusy}
+                    aria-label={interested ? "관심 목록에서 빼기" : "관심 목록에 담기"}
+                    aria-pressed={interested}
+                    data-heart={interested ? "on" : "off"}
+                    className="flex-shrink-0 flex items-center justify-center rounded-2xl"
+                    style={{ width: CTA_ROW_HEIGHT, height: CTA_ROW_HEIGHT, background: "#fff", border: "1.5px solid #cbd5e1", boxShadow: "0 6px 16px rgba(11,37,64,.15)" }}
+                  >
+                    {/* ♡/♥는 글자 대신 SVG — 하트 문자는 기기에 따라 이모지(색 고정)로 바뀌어 색 지정이 안 먹을 수 있어서 */}
+                    <svg aria-hidden width="24" height="24" viewBox="0 0 24 24" fill={interested ? "#e11d48" : "none"} stroke={interested ? "#e11d48" : "#94a3b8"} strokeWidth="2" strokeLinejoin="round">
+                      <path d="M12 20.5s-7.5-4.6-9.3-9.2C1.4 8 3.4 4.5 6.9 4.5c2.1 0 3.6 1.2 5.1 3 1.5-1.8 3-3 5.1-3 3.5 0 5.5 3.5 4.2 6.8-1.8 4.6-9.3 9.2-9.3 9.2z" />
+                    </svg>
+                  </button>
+                  {!isMember ? (
+                    // 2026-10-04 4.5: 비회원은 가입 버튼 하나(가입 시 관심·리드 자동 기록 없음 — #57 규칙). ♡는 로그인 화면으로
+                    <Link
+                      href={withReturnTo("/signup", `/deals/${deal.id}`, ref ? `ref=${ref}` : "")}
+                      className={`flex-1 min-w-0 ${FLOATING_CTA_BUTTON_CLASS}`}
+                      style={{ ...floatingCtaButtonStyle(), minHeight: CTA_ROW_HEIGHT, height: CTA_ROW_HEIGHT, fontSize: rem(16) }}
+                      data-guest-signup-cta
+                    >
+                      {isNegotiable(deal) ? NEGOTIABLE_GUEST_CTA : "무료 회원가입하고 가격 보기"}
+                    </Link>
+                  ) : cta === "request" ? (
+                    <button
+                      type="button"
+                      onClick={handleInterest}
+                      className={`flex-1 min-w-0 ${FLOATING_CTA_BUTTON_CLASS}`}
+                      style={{ ...floatingCtaButtonStyle(), minHeight: CTA_ROW_HEIGHT, height: CTA_ROW_HEIGHT }}
+                      data-cta="request"
+                    >
+                      판매자 연결 요청
+                    </button>
+                  ) : cta === "requested" ? (
+                    <div
+                      role="status"
+                      className={`flex-1 min-w-0 ${FLOATING_CTA_BUTTON_CLASS}`}
+                      style={{ minHeight: CTA_ROW_HEIGHT, height: CTA_ROW_HEIGHT, fontSize: rem(17), fontWeight: 800, background: "#fff", border: "1.5px solid #6366f1", color: "#3730a3", boxShadow: "0 6px 16px rgba(55,48,163,.18)" }}
+                      data-cta="requested"
+                    >
+                      ✓ 연결 요청함
+                    </div>
+                  ) : (
+                    <div
+                      aria-disabled="true"
+                      className={`flex-1 min-w-0 ${FLOATING_CTA_BUTTON_CLASS}`}
+                      style={{ ...floatingCtaButtonStyle(true), minHeight: CTA_ROW_HEIGHT, height: CTA_ROW_HEIGHT }}
+                      data-cta="closed"
+                    >
+                      마감된 매물이에요
+                    </div>
+                  )}
+                </div>
+                </div>
               </>
             )}
-                      </FloatingCTA>
+          </FloatingCTA>
         </>
       )}
 
@@ -1031,7 +1097,6 @@ function DealDetailPageInner() {
           busy={connectBusy}
           error={connectError}
           onAgree={memberAgree}
-          onInterestOnly={memberInterestOnly}
           onClose={closeConnectSheet}
         />
       )}
@@ -1052,13 +1117,19 @@ function DealDetailPageInner() {
   );
 }
 
-// 2026-10-03 F-3a: 회원의 이 매물 진행 중 연결 여부 (deal_connections는 서버 전용 → /api/connections check). 실패는 null(버튼 숨김)
-async function fetchMemberConnectionOpen(dealId: string): Promise<boolean | null> {
+// 2026-10-09 PR 4a: 회원의 이 매물 연결 요청 상태 — 진행 중 또는 성사로 끝난 연결이 있으면 true(/api/connections check의 requested).
+// deal_connections는 서버 전용. 실패는 null(①"판매자 연결 요청"으로 보임 — 이미 진행 중이면 서버가 duplicate로 알려 줌)
+async function fetchMemberConnectionRequested(dealId: string): Promise<boolean | null> {
   try {
     const res = await authFetch("/api/connections", { json: { dealId, check: true } });
     const data = await res.json().catch(() => ({}));
-    return res.ok && typeof data.open === "boolean" ? data.open : null;
+    return res.ok && typeof data.requested === "boolean" ? data.requested : null;
   } catch {
     return null;
   }
 }
+
+// 하단 한 줄(♡ + 주 버튼) 높이 · 안내 표시 시간
+const CTA_ROW_HEIGHT = 48;
+const TOAST_MS = 1500;
+const HEART_ADDED_TOAST = "♥ 관심 목록에 담았어요 · MY › 관심 매물에서 다시 볼 수 있어요";

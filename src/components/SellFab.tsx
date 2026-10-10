@@ -1,15 +1,37 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { rem } from "@/lib/rem";
 
 // 떠 있는 "＋ 매물 등록" 버튼 (2026-10-09 4b-2) — 회원 홈(AlertInboxHome)·/deals에서만 그림(다른 화면엔 넣지 않음).
 // 앱 틀(max-w-md 448px) 오른쪽 14px · 하단 탭 위 14px(--nav-bottom이 safe-area 포함). 하단 탭(z-40)보다 위.
 // 쓰는 화면은 목록 맨 아래에 90px 여백을 둬서 마지막 카드가 이 버튼에 가리지 않게 할 것. 링크는 주황 배너 [무료 등록]과 같은 /sell
+// 2026-10-09 4a: 같은 화면의 주황 등록 배너([data-sell-banner])가 조금이라도 보이면 숨기고, 화면 밖으로 나가면 0.2초 페이드로 표시
+//   (IntersectionObserver). 배너가 없는 화면·상태면 표시.
 export const SELL_FAB_HREF = "/sell";
+export const SELL_BANNER_SELECTOR = "[data-sell-banner]";
 
 export default function SellFab() {
+  const [bannerVisible, setBannerVisible] = useState(true); // 첫 그림은 숨김(배너가 보통 첫 화면에 있음) — 확인 뒤 바로 맞춤
+
+  useEffect(() => {
+    const banner = document.querySelector(SELL_BANNER_SELECTOR);
+    if (!banner || typeof IntersectionObserver === "undefined") {
+      setBannerVisible(false);
+      return;
+    }
+    const io = new IntersectionObserver((entries) => setBannerVisible(entries.some((e) => e.isIntersecting)), { threshold: 0 });
+    io.observe(banner);
+    return () => io.disconnect();
+  }, []);
+
+  const hidden = bannerVisible;
   return (
     <Link
       href={SELL_FAB_HREF}
+      aria-hidden={hidden || undefined}
+      tabIndex={hidden ? -1 : undefined}
       className="fixed z-[45] inline-flex items-center justify-center rounded-full text-white whitespace-nowrap"
       style={{
         right: "max(14px, calc((100vw - 448px) / 2 + 14px))",
@@ -20,8 +42,12 @@ export default function SellFab() {
         fontSize: rem(17),
         fontWeight: 800,
         boxShadow: "0 6px 16px rgba(249,115,22,.45)",
+        opacity: hidden ? 0 : 1,
+        pointerEvents: hidden ? "none" : undefined,
+        transition: "opacity .2s ease",
       }}
       data-sell-fab
+      data-fab-hidden={hidden ? "1" : undefined}
     >
       ＋ 매물 등록
     </Link>

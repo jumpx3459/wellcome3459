@@ -29,13 +29,11 @@ import { getRememberedLoginMethod, hasActivePushSubscription, hasLoginHistory, t
 import FloatingCTA, { FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
 
 const TODAY_BADGE_THRESHOLD = 5; // 이보다 적으면 "오늘 N건" 배너를 아예 숨김 (빈약한 숫자 노출 방지)
-const BUSINESS_COUNT_THRESHOLD = 30; // 이보다 적으면 사업자 수 대신 무숫자 카피로 대체 (빈약한 숫자 노출 방지)
 
 const EXAMPLE_DEALS = mockDeals.filter((d) => d.status !== "closed").slice(0, 3);
 
 export default function Home() {
   const [todayCount, setTodayCount] = useState(0);
-  const [businessCount, setBusinessCount] = useState(0);
   // 2026-10-07: 처음 불러오는 동안은 예시 대신 회색 자리 표시(데모 모드=Supabase 없음은 예시 그대로)
   const [preview, setPreview] = useState<Deal[]>(isSupabaseConfigured ? [] : EXAMPLE_DEALS);
   const [isExample, setIsExample] = useState(!isSupabaseConfigured);
@@ -112,15 +110,7 @@ export default function Home() {
     } catch {}
   }, []);
 
-  // 2026-09-27: 신뢰 지표용 인증 사업자 수 — 개인정보 없이 숫자만 내려주는
-  // 공개 API(/api/public-stats)에서 가져옴 (members 테이블 RLS는 본인만 조회 가능).
-  useEffect(() => {
-    if (memberState !== "guest") return;
-    fetch("/api/public-stats")
-      .then((res) => res.json())
-      .then((data) => setBusinessCount(data.businessCount ?? 0))
-      .catch(() => {});
-  }, [memberState]);
+  // 2026-10-09 PR 4a: 히어로 신뢰 띠("✔ 지금도 계속 새 매물이 올라와요" / 사업자 수) 삭제 — /api/public-stats 조회도 뺌(API는 그대로)
 
   useEffect(() => {
     if (memberState !== "guest") return; // 회원 홈(AlertInboxHome)은 자체 조회
@@ -244,19 +234,6 @@ export default function Home() {
           </span>
         </div>
 
-        {/* 신뢰 지표 — 2026-09-27 (재검토 2): 동종업계 문자광고("전국 4,973개
-            업체 공유") 벤치마킹 — "명"(개인) 대신 "개 업체"(사업자 인증 회원) 단위로
-            바꾸면 같은 실측치라도 B2B 플랫폼 성격에 더 맞고 설득력도 큼.
-            /api/public-stats에서 실시간 집계한 값이 충분히 클 때만 노출하고,
-            작거나 아직 안 불러왔으면 무숫자 카피로 자연스럽게 대체. */}
-        <div className="inline-flex items-center gap-1.5 bg-white/10 rounded-full px-3 py-1.5 mb-4">
-          <span style={{ color: "#5EEAD4", fontSize: rem(11) }}>✔</span>
-          <span className="font-bold text-white/90" style={{ fontSize: rem(11) }}>
-            {businessCount >= BUSINESS_COUNT_THRESHOLD
-              ? `전국 ${businessCount.toLocaleString()}개 사업자가 함께하는 중`
-              : "지금도 계속 새 매물이 올라와요"}
-          </span>
-        </div>
 
         {/* 2026-09-27 (재재검토): 헤드라인(text-xl)과 서브카피(text-sm) 크기 차이가
             작아 위계가 흐릿하다는 피드백 — 트러스트 배지는 11px로 더 줄이고,

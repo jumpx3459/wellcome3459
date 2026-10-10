@@ -7,21 +7,23 @@ import { CONNECTION_CONSENT_TEXT } from "@/lib/consent";
 import { useBackToClose } from "@/lib/useBackToClose";
 
 // 2026-10-03 F-3a: 관심있어요 — 판매자 연결 동의 시트 (consent-texts 7-1). 회원·비회원 공용.
-// 체크 초기값 해제, 체크해야 [동의하고 연결 요청]이 켜짐. [관심 표시만 할게요]는 연결 기록 없이 지금 흐름 그대로.
+// 체크 초기값 해제, 체크해야 [동의하고 연결 요청]이 켜짐.
+// 2026-10-09 PR 4a: 관심 표시는 하단 ♡ 버튼으로 분리 — [관심 표시만 할게요] 삭제, [닫기]만. 제목·안내 문장 새로(동의 문구·버전은 그대로)
 // 저장 실패 시 시트를 닫지 않고(체크 유지) error 문구만 띄운다 — 호출하는 쪽이 닫을지 결정.
 // 2026-10-03: 안드로이드 큰 글자에서 시트가 화면보다 넓어져 오른쪽이 잘린 제보 — 시트 폭을 화면 폭(100vw) 이하로 묶고,
 // 안쪽 칸·버튼은 min-w-0 + 폭 100%(테두리 포함)로 넘침 없이 좌우 여백 20px 대칭. 문구·동작은 그대로.
+export const SHEET_TITLE = "판매자와 연결해 드릴게요";
+export const SHEET_BODY = "담당 매니저가 판매자에게 확인한 뒤, 판매자 상호를 먼저 안내하고 연락처를 전달해 드려요.";
+
 export default function ConnectionConsentSheet({
   busy = false,
   error,
   onAgree,
-  onInterestOnly,
   onClose,
 }: {
   busy?: boolean;
   error?: string | null;
   onAgree: () => void;
-  onInterestOnly: () => void;
   onClose: () => void;
 }) {
   const [checked, setChecked] = useState(false);
@@ -34,7 +36,7 @@ export default function ConnectionConsentSheet({
       style={{ background: "rgba(0,0,0,.5)" }}
       role="dialog"
       aria-modal="true"
-      aria-label={t.title}
+      aria-label={SHEET_TITLE}
       onClick={(e) => {
         if (e.target === e.currentTarget && !busy) onClose();
       }}
@@ -47,7 +49,10 @@ export default function ConnectionConsentSheet({
           padding: "24px 20px calc(20px + env(safe-area-inset-bottom))",
         }}
       >
-        <p className="font-black" style={{ fontSize: rem(20), color: "#0B2540" }}>{t.title}</p>
+        <p className="font-black" style={{ fontSize: rem(20), color: "#0B2540" }}>{SHEET_TITLE}</p>
+        <p className="mt-2" style={{ fontSize: rem(15), color: "#374151", lineHeight: 1.55 }} data-sheet-body>
+          {SHEET_BODY}
+        </p>
 
         <label
           className="mt-4 flex items-start gap-2.5 rounded-2xl cursor-pointer w-full min-w-0 box-border"
@@ -85,8 +90,8 @@ export default function ConnectionConsentSheet({
         <button type="button" onClick={onAgree} disabled={busy || !checked} className={`w-full min-w-0 box-border mt-4 ${BTN_CLASS}`} style={btnStyle("primary")}>
           {busy ? "요청 중…" : t.agree}
         </button>
-        <button type="button" onClick={onInterestOnly} disabled={busy} className={`w-full min-w-0 box-border mt-2 ${BTN_CLASS}`} style={btnStyle("secondary")}>
-          {t.interestOnly}
+        <button type="button" onClick={onClose} disabled={busy} className={`w-full min-w-0 box-border mt-2 ${BTN_CLASS}`} style={btnStyle("secondary")}>
+          닫기
         </button>
       </div>
     </div>
