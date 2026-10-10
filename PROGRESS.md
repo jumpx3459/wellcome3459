@@ -50,6 +50,12 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
+## 최근 작업 (2026-10-10) — /deals 하단 [＋ 매물 등록] 표시 로직 (브랜치 `fix/deals-fab-visibility`)
+
+- **#86 병합 기록**(PR ① 관리자 권한 3단계 + 매니저 실적 기록): 병합 커밋 `f0ca56f`(10/10 06:41 UTC, merge commit) · Deploy to Vercel #290(run 38031805734) 성공 · PR CI #75(run 38031587995, head `3950a8f`) 성공 · main 병합 뒤 CI run 없음. 운영 확인 순서(테스트 회원 점핑매니저 임명 → 숨김·배정 건·번호 가림 → 해제)는 대표 확인 대기.
+- **원인**: 배너 숨김이 배너 전체를 threshold 0으로 봐서 1px만 보여도 숨김 → 위로 올리다 배너 끝만 걸린 구간(그 아래 "N건" 줄 부근)에서 [무료 등록]도 화면 밖이라 등록 버튼 0개. 맨 위 고정 기준은 scrollY 40(아래로 내려도 숨기지 않는 구간).
+- **변경**(`src/lib/fabScroll.ts`·`SellFab.tsx`): 우선순위 ① 사업자 정보 푸터(`[data-business-footer]`, 기존 속성)가 보이면 방향과 관계없이 표시 ② 배너의 [무료 등록](`[data-sell-banner-button]`)이 화면에 **다 보이면** 숨김(threshold 0.99) — 조금이라도 벗어나는 순간 표시하고 방향 기록도 "표시"로 되돌림 ③ 그 밖에는 방향(아래 숨김·위 표시, 흔들림 기준 4px 유지). 고정 scrollY 40 기준 삭제. 배너가 없는 화면이면 ② 무시. 애니메이션·위치·하단 탭 간격 그대로. SellFab 쓰는 화면은 /deals·회원 홈 두 곳이라 회원 홈도 같은 동작(비회원 홈은 SellFab 없음).
+
 ## 최근 작업 (2026-10-10) — 관리자 권한 3단계 서버 강제 · 연결 배정 · 매니저 실적 기록 (브랜치 `feat/admin-roles`)
 
 - **#85 병합 기록**(/deals 카드 정리·등록 버튼 스크롤 숨김·알림 꺼짐 안내·상세 하단 안내·가입 카테고리 전체 선택·비회원 홈 카드): 병합 커밋 `ec7a979`(10/10 02:41 UTC, merge commit, jumpx3459) · Deploy to Vercel #289(run 38017891526) 성공 · PR CI #74(run 38016919332, head `9d0fbbf`) 성공 · main 병합 뒤 CI run 없음. 운영 확인(PR 설명 6항목)은 대표 확인 대기.
