@@ -6,7 +6,7 @@ import { can } from "@/lib/adminPerms";
 import { writeAudit, phoneTail } from "@/lib/adminAudit";
 import { normalizePhone } from "@/lib/phone";
 
-const ROLES = ["최고관리자", "관리자"] as const;
+const ROLES = ["최고관리자", "관리자", "점핑매니저"] as const;
 
 // 임시 비밀번호 — 헷갈리기 쉬운 0/O, 1/I/l은 제외하고 crypto로 생성 (Math.random 아님)
 const TEMP_PW_CHARS = "23456789ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz";
@@ -25,7 +25,7 @@ function getAdminClient() {
   );
 }
 
-// 임명·역할 변경으로 지정할 수 있는 역할 — 점핑매니저는 DB 허용값에만 있고 F(거래 연결) 전까지 지정하지 않음
+// 임명·역할 변경으로 지정할 수 있는 역할 — 2026-10-10 권한표 서버 강제(adminPerms)와 함께 점핑매니저도 지정 가능(예전엔 DB 허용값에만 있었음)
 // 관리자 목록 조회 — 2026-10-10 권한표: 최고관리자는 전체 칸, 관리자(일반)는 이름·역할만(연결 배정·발굴 매니저 선택용), 점핑매니저는 403
 export async function GET(req: NextRequest) {
   const auth = await checkAdminAuth(req);

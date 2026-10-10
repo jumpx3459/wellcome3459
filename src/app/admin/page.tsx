@@ -41,6 +41,7 @@ import { RatioMetric, DailyBars, FunnelBars, InlineBar, BIG_NUM, LABEL, CARD } f
 import AdminListCard from "@/components/admin/AdminListCard";
 import BusinessCheckSection, { BusinessCheckBadge } from "@/components/admin/BusinessCheckSection";
 import ConnectionBoard from "@/components/admin/ConnectionBoard";
+import { can, type AdminPerm } from "@/lib/adminPerms";
 import { CARD_TITLE_PROPS } from "@/components/admin/cardTitle";
 import { isPassingCheck, NOT_CHECKED_MESSAGE, type BusinessCheck } from "@/lib/businessCheck";
 import { formatConsentDate } from "@/lib/consent";
@@ -176,6 +177,7 @@ type Member = {
   created_at: string;
   categories: string[];
   regions: string[];
+  phone_masked?: boolean; // 2026-10-10: 관리자(일반)는 가린 번호 — 전체 번호는 [번호 보기]
 };
 
 type AdminUser = {
@@ -473,9 +475,19 @@ function AdminDashboard({
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [admins, setAdmins] = useState<AdminUser[]>([]);
+  // 2026-10-10 권한표(src/lib/adminPerms.ts) — 화면은 서버와 같은 표로 섹션을 고름(막는 것은 서버). 역할은 /api/admin/me로 다시 확인
+  const [me, setMe] = useState<{ id: string; name: string; role: string } | null>(null);
+  const role = me?.role ?? adminRole;
+  const perm = (p: AdminPerm) => can(role, p);
+  // [발굴 매니저] 선택지 — 최고관리자·관리자는 활성 관리자 전체, 점핑매니저는 본인만(관리자 목록 권한 없음 · 서버도 본인만 허용)
+  const sourcedOptions = perm("adminList")
+    ? admins.map((a) => ({ id: a.id, name: a.name, role: a.role }))
+    : me
+      ? [{ id: me.id, name: me.name, role: me.role }]
+      : [];
   const [appointFor, setAppointFor] = useState<Member | null>(null);
   const [appointName, setAppointName] = useState("");
-  const [appointRole, setAppointRole] = useState<"관리자" | "최고관리자">("관리자");
+  const [appointRole, setAppointRole] = useState<"관리자" | "최고관리자" | "점핑매니저">("관리자");
   const [appointSubmitting, setAppointSubmitting] = useState(false);
   const [appointError, setAppointError] = useState("");
   const [appointResult, setAppointResult] = useState<{ name: string; tempPassword: string } | null>(null);
@@ -562,6 +574,13 @@ function AdminDashboard({
 
   const load = () => {
     setLoading(true);
+    // 권한 없는 목록은 부르지 않음(403 소음 없이 빈 목록) — 점핑매니저는 회원·리드·재고 문의·파트너·지표·공지·관리자 목록 없음
+    const allowed = (p: AdminPerm, url: string) =>
+      can(role, p) ? fetch(url, { headers: { "x-admin-key": adminKey } }) : Promise.resolve(new Response(JSON.stringify({ items: [] }), { status: 200 }));
+    fetch("/api/admin/me", { headers: { "x-admin-key": adminKey } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d?.id && setMe(d))
+      .catch(() => {});
     Promise.all([
       fetch("/api/admin/seller-requests", { headers: { "x-admin-key": adminKey } }).then((res) => {
         if (res.status === 401 || res.status === 429) {
@@ -575,40 +594,40 @@ function AdminDashboard({
       fetch("/api/admin/deals/manage", { headers: { "x-admin-key": adminKey } }).then((res) =>
         res.json()
       ),
-      fetch("/api/admin/interests", { headers: { "x-admin-key": adminKey } }).then((res) =>
+      allowed("leads", "/api/admin/interests").then((res) =>
         res.json()
       ),
-      fetch("/api/admin/buy-requests", { headers: { "x-admin-key": adminKey } }).then((res) =>
+      allowed("buyRequests", "/api/admin/buy-requests").then((res) =>
         res.json()
       ),
-      fetch("/api/admin/members", { headers: { "x-admin-key": adminKey } }).then((res) =>
+      allowed("members", "/api/admin/members").then((res) =>
         res.json()
       ),
-      fetch("/api/admin/partner-requests", { headers: { "x-admin-key": adminKey } })
+      allowed("partnerView", "/api/admin/partner-requests")
         .then((r) => r.json())
         .then((d) => setPartnerRequests(d.items ?? [])),
-      fetch("/api/admin/partners-overview", { headers: { "x-admin-key": adminKey } })
+      allowed("partnerView", "/api/admin/partners-overview")
         .then((r) => r.json())
         .then((d) => setPartnersOverview(d.items ?? [])),
-      fetch("/api/admin/admins", { headers: { "x-admin-key": adminKey } })
+      allowed("adminList", "/api/admin/admins")
         .then((r) => r.json())
         .then((d) => setAdmins(d.items ?? [])),
       // 내 견적함 오픈 알림 신청 수 — 테이블이 아직 없거나 실패하면 null("—" 표시)
-      fetch("/api/admin/feature-waitlist", { headers: { "x-admin-key": adminKey } })
+      allowed("dashboard", "/api/admin/feature-waitlist")
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => setQuotesWaitlist(d?.quotes ?? null))
         .catch(() => setQuotesWaitlist(null)),
-      fetch("/api/admin/category-kpis", { headers: { "x-admin-key": adminKey } })
+      allowed("dashboard", "/api/admin/category-kpis")
         .then((r) => r.json())
         .then((d) => setCategoryKpis(d.items ?? [])),
-      fetch("/api/admin/notices", { headers: { "x-admin-key": adminKey } })
+      allowed("noticeManage", "/api/admin/notices")
         .then((r) => r.json())
         .then((d) => setNotices(d.items ?? [])),
-      fetch("/api/admin/kpi-daily", { headers: { "x-admin-key": adminKey } })
+      allowed("dashboard", "/api/admin/kpi-daily")
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => setKpiDaily(d?.missing ? null : d?.items ?? null))
         .catch(() => setKpiDaily(null)),
-      fetch("/api/admin/dashboard-metrics", { headers: { "x-admin-key": adminKey } })
+      allowed("dashboard", "/api/admin/dashboard-metrics")
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => setMetrics(d?.members ? d : null))
         .catch(() => setMetrics(null)),
@@ -628,7 +647,7 @@ function AdminDashboard({
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, [adminKey]);
+  useEffect(load, [adminKey, role]);
 
   const filteredMembers = members.filter((m) => {
     if (memberFilter === "business" && !m.is_business) return false;
@@ -671,7 +690,7 @@ function AdminDashboard({
 
   // 2026-10-06: 데이터 내보내기는 최고관리자만 — CSV 버튼도 최고관리자에게만 보이고, 내용은 서버(/api/admin/export, 역할 검사)
   // 응답으로 만든다(화면 목록 데이터를 그대로 쓰지 않음). 지금 화면의 필터·검색 결과에 있는 행만 담음.
-  const isSuperAdmin = adminRole === "최고관리자";
+  const isSuperAdmin = role === "최고관리자";
   async function fetchExport<T>(type: "members" | "leads"): Promise<T[] | null> {
     const res = await fetch(`/api/admin/export?type=${type}`, { headers: { "x-admin-key": adminKey } }).catch(() => null);
     if (res?.status === 403) {
@@ -846,9 +865,9 @@ function AdminDashboard({
   };
 
   // 2026-09-28: 해제→재임명 없이 role만 바꿈 — 비밀번호·로그인 이력 유지.
-  // 역할이 두 가지뿐이라 버튼 하나로 토글(관리자 ↔ 최고관리자).
-  const changeAdminRole = async (admin: AdminUser) => {
-    const nextRole = admin.role === "최고관리자" ? "관리자" : "최고관리자";
+  // 2026-10-10: 역할 3가지(점핑매니저 추가) — 버튼 토글 대신 고르기
+  const changeAdminRole = async (admin: AdminUser, nextRole: string) => {
+    if (!nextRole || nextRole === admin.role) return;
     if (!confirm(`${admin.name}님을 "${nextRole}"(으)로 변경할까요?`)) return;
     setRoleChangingId(admin.id);
     try {
@@ -930,7 +949,7 @@ function AdminDashboard({
   // 예전 3칸 격자는 행 높이가 가장 긴 카드에 맞춰져 빈칸이 컸음. 💻에서 0건 카드는 한 줄(제목 + "없어요")로 줄임.
   // 2026-10-02 (PR-C1): 목록 카드는 AdminListCard — 안쪽 스크롤(maxHeight 480) 없이 기본 5건 + [전체 보기].
   // 회원 목록만 기존 20건씩 더보기를 그대로 두고 5건 줄이기는 안 씀(limit null).
-  const membersBlock = (
+  const membersBlock = !perm("members") ? null : (
     <>
       <AdminListCard
         className={
@@ -999,7 +1018,7 @@ function AdminDashboard({
                 둘째 줄로 내려가게 해서 카드 폭 안에 항상 들어오도록 수정. */}
             <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
               <div className="text-base font-bold text-gray900">
-                {formatPhone(m.phone)}
+                {m.phone_masked ? <MemberPhoneReveal memberId={m.id} masked={m.phone} adminKey={adminKey} /> : formatPhone(m.phone)}
                 {m.member_no != null && (
                   <span className="text-xs font-bold text-gray500 ml-1.5">{formatMemberNo(m.member_no)}</span>
                 )}
@@ -1078,7 +1097,7 @@ function AdminDashboard({
                 })}{" "}
                 가입
               </div>
-              {adminRole === "최고관리자" && !adminPhones.has(normalizePhone(m.phone)) && (
+              {role === "최고관리자" && !adminPhones.has(normalizePhone(m.phone)) && (
                 <button
                   onClick={() => openAppoint(m)}
                   className="text-xs font-bold rounded-lg px-2.5 py-1 border border-gray200 text-navy"
@@ -1103,7 +1122,7 @@ function AdminDashboard({
       />
     </>
   );
-  const leadsBlock = (
+  const leadsBlock = !perm("leads") ? null : (
     <>
       <AdminListCard
         id="leads"
@@ -1358,6 +1377,7 @@ function AdminDashboard({
       onToggle={() => setConnectionsOpen((v) => !v)}
       onCounts={setConnCounts}
       onChanged={load}
+      assignees={perm("connectionAssign") ? admins.map((a) => ({ id: a.id, name: a.name, role: a.role })) : null}
     />
   );
   const formRequest = openFormFor && openFormFor !== "new" && openFormFor !== "notice" ? requests.find((r) => r.id === openFormFor) ?? null : null;
@@ -1397,7 +1417,7 @@ function AdminDashboard({
             </div>
           )}
           {openFormFor === "new" && (
-            <DealForm key="new" adminKey={adminKey} wide={isDesktop} onDirtyChange={setDealFormDirty} onGoBizCheck={goToBizCheck} onDone={() => { setOpenFormFor(null); load(); }} />
+            <DealForm key="new" adminKey={adminKey} wide={isDesktop} onDirtyChange={setDealFormDirty} onGoBizCheck={goToBizCheck} sourcedOptions={sourcedOptions} onDone={() => { setOpenFormFor(null); load(); }} />
           )}
           {formRequest && (
             <DealForm
@@ -1408,6 +1428,7 @@ function AdminDashboard({
               onGoBizCheck={goToBizCheck}
               prefill={requestPrefill(formRequest)}
               requestId={formRequest.id}
+              sourcedOptions={sourcedOptions}
               onDone={() => { setOpenFormFor(null); load(); }}
             />
           )}
@@ -1435,7 +1456,7 @@ function AdminDashboard({
 
         {/* 2026-09-28 (2): 등록 폼만 있고 내릴 방법이 없다는 지적 반영 — 등록된
             공지를 한 줄 요약 + [마감]으로 노출. deals의 "조기 마감" 패턴과 동일. */}
-        {notices.length > 0 && (
+        {perm("noticeManage") && notices.length > 0 && (
           <div className="flex flex-col gap-2 mt-3">
             <div className="text-xs font-bold text-gray500">등록된 긴급 공지 ({notices.length})</div>
             {notices.map((n) => (
@@ -1465,7 +1486,7 @@ function AdminDashboard({
             deal={d}
             adminKey={adminKey}
             onChanged={load}
-            canDelete={adminRole === "최고관리자"}
+            canDelete={role === "최고관리자"}
             onGoBizCheck={goToBizCheck}
             onClosed={(title) => showDashToast(`"${title}" 마감했어요 · 매물 상세에서 "마감됨"으로 볼 수 있어요`)}
           />
@@ -1614,7 +1635,7 @@ function AdminDashboard({
       onChanged={() => loadBizChecks(requests.map((r) => r.id))}
     />
   );
-  const partnerReqBlock = (
+  const partnerReqBlock = !perm("partnerView") ? null : (
     <>
       <AdminListCard
         as="section"
@@ -1674,7 +1695,7 @@ function AdminDashboard({
       />
     </>
   );
-  const partnersOverviewBlock = (
+  const partnersOverviewBlock = !perm("partnerView") ? null : (
     <>
       {/* 2026-09-27: 운영자가 승인된 파트너 전원의 추천 실적을 한눈에 보는
           집계 대시보드 — 위 섹션(신청 승인/거절)과는 별개로, 이미 승인된
@@ -1732,7 +1753,7 @@ function AdminDashboard({
       />
     </>
   );
-  const buyRequestsBlock = (
+  const buyRequestsBlock = !perm("buyRequests") ? null : (
     <>
       <AdminListCard
         id="buy-requests"
@@ -1853,7 +1874,7 @@ function AdminDashboard({
       />
     </>
   );
-  const adminsBlock = adminRole === "최고관리자" ? (
+  const adminsBlock = role === "최고관리자" ? (
         <div className={isDesktop ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3" : "px-5 pt-4 pb-8 flex flex-col gap-3"}>
           <button
             type="button"
@@ -1893,13 +1914,20 @@ function AdminDashboard({
                 </div>
               </div>
               <div className="flex-shrink-0 flex flex-col gap-1.5">
-                <button
-                  onClick={() => changeAdminRole(a)}
+                <select
+                  aria-label={`${a.name} 역할 변경`}
+                  value={a.role}
+                  onChange={(e) => changeAdminRole(a, e.target.value)}
                   disabled={roleChangingId === a.id}
-                  className="text-xs font-bold rounded-lg px-3 py-1.5 border border-gray200 text-navy disabled:opacity-60"
+                  className="text-xs font-bold rounded-lg px-2 py-1.5 border border-gray200 text-navy bg-white disabled:opacity-60"
+                  data-testid="admin-role-select"
                 >
-                  {roleChangingId === a.id ? "변경 중..." : "역할 변경"}
-                </button>
+                  {["최고관리자", "관리자", "점핑매니저"].map((r) => (
+                    <option key={r} value={r}>
+                      {roleChangingId === a.id && r === a.role ? "변경 중..." : r}
+                    </option>
+                  ))}
+                </select>
                 <button
                   onClick={() => removeAdmin(a)}
                   disabled={removingAdminId === a.id}
@@ -2021,8 +2049,11 @@ function AdminDashboard({
             { label: "대기 판매신청", value: metrics?.counts?.pendingSellerRequests ?? requests.length, urgent: false, go: () => jumpToSection("pending-sellers", () => setSellerReqOpen(true)) },
             { label: "재고문의 미연락", value: metrics?.counts?.uncontactedBuyRequests ?? buyRequests.filter((b) => !b.contacted).length, urgent: false, go: () => jumpToSection("buy-requests", () => setBuyReqOpen(true)) },
           ];
-          const hot = actions.filter((a) => a.value > 0);
-          const cold = actions.filter((a) => a.value === 0);
+          // 2026-10-10: 권한 없는 타일은 뺌(점핑매니저: 미연락 리드·재고문의 미연락 없음)
+          const tilePerm: Record<string, AdminPerm> = { "미연락 리드": "leads", "재고문의 미연락": "buyRequests" };
+          const shown = actions.filter((a) => !tilePerm[a.label] || perm(tilePerm[a.label]));
+          const hot = shown.filter((a) => a.value > 0);
+          const cold = shown.filter((a) => a.value === 0);
           return (
             <section aria-label="조치 필요">
               <h2 style={UI_SECTION}>⚡ 조치 필요</h2>
@@ -2053,6 +2084,7 @@ function AdminDashboard({
           );
         })()}
 
+        {perm("dashboard") && (<>
         <section aria-label="핵심 지표">
           <h2 style={UI_SECTION}>📈 핵심 지표</h2>
           {metrics?.excluded && (
@@ -2200,6 +2232,7 @@ function AdminDashboard({
             )}
           </div>
         </section>
+        </>)}
       </div>
 
       {/* 2026-09-26 (4): PC에서도 그냥 한 열로 쭉 늘어놓기만 해서 여전히 스크롤이
@@ -2278,7 +2311,7 @@ function AdminDashboard({
 
             <label className="text-xs font-bold text-gray500 mb-1 block">역할</label>
             <div className="flex gap-2 mb-5">
-              {(["관리자", "최고관리자"] as const).map((r) => (
+              {(["관리자", "최고관리자", "점핑매니저"] as const).map((r) => (
                 <button
                   key={r}
                   onClick={() => setAppointRole(r)}
@@ -3071,8 +3104,11 @@ function DealForm({
   wide = false,
   onDirtyChange,
   onGoBizCheck,
+  sourcedOptions = [],
 }: {
   adminKey: string;
+  /** 2026-10-10 [발굴 매니저] 선택지 — 비면 칸을 그리지 않음 */
+  sourcedOptions?: { id: string; name: string; role: string }[];
   prefill?: {
     title?: string;
     category?: string;
@@ -3159,6 +3195,7 @@ function DealForm({
   const [seller, setSeller] = useState({ isPublic: prefill?.sellerPublic ?? false, companyName: prefill?.sellerCompanyName ?? "" });
   // 2026-10-04: 직접 등록(판매 신청 아님)의 실제 판매자(내부 전용)·연결할 사업자 조회 — 판매 신청 승인은 신청 정보를 쓰므로 칸을 숨김
   const [sellerPrivate, setSellerPrivate] = useState<SellerPrivateDraft>(EMPTY_SELLER_PRIVATE);
+  const [sourcedBy, setSourcedBy] = useState(""); // 2026-10-10 [발굴 매니저] 관리자 id("" = 없음)
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<DealField, string>>>({});
@@ -3176,7 +3213,7 @@ function DealForm({
   const focusField = (field: DealField | "description") => {
     if (field === "category") setOpenDeal(true); // 거래 조건
     if (field === "minOrderQty" || field === "expiryDate" || field === "description") setOpenDetail(true); // 제품 상세
-    if (field === "sellerPrivateCompany" || field === "sellerPrivatePhone" || field === "sellerPrivateName" || field === "businessCheckId") setOpenSeller(true); // 판매자 정보
+    if (field === "sellerPrivateCompany" || field === "sellerPrivatePhone" || field === "sellerPrivateName" || field === "businessCheckId" || field === "sourcedBy") setOpenSeller(true); // 판매자 정보
     setTimeout(() => {
       const el = document.getElementById(`deal-${field}`);
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -3320,6 +3357,7 @@ function DealForm({
           manifestItems: manifestItems.length ? manifestItems : null,
           sellerPublic: seller.isPublic,
           sellerCompanyName: seller.companyName,
+          sourcedById: sourcedBy || null,
           ...(requestId
             ? {}
             : {
@@ -3749,6 +3787,31 @@ function DealForm({
                 />
               </div>
             )}
+            {/* 2026-10-10 매니저 실적: 이 판매자를 찾아온 관리자(새 판매자 발굴). 직접 등록·판매 신청 승인 공통, 기본 "없음" */}
+            {sourcedOptions.length > 0 && (
+              <div className="mt-3">
+                <DealFormField label="발굴 매니저" htmlFor="deal-sourced-by" error={fieldErrors.sourcedBy}>
+                  <select
+                    id="deal-sourced-by"
+                    className={inputCls("sourcedBy")}
+                    value={sourcedBy}
+                    onChange={(e) => {
+                      setSourcedBy(e.target.value);
+                      clearErr("sourcedBy");
+                    }}
+                    disabled={submitting}
+                    data-testid="deal-sourced-by"
+                  >
+                    <option value="">없음</option>
+                    {sourcedOptions.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name} ({o.role})
+                      </option>
+                    ))}
+                  </select>
+                </DealFormField>
+              </div>
+            )}
           </FormAccordion>
         </div>
       </div>
@@ -3878,9 +3941,9 @@ function requestPrefill(r: SellerRequest) {
   };
 }
 
-type DealField = "title" | "category" | "region" | "originalPrice" | "dealPrice" | "totalQty" | "minOrderQty" | "expiryDate" | "sellerPrivateCompany" | "sellerPrivatePhone" | "sellerPrivateName" | "businessCheckId";
+type DealField = "title" | "category" | "region" | "originalPrice" | "dealPrice" | "totalQty" | "minOrderQty" | "expiryDate" | "sellerPrivateCompany" | "sellerPrivatePhone" | "sellerPrivateName" | "businessCheckId" | "sourcedBy";
 // 화면 위→아래 순서 (첫 누락 칸 포커스용) — 2026-10-01 2차: ① 매물명·판매/정상 단가·재고 총수량·지역 → 제품 상세(MOQ·소비기한) → 거래 조건(카테고리)
-const DEAL_FIELD_ORDER: DealField[] = ["title", "dealPrice", "originalPrice", "totalQty", "region", "minOrderQty", "expiryDate", "category", "sellerPrivateCompany", "sellerPrivatePhone", "sellerPrivateName", "businessCheckId"];
+const DEAL_FIELD_ORDER: DealField[] = ["title", "dealPrice", "originalPrice", "totalQty", "region", "minOrderQty", "expiryDate", "category", "sellerPrivateCompany", "sellerPrivatePhone", "sellerPrivateName", "businessCheckId", "sourcedBy"];
 
 // 붙인 입력 그룹(한 테두리) — [입력 | 원 / 단위] (2026-10-01 2차)
 const GROUP_INPUT_CLS = "flex-1 min-w-0 px-3 py-2.5 text-[0.8889rem] outline-none bg-transparent";
@@ -3929,6 +3992,41 @@ const NOTICE_CATEGORIES = ["부동산", "설비", "기타"];
 // 등록 가능해야 해서 select 맨 앞에 "전국" 옵션을 추가로 둠.
 // 2026-09-28 (2): 등록된 공지 한 줄 요약 + 마감 버튼. deals의 ActiveDealCard처럼
 // 수정 UI까지는 필요 없어 보여 조회/마감만 지원 (수정이 필요해지면 그때 확장).
+// 2026-10-10 관리자(일반) 회원 목록: 가린 번호 + [번호 보기] — 누를 때마다 감사 기록(member_phone_view)
+function MemberPhoneReveal({ memberId, masked, adminKey }: { memberId: string; masked: string; adminKey: string }) {
+  const [phone, setPhone] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const reveal = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/members/${memberId}/phone`, { method: "POST", headers: { "x-admin-key": adminKey } });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) setError(data.error ?? "번호를 불러오지 못했어요.");
+      else setPhone(data.phone);
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (phone) return <a href={`tel:${phone}`} className="text-navy" data-testid="member-phone-full">{formatPhone(phone)}</a>;
+  return (
+    <span className="inline-flex items-center gap-1.5 flex-wrap">
+      <span style={{ fontVariantNumeric: "tabular-nums" }} data-testid="member-phone-masked">{masked}</span>
+      <button
+        type="button"
+        onClick={reveal}
+        disabled={busy}
+        className="text-xs font-bold rounded-lg px-2.5 py-1 border border-gray200 text-navy disabled:opacity-60 whitespace-nowrap"
+        data-testid="member-phone-reveal"
+      >
+        {busy ? "불러오는 중..." : "번호 보기"}
+      </button>
+      {error && <span className="text-xs font-bold" style={{ color: "#B91C1C" }}>{error}</span>}
+    </span>
+  );
+}
+
 function NoticeAdminRow({
   notice,
   adminKey,
