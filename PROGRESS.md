@@ -53,6 +53,15 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 ## 최근 작업 (2026-10-10) — 관리자 권한 3단계 서버 강제 · 연결 배정 · 매니저 실적 기록 (브랜치 `feat/admin-roles`)
 
 - **#85 병합 기록**(/deals 카드 정리·등록 버튼 스크롤 숨김·알림 꺼짐 안내·상세 하단 안내·가입 카테고리 전체 선택·비회원 홈 카드): 병합 커밋 `ec7a979`(10/10 02:41 UTC, merge commit, jumpx3459) · Deploy to Vercel #289(run 38017891526) 성공 · PR CI #74(run 38016919332, head `9d0fbbf`) 성공 · main 병합 뒤 CI run 없음. 운영 확인(PR 설명 6항목)은 대표 확인 대기.
+- **운영 SQL(대표 실행 완료 10/10)**: 실적 칼럼 5개 + 성사 건 closed_assignee 채움 — 기록 파일 `supabase/migrations/20261010_admin_perf_columns.sql`(칼럼 이름은 코드 기준, 실행본과 다르면 실행본이 기준 — 확인 조회 ①로 대조). PGlite 시험 7건(두 번 실행·백필·월 실적 쿼리 ③).
+- **권한표 한 곳**: `src/lib/adminPerms.ts`(claude/22 확정본 + 10/10 결정, 화면·서버 공용) — `requirePerm`(`adminAuth.ts`, 403 형식은 requireRole과 같음). 관리자 API 전부 권한표대로(예외 확인 `business-checks/[id]/exception`은 기존 최고관리자·관리자 그대로). 단위 시험 `scripts/admin-perms-test.mts`.
+- **점핑매니저 자기 건만**(`src/lib/adminScope.ts`): 연결 목록은 assigned_admin_id = 본인만(진행·종료 모두), 번호 보기·판매자 정보·단계는 담당 아니면 403(미배정 건 자동 담당은 최고관리자·관리자만). 매물 수정 화면 실제 판매자는 담당 매물만(배정된 연결의 매물 + created_by_admin_id 본인).
+- **회원 번호**: 관리자(일반)는 목록에서 `010-****-1234` + [번호 보기](새 `POST /api/admin/members/[id]/phone`, 감사 member_phone_view·뒤 4자리). 최고관리자는 전체 번호. 관리자 목록 GET은 관리자(일반)에게 id·이름·역할만.
+- **배정**: 새 `PATCH /api/admin/connections/[id]/assign`(최고·관리자, 활성 관리자만, 종료 건 409, 동시 변경 409, 감사 connection_assign 이전·새 담당). 연결 카드 "담당 [선택 ▾]"(최고·관리자만) — 보드 개편은 PR ②.
+- **실적 기록**: 매물 등록 폼 "판매자 정보"에 [발굴 매니저](기본 없음 — 최고·관리자는 활성 관리자 전체, 점핑매니저는 본인만·서버도 본인만) → deal_seller_private.sourced_by_admin_id·sourced_at. 판매 신청 승인·거절 → reviewed_by_admin_id·reviewed_at(이름 글자 reviewed_by 유지, PATCH는 거절 전용·다른 값 400). 성사 → closed_assignee_admin_id = 그 시점 담당. 등록 수는 deal_seller_private.created_by_admin_id.
+- **감사 추가**: business_license_view·business_verify·deal_create·deal_update(바뀐 칸 이름만)·seller_request_reject·notice_close·connection_assign·member_phone_view.
+- **화면**(`admin/page.tsx`, 권한표 같은 표): 점핑매니저는 회원·리드·파트너 신청/실적·재고 문의·핵심 지표/7일 추세/참고 현황/KPI/카테고리 현황·공지 목록·조치 필요의 리드·재고 문의 타일 숨김(권한 없는 API는 부르지 않음 — 403 0건), 연결 보드(배정 건)·매물 등록/진행 중 매물·판매 신청·사업자 조회 남음. 역할은 새 `GET /api/admin/me`로 다시 확인. **점핑매니저 임명·역할 변경 가능**(임명 창 3역할, 역할 변경은 고르기 — merge 후 대표가 테스트 회원을 점핑매니저로 임명해 확인 → 해제).
+- 시험(가짜 env, 운영 호출 0): 로컬 가짜 Supabase(PostgREST 일부, 127.0.0.1)로 권한 매트릭스 66건(역할 3 × API 34묶음 403 여부 + 회원 번호 가림·[번호 보기] 감사·관리자 목록 칸·연결 배정 건만·담당 아닌 연결 403·미배정 403·자동 담당·성사 담당 기록·배정 API·담당 매물·거절 기록·발굴 매니저·감사 추가분·me) — **main 빌드에 같은 시험 → 44건 실패(매니저가 다 열림)로 시험이 가려내는지 확인**. 화면 17건(역할별 섹션·403 0건·담당 선택·발굴 매니저 선택지·회원 가림). PGlite 7 · 단위 16(새 admin-perms) · tsc 0 · lint 오류 2(main과 같음). 캡처 `captures-admin-roles` 20-*.
 
 ## 최근 작업 (2026-10-10) — /deals 카드 정리 · 등록 배너 들여쓰기 · 매물 등록 버튼 스크롤 숨김 (브랜치 `feat/deals-card-clean`)
 
