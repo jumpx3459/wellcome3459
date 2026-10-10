@@ -665,7 +665,7 @@ function SignupPageInner() {
           <div>
             {/* 헤드라인/서브카피는 위 네이비 히어로 블록으로 이동함 (2026-09-27) */}
             <div ref={categoryAreaRef} className="grid grid-cols-2 gap-2.5" style={{ scrollMarginTop: 16 }}>
-              {/* 2026-10-10: 맨 위 꽉 찬 칸(2열) — 다른 칸과 같은 모양(평소 흰 바탕·회색 선, 선택 시 주황 선 + 연한 주황 바탕). 개수는 목록 길이 */}
+              {/* 2026-10-10: 맨 위 꽉 찬 칸(2열) — 다른 칸과 같은 모양(흰 바탕, 평소 회색 선·선택 시 주황 선). 개수는 목록 길이 */}
               <button
                 type="button"
                 onClick={toggleAllCategories}
@@ -674,7 +674,7 @@ function SignupPageInner() {
                 style={{
                   padding: "12px 11px",
                   minHeight: 54,
-                  background: allCategoriesPicked ? "#FFF7ED" : "#fff",
+                  background: "#fff",
                   border: allCategoriesPicked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
                 }}
                 data-cat-all
