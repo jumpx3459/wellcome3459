@@ -13,6 +13,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockDeals, mockCategories, mockRegions, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import AdSlot from "@/components/AdSlot";
 import SellFab from "@/components/SellFab";
+import { FOOTER_BELOW_BG, LIST_BG } from "@/lib/pageBg";
 import { fetchHeartCounts } from "@/lib/heartCountClient";
 
 // 2026-10-09 4b-2: 카드 6장마다 넣던 "AD 광고 영역" 자리표시는 화면에서만 숨김(코드·AdSlot은 유지 — 광고 붙일 때 true)
@@ -420,7 +421,8 @@ function DealsPageInner() {
         )}
       </div>
 
-      <div className="flex-1 bg-gray100 px-4 py-3.5 flex flex-col gap-3">
+      {/* 2026-10-10: 목록 바탕을 회원 홈 목록과 같은 색(LIST_BG #eef1f5)으로 — 예전 bg-gray100(#f5f6f8) */}
+      <div className="flex-1 px-4 py-3.5 flex flex-col gap-3" style={{ background: LIST_BG }}>
         <Link
           href="/sell"
           className="flex items-center justify-between gap-2 rounded-xl"
@@ -513,8 +515,9 @@ function DealsPageInner() {
         </a>
         <BusinessFooter className="-mx-4 -mb-3.5 mt-2" />
       </div>
-      {/* 2026-10-09 4b-2: 떠 있는 "＋ 매물 등록" — 마지막 내용이 가리지 않게 맨 아래 90px */}
-      <div aria-hidden style={{ height: 90 }} />
+      {/* 2026-10-09 4b-2: 떠 있는 "＋ 매물 등록" — 마지막 내용이 가리지 않게 맨 아래 90px.
+          2026-10-10: 바로 위 푸터와 같은 색으로 칠해 흰 띠 없앰(높이 그대로) */}
+      <div aria-hidden style={{ height: 90, background: FOOTER_BELOW_BG }} data-footer-below />
       <SellFab />
     </main>
   );
