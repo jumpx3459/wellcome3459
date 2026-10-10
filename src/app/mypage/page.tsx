@@ -259,11 +259,19 @@ export default function MyPage() {
         document.getElementById("alerts")?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     }
-    // 2026-10-10: 매물 상세 ♥ 담기 안내 "보기 ›" → 관심 표시한 매물 구역으로
+    // 2026-10-10: 매물 상세 ♥ 담기 안내 "보기 ›" → 관심 표시한 매물 구역으로.
+    //   위쪽 구역이 조금 늦게 그려져 자리가 밀리므로(실측 0.7초 뒤 약 190px) 1.5초 동안 두 번 더 맞춤 — 사용자가 직접 스크롤하면 멈춤
     if (window.location.hash === "#interests-section") {
-      requestAnimationFrame(() => {
-        document.getElementById("interests-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
+      let userMoved = false;
+      const stop = () => { userMoved = true; };
+      window.addEventListener("touchstart", stop, { once: true, passive: true });
+      window.addEventListener("wheel", stop, { once: true, passive: true });
+      const go = () => {
+        if (!userMoved) document.getElementById("interests-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      };
+      requestAnimationFrame(go);
+      setTimeout(go, 700);
+      setTimeout(go, 1500);
     }
     // 2026-10-09 PR 4a: 회원 홈 머리 "내 조건 긴급매물 N건" → 알림 조건을 펼친 채 관심 카테고리 구역으로(펼친 뒤 그려지길 기다렸다가)
     if (window.location.hash === "#categories") {
