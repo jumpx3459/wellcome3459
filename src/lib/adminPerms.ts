@@ -1,6 +1,7 @@
 // 2026-10-10 관리자 권한표 (claude/22 확정본 + 10/10 결정) — 서버(requirePerm)·관리자 화면 공용 한 곳. 다른 모듈 import 없음.
 // 화면에서 숨기는 것은 편의일 뿐, 막는 것은 반드시 서버(API마다 requirePerm).
-//   · "own"(점핑매니저): 전체가 아니라 자기 건만 — 거래 연결은 배정된 건, 비공개 판매자는 담당 매물
+//   · "own"(점핑매니저): 전체가 아니라 자기 건만 — 거래 연결은 배정된 건.
+//     실제 업체명: 매물 화면(deals/manage/seller) = 담당 매물 / 연결 화면(connections/[id]/seller) = 배정 건(10/10 대표 결정)
 //     (담당 매물 = 이 관리자에게 배정된 연결의 매물 + deal_seller_private.created_by_admin_id가 본인인 매물)
 //   · 회원 정지·KPI 제외 설정은 화면 없음(SQL 유지)
 
@@ -16,7 +17,7 @@ const OWN: Record<AdminRole, Access> = { 최고관리자: true, 관리자: true,
 export const ADMIN_PERMS = {
   dealEdit: ALL, //               매물 등록·수정·마감 (deals POST, deals/manage GET·PATCH)
   dealDelete: SUPER, //           매물 영구 삭제
-  sellerPrivate: OWN, //          비공개 판매자 실제 업체명 (deals/manage/seller, connections/[id]/seller)
+  sellerPrivate: OWN, //          비공개 판매자 실제 업체명 — 매물 화면(deals/manage/seller) = 담당 매물, 연결 화면(connections/[id]/seller) = 배정 건
   sellerRequests: ALL, //         판매 신청 처리 (seller-requests, 승인 = deals POST, 사업자 조회)
   connections: OWN, //            거래 연결 목록·단계·번호 보기
   connectionAssign: STAFF, //     연결 배정 (connections/[id]/assign)
