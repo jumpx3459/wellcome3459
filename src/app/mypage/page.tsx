@@ -259,6 +259,12 @@ export default function MyPage() {
         document.getElementById("alerts")?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     }
+    // 2026-10-10: 매물 상세 ♥ 담기 안내 "보기 ›" → 관심 표시한 매물 구역으로
+    if (window.location.hash === "#interests-section") {
+      requestAnimationFrame(() => {
+        document.getElementById("interests-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
     // 2026-10-09 PR 4a: 회원 홈 머리 "내 조건 긴급매물 N건" → 알림 조건을 펼친 채 관심 카테고리 구역으로(펼친 뒤 그려지길 기다렸다가)
     if (window.location.hash === "#categories") {
       setAlertsOpen(true);

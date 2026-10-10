@@ -243,11 +243,12 @@ function DealDetailPageInner() {
   const dealClosed = isDealClosed(deal.status, deal.closes_at);
   const cta = ctaState(dealClosed, requested === true);
 
-  // 하단 안내 1.5초 (♡ 담기·빼기·연결 요청 완료)
-  const [toast, setToast] = useState<string | null>(null);
+  // 하단 안내 2.5초 (♡ 담기·빼기·연결 요청 완료) — 2026-10-10: 새 안내가 뜨면 이전 것은 바로 교체.
+  //   link: 오른쪽 "보기 ›"(MY 관심 매물) · wrap: 길면 2줄 허용(연결 요청 안내) — 아니면 한 줄, 왼쪽 문구만 말줄임
+  const [toast, setToast] = useState<{ text: string; link?: boolean; wrap?: boolean } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const showToast = (text: string) => {
-    setToast(text);
+  const showToast = (text: string, opts: { link?: boolean; wrap?: boolean } = {}) => {
+    setToast({ text, ...opts });
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), TOAST_MS);
   };
@@ -285,7 +286,7 @@ function DealDetailPageInner() {
       setInterested(true);
       return;
     }
-    if (await recordInterest(userData.user.id)) showToast(HEART_ADDED_TOAST);
+    if (await recordInterest(userData.user.id)) showToast(HEART_ADDED_TOAST, { link: true });
   };
 
   // 회원 관심 표시 저장(interests, 브라우저 직접 — RLS: 본인 행·진행 중 매물만 insert). 성공하면 true, 실패 문구는 interestError
@@ -359,7 +360,7 @@ function DealDetailPageInner() {
     setHeartBusy(true);
     const ok = await recordInterest(userData.user.id);
     setHeartBusy(false);
-    if (ok) showToast(HEART_ADDED_TOAST);
+    if (ok) showToast(HEART_ADDED_TOAST, { link: true });
   };
 
   const closeConnectSheet = () => {
@@ -400,7 +401,7 @@ function DealDetailPageInner() {
       setRequested(true);
       setInterested(true);
       setConnectSheet(null);
-      showToast(data.duplicate ? "이미 연결을 요청하셨어요" : "✓ 연결 요청을 보냈어요 · 담당 매니저가 확인 후 연락드려요");
+      showToast(data.duplicate ? "이미 연결을 요청하셨어요" : "✓ 연결 요청을 보냈어요 · 담당 매니저가 확인 후 연락드려요", { wrap: true });
     } catch (e) {
       setConnectError(
         isAuthNetworkError(e) ? "인터넷 연결이 끊겼어요. 연결 후 다시 시도해주세요." : "연결 요청을 저장하지 못했어요. 잠시 후 다시 시도해주세요."
@@ -1010,14 +1011,32 @@ function DealDetailPageInner() {
                 뒤 내용이 비치지 않게 흰 바탕 띠(위 테두리 1px #e2e8f0, 위아래 8px·좌우 16px) — 하단 탭 바로 위(안전 영역은 하단 탭이 맡음).
                 본문 아래 여백은 FLOATING_CTA_SPACE_FIT(띠 실제 높이 + 여유)이 그대로 맞춤.
                 주 버튼: ①판매자 연결 요청(주황) ②✓ 연결 요청함(반응 없음) ③마감된 매물이에요(회색, 반응 없음) — src/lib/dealCta.ts.
-                예전 고정 안내 "관심 표시 완료 · 판매자 연결은 동의 후 진행돼요"는 삭제(안내는 누른 직후 1.5초만) */}
+                예전 고정 안내 "관심 표시 완료 · 판매자 연결은 동의 후 진행돼요"는 삭제(안내는 누른 직후 2.5초만) */}
             {!authKnown ? null : (
               <>
-                {(toast || interestError) && (
+                {/* 2026-10-10: 담기·빼기·연결 요청 안내는 하단 띠 바로 위 진한 남색 띠(좌우 14px) — 화면 가운데에 떠 있지 않게 */}
+                {toast && (
+                  <div
+                    role="status"
+                    className="flex items-center gap-3"
+                    style={{ margin: "0 14px 8px", background: "#0f1f3d", color: "#fff", fontWeight: 600, fontSize: rem(15), lineHeight: 1.4, borderRadius: 12, padding: "12px 14px", boxShadow: "0 4px 14px rgba(0,0,0,.25)" }}
+                    data-cta-toast-box
+                  >
+                    <span className={`flex-1 min-w-0 ${toast.wrap ? "" : "truncate"}`} style={toast.wrap ? { wordBreak: "keep-all" } : undefined} data-cta-toast>
+                      {toast.text}
+                    </span>
+                    {toast.link && (
+                      <Link href={MY_INTERESTS_HREF} className="flex-shrink-0 whitespace-nowrap" style={{ color: "#fdba74", fontWeight: 800 }} data-cta-toast-link>
+                        보기 ›
+                      </Link>
+                    )}
+                  </div>
+                )}
+                {!toast && interestError && (
                   <div className="px-5">
-                  <FloatingCTANote tone={toast ? "info" : "error"}>
-                    <span data-cta-toast>{toast ?? interestError}</span>
-                    {!toast && interestNeedsReauth && (
+                  <FloatingCTANote tone="error">
+                    <span data-cta-toast>{interestError}</span>
+                    {interestNeedsReauth && (
                       <>
                         {" "}
                         <Link href={`/signup?returnTo=${encodeURIComponent(`/deals/${deal.id}`)}`} className="underline font-bold">
@@ -1131,5 +1150,6 @@ async function fetchMemberConnectionRequested(dealId: string): Promise<boolean |
 
 // 하단 한 줄(♡ + 주 버튼) 높이 · 안내 표시 시간
 const CTA_ROW_HEIGHT = 48;
-const TOAST_MS = 1500;
-const HEART_ADDED_TOAST = "♥ 관심 목록에 담았어요 · MY › 관심 매물에서 다시 볼 수 있어요";
+const TOAST_MS = 2500; // 2026-10-10: 1.5초 → 2.5초
+const HEART_ADDED_TOAST = "♥ 관심 목록에 담았어요";
+const MY_INTERESTS_HREF = "/mypage#interests-section"; // MY "관심 표시한 매물" 구역(id interests-section)
