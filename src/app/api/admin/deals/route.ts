@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendDealPush } from "@/lib/sendPush";
 import { sanitizeManifest, sanitizePid } from "@/lib/parseCsv";
-import { checkAdminAuth } from "@/lib/adminAuth";
+import { checkAdminAuth, requirePerm } from "@/lib/adminAuth";
 import { isStockType } from "@/lib/stockType";
 import { isDealPriceUnit, isLumpSum } from "@/lib/priceUnit";
 import { resolveSellerDisplay } from "@/lib/sellerDisplay";
@@ -14,6 +14,7 @@ import { ntsStatus } from "@/lib/nts";
 import { isPriceMode } from "@/lib/priceMode";
 import { writeAudit, phoneTail } from "@/lib/adminAudit";
 import { UUID_RE } from "@/lib/rateLimit";
+import { ADMIN_ROLES, ownOnly } from "@/lib/adminPerms";
 import {
   parseSellerPrivateFields,
   saveSellerPrivate,
@@ -36,6 +37,8 @@ const PRIVATE_FIELD_NAME: Record<SellerPrivateField, string> = {
 export async function POST(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const denied = requirePerm(auth.admin, "dealEdit"); // 2026-10-10 권한표(adminPerms)
+  if (denied) return denied;
 
   const body = await req.json();
   const {
@@ -72,10 +75,22 @@ export async function POST(req: NextRequest) {
     sellerPrivateName,
     sellerPrivatePhone,
     businessCheckId, // 직접 등록(판매 신청 아님) — 연결할 통과한 사업자 조회 행 id(필수, 자동 선택 없음)
+    sourcedById, // 2026-10-10: [발굴 매니저] — 이 판매자를 찾아온 관리자 id(선택, 없으면 null). 매니저 실적(새 판매자 발굴)
   } = body;
 
   // 2026-09-28: 관리자 폼(DealForm)과 같은 필수 규칙 — field로 어느 칸인지 알려준다.
   const bad = (error: string, field: string) => NextResponse.json({ error, field }, { status: 400 });
+
+  // 2026-10-10 발굴 매니저: 활성 관리자만. 점핑매니저는 본인 또는 "없음"만(다른 관리자 목록을 볼 수 없음 — 권한표 adminList)
+  let sourcedBy: string | null = null;
+  if (sourcedById != null && sourcedById !== "") {
+    if (typeof sourcedById !== "string" || !UUID_RE.test(sourcedById)) return bad("발굴 매니저 값이 올바르지 않아요.", "sourcedBy");
+    if (ownOnly(auth.admin.role, "connections") && sourcedById !== auth.admin.id) return bad("발굴 매니저는 본인만 고를 수 있어요.", "sourcedBy");
+    const { data: src, error: srcErr } = await auth.db.from("admin_users").select("id, role").eq("id", sourcedById).maybeSingle();
+    if (srcErr) return NextResponse.json({ error: "발굴 매니저를 확인하지 못했어요. 다시 시도해주세요." }, { status: 500 });
+    if (!src || !(ADMIN_ROLES as readonly string[]).includes(src.role)) return bad("활성 관리자만 발굴 매니저로 고를 수 있어요.", "sourcedBy");
+    sourcedBy = src.id;
+  }
   const isPositive = (v: unknown) => typeof v === "number" && Number.isFinite(v) && v > 0;
   if (typeof title !== "string" || !title.trim()) return bad("매물명을 입력해주세요.", "title");
   // 2026-10-01 PR-A [11]: 매물명 정리·검사(관리자 — "[테스트]" 허용) — src/lib/titleGuard.ts
@@ -266,7 +281,8 @@ export async function POST(req: NextRequest) {
   };
   const via: SellerPrivateVia = requestId ? "seller_request_approve" : "deal_create";
   const privateValue = (requestId ? requestSellerValue : directValue) as SellerPrivateValue;
-  const savedPrivate = await saveSellerPrivate(supabaseAdmin, deal.id, auth.admin.id, privateValue, requestId ? { sellerRequestId: requestId } : undefined);
+  const sourcedPatch = sourcedBy ? { sourced_by_admin_id: sourcedBy, sourced_at: new Date().toISOString() } : {};
+  const savedPrivate = await saveSellerPrivate(supabaseAdmin, deal.id, auth.admin.id, { ...privateValue, ...sourcedPatch }, requestId ? { sellerRequestId: requestId } : undefined);
   if (!savedPrivate.ok) {
     console.error("[admin/deals] 판매자 비공개 정보 저장 실패", savedPrivate.message);
     await rollbackDeal("save_private");
@@ -287,7 +303,7 @@ export async function POST(req: NextRequest) {
     // 방금 만든 매물을 알림 발송(sendDealPush, 아래) 전에 지워 중복 매물·중복 알림을 막음
     const { data: approved, error: srUpdErr } = await supabaseAdmin
       .from("seller_requests")
-      .update({ status: "approved", linked_deal_id: deal.id, reviewed_by: auth.admin.name })
+      .update({ status: "approved", linked_deal_id: deal.id, reviewed_by: auth.admin.name, reviewed_by_admin_id: auth.admin.id, reviewed_at: new Date().toISOString() })
       .eq("id", requestId)
       .eq("status", "pending")
       .is("linked_deal_id", null)
@@ -317,6 +333,15 @@ export async function POST(req: NextRequest) {
       ...(directCheck ? { linked_check_id: directCheck.id } : {}),
       ...(passCheck ? { linked_check_id: passCheck.id } : {}),
     },
+  });
+
+  // 2026-10-10: 매물 등록 감사(등록자 = 이 관리자, 실적의 등록 수는 deal_seller_private.created_by_admin_id)
+  await writeAudit(supabaseAdmin, req, {
+    admin: auth.admin,
+    action: "deal_create",
+    targetType: "deal",
+    targetId: deal.id,
+    detail: { via, title: deal.title ?? null, seller_request_id: requestId ?? null, sourced_by: sourcedBy },
   });
 
   // 매물 등록이 확정되는 즉시, 해당 카테고리 구독자에게 자동으로 알림을 보냅니다(지역은 조건이 아님).

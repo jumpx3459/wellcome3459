@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkAdminAuth, requireRole } from "@/lib/adminAuth";
+import { checkAdminAuth, requirePerm } from "@/lib/adminAuth";
 import { writeAudit } from "@/lib/adminAudit";
 import { loadAdminLeads, loadAdminMembers } from "@/lib/adminLists";
 
@@ -13,7 +13,7 @@ const EXPORTS = {
 export async function GET(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const denied = requireRole(auth.admin, ["최고관리자"]);
+  const denied = requirePerm(auth.admin, "export");
   if (denied) return denied;
 
   const type = req.nextUrl.searchParams.get("type");

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { checkAdminAuth } from "@/lib/adminAuth";
+import { checkAdminAuth, requirePerm } from "@/lib/adminAuth";
+import { writeAudit } from "@/lib/adminAudit";
 
 const BUCKET = "business-licenses";
 const SIGNED_URL_TTL_SECONDS = 120;
@@ -16,6 +17,8 @@ function getAdminClient() {
 export async function GET(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const denied = requirePerm(auth.admin, "businessLicense"); // 2026-10-10 권한표(adminPerms)
+  if (denied) return denied;
 
   const memberId = req.nextUrl.searchParams.get("memberId");
   if (!memberId) return NextResponse.json({ error: "memberId가 필요합니다." }, { status: 400 });
@@ -41,6 +44,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "열람 링크 생성에 실패했어요." }, { status: 500 });
   }
 
+  await writeAudit(supabaseAdmin, req, { admin: auth.admin, action: "business_license_view", targetType: "member", targetId: memberId });
   return NextResponse.json({ url: data.signedUrl });
 }
 
@@ -48,6 +52,8 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const denied = requirePerm(auth.admin, "businessLicense"); // 2026-10-10 권한표(adminPerms)
+  if (denied) return denied;
 
   const { memberId } = await req.json();
   if (!memberId) return NextResponse.json({ error: "memberId가 필요합니다." }, { status: 400 });
@@ -59,5 +65,6 @@ export async function PATCH(req: NextRequest) {
     .eq("id", memberId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  await writeAudit(supabaseAdmin, req, { admin: auth.admin, action: "business_verify", targetType: "member", targetId: memberId });
   return NextResponse.json({ ok: true });
 }

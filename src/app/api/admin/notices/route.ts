@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendNoticePush } from "@/lib/sendPush";
-import { checkAdminAuth, requireRole } from "@/lib/adminAuth";
+import { checkAdminAuth, requirePerm } from "@/lib/adminAuth";
 import { writeAudit } from "@/lib/adminAudit";
 
 // 2026-09-28: 긴급 공지(부동산·설비 처분 등) 등록 API — deals(재고 매물)와 별개의
@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   // 2026-10-01: 긴급 공지 등록(= 푸시 발송)은 최고관리자만
-  const denied = requireRole(auth.admin, ["최고관리자"]);
+  const denied = requirePerm(auth.admin, "noticeSend");
   if (denied) return denied;
 
   const body = await req.json();
@@ -72,6 +72,8 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const denied = requirePerm(auth.admin, "noticeManage"); // 2026-10-10 권한표(adminPerms)
+  if (denied) return denied;
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return NextResponse.json({ items: [], demo: true });
@@ -96,6 +98,8 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const denied = requirePerm(auth.admin, "noticeManage"); // 2026-10-10 권한표(adminPerms)
+  if (denied) return denied;
 
   const { id, status } = await req.json();
   if (!id || !status) return NextResponse.json({ error: "id·status는 필수예요." }, { status: 400 });
@@ -115,5 +119,6 @@ export async function PATCH(req: NextRequest) {
     .eq("id", id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  await writeAudit(supabaseAdmin, req, { admin: auth.admin, action: "notice_close", targetType: "urgent_notice", targetId: String(id), detail: { status } });
   return NextResponse.json({ ok: true });
 }

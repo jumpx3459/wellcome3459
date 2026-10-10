@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { checkAdminAuth, requireRole } from "@/lib/adminAuth";
+import { checkAdminAuth, requirePerm } from "@/lib/adminAuth";
 import { writeAudit } from "@/lib/adminAudit";
 import { resolveSellerDisplay } from "@/lib/sellerDisplay";
 import { checkDealVideoUrl } from "@/lib/videoUploadServer";
@@ -22,6 +22,8 @@ const DEAL_STATUSES: unknown[] = ["active", "closed"];
 export async function GET(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const denied = requirePerm(auth.admin, "dealEdit"); // 2026-10-10 권한표(adminPerms)
+  if (denied) return denied;
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return NextResponse.json({ items: [], demo: true });
@@ -45,6 +47,8 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const denied = requirePerm(auth.admin, "dealEdit"); // 2026-10-10 권한표(adminPerms)
+  if (denied) return denied;
 
   const body = await req.json();
   const { id, remainingQty, status, images, videoUrl, sellerPublic, sellerCompanyName, confirmWarnings } = body;
@@ -136,6 +140,11 @@ export async function PATCH(req: NextRequest) {
 
   const { error } = await supabaseAdmin.from("deals").update(update).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // 2026-10-10: 매물 수정 감사 — 바뀐 칸 이름만(값은 넣지 않음). 마감만 한 경우는 아래 deal_close 하나
+  const changedKeys = Object.keys(update).filter((k) => k !== "status");
+  if (changedKeys.length > 0) {
+    await writeAudit(supabaseAdmin, req, { admin: auth.admin, action: "deal_update", targetType: "deal", targetId: id, detail: { changed: changedKeys } });
+  }
   if (status === "closed" && before && before.status !== "closed") {
     await writeAudit(supabaseAdmin, req, {
       admin: auth.admin,
@@ -155,7 +164,7 @@ export async function DELETE(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   // 2026-10-01: 영구 삭제는 최고관리자만
-  const denied = requireRole(auth.admin, ["최고관리자"]);
+  const denied = requirePerm(auth.admin, "dealDelete");
   if (denied) return denied;
 
   const { id } = await req.json();

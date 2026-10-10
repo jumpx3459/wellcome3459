@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { checkAdminAuth } from "@/lib/adminAuth";
+import { checkAdminAuth, requirePerm } from "@/lib/adminAuth";
 import { phoneTail, writeAudit } from "@/lib/adminAudit";
 import { UUID_RE } from "@/lib/rateLimit";
+import { dealPrivateScopeDenied } from "@/lib/adminScope";
 import { maskBizNo } from "@/lib/nts";
 import { NOT_CHECKED_MESSAGE } from "@/lib/businessCheck";
 import {
@@ -42,9 +43,13 @@ async function linkedValidateCheck(db: SupabaseClient, dealId: string) {
 export async function GET(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const denied = requirePerm(auth.admin, "sellerPrivate"); // 2026-10-10 권한표(adminPerms)
+  if (denied) return denied;
   const dealId = req.nextUrl.searchParams.get("dealId") ?? "";
   if (!UUID_RE.test(dealId)) return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });
   const db = auth.db;
+  const scoped = await dealPrivateScopeDenied(db, auth.admin, dealId); // 점핑매니저는 담당 매물만
+  if (scoped) return scoped;
 
   const [{ data: item, error: privError }, { check, error: chkError }, request] = await Promise.all([
     db.from("deal_seller_private").select("company_name, contact_name, contact_phone, source").eq("deal_id", dealId).maybeSingle(),
@@ -82,6 +87,8 @@ export async function GET(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const denied = requirePerm(auth.admin, "sellerPrivate"); // 2026-10-10 권한표(adminPerms)
+  if (denied) return denied;
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   const dealId = typeof body?.dealId === "string" ? body.dealId : "";
   if (!UUID_RE.test(dealId)) return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });
@@ -97,6 +104,8 @@ export async function PUT(req: NextRequest) {
   }
 
   const db = auth.db;
+  const scoped = await dealPrivateScopeDenied(db, auth.admin, dealId); // 점핑매니저는 담당 매물만
+  if (scoped) return scoped;
   const { data: deal, error: dealError } = await db.from("deals").select("id").eq("id", dealId).maybeSingle();
   if (dealError) return NextResponse.json({ error: "매물을 불러오지 못했어요." }, { status: 500 });
   if (!deal) return NextResponse.json({ error: "매물을 찾을 수 없어요." }, { status: 404 });

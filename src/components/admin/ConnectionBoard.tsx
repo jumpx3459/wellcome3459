@@ -17,6 +17,8 @@ import {
 // 2026-10-04 F-4 거래 연결 보드 — 관리자 페이지 "거래 연결" 카드(리드 카드 바로 아래).
 // 진행 중 전체(멈춘 연결 → 오래된 순) + 최근 종료 20건(접힘). 번호는 가린 값, [번호 보기]는 별도 API(감사 로그).
 // 단계 버튼: ②~⑤는 앞으로만(건너뛰기 허용), ⑥ 결과는 어느 단계에서나. 방법(전화·문자·카톡) 필수, 메모 선택 200자.
+// 2026-10-10 권한표: 점핑매니저에게는 서버가 배정된 건만 줌. 최고관리자·관리자는 카드마다 "담당: [선택 ▾]"(PATCH …/assign, 감사 기록)
+export type Assignee = { id: string; name: string; role: string };
 export type ConnectionItem = {
   id: string;
   deal_id: string;
@@ -31,6 +33,7 @@ export type ConnectionItem = {
   result: ConnectionResult | null;
   result_amount: number | null;
   result_reason: string | null;
+  assigned_admin_id?: string | null;
   assigned_admin_name: string | null;
   updated_at: string;
   closed_at: string | null;
@@ -54,6 +57,7 @@ export default function ConnectionBoard({
   onToggle,
   onCounts,
   onChanged,
+  assignees = null,
 }: {
   adminKey: string;
   isDesktop: boolean;
@@ -63,6 +67,8 @@ export default function ConnectionBoard({
   onCounts?: (c: { open: number; closed: number; stuck: number }) => void;
   /** 단계 전환 뒤 — 리드 카드(연락완료·성사/불발) 다시 불러오기 */
   onChanged?: () => void;
+  /** 배정할 수 있는 관리자 목록 — 있으면(최고관리자·관리자) 카드에 담당 선택 칸 */
+  assignees?: Assignee[] | null;
 }) {
   const [items, setItems] = useState<ConnectionItem[] | null>(null);
   const [closed, setClosed] = useState<ConnectionItem[]>([]);
@@ -136,6 +142,7 @@ export default function ConnectionBoard({
           expanded={expanded === c.id}
           onToggleExpand={() => setExpanded((v) => (v === c.id ? null : c.id))}
           onDone={done}
+          assignees={assignees}
         />
       )}
       after={
@@ -232,12 +239,14 @@ function ConnectionRow({
   expanded,
   onToggleExpand,
   onDone,
+  assignees,
 }: {
   item: ConnectionItem;
   adminKey: string;
   expanded: boolean;
   onToggleExpand: () => void;
   onDone: () => void;
+  assignees: Assignee[] | null;
 }) {
   const [method, setMethod] = useState<ConnectionMethod | null>(null);
   const [memo, setMemo] = useState("");
@@ -303,9 +312,13 @@ function ConnectionRow({
       </div>
       <BuyerLine item={item} adminKey={adminKey} />
       <StatusChips item={item} />
-      <div className="mt-1" style={{ ...LABEL, fontVariantNumeric: "tabular-nums" }}>
-        담당 {item.assigned_admin_name ?? "없음"} · 마지막 변경 {fmtTime(item.updated_at)}
-      </div>
+      {assignees ? (
+        <AssignSelect item={item} adminKey={adminKey} assignees={assignees} onDone={onDone} />
+      ) : (
+        <div className="mt-1" style={{ ...LABEL, fontVariantNumeric: "tabular-nums" }}>
+          담당 {item.assigned_admin_name ?? "없음"} · 마지막 변경 {fmtTime(item.updated_at)}
+        </div>
+      )}
 
       <button
         type="button"
@@ -463,6 +476,59 @@ function ConnectionRow({
           <SellerPrivatePanel connectionId={item.id} adminKey={adminKey} />
         </div>
       )}
+    </div>
+  );
+}
+
+// 담당 선택 — 바꾸면 바로 저장(PATCH /api/admin/connections/[id]/assign). 미배정이면 "없음"이 맨 위(다시 "없음"으로는 못 돌림)
+function AssignSelect({ item, adminKey, assignees, onDone }: { item: ConnectionItem; adminKey: string; assignees: Assignee[]; onDone: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const current = item.assigned_admin_id ?? "";
+  const known = !current || assignees.some((a) => a.id === current);
+  const change = async (assigneeId: string) => {
+    if (!assigneeId || assigneeId === current) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/connections/${item.id}/assign`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({ assigneeId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "담당을 바꾸지 못했어요.");
+        return;
+      }
+      onDone();
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 min-w-0" style={{ ...LABEL, fontVariantNumeric: "tabular-nums" }}>
+      <label className="inline-flex items-center gap-1.5 min-w-0">
+        <span className="whitespace-nowrap">담당</span>
+        <select
+          value={current}
+          onChange={(e) => change(e.target.value)}
+          disabled={busy}
+          className="min-w-0 max-w-full font-bold rounded-lg border border-gray200 bg-white text-navy px-2 disabled:opacity-60"
+          style={{ fontSize: rem(14), height: 32 }}
+          data-testid="conn-assign"
+        >
+          {!current && <option value="">없음 · 배정하기</option>}
+          {!known && <option value={current}>{item.assigned_admin_name ?? "(해제된 관리자)"}</option>}
+          {assignees.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name} ({a.role})
+            </option>
+          ))}
+        </select>
+      </label>
+      <span className="whitespace-nowrap">· 마지막 변경 {fmtTime(item.updated_at)}</span>
+      {error && <span className="font-bold" style={{ color: "#B91C1C" }}>{error}</span>}
     </div>
   );
 }

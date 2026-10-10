@@ -27,6 +27,14 @@ export type AuditAction =
   | "connection_step" // 2026-10-04 F-4: 거래 연결 단계 변경 (detail: deal_id, from, to, method, result·금액 — 메모는 이력 표에만)
   | "connection_phone_view" // 2026-10-04 F-4: 연결 구매자 번호 전체 보기 (detail: phoneTail만)
   | "seller_private_view" // 2026-10-04 F-4: 판매자 비공개 정보 조회 (detail: deal_id)
+  | "business_license_view" // 2026-10-10: 사업자등록증 열람(서명 URL 발급) (detail 없음 — 대상 회원 id만)
+  | "business_verify" // 2026-10-10: 사업자 인증 승인(business_verified=true)
+  | "deal_create" // 2026-10-10: 매물 등록(직접·판매 신청 승인) (detail: via, title, seller_request_id, sourced_by)
+  | "deal_update" // 2026-10-10: 매물 수정 (detail: 바뀐 칸 이름만 — 값은 넣지 않음. 마감만 하면 deal_close)
+  | "seller_request_reject" // 2026-10-10: 판매 신청 거절
+  | "notice_close" // 2026-10-10: 긴급 공지 마감 (detail: status)
+  | "connection_assign" // 2026-10-10: 거래 연결 담당 지정·변경 (detail: 이전·새 담당 id·이름)
+  | "member_phone_view" // 2026-10-10: 회원 전체 번호 보기 (detail: phoneTail만)
   | "seller_private_save"; // 2026-10-04 F-4: 판매자 비공개 정보 저장 (detail: via[deal_create|deal_edit|seller_request_approve|connection_board], 바뀐 칸 이름, 연락처는 phoneTail, 조회 행 연결 시 linked_check_id)
 
 export const phoneTail = (p: string | null | undefined) => {

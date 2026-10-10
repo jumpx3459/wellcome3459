@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkAdminAuth } from "@/lib/adminAuth";
+import { checkAdminAuth, requirePerm } from "@/lib/adminAuth";
 import { phoneTail, writeAudit } from "@/lib/adminAudit";
 import { UUID_RE } from "@/lib/rateLimit";
+import { connectionScopeDenied } from "@/lib/adminScope";
 import { linkedSellerRequest, parseSellerPrivateFields, saveSellerPrivate, type SellerPrivateVia } from "@/lib/sellerPrivate";
 
 // 2026-10-04 F-4 연결 상세 — 판매자 비공개 정보(상호·담당자·연락처 + 메모). 연결 id로 받아 그 매물의 deal_seller_private 1행.
@@ -9,19 +10,23 @@ import { linkedSellerRequest, parseSellerPrivateFields, saveSellerPrivate, type 
 // 조회·저장 모두 감사 로그 — detail에 값은 넣지 않음(바뀐 칸 이름·연락처 뒤 4자리만).
 
 async function dealOf(db: import("@supabase/supabase-js").SupabaseClient, id: string) {
-  const { data, error } = await db.from("deal_connections").select("id, deal_id").eq("id", id).maybeSingle();
-  return { deal: data as { id: string; deal_id: string } | null, error };
+  const { data, error } = await db.from("deal_connections").select("id, deal_id, assigned_admin_id").eq("id", id).maybeSingle();
+  return { deal: data as { id: string; deal_id: string; assigned_admin_id: string | null } | null, error };
 }
 
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/admin/connections/[id]/seller">) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const denied = requirePerm(auth.admin, "sellerPrivate"); // 2026-10-10 권한표(adminPerms)
+  if (denied) return denied;
   const { id } = await ctx.params;
   if (!UUID_RE.test(id)) return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });
   const db = auth.db;
   const { deal, error } = await dealOf(db, id);
   if (error) return NextResponse.json({ error: "연결 기록을 불러오지 못했어요." }, { status: 500 });
   if (!deal) return NextResponse.json({ error: "연결 기록을 찾을 수 없어요." }, { status: 404 });
+  const scoped = connectionScopeDenied(auth.admin, deal.assigned_admin_id); // 2026-10-10 점핑매니저는 배정된 건(= 담당 매물)만
+  if (scoped) return scoped;
 
   const [{ data: item, error: privError }, request] = await Promise.all([
     db
@@ -50,6 +55,8 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/admin/connec
 export async function PUT(req: NextRequest, ctx: RouteContext<"/api/admin/connections/[id]/seller">) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const denied = requirePerm(auth.admin, "sellerPrivate"); // 2026-10-10 권한표(adminPerms)
+  if (denied) return denied;
   const { id } = await ctx.params;
   if (!UUID_RE.test(id)) return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
@@ -60,6 +67,8 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/admin/connec
   const { deal, error } = await dealOf(db, id);
   if (error) return NextResponse.json({ error: "연결 기록을 불러오지 못했어요." }, { status: 500 });
   if (!deal) return NextResponse.json({ error: "연결 기록을 찾을 수 없어요." }, { status: 404 });
+  const scoped = connectionScopeDenied(auth.admin, deal.assigned_admin_id); // 2026-10-10 점핑매니저는 배정된 건(= 담당 매물)만
+  if (scoped) return scoped;
 
   const { data: before } = await db
     .from("deal_seller_private")

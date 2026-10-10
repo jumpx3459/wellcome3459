@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { checkAdminAuth } from "@/lib/adminAuth";
+import { checkAdminAuth, requirePerm } from "@/lib/adminAuth";
 
 // 로그인된 관리자 본인 비밀번호 변경 — id는 클라이언트가 아니라 검증된 세션 토큰에서만 가져옴
 export async function POST(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const denied = requirePerm(auth.admin, "changePassword"); // 2026-10-10 권한표(adminPerms)
+  if (denied) return denied;
 
   const { oldPassword, newPassword } = await req.json();
   if (!oldPassword || !newPassword) {

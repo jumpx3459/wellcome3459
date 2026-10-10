@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkAdminAuth } from "@/lib/adminAuth";
+import { checkAdminAuth, requirePerm } from "@/lib/adminAuth";
 import { writeAudit } from "@/lib/adminAudit";
 import { UUID_RE } from "@/lib/rateLimit";
 import { saveSellerPrivate } from "@/lib/sellerPrivate";
+import { connectionScopeDenied } from "@/lib/adminScope";
 import {
   CONNECTION_METHODS, CONNECTION_RESULTS, MEMO_MAX, RESULT_TO_LEAD_OUTCOME, STEP_AT_COLUMN,
   canMoveTo, hasPhoneNumber, isConnectionStatus, type ConnectionMethod, type ConnectionResult,
@@ -19,11 +20,15 @@ import {
 //     그대로(pending)라 성사율 분모(성사+불발)에 섞이지 않음(내부 시험 연결 정리 등). 실패해도 단계 전환은 유지(응답에 표시).
 //   · ③ 판매자 확인: nameDisclosureOk(판매자가 상호 안내를 허락함)를 deal_seller_private에 저장(매물당 1행, 없으면 만듦).
 //     ④는 허락이 없어도 막지 않음(화면에 "상호 비공개로 안내" 표시만).
+//   · 2026-10-10 권한표: 점핑매니저는 자기에게 배정된 건만(미배정 건 403 — 자동 담당은 최고관리자·관리자만).
+//     성사(closed + success)면 그 시점 담당자를 closed_assignee_admin_id에 남김(매니저 실적 — 나중에 담당을 넘겨도 그대로)
 const RACE_MESSAGE = "다른 관리자가 먼저 처리했어요. 새로고침해 주세요.";
 
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/admin/connections/[id]/step">) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const denied = requirePerm(auth.admin, "connections"); // 2026-10-10 권한표(adminPerms)
+  if (denied) return denied;
   const { id } = await ctx.params;
   if (!UUID_RE.test(id)) return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });
 
@@ -70,6 +75,8 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/admin/conne
     .maybeSingle();
   if (readError) return NextResponse.json({ error: "연결 기록을 불러오지 못했어요." }, { status: 500 });
   if (!conn) return NextResponse.json({ error: "연결 기록을 찾을 수 없어요." }, { status: 404 });
+  const scoped = connectionScopeDenied(auth.admin, conn.assigned_admin_id);
+  if (scoped) return scoped;
   if (conn.status !== from) return NextResponse.json({ error: RACE_MESSAGE, race: true }, { status: 409 });
   if (!canMoveTo(conn.status, to)) {
     return NextResponse.json({ error: "이전 단계로는 되돌릴 수 없어요.", field: "to" }, { status: 409 });
@@ -85,6 +92,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/admin/conne
     patch.result = result;
     patch.result_amount = amount;
     patch.result_reason = reason || null;
+    if (result === "success") patch.closed_assignee_admin_id = conn.assigned_admin_id ?? auth.admin.id;
   }
   const { data: updated, error: updateError } = await db
     .from("deal_connections")
