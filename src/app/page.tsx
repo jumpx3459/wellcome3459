@@ -405,8 +405,9 @@ export default function Home() {
                               -{discountPct}%
                             </span>
                           )}
-                          <span className="text-lg whitespace-nowrap" style={{ color: "#0d2943", fontWeight: 800 }} data-member-price>
-                            {MEMBER_PRICE_CTA} ›
+                          {/* 좁은 칸·큰 글자에선 단어 사이에서만 줄바꿈("›"는 앞 글자에 붙임) — 한 줄 고정이면 130%에서 잘림 */}
+                          <span className="text-lg" style={{ color: "#0d2943", fontWeight: 800, wordBreak: "keep-all" }} data-member-price>
+                            {MEMBER_PRICE_CTA}{"\u00a0"}›
                           </span>
                         </>
                       )}
