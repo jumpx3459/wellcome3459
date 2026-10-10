@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { checkAdminAuth } from "@/lib/adminAuth";
+import { checkAdminAuth, requirePerm } from "@/lib/adminAuth";
 import { getKpiExcludedMemberIds, inList, TEST_TITLE_PATTERN } from "@/lib/kpiExclusion";
 
 // 관리자 대시보드 핵심 지표·7일 추세·운영 카운트 (2026-09-29, 2026-09-30 커밋 K) — 읽기 전용 집계.
@@ -17,6 +17,8 @@ const kstDate = (iso: string) => new Date(new Date(iso).getTime() + KST_MS).toIS
 export async function GET(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const denied = requirePerm(auth.admin, "dashboard"); // 2026-10-10 권한표(adminPerms)
+  if (denied) return denied;
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

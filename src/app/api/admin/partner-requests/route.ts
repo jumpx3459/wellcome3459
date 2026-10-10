@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { checkAdminAuth, requireRole } from "@/lib/adminAuth";
+import { checkAdminAuth, requirePerm } from "@/lib/adminAuth";
 import { writeAudit } from "@/lib/adminAudit";
 
 export async function GET(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const denied = requirePerm(auth.admin, "partnerView"); // 2026-10-10 권한표(adminPerms)
+  if (denied) return denied;
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -25,7 +27,7 @@ export async function PATCH(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   // 2026-10-01: 공식 파트너 지정(승인)·거절은 최고관리자만
-  const denied = requireRole(auth.admin, ["최고관리자"]);
+  const denied = requirePerm(auth.admin, "partnerApprove");
   if (denied) return denied;
 
   const { id, status } = await req.json();

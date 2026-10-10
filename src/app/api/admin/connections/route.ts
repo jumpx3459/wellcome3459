@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkAdminAuth } from "@/lib/adminAuth";
+import { checkAdminAuth, requirePerm } from "@/lib/adminAuth";
 import { maskPhone } from "@/lib/phone";
 import { isStuck, type ConnectionStatus } from "@/lib/connectionSteps";
+import { ownOnly } from "@/lib/adminPerms";
 
 // 2026-10-04 F-4 거래 연결 보드 — 목록. 진행 중(closed 아님) 전체 + 최근 종료 20건.
 // 구매자 번호는 가린 값만(maskPhone) — 전체 번호는 [번호 보기](/api/admin/connections/[id]/phone, 감사 로그).
-// 정렬: 멈춘 연결(24시간 변화 없음) 먼저 → 마지막 변경이 오래된 순. 권한은 checkAdminAuth만(역할 3단계 강제는 범위 밖).
+// 정렬: 멈춘 연결(24시간 변화 없음) 먼저 → 마지막 변경이 오래된 순.
+// 2026-10-10 권한표: 점핑매니저는 자기에게 배정된 건만(미배정 건은 안 보임) — 진행 중·최근 종료 모두
 const OPEN_LIMIT = 500;
 const CLOSED_LIMIT = 20;
 
@@ -39,11 +41,15 @@ type Row = {
 export async function GET(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const denied = requirePerm(auth.admin, "connections"); // 2026-10-10 권한표(adminPerms)
+  if (denied) return denied;
   const db = auth.db;
+  const mine = ownOnly(auth.admin.role, "connections");
+  const scope = <Q extends { eq: (c: string, v: string) => Q }>(q: Q) => (mine ? q.eq("assigned_admin_id", auth.admin.id) : q);
 
   const [openRes, closedRes] = await Promise.all([
-    db.from("deal_connections").select(COLUMNS).neq("status", "closed").order("updated_at", { ascending: true }).limit(OPEN_LIMIT),
-    db.from("deal_connections").select(COLUMNS).eq("status", "closed").order("closed_at", { ascending: false }).limit(CLOSED_LIMIT),
+    scope(db.from("deal_connections").select(COLUMNS).neq("status", "closed")).order("updated_at", { ascending: true }).limit(OPEN_LIMIT),
+    scope(db.from("deal_connections").select(COLUMNS).eq("status", "closed")).order("closed_at", { ascending: false }).limit(CLOSED_LIMIT),
   ]);
   if (openRes.error || closedRes.error) {
     const e = openRes.error ?? closedRes.error;
@@ -96,6 +102,7 @@ export async function GET(req: NextRequest) {
       buyer_confirmed_at: r.buyer_confirmed_at,
       contact_sent_at: r.contact_sent_at,
       closed_at: r.closed_at,
+      assigned_admin_id: r.assigned_admin_id,
       assigned_admin_name: r.assigned_admin_id ? adminName.get(r.assigned_admin_id) ?? "(해제된 관리자)" : null,
       updated_at: r.updated_at,
       name_disclosure_ok: disclosure.get(r.deal_id) ?? false,

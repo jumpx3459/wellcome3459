@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import crypto from "crypto";
+import { ADMIN_ROLES, can, rolesFor, type AdminPerm, type AdminRole } from "@/lib/adminPerms";
 
 // 관리자 세션 (2026-10-01 ① 역할 기반 최소판)
 //   · ADMIN_SESSION_SECRET이 없거나 32자 미만이면 fail-closed — 토큰 발급·검증 모두 거부("dev-secret" 대체 삭제)
@@ -9,8 +10,8 @@ import crypto from "crypto";
 const SESSION_TTL_MS = 6 * 60 * 60 * 1000; // 6시간
 const MIN_SECRET_LENGTH = 32;
 
-export const ADMIN_ROLES = ["최고관리자", "관리자", "점핑매니저"] as const;
-export type AdminRole = (typeof ADMIN_ROLES)[number];
+//   2026-10-10: 역할별 권한은 src/lib/adminPerms.ts 권한표 한 곳(requirePerm) — 역할 이름·목록도 거기서
+export { ADMIN_ROLES, type AdminRole };
 export type AdminIdentity = { id: string; name: string; role: AdminRole; phone: string | null };
 
 type AdminPayload = { id: string; exp: number };
@@ -122,6 +123,13 @@ export async function checkAdminAuth(req: NextRequest): Promise<AuthResult> {
     return { ok: false, status: 401, error: "관리자 계정이 해제됐거나 권한이 없어요. 다시 로그인해주세요." };
   }
   return { ok: true, admin: { id: data.id, name: data.name, role: data.role as AdminRole, phone: data.phone ?? null }, db };
+}
+
+/** 2026-10-10 권한표(adminPerms) 기준 제한 — 권한이 없으면 403(기존 requireRole과 같은 형식), 통과면 null.
+ *  "자기 건만"(점핑매니저)은 통과시키고, 거르기는 각 API가 ownOnly + adminScope로 함 */
+export function requirePerm(admin: AdminIdentity, perm: AdminPerm): NextResponse | null {
+  if (can(admin.role, perm)) return null;
+  return NextResponse.json({ error: "권한이 없어요", required: rolesFor(perm) }, { status: 403 });
 }
 
 /** 역할 제한 — 허용 역할이 아니면 403 응답을, 통과면 null */

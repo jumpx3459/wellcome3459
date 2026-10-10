@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
-import { checkAdminAuth, requireRole } from "@/lib/adminAuth";
+import { checkAdminAuth, requirePerm } from "@/lib/adminAuth";
+import { can } from "@/lib/adminPerms";
 import { writeAudit, phoneTail } from "@/lib/adminAudit";
 import { normalizePhone } from "@/lib/phone";
 
@@ -25,11 +26,12 @@ function getAdminClient() {
 }
 
 // 임명·역할 변경으로 지정할 수 있는 역할 — 점핑매니저는 DB 허용값에만 있고 F(거래 연결) 전까지 지정하지 않음
-// 관리자 목록 조회 — 임명/해제 버튼은 최고관리자에게만 보이지만, 목록 자체는
-// 아무 관리자나 봐도 문제없는 정보(비밀번호 해시 제외)라 별도 role 제한은 두지 않음
+// 관리자 목록 조회 — 2026-10-10 권한표: 최고관리자는 전체 칸, 관리자(일반)는 이름·역할만(연결 배정·발굴 매니저 선택용), 점핑매니저는 403
 export async function GET(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const denied = requirePerm(auth.admin, "adminList"); // 2026-10-10 권한표(adminPerms)
+  if (denied) return denied;
 
   const supabaseAdmin = getAdminClient();
   const { data, error } = await supabaseAdmin
@@ -38,7 +40,8 @@ export async function GET(req: NextRequest) {
     .order("created_at", { ascending: true });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ items: data ?? [] });
+  const items = can(auth.admin.role, "adminManage") ? data ?? [] : (data ?? []).map((a) => ({ id: a.id, name: a.name, role: a.role }));
+  return NextResponse.json({ items });
 }
 
 // 회원을 관리자로 임명 — 최고관리자만 가능. 임시 비밀번호는 이 응답에 한 번만 담겨서
@@ -46,7 +49,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const denied = requireRole(auth.admin, ["최고관리자"]);
+  const denied = requirePerm(auth.admin, "adminManage");
   if (denied) return denied;
 
   const { memberId, name, role } = await req.json();
@@ -131,7 +134,7 @@ function isFounderProtected(targetPhone: string | null, requesterId: string, tar
 export async function DELETE(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const denied = requireRole(auth.admin, ["최고관리자"]);
+  const denied = requirePerm(auth.admin, "adminManage");
   if (denied) return denied;
 
   const { id } = await req.json();
@@ -182,7 +185,7 @@ export async function DELETE(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const denied = requireRole(auth.admin, ["최고관리자"]);
+  const denied = requirePerm(auth.admin, "adminManage");
   if (denied) return denied;
 
   const { id, role } = await req.json();

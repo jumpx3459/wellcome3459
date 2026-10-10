@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { checkAdminAuth } from "@/lib/adminAuth";
+import { checkAdminAuth, requirePerm } from "@/lib/adminAuth";
 import { writeAudit } from "@/lib/adminAudit";
 import { maskBizNo, normalizeBizNo, normalizeOpenDate, ntsValidate } from "@/lib/nts";
 import { normalizePhone } from "@/lib/phone";
@@ -34,6 +34,8 @@ async function toClient(db: SupabaseClient, rows: Row[]): Promise<BusinessCheck[
 export async function GET(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const denied = requirePerm(auth.admin, "sellerRequests"); // 2026-10-10 권한표(adminPerms)
+  if (denied) return denied;
   const db = auth.db;
   const sp = req.nextUrl.searchParams;
 
@@ -101,6 +103,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const denied = requirePerm(auth.admin, "sellerRequests"); // 2026-10-10 권한표(adminPerms)
+  if (denied) return denied;
   const db = auth.db;
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });

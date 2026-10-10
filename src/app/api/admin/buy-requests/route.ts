@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { checkAdminAuth } from "@/lib/adminAuth";
+import { checkAdminAuth, requirePerm } from "@/lib/adminAuth";
 
 function getAdminClient() {
   return createClient(
@@ -13,6 +13,8 @@ function getAdminClient() {
 export async function GET(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const denied = requirePerm(auth.admin, "buyRequests"); // 2026-10-10 권한표(adminPerms)
+  if (denied) return denied;
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return NextResponse.json({ items: [], demo: true });
@@ -34,6 +36,8 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const denied = requirePerm(auth.admin, "buyRequests"); // 2026-10-10 권한표(adminPerms)
+  if (denied) return denied;
 
   const { id, contacted, outcome } = await req.json();
   if (!id) return NextResponse.json({ error: "id가 필요합니다." }, { status: 400 });
