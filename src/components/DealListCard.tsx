@@ -1,20 +1,22 @@
 import Link from "next/link";
-import { categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
-import { formatDealPrice } from "@/lib/format";
+import type { Deal } from "@/lib/mockData";
 import DealCardMedia from "@/components/DealCardMedia";
 import PriceText from "@/components/PriceText";
-import { stockTypeBadge } from "@/lib/stockType";
-import { cardDiscountPct, showStrikePrice } from "@/lib/dealPriceAccess";
+import { cardDiscountPct, MEMBER_PRICE_CTA } from "@/lib/dealPriceAccess";
 import { dealPriceLabel, isNegotiable } from "@/lib/priceMode";
 import NegotiablePrice from "@/components/NegotiablePrice";
 import { heartToShow } from "@/lib/heartCount";
-import MemberPriceTeaser from "@/components/MemberPriceTeaser";
+import { qtyRegionText } from "@/lib/homeCard";
+import { rem } from "@/lib/rem";
 
 // /deals 목록 카드 — 실매물·예시 공용 (2026-09-29, 예전엔 예시 카드가 따로 있어서 배지 위치가 달랐음).
-// 예시는 레이아웃 동일, 회색 톤 + "예시" 라벨로만 구분.
-// 2026-10-04 v2: 사진을 정사각형(1:1)으로 크게, 카테고리·시즌 태그는 사진 위 왼쪽 아래 오버레이로 이동, 글자 영역은 3줄로 압축 —
-//   ① 매물명(2줄 말줄임) ② 판매가 + 정상가(취소선, 좁으면 아랫줄) ③ 잔여 수량 · 지역 한 줄. 재고 막대는 남은 재고 80% 이하일 때만.
-//   보관·소비기한·원산지·MOQ·평균 대비 배지는 목록에서 뺌(상세에는 그대로).
+// 예시는 레이아웃 동일, 회색 톤으로만 구분(회색 줄 앞 "예시 ·" + 목록 위 "예시" 표시).
+// 2026-10-04 v2: 사진을 정사각형(1:1)으로 크게, 글자 영역은 3줄로 압축. 보관·소비기한·원산지·MOQ·평균 대비 배지는 목록에서 뺌(상세에는 그대로).
+// 2026-10-10 카드 정리: 왼쪽 카테고리 색 테두리·카테고리 색 글자 없음, 사진 위는 남은 시간(오른쪽 위)만(할인 배지·카테고리 칩·📷 장수 뺌).
+//   글 영역 ① 매물명(기존 크기, 2줄 말줄임) ② [할인 배지] + 가격(회원) / "회원가 보기 ›"(비회원) — #0d2943 800, 할인 없으면 배지 없음, 줄 그은 정상가 없음
+//   ③ 회색 한 줄 "{잔여 수량(천 단위 쉼표)}{단위} · {지역}"(#64748b). 재고 막대도 뺌(3줄 구성).
+const INK = "#0d2943";
+
 export default function DealListCard({
   deal: d,
   closed = false,
@@ -27,41 +29,33 @@ export default function DealListCard({
   example?: boolean;
   hotGapPct?: number | null; // 같은 카테고리 평균보다 몇 %p 더 저렴한지 — 2026-10-04 v2부터 목록 카드에는 표시하지 않음(호출부는 그대로)
   eager?: boolean; // 첫 카드만 사진 바로 불러오기
-  priceHidden?: boolean; // 2026-10-03 A안: 비회원 — 가격 자리에 "-N% · 회원가 보기" (예시 카드도 같음)
+  priceHidden?: boolean; // 2026-10-03 A안: 비회원 — 가격 자리에 "회원가 보기 ›" (예시 카드도 같음)
 }) {
-  const color = categoryColors[d.category] ?? categoryColors["기타"];
   const gray = closed || example;
-  const accent = gray ? "#6B7480" : color.text;
-  const remainPct = d.total_qty ? Math.round((d.remaining_qty / d.total_qty) * 100) : 0;
+  const ink = closed ? "#6B7480" : INK;
   const discountPct = cardDiscountPct(d);
   const negotiable = isNegotiable(d); // 2026-10-04 가격 협의 — 가격 자리에 "가격 협의 · 점핑매니저가 연결해드려요"
-  const unit = d.quantity_unit || "개";
-  // 사진 위 왼쪽 아래 태그: 카테고리(+시즌·재고 유형)
-  const stock = stockTypeBadge(d.stock_type);
-  const tag = `${categoryIcons[d.category] ?? "🗂️"} ${example ? "예시 · " : ""}${d.category}${stock ? ` · ${stock}` : ""}`;
+  const showBadge = !closed && !negotiable && discountPct > 0;
 
   return (
     <Link
       href={example ? `/deals/example-${d.id}` : `/deals/${d.id}`}
       className="bg-white border border-gray200 rounded-2xl overflow-hidden flex flex-col relative w-full min-w-0 max-w-full"
       style={{
-        borderLeft: `5px solid ${gray ? "#C7CBD1" : color.solid}`,
         opacity: closed ? 0.85 : example ? 0.9 : 1,
         boxShadow: gray ? "none" : "0 2px 8px rgba(11,37,64,0.08), 0 1px 2px rgba(11,37,64,0.04)",
       }}
     >
       <DealCardMedia
         image={d.images?.[0]}
-        imageCount={d.images?.length ?? 0}
         alt={d.title}
         category={d.category}
-        discountPct={discountPct}
+        discountPct={0}
         closesAt={d.closes_at}
         closed={closed}
         example={example}
         eager={eager}
         ratio="1/1"
-        tag={tag}
       />
 
       {/* 2026-10-03: 운영(안드로이드 크롬)에서 긴 매물명이 한 줄로 카드 폭을 밀어 화면 밖으로 넘친 제보 — 본문·매물명을 min-w-0 블록 안에 둠 */}
@@ -69,54 +63,39 @@ export default function DealListCard({
         <div className="min-w-0">
           <div className="text-lg font-bold text-gray900 line-clamp-2" data-title>{d.title}</div>
         </div>
-        {negotiable ? (
-          <div className="mt-1.5">
-            <NegotiablePrice color={accent} className="text-lg" />
-          </div>
-        ) : priceHidden ? (
-          <div className="mt-1.5">
-            <MemberPriceTeaser discountPct={discountPct} color={accent} className="text-lg" />
-          </div>
-        ) : (
-          <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mt-1.5">
-            <span className="text-lg font-black whitespace-nowrap" style={{ color: accent }}>
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-1.5 min-w-0" data-price-row>
+          {showBadge && (
+            <span
+              className="text-white rounded whitespace-nowrap flex-shrink-0"
+              style={{ fontSize: rem(15), fontWeight: 800, lineHeight: 1.35, padding: "1px 7px", background: example ? "#9AA3AD" : "#e8590c" }}
+              data-discount-badge
+            >
+              -{discountPct}%
+            </span>
+          )}
+          {negotiable ? (
+            <NegotiablePrice color={ink} className="text-lg" />
+          ) : priceHidden ? (
+            <span className="text-lg whitespace-nowrap" style={{ color: ink, fontWeight: 800 }} data-member-price>
+              {MEMBER_PRICE_CTA} ›
+            </span>
+          ) : (
+            <span className="text-lg whitespace-nowrap" style={{ color: ink, fontWeight: 800 }} data-price>
               <PriceText text={dealPriceLabel(d)} />
             </span>
-            {/* 2026-10-08 4b-1: 정상가가 없음·0·판매가 이하·판매가 없음이면 줄 그은 가격을 그리지 않음(할인율 배지와 같은 기준) */}
-            {showStrikePrice(d) && (
-              <span className="text-sm text-gray500 font-normal line-through whitespace-nowrap">
-                <PriceText text={formatDealPrice(d.original_price!, d.quantity_unit, d.price_unit)} />
-              </span>
-            )}
-          </div>
-        )}
-        <div className="text-sm font-medium mt-1 flex items-center gap-x-1 min-w-0" style={{ color: "#495057" }}>
-          {closed ? (
-            <span className="truncate min-w-0">{d.location}</span>
-          ) : (
-            <>
-              <span className="whitespace-nowrap flex-shrink-0">잔여 {d.remaining_qty}{unit}</span>
-              <span aria-hidden className="flex-shrink-0">·</span>
-              <span className="truncate min-w-0">{d.location}</span>
-              {/* 2026-09-26: 관심표시 3건 미만은 숨김 — "관심 0~2명"은 오히려 인기 없어 보임.
-                  2026-10-09 PR 4a: 누계(interest_count) 대신 공개 하트 수(heart_count — 집계 시작 이후·테스트 회원 제외) */}
-              {!example && heartToShow(d.heart_count) !== null && (
-                <span className="flex-shrink-0 whitespace-nowrap font-bold" style={{ color: "#C2410C" }}>· ❤️ {heartToShow(d.heart_count)}</span>
-              )}
-            </>
           )}
         </div>
-        {/* 남은 재고 80% 이하일 때만 — 가득 찬 재고를 막대로 보여 줄 필요 없음 */}
-        {!closed && remainPct <= 80 && (
-          <div className="mt-2">
-            <div className="h-[7px] bg-gray200 rounded-full overflow-hidden">
-              <div className="h-full rounded-full" style={{ width: `${remainPct}%`, background: example ? "#AEB5BD" : color.solid }} />
-            </div>
-            <div className="text-sm font-bold mt-1" style={{ color: accent }}>
-              재고 {remainPct}% 남음{!example && remainPct < 30 ? " · 서두르세요" : ""}
-            </div>
-          </div>
-        )}
+        <div className="mt-1 flex items-center gap-x-1 min-w-0" style={{ fontSize: rem(14), color: "#64748b" }} data-qty-region>
+          <span className="truncate min-w-0">
+            {example ? "예시 · " : ""}
+            {closed ? d.location : qtyRegionText(d.remaining_qty, d.quantity_unit, d.location)}
+          </span>
+          {/* 2026-09-26: 관심표시 3건 미만은 숨김 — "관심 0~2명"은 오히려 인기 없어 보임.
+              2026-10-09 PR 4a: 누계(interest_count) 대신 공개 하트 수(heart_count — 집계 시작 이후·테스트 회원 제외) */}
+          {!closed && !example && heartToShow(d.heart_count) !== null && (
+            <span className="flex-shrink-0 whitespace-nowrap font-bold" style={{ color: "#C2410C" }}>· ❤️ {heartToShow(d.heart_count)}</span>
+          )}
+        </div>
         {closed && (
           <div className="text-sm text-gray500 mt-1.5">
             {new Date(d.closes_at).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })} 마감

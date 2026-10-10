@@ -423,11 +423,15 @@ function DealsPageInner() {
       <div className="flex-1 bg-gray100 px-4 py-3.5 flex flex-col gap-3">
         <Link
           href="/sell"
-          className="flex items-center justify-between rounded-xl"
+          className="flex items-center justify-between gap-2 rounded-xl"
           style={{ background: "#FF6F0F", padding: "12px 16px", boxShadow: "0 2px 10px rgba(255,111,15,0.35)" }}
           data-sell-banner
         >
-          <span className="text-sm font-bold text-white">📦 나도 긴급 매물 등록하기</span>
+          {/* 2026-10-10: 회원 홈 배너와 같은 방식 — 두 덩어리(각각 줄바꿈 없음), 한 줄에 안 들어가면 "매물" 뒤에서만 줄바꿈·둘째 줄 들여쓰기(내어쓰기 1.6em) */}
+          <span className="min-w-0 text-sm font-bold text-white" style={{ paddingLeft: "1.6em", textIndent: "-1.6em" }} data-sell-banner-text>
+            <span className="inline-block whitespace-nowrap" style={{ textIndent: 0 }} data-banner-part>📦 나도 긴급 매물</span>{" "}
+            <span className="inline-block whitespace-nowrap" style={{ textIndent: 0 }} data-banner-part>등록하기</span>
+          </span>
           {/* 2026-10-10 PR 4a: 회원 홈 배너와 같은 흰 알약(흰 바탕·#c2410c 800·7px 12px·그림자). 글자 크기는 그대로 text-xs(13.5px) */}
           <span
             className="text-xs rounded-full flex-shrink-0 whitespace-nowrap"

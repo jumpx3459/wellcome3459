@@ -15,3 +15,10 @@ export function regionQtyText(location: string | null | undefined, qty: number |
   const q = qty == null || !Number.isFinite(Number(qty)) ? "" : `${Number(qty).toLocaleString("ko-KR")}${(unit ?? "").trim() || "개"}`;
   return [loc, q].filter(Boolean).join(" · ");
 }
+
+// 2026-10-10 /deals 카드 회색 줄 — "15,000개 · 경기"(수량 먼저, 천 단위 쉼표, "잔여" 없음). 빈 값은 빼고 이음
+export function qtyRegionText(qty: number | null | undefined, unit: string | null | undefined, location: string | null | undefined): string {
+  const loc = (location ?? "").trim();
+  const q = qty == null || !Number.isFinite(Number(qty)) ? "" : `${Number(qty).toLocaleString("ko-KR")}${(unit ?? "").trim() || "개"}`;
+  return [q, loc].filter(Boolean).join(" · ");
+}

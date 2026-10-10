@@ -5,7 +5,7 @@ import { pathToFileURL, fileURLToPath } from "node:url";
 
 // 앱 빌드의 타입 검사가 ".ts" 확장자 import를 막아서(다른 시험과 같게) 경로 문자열로 불러옴 — homeCard.ts는 다른 모듈 import 없음
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const { isTimerRed, regionQtyText, TIMER_RED_MS } = await import(pathToFileURL(join(root, "src/lib/homeCard.ts")).href);
+const { isTimerRed, regionQtyText, qtyRegionText, TIMER_RED_MS } = await import(pathToFileURL(join(root, "src/lib/homeCard.ts")).href);
 
 let failed = 0;
 const eq = (got: unknown, want: unknown, msg: string) => {
@@ -35,6 +35,12 @@ eq(regionQtyText("경기", undefined, null), "경기", "수량·단위 없음 �
 eq(regionQtyText("", 30, "박스"), "30박스", "지역 없음 → 수량만");
 eq(regionQtyText("서울", 5, ""), "서울 · 5개", "단위 비면 개");
 eq(regionQtyText(null, null, null), "", "둘 다 없음 → 빈 글자");
+
+// ── /deals 카드 "수량 · 지역"(2026-10-10)
+eq(qtyRegionText(15000, "개", "경기"), "15,000개 · 경기", "수량 먼저 · 천 단위 쉼표");
+eq(qtyRegionText(1250000, "kg", "경남 · 통영"), "1,250,000kg · 경남 · 통영", "시·군 있는 경우");
+eq(qtyRegionText(null, "개", "경기"), "경기", "수량 없음 → 지역만");
+eq(qtyRegionText(30, "", ""), "30개", "지역 없음 · 단위 비면 개");
 
 console.log(failed ? `\n${failed}건 실패` : "\n전부 통과");
 process.exit(failed ? 1 : 0);
