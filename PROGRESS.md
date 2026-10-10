@@ -50,6 +50,10 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
+## 최근 작업 (2026-10-10) — /deals 카드 정리 · 등록 배너 들여쓰기 · 매물 등록 버튼 스크롤 숨김 (브랜치 `feat/deals-card-clean`)
+
+- **#84 병합 기록**(PR 4a 하트 집계·♡ 찜·연결 요청·상세 첫 화면 등): 병합 커밋 `ba9a47a`(10/10 00:11 UTC, merge commit) · Deploy to Vercel #288(run 38007951426) 성공 · PR CI #73(run 38007061937, head `e8f2c64`) 성공 · main 병합 뒤 CI run 없음. 하트 집계 SQL은 merge 전 10/10 운영 실행 완료(대표). 운영 확인 (p)는 대표 확인 대기.
+
 ## 최근 작업 (2026-10-09) — 4a 하트 집계 · ♡ 찜·판매자 연결 요청 · 상세 첫 화면 · 403 삭제 중지 · 4b-2 후속 (브랜치 `feat/heart-wish-connect`)
 
 - **#83 병합 기록**(PR 4b-2 회원 홈 카드 D안 등): 병합 커밋 `e70f72a`(10/9 00:28 UTC, merge commit) · Deploy to Vercel #287(run 37864944833) 성공 · PR CI #70(run 37863322479, head `8325dac`) 성공 · main 병합 뒤 CI run 없음.
