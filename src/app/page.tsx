@@ -17,8 +17,7 @@ import EcosystemGrid, { SECTION_TITLE_STYLE, SERVICES_ANCHOR_ID, scrollToService
 import AlertInboxHome from "@/components/AlertInboxHome";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
-import MemberPriceTeaser from "@/components/MemberPriceTeaser";
-import { GUEST_PRICE_COLS, dealPriceFields, cardDiscountPct } from "@/lib/dealPriceAccess";
+import { GUEST_PRICE_COLS, dealPriceFields, cardDiscountPct, MEMBER_PRICE_CTA } from "@/lib/dealPriceAccess";
 import { isNegotiable } from "@/lib/priceMode";
 import NegotiablePrice from "@/components/NegotiablePrice";
 import { SITE_URL } from "@/lib/siteUrl";
@@ -370,22 +369,7 @@ export default function Home() {
                     className="relative rounded-token flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden"
                     style={{ background: color.bg, width: 140, height: 140 }}
                   >
-                    {/* 2026-10-03: 할인율 배지를 카드 오른쪽 위 → 사진 왼쪽 위로(/deals 카드 DealCardMedia와 같은 위치·색 규칙의 축소판).
-                        본문 오른쪽 위에 있을 땐 "소비기한 임박" 칩·매물명과 겹쳤음(사진이 커져 본문 폭이 줄어서). 큰 글자에서도 사진 안에 들어가게 최대 폭 제한 */}
-                    {discountPct > 0 && (
-                      <div
-                        className="absolute top-1.5 left-1.5 z-[1] font-black text-white rounded-full pointer-events-none whitespace-nowrap"
-                        style={{
-                          background: isExample ? "rgba(107,116,128,0.78)" : "rgba(226,81,0,0.78)",
-                          fontSize: rem(13),
-                          lineHeight: 1.2,
-                          padding: "2px 7px",
-                          maxWidth: "calc(100% - 12px)",
-                        }}
-                      >
-                        -{discountPct}%
-                      </div>
-                    )}
+                    {/* 2026-10-10: 사진 위 할인 배지 없음 — 할인율은 글 쪽 배지 한 번만 */}
                     {d.images && d.images.length > 0 ? (
                       <img
                         src={d.images[0]}
@@ -405,12 +389,27 @@ export default function Home() {
                     <div className="mt-0.5" style={{ fontSize: rem(14), color: "#374151" }}>
                       {d.category} · 잔여 {d.remaining_qty}{d.quantity_unit || "개"}
                     </div>
-                    {/* 2026-10-03 A안: 비회원 홈(예시 포함) — 가격 자리에 "-N% · 회원가 보기" */}
-                    <div className="mt-1.5">
+                    {/* 2026-10-03 A안: 비회원 홈(예시 포함) — 가격 자리에 회원가 안내.
+                        2026-10-10: 카테고리 색 글자 없음 — [할인 배지 #e8590c 흰 글자 800(회원 홈·/deals 카드와 같음)] + "회원가 보기 ›" #0d2943 800, 할인 없으면 배지 없음 */}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 min-w-0" data-price-row>
                       {isNegotiable(d) ? (
-                        <NegotiablePrice color={color.text} className="text-lg" />
+                        <NegotiablePrice color="#0d2943" className="text-lg" />
                       ) : (
-                        <MemberPriceTeaser discountPct={discountPct} color={color.text} className="text-lg" />
+                        <>
+                          {discountPct > 0 && (
+                            <span
+                              className="text-white rounded whitespace-nowrap flex-shrink-0"
+                              style={{ fontSize: rem(15), fontWeight: 800, lineHeight: 1.35, padding: "1px 7px", background: isExample ? "#9AA3AD" : "#e8590c" }}
+                              data-discount-badge
+                            >
+                              -{discountPct}%
+                            </span>
+                          )}
+                          {/* 좁은 칸·큰 글자에선 단어 사이에서만 줄바꿈("›"는 앞 글자에 붙임) — 한 줄 고정이면 130%에서 잘림 */}
+                          <span className="text-lg" style={{ color: "#0d2943", fontWeight: 800, wordBreak: "keep-all" }} data-member-price>
+                            {MEMBER_PRICE_CTA}{"\u00a0"}›
+                          </span>
+                        </>
                       )}
                     </div>
                   </div>

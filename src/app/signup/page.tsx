@@ -452,8 +452,8 @@ function SignupPageInner() {
   const obCtaLabel =
     obStep === 1
       ? categories.length
-        ? `${categories.length}개 선택 · 다음`
-        : "관심 카테고리를 골라주세요"
+        ? `다음 (${categories.length}개 선택)`
+        : "카테고리를 1개 이상 골라주세요"
       : obStep === 2
       ? !verified
         ? "휴대폰 인증이 필요해요"
@@ -517,10 +517,10 @@ function SignupPageInner() {
     else agreeAreaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const pickAllCategories = () => {
-    setCategories([...mockCategories]);
-    showToast("전체 카테고리로 받습니다 · 나중에 좁힐 수 있어요");
-  };
+  // 2026-10-10: [카테고리 전체 선택] 칸 — 누르면 전부 선택, 전부 선택된 상태에서 누르면 전부 해제.
+  //   저장 값은 예전 "전체 받기"와 같음(카테고리 전부 → member_categories 전부, sendDealPush는 카테고리별 행으로 대상 계산)
+  const allCategoriesPicked = mockCategories.every((c) => categories.includes(c));
+  const toggleAllCategories = () => setCategories(allCategoriesPicked ? [] : [...mockCategories]);
 
   if (!authChecked) return null;
 
@@ -665,6 +665,24 @@ function SignupPageInner() {
           <div>
             {/* 헤드라인/서브카피는 위 네이비 히어로 블록으로 이동함 (2026-09-27) */}
             <div ref={categoryAreaRef} className="grid grid-cols-2 gap-2.5" style={{ scrollMarginTop: 16 }}>
+              {/* 2026-10-10: 맨 위 꽉 찬 칸(2열) — 다른 칸과 같은 모양(흰 바탕, 평소 회색 선·선택 시 주황 선). 개수는 목록 길이 */}
+              <button
+                type="button"
+                onClick={toggleAllCategories}
+                aria-pressed={allCategoriesPicked}
+                className="col-span-2 flex items-center justify-center text-center rounded-2xl"
+                style={{
+                  padding: "12px 11px",
+                  minHeight: 54,
+                  background: "#fff",
+                  border: allCategoriesPicked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
+                }}
+                data-cat-all
+              >
+                <span className="text-sm font-bold leading-tight" style={{ color: "#1A1F26" }}>
+                  ✓ 카테고리 전체 {allCategoriesPicked ? "선택됨" : "선택"} ({mockCategories.length}개)
+                </span>
+              </button>
               {mockCategories.map((c) => {
                 const picked = categories.includes(c);
                 return (
@@ -691,16 +709,6 @@ function SignupPageInner() {
                 );
               })}
             </div>
-            {/* 2026-09-27: 13px+회색+밑줄이 겹쳐 너무 안 띄던 문제 — 카테고리명
-                (text-sm≈14px) 수준으로 폰트만 키우고, 회색·밑줄은 유지해
-                "보조 액션"이라는 시각적 위계는 그대로 둠. */}
-            <button
-              onClick={pickAllCategories}
-              className="mt-4"
-              style={{ background: "none", border: "none", cursor: "pointer", fontSize: rem(14), fontWeight: 700, color: "#6B7480", textDecoration: "underline", textUnderlineOffset: 4, padding: "8px 0" }}
-            >
-              아직 잘 모르겠어요 · 전체 받기 →
-            </button>
 
           </div>
         )}
@@ -993,7 +1001,7 @@ function SignupPageInner() {
               disabled={submitting}
               aria-disabled={obCtaDisabled}
               className={FLOATING_CTA_BUTTON_CLASS}
-              style={obCtaDisabled ? { ...floatingCtaButtonStyle(true), background: "#FFEDD5", color: "#9A3412" } : floatingCtaButtonStyle()}
+              style={obCtaDisabled ? { ...floatingCtaButtonStyle(true), ...(obStep === 1 ? { background: "#e2e8f0", color: "#64748b" } : { background: "#FFEDD5", color: "#9A3412" }) } : floatingCtaButtonStyle()}
             >
               {submitting ? "처리 중..." : obCtaLabel}
             </button>

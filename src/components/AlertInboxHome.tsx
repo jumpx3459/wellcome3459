@@ -24,6 +24,7 @@ import { useBackToClose } from "@/lib/useBackToClose";
 
 // 헤더-콘텐츠 간격. 2026-10-09 4b-2: 헤더 고정(fixed) 해제 — 예전 실측 높이(83px) paddingTop 보정은 필요 없어짐
 const INBOX_HEADER_GAP = 14;
+const ALERTS_OFF_TOP_GAP = 12; // 2026-10-10: 알림 꺼짐 안내가 맨 위에 올 때 머리와의 간격
 // 떠 있는 "＋ 매물 등록" 버튼에 마지막 카드가 가리지 않게 목록 맨 아래에 더하는 여백
 const FAB_CLEARANCE = 90;
 // 매물 목록 바탕(2026-10-09 4a: 네이비 → 밝은 회색) — 예시 카드 영역도 같은 바탕
@@ -64,7 +65,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
   const [showInstall, setShowInstall] = useState(true);
   const { canInstall, promptInstall, hasNativePrompt } = useInstallPrompt();
   // 2026-10-06: 알림을 켠 뒤 사라지지 않는 완료 표시 — 이 기기 구독 + 매물 알림 최신 동의가 모두 있을 때만 (PushStatusCard와 같은 판정)
-  // 2026-10-09 PR 4a: 초록 "✓ 알림 켜짐" 줄 삭제 — 확실히 꺼졌을 때만 배너 아래 "🔕 알림이 꺼져 있어요"(src/lib/alertsNotice.ts)
+  // 2026-10-09 PR 4a: 초록 "✓ 알림 켜짐" 줄 삭제 — 확실히 꺼졌을 때만 "🔕 알림이 꺼져 있어요"(10/10부터 배너 위)(src/lib/alertsNotice.ts)
   const alertsOff = useAlertsOffNotice();
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -243,7 +244,30 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
         </div>
       </div>
 
-      <div style={{ padding: `${INBOX_HEADER_GAP}px 20px 2px` }}>
+      <div style={{ padding: `${alertsOff ? ALERTS_OFF_TOP_GAP : INBOX_HEADER_GAP}px 20px 2px` }}>
+        {/* 2026-10-10: 알림 꺼짐 안내를 주황 배너 위(머리 바로 아래)로 — 표시 조건은 그대로(확실히 꺼졌을 때만). 흰 바탕·연한 빨강 테두리, 배너와 사이 8px */}
+        {alertsOff && (
+          <div
+            role="status"
+            data-alerts-off
+            className="flex items-center gap-2.5"
+            style={{ marginBottom: 8, background: "#fff", border: "1.5px solid #fca5a5", borderRadius: 12, boxShadow: "0 1px 4px rgba(0,0,0,.06)", padding: "10px 12px" }}
+          >
+            <div className="flex-1 min-w-0">
+              <div style={{ fontSize: rem(15), lineHeight: 1.35, color: "#b91c1c", fontWeight: 800 }}>🔕 알림이 꺼져 있어요</div>
+              <div style={{ fontSize: rem(13), lineHeight: 1.35, marginTop: 2, color: "#475569" }}>새 매물을 놓칠 수 있어요</div>
+            </div>
+            {/* 기존 알림 켜기 흐름 그대로 — MY 알림 구역(PushStatusCard)에서 켬 */}
+            <TabLink
+              href="/mypage#alerts"
+              className="flex-shrink-0 rounded-full text-white whitespace-nowrap"
+              style={{ background: "#0d2943", color: "#fff", fontWeight: 800, fontSize: rem(15), padding: "8px 16px" }}
+              data-alerts-on-button
+            >
+              알림 켜기
+            </TabLink>
+          </div>
+        )}
         {/* 2026-10-09 PR 4a: 문구를 두 덩어리("📦 잠든 재고," / "깨워서 현금으로", 각각 줄바꿈 없음)로 — 한 줄에 들어가면 한 줄,
             안 들어가면 "재고," 뒤에서만 줄이 바뀌고 둘째 줄은 이모지 뒤로 들여씀(내어쓰기 1.6em) */}
         <Link
@@ -265,28 +289,6 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
             무료 등록 →
           </span>
         </Link>
-        {alertsOff && (
-          <div
-            role="status"
-            data-alerts-off
-            className="flex items-center gap-2.5"
-            style={{ marginTop: 10, background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 12, padding: "10px 12px" }}
-          >
-            <div className="flex-1 min-w-0" style={{ color: "#9a3412" }}>
-              <div className="font-bold" style={{ fontSize: rem(15), lineHeight: 1.35 }}>🔕 알림이 꺼져 있어요</div>
-              <div style={{ fontSize: rem(13), lineHeight: 1.35, marginTop: 2 }}>새 매물을 놓칠 수 있어요</div>
-            </div>
-            {/* 기존 알림 켜기 흐름 그대로 — MY 알림 구역(PushStatusCard)에서 켬 */}
-            <TabLink
-              href="/mypage#alerts"
-              className="flex-shrink-0 rounded-full text-white whitespace-nowrap"
-              style={{ background: "#ea580c", fontWeight: 800, fontSize: rem(15), padding: "8px 16px" }}
-              data-alerts-on-button
-            >
-              켜기
-            </TabLink>
-          </div>
-        )}
       </div>
 
       {/* 2026-10-09 PR 4a: 조건 줄("⚙️ 카테고리 · 조건 수정") 삭제 — 머리 제목을 누르면 MY 관심 카테고리로 */}

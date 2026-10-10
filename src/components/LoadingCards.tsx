@@ -44,7 +44,6 @@ export function DealListCardSkeleton() {
     <div
       aria-hidden
       className="skeleton-pulse bg-white border border-gray200 rounded-2xl overflow-hidden flex flex-col w-full"
-      style={{ borderLeft: "5px solid #E5E7EB" }}
     >
       <div style={{ ...BAR, borderRadius: 0, width: "100%", aspectRatio: "1/1" }} />
       <div className="px-4 py-3 flex flex-col gap-2.5">
