@@ -1020,7 +1020,7 @@ function AdminDashboard({
               <div className="text-base font-bold text-gray900">
                 {m.phone_masked ? <MemberPhoneReveal memberId={m.id} masked={m.phone} adminKey={adminKey} /> : formatPhone(m.phone)}
                 {m.member_no != null && (
-                  <span className="text-xs font-bold text-gray500 ml-1.5">{formatMemberNo(m.member_no)}</span>
+                  <span className="text-xs font-bold text-gray500 ml-1.5 whitespace-nowrap">{formatMemberNo(m.member_no)}</span>
                 )}
                 {m.nickname && <span className="text-sm font-medium text-gray500 ml-1.5">{m.nickname}</span>}
               </div>
