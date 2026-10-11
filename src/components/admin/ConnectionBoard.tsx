@@ -165,7 +165,7 @@ export default function ConnectionBoard({
   );
 }
 
-/** 진행 막대 4칸 — 지난 칸 남색, 지금 칸 주황, 남은 칸 회색 */
+/** 진행 막대 4칸 — 지난 칸 남색, 지금 칸 주황, 남은 칸 회색(글자는 한 줄 — 360px에서 "✓"를 붙이면 두 줄로 꺾여 뺌) */
 function StepBar({ status }: { status: ConnectionStatus }) {
   const cur = boardStep(status);
   return (
@@ -179,7 +179,6 @@ function StepBar({ status }: { status: ConnectionStatus }) {
               className="text-center leading-tight"
               style={{ fontSize: rem(12), fontWeight: i === cur ? 800 : 500, color: i === cur ? ORANGE : i < cur ? NAVY : "#8A939E", wordBreak: "keep-all" }}
             >
-              {i < cur ? "✓ " : ""}
               {label}
             </span>
           </div>
