@@ -21,6 +21,19 @@ export function formatCountdown(closesAt: string): { label: string; urgent: bool
   };
 }
 
+// 2026-10-11 fix/time-left-label — 회원 홈 카드·매물 상세 전용 남은 시간 글자("28일 18:22"가 날짜로 읽히던 문제).
+// 24시간 이상 "N일 남음" · 1시간 이상 "N시간 남음" · 그 아래 "N분 남음"(모두 내림, 1분 미만은 "1분 남음"). 마감 지남은 formatCountdown과 같은 "마감".
+// /deals 카드 배지는 formatCountdown 그대로. urgent(3시간 미만)도 formatCountdown과 같은 기준.
+export function formatTimeLeftLabel(closesAt: string, now = Date.now()): { label: string; urgent: boolean } {
+  const diffMs = new Date(closesAt).getTime() - now;
+  if (diffMs <= 0) return { label: "마감", urgent: true };
+  const urgent = diffMs < 1000 * 60 * 60 * 3;
+  const totalMin = Math.floor(diffMs / 60000);
+  if (totalMin >= 60 * 24) return { label: `${Math.floor(totalMin / (60 * 24))}일 남음`, urgent };
+  if (totalMin >= 60) return { label: `${Math.floor(totalMin / 60)}시간 남음`, urgent };
+  return { label: `${Math.max(1, totalMin)}분 남음`, urgent };
+}
+
 // closesAt 기준 마감 여부/긴급 여부만 필요할 때(카운트다운 숫자 자체는 필요 없을 때) 사용.
 // Date.now() 호출을 이 함수 안에 가둬서, 호출부(렌더 본문)에서 impure 함수를 직접 쓰지 않게 함.
 export function dealUrgencyState(closesAt: string): { closed: boolean; urgent: boolean } {

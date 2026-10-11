@@ -529,7 +529,7 @@ function DealDetailPageInner() {
                     <span className="font-bold text-white bg-gray500 rounded-full shadow" style={{ fontSize: rem(16), padding: "2px 10px" }}>마감됨</span>
                   ) : (
                     <div className="rounded-full shadow" style={{ background: "rgba(255,255,255,0.94)" }}>
-                      <CountdownBadge closesAt={deal.closes_at} tone={isExampleId ? "muted" : "urgent"} />
+                      <CountdownBadge closesAt={deal.closes_at} tone={isExampleId ? "muted" : "urgent"} timeLeftLabel />
                     </div>
                   )}
                   {remainPct <= 30 && (
@@ -551,7 +551,7 @@ function DealDetailPageInner() {
                 <span className="font-bold text-white bg-gray500 rounded-full shadow" style={{ fontSize: rem(16), padding: "2px 10px" }}>마감됨</span>
               ) : (
                 <div className="rounded-full shadow" style={{ background: "rgba(255,255,255,0.94)" }}>
-                  <CountdownBadge closesAt={deal.closes_at} tone={isExampleId ? "muted" : "urgent"} />
+                  <CountdownBadge closesAt={deal.closes_at} tone={isExampleId ? "muted" : "urgent"} timeLeftLabel />
                 </div>
               )}
             </div>

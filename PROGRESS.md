@@ -50,6 +50,15 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
+## 최근 작업 (2026-10-11) — 회원 홈 카드·매물 상세 남은 시간 글자 형식, 공개 전 최소판 (브랜치 `fix/time-left-label`)
+
+- **#88 병합 기록**(목록 바탕 #eef1f5 통일·푸터 아래 흰 띠 제거): 병합 커밋 `b63c130`(10/11 05:19 UTC, merge commit, jumpx3459) · Deploy to Vercel #292(run 38114392171, 약 1분 30초) 성공 · PR CI #77(run 38114204046, head `60be12b`) 성공 · main 병합 뒤 CI run 없음.
+- **문제**: 회원 홈 카드 사진 위 "28일 18:22"·상세 칩 "⏱ 28일 18:10"이 날짜·시각(28일 18시?)으로 읽힘. 값 자체는 마감까지 남은 시간(`formatCountdown` = closes_at − 지금).
+- **범위(대표 확정 — 글자 형식만, 위치·크기·색·칩 이동·빨강 기준은 공개 후)**: 새 함수 `formatTimeLeftLabel`(`src/lib/format.ts`) — 24시간 이상 "N일 남음" · 1시간 이상 "N시간 남음" · 그 아래 "N분 남음"(모두 내림, 1분 미만은 "1분 남음") · 마감 지남은 지금과 같은 "마감". 회원 홈 카드(`HomeDealCard`)와 매물 상세 칩(`CountdownBadge`의 `timeLeftLabel` 옵션, 상세 두 곳만 켬)만 바꿈.
+  공용 `formatCountdown`은 그대로 — /deals 카드·비회원 홈 카드 배지("04:59:56"·"2일 14:58")·관리자 화면(자체 계산)·푸시 문구 변경 없음. 아이콘·색·크기·위치·1초 갱신 그대로.
+- 시험(가짜 env·`next build --webpack`·`.next`에 운영 Supabase 주소 0건·외부 요청은 Google Fonts만): 기존 화면 시험 239건 통과(/deals 정리 55 · 알림 꺼짐 13 · 가입 12 · 비회원 홈 12 · 매물 등록 버튼 14 · /sell 24 · 4a 30 · 4a 추가 19 · 4b-1 28 · 4b-2 32 — 4b-2의 회원 홈 타이머 형식 기대값만 새 형식으로) · 단위 18건(새 `scripts/time-left-label-test.mts` — 24시간 정각·23시간 59분·1시간 정각·59분·0분·마감 지남·formatCountdown 그대로) · 기존 scripts 14개 통과 · tsc 0 · 바꾼 파일 lint 오류 0.
+  캡처 before(main)/after 360·412 × 글자 100·130% 회원 홈·매물 상세 — 글자만 바뀌고 색·크기·위치·높이 같음, 가로 넘침 0, /deals 카드 배지 형식 main과 같음. 캡처 `captures-time-left-label/before·after`.
+
 ## 최근 작업 (2026-10-10) — 목록 바탕 회색 통일·푸터 아래 흰 띠 제거, 공개 전 최소판 (브랜치 `style/page-bg-gray`)
 
 - **#87 병합 기록**(/deals·회원 홈 [＋ 매물 등록] 항상 표시, [무료 등록] 다 보일 때만 숨김): 병합 커밋 `7308644`(10/10 07:54 UTC, merge commit) · Deploy to Vercel #291(run 38036050558, 약 1분 20초) 성공 · PR CI #76(run 38035459103, head `83ae5bd`) 성공 · main 병합 뒤 CI run 없음.

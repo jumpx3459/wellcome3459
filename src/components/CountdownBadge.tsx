@@ -1,27 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatCountdown } from "@/lib/format";
+import { formatCountdown, formatTimeLeftLabel } from "@/lib/format";
 import { rem } from "@/lib/rem";
 
 export default function CountdownBadge({
   closesAt,
   size = "sm",
   tone = "urgent",
+  timeLeftLabel = false,
 }: {
   closesAt: string;
   size?: "sm" | "lg";
   tone?: "urgent" | "muted"; // muted: 예시 카드(회색)
+  timeLeftLabel?: boolean; // 2026-10-11: 매물 상세만 "N일 남음" 형식(formatTimeLeftLabel). /deals 카드는 기본(formatCountdown) 그대로
 }) {
   // 서버 렌더링 시각과 브라우저 표시 시각이 달라 숫자가 어긋나는 하이드레이션 에러를
   // 막기 위해, 처음에는 계산하지 않고 마운트 이후(클라이언트에서만) 실제 값을 채웁니다.
   const [state, setState] = useState<{ label: string; urgent: boolean } | null>(null);
 
   useEffect(() => {
-    setState(formatCountdown(closesAt));
-    const id = setInterval(() => setState(formatCountdown(closesAt)), 1000);
+    const fmt = timeLeftLabel ? formatTimeLeftLabel : formatCountdown;
+    setState(fmt(closesAt));
+    const id = setInterval(() => setState(fmt(closesAt)), 1000);
     return () => clearInterval(id);
-  }, [closesAt]);
+  }, [closesAt, timeLeftLabel]);
 
   const label = state?.label ?? "--:--:--";
 
