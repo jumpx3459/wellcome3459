@@ -10,7 +10,7 @@ import { formatPhone } from "@/lib/phone";
 import { formatMemberNo, formatPriceInput, parsePriceInput } from "@/lib/format";
 import { formatConsentDate } from "@/lib/consent";
 import {
-  ANSWER_REASON, BOARD_STEPS, END_REASONS, MEMO_MAX, MEMO_PLACEHOLDER, RESULT_LABEL,
+  BOARD_STEPS, END_REASONS, MEMO_MAX, MEMO_PLACEHOLDER, RESULT_LABEL,
   boardStep, contactMessage, resultDueAt, type ConnectionResult, type ConnectionStatus, type EndReasonKey,
 } from "@/lib/connectionSteps";
 
@@ -279,9 +279,6 @@ function ConnectionRow({ item, adminKey, onDone, assignees }: { item: Connection
         <AnswerButton primary disabled={busy} onClick={() => send("seller_confirmed", { nameDisclosureOk: false })} testId="ans-seller-ok-private">
           예 · 상호는 비공개
         </AnswerButton>
-        <AnswerButton disabled={busy} onClick={() => close("failed", ANSWER_REASON.sellerNoStock)} testId="ans-seller-no">
-          못 판대요
-        </AnswerButton>
       </>
     );
     tools.push("seller");
@@ -294,14 +291,9 @@ function ConnectionRow({ item, adminKey, onDone, assignees }: { item: Connection
         </p>
       );
     answers = (
-      <>
-        <AnswerButton primary disabled={busy} onClick={() => send("buyer_confirmed")} testId="ans-buyer-yes">
-          예, 계속 원해요
-        </AnswerButton>
-        <AnswerButton disabled={busy} onClick={() => close("cancelled", ANSWER_REASON.buyerCancel)} testId="ans-buyer-no">
-          그만둔대요
-        </AnswerButton>
-      </>
+      <AnswerButton primary disabled={busy} onClick={() => send("buyer_confirmed")} testId="ans-buyer-yes">
+        예, 계속 원해요
+      </AnswerButton>
     );
     tools.push("buyer");
   } else if (step === 2) {
@@ -359,7 +351,15 @@ function ConnectionRow({ item, adminKey, onDone, assignees }: { item: Connection
           <AnswerButton primary disabled={busy} onClick={() => setSuccessOpen(true)} testId="ans-success">
             거래됐어요 (성사)
           </AnswerButton>
-          <AnswerButton disabled={busy} onClick={() => close("failed", ANSWER_REASON.noDeal)} testId="ans-failed">
+          <AnswerButton
+            disabled={busy}
+            onClick={() => {
+              // 바로 닫지 않고 끝내기 화면을 "거래 안 됨"으로 열어 둠 — [끝내기]를 눌러야 닫힘
+              setEndReason("no_deal");
+              setEndOpen(true);
+            }}
+            testId="ans-failed"
+          >
             안 됐어요 (불발)
           </AnswerButton>
         </>

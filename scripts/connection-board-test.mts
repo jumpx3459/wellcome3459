@@ -43,8 +43,9 @@ eq(L.isStuck("closed", ago(10 * D), now), false, "종료 → 멈춤 아님");
 
 // ── 끝내기 사유 → 결과
 const end = Object.fromEntries(L.END_REASONS.map((r: { label: string; result: string }) => [r.label, r.result]));
-eq(end, { 테스트: "cancelled", "구매자 취소": "cancelled", "판매자 재고 없음": "failed", "연락 안 됨": "failed" }, "끝내기 사유 4개 → 취소·불발");
-eq(L.ANSWER_REASON, { sellerNoStock: "판매자 재고 없음", buyerCancel: "구매자 취소", noDeal: "거래 안 됨" }, "답 버튼 사유 문구");
+eq(end, { 테스트: "cancelled", "구매자 취소": "cancelled", "판매자 재고 없음": "failed", "연락 안 됨": "failed", "거래 안 됨": "failed" }, "끝내기 사유 5개 → 취소·불발");
+eq(L.END_REASONS.find((r: { key: string }) => r.key === "no_deal")?.label, "거래 안 됨", "④ [안 됐어요]가 미리 고르는 사유 키 no_deal");
+eq("ANSWER_REASON" in L, false, "답 버튼으로 바로 닫는 사유 없음(못 판대요·그만둔대요 제거)");
 
 // ── 정렬: 멈춤 → 결과 확인 → 오래된 순 → 테스트 맨 아래
 const mk = (id: string, o: { stuck?: boolean; result_due?: boolean; is_test?: boolean; age: number }) => ({ id, stuck: !!o.stuck, result_due: !!o.result_due, is_test: !!o.is_test, updated_at: ago(o.age) });

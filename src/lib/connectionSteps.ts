@@ -92,17 +92,16 @@ export function resultDueAt(contactSentAt: string): number {
   return Date.parse(contactSentAt) + RESULT_WAIT_MS;
 }
 
-/** "이 건 끝내기" 사유 → 결과. 테스트·구매자 취소 = 취소(성사율에 안 섞임), 판매자 재고 없음·연락 안 됨 = 불발 */
+/** "이 건 끝내기" 사유 → 결과. 테스트·구매자 취소 = 취소(성사율에 안 섞임), 판매자 재고 없음·연락 안 됨·거래 안 됨 = 불발.
+ *  거래 안 됨은 ④ [안 됐어요 (불발)]가 미리 골라 주지만 목록에는 단계 상관없이 항상 보임(단순하게) */
 export const END_REASONS = [
   { key: "test", label: "테스트", result: "cancelled" },
   { key: "buyer_cancel", label: "구매자 취소", result: "cancelled" },
   { key: "no_stock", label: "판매자 재고 없음", result: "failed" },
   { key: "no_answer", label: "연락 안 됨", result: "failed" },
+  { key: "no_deal", label: "거래 안 됨", result: "failed" },
 ] as const satisfies readonly { key: string; label: string; result: ConnectionResult }[];
 export type EndReasonKey = (typeof END_REASONS)[number]["key"];
-
-/** 답 버튼으로 끝낼 때 저장하는 사유 문구 */
-export const ANSWER_REASON = { sellerNoStock: "판매자 재고 없음", buyerCancel: "구매자 취소", noDeal: "거래 안 됨" } as const;
 
 /** ③ 판매자에게 보내는 문구 */
 export function contactMessage(title: string, phone: string): string {
