@@ -10,7 +10,7 @@ import {
 } from "@/lib/connectionSteps";
 
 // 2026-10-04 F-4 거래 연결 단계 전환.
-// body: { from(화면이 본 단계), to, method(phone·sms·kakao), memo?, result?(to=closed), amount?(성사일 때), reason? }
+// body: { from(화면이 본 단계), to, method?(phone·sms·kakao — 2026-10-11 선택, 값이 있을 때만 검사), memo?, result?(to=closed), amount?(성사일 때), reason? }
 //   · 앞으로만(건너뛰기 허용), 뒤로 가기 409. ⑥ 결과(closed)는 어느 단계에서나.
 //   · 동시 처리: "status = from"일 때만 update → 0행이면 409(다른 관리자가 먼저 처리). 그 뒤 단계 이력(deal_connection_events) insert.
 //     이력 insert가 실패하면 단계는 이미 바뀐 상태 → 500으로 알리고 감사 로그에 남김.
@@ -22,6 +22,8 @@ import {
 //     ④는 허락이 없어도 막지 않음(화면에 "상호 비공개로 안내" 표시만).
 //   · 2026-10-10 권한표: 점핑매니저는 자기에게 배정된 건만(미배정 건 403 — 자동 담당은 최고관리자·관리자만).
 //     성사(closed + success)면 그 시점 담당자를 closed_assignee_admin_id에 남김(매니저 실적 — 나중에 담당을 넘겨도 그대로)
+//   · 2026-10-11 PR ② 4단계 보드: 연락 방법 필수 제거(이력 method는 null 가능 — 운영 SQL 실행 완료).
+//     ② 접수를 건너뛰고 넘어가면(① 판매자 확인 답 등) accepted_at이 비어 있을 때 같은 시각으로 채움.
 const RACE_MESSAGE = "다른 관리자가 먼저 처리했어요. 새로고침해 주세요.";
 
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/admin/connections/[id]/step">) {
@@ -39,7 +41,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/admin/conne
   if (!isConnectionStatus(from) || !isConnectionStatus(to) || to === "requested") {
     return NextResponse.json({ error: "단계 값이 올바르지 않아요.", field: "to" }, { status: 400 });
   }
-  if (!CONNECTION_METHODS.includes(method as ConnectionMethod)) {
+  if (method != null && method !== "" && !CONNECTION_METHODS.includes(method as ConnectionMethod)) {
     return NextResponse.json({ error: "연락 방법(전화·문자·카톡)을 골라주세요.", field: "method" }, { status: 400 });
   }
   const nameDisclosureOk = body?.nameDisclosureOk;
@@ -70,7 +72,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/admin/conne
   const db = auth.db;
   const { data: conn, error: readError } = await db
     .from("deal_connections")
-    .select("id, deal_id, status, consent_at, assigned_admin_id, source, source_id")
+    .select("id, deal_id, status, consent_at, assigned_admin_id, source, source_id, accepted_at")
     .eq("id", id)
     .maybeSingle();
   if (readError) return NextResponse.json({ error: "연결 기록을 불러오지 못했어요." }, { status: 500 });
@@ -87,6 +89,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/admin/conne
 
   const nowIso = new Date().toISOString();
   const patch: Record<string, unknown> = { status: to, [STEP_AT_COLUMN[to]]: nowIso };
+  if (!conn.accepted_at && to !== "closed") patch.accepted_at = nowIso; // 2026-10-11: ② 접수를 건너뛴 경우(끝내기는 그대로 비움)
   if (!conn.assigned_admin_id) patch.assigned_admin_id = auth.admin.id;
   if (to === "closed") {
     patch.result = result;
@@ -109,7 +112,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/admin/conne
   const { error: eventError } = await db.from("deal_connection_events").insert({
     connection_id: id,
     step: to,
-    method,
+    method: method || null,
     actor_type: "person",
     actor_admin_id: auth.admin.id,
     memo: memo || null,
@@ -148,7 +151,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/admin/conne
       deal_id: conn.deal_id,
       from,
       to,
-      method,
+      method: method || null,
       ...(to === "closed" ? { result, amount } : {}),
       assigned: !conn.assigned_admin_id,
       lead_sync: leadSync,

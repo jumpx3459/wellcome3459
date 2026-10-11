@@ -50,6 +50,24 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
+## 최근 작업 (2026-10-11) — PR ② 거래 연결 보드 4단계 (브랜치 `feat/connection-board-simple`)
+
+- **#89 병합 기록**(회원 홈 카드·상세 남은 시간 "N일 남음"): 병합 커밋 `24c18bb`(10/11 06:01 UTC, merge commit, jumpx3459) · Deploy to Vercel #293(run 38116707230, 약 1분 25초) 성공 · PR CI #78(run 38116559130, head `1a8b92d`) 성공 · main 병합 뒤 CI run 없음.
+- **운영 SQL(대표 실행 완료, 이 PR 전)**: `deal_connection_events.method` not null 해제 — 기록 `supabase/migrations/20261011_connection_event_method_nullable.sql`(schema.sql 칸 정의도 맞춤). 허용값 check는 그대로.
+- **카드**: 진행 막대 4칸(판매자 확인 → 구매자 확인 → 연락처 전달 → 결과 확인) + "다음 할 일" 한 문장 + 답 버튼(답 하나 = 기존 `/step` 한 번). 규칙·문구는 `src/lib/connectionSteps.ts`(boardStep·isResultDue·END_REASONS·contactMessage·sortBoard), 화면 `ConnectionBoard.tsx`.
+  ① [예 · 상호 알려도 돼요]/[예 · 상호는 비공개] → seller_confirmed + 상호 허락 true/false, [못 판대요] → 불발 "판매자 재고 없음" · 도구 [판매자 정보 보기]
+  ② [예, 계속 원해요] → buyer_confirmed, [그만둔대요] → 취소 "구매자 취소" · 상호 비공개면 "🔒 판매자 상호는 알려주지 마세요" · 도구 [구매자 번호 보기]
+  ③ [보냈어요] → contact_sent · 도구 [구매자 번호 보기][판매자 정보 보기][문구 복사](번호 조회 = 감사 로그) · 연결 동의 없으면 "연결 동의 없음 · 끝내기만 가능"
+  ④ 전달 3일 전 "⏳ 판매자가 구매자에게 연락하는 중이에요 · M.D부터 결과 확인"(버튼 없음) / 3일 뒤(정각 포함) [거래됐어요 (성사)](금액 선택) · [안 됐어요 (불발)] "거래 안 됨"
+  "이 건 끝내기": 테스트·구매자 취소 → 취소, 판매자 재고 없음·연락 안 됨 → 불발(사유 문구 저장). 테스트 건은 "테스트" 기본 선택. 메모는 "+ 메모 남기기"(다음 답과 함께 저장), 판매자 정보는 접힘(펼치면 바로 불러옴), 연결 동의 표시는 작은 글자.
+- **서버**: 연락 방법 필수 제거(값이 있을 때만 phone·sms·kakao 검사, 이력 method null). ② 접수를 건너뛰면 accepted_at을 같은 시각으로 채움(끝내기는 비워 둠).
+  목록 API: `is_test`(구매자가 KPI 제외 대상 — 회원 kpi_excluded_members, 비회원 kpi_excluded_phones·관리자 번호, `getTestBuyerLookup`) · `result_due` · 멈춘 건 숫자에서 테스트 제외 · ⑤ 연락처 전달 뒤는 멈춤 아님 · 정렬 멈춤 → 3일 지난 결과 확인 → 오래된 순 → 테스트 맨 아래.
+  권한(#86)·감사 기록·성사 시 closed_assignee_admin_id 그대로.
+- **7번([발굴 매니저] 꼭 고르기)은 안 함** — 칸이 DealForm 안(`src/app/admin/page.tsx` DealForm 3099줄, 칸 3793줄)이라 공개 전 DealForm 수정 금지 지시대로 보류.
+- 시험(가짜 env·`next build --webpack`·`.next`에 운영 Supabase 주소 0건·외부 요청은 Google Fonts만): 새 시험 79건(역할 3 × 연결 11건 API 매트릭스 — 단계·번호·판매자 정보·배정, 매니저 미배정·남의 건 403 / 목록 테스트 표시·결과 확인·멈춤 숫자·정렬 / 단계·끝내기 사유별 status·사유·accepted_at·이력 method null·성사 담당 / 화면 4단계·문구 복사·판매자 정보·끝내기·메모·최근 종료·115%·매니저 화면) · 권한 시험 69건 · 관리자 화면 17건 · 기존 화면 시험 220건(4a 추가 19건은 메모리 부족으로 실행이 중간에 멈춰 미완료) · PGlite 12건(새 method SQL 5 + 기존 7) + heart SQL · 단위 21건(새 `scripts/connection-board-test.mts`) + 기존 15개 · tsc 0 · lint main과 같음(2 errors·56 warnings).
+  캡처 `captures-connection-board`(360px 100%) 19-step1·step2·step3·step3-noconsent·step4-wait·step4-due·end-sheet·closed·test-card·manager-view + 19-step3-115. 19-sourced-required는 7번 보류로 없음.
+- **추가 수정(같은 브랜치)**: ①[못 판대요]·②[그만둔대요] 제거("예"만, 안 되는 건은 "이 건 끝내기"). ④[안 됐어요 (불발)]는 바로 닫지 않고 끝내기 화면을 "거래 안 됨"(불발) 선택 상태로 엶 → [끝내기]로 닫힘. 끝내기 사유에 "거래 안 됨" 추가 — 단순하게 단계 상관없이 항상 5개 보임. 시험: 연결 보드 81건 · 4a 추가 19건 단독 재실행 통과 · 단위 21건 · tsc 0. 캡처 19-step1(다시)·19-step4-due-fail 추가.
+
 ## 최근 작업 (2026-10-11) — 회원 홈 카드·매물 상세 남은 시간 글자 형식, 공개 전 최소판 (브랜치 `fix/time-left-label`)
 
 - **#88 병합 기록**(목록 바탕 #eef1f5 통일·푸터 아래 흰 띠 제거): 병합 커밋 `b63c130`(10/11 05:19 UTC, merge commit, jumpx3459) · Deploy to Vercel #292(run 38114392171, 약 1분 30초) 성공 · PR CI #77(run 38114204046, head `60be12b`) 성공 · main 병합 뒤 CI run 없음.
