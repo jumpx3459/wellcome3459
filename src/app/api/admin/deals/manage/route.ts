@@ -8,6 +8,7 @@ import { normalizeTitle, DUPLICATE_TITLE_WARNING } from "@/lib/titleGuard";
 import { isLumpSum } from "@/lib/priceUnit";
 import { storageSummary } from "@/lib/dealFields";
 import { DEAL_EDIT_KEYS, validateDealEdit, dealEditWarnings, effectivePriceMode, type DealEditInput } from "@/lib/dealEdit";
+import { ADMIN_PHOTO_LIMIT, ADMIN_PHOTO_LIMIT_ERROR } from "@/lib/photoLimit";
 
 function getAdminClient() {
   return createClient(
@@ -56,6 +57,10 @@ export async function PATCH(req: NextRequest) {
   // DB check 제약(deals_status_check)과 같은 값만 허용 — sold_out은 사용처가 없어 제외
   if (status !== undefined && !DEAL_STATUSES.includes(status)) {
     return NextResponse.json({ error: "매물 상태 값이 올바르지 않아요.", field: "status" }, { status: 400 });
+  }
+  // 2026-10-12: 사진 장수(관리자 25장, src/lib/photoLimit.ts)
+  if (Array.isArray(images) && images.length > ADMIN_PHOTO_LIMIT) {
+    return NextResponse.json({ error: ADMIN_PHOTO_LIMIT_ERROR, field: "images" }, { status: 400 });
   }
 
   const supabaseAdmin = getAdminClient();

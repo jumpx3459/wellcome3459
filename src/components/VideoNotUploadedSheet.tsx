@@ -5,7 +5,7 @@ import { BTN_CLASS, btnStyle, UI_CARD_TITLE, UI_DESC } from "@/lib/uiText";
 import { useBackToClose } from "@/lib/useBackToClose";
 import type { VideoUploadStatus } from "@/components/VideoUploader";
 
-// 2026-10-02 PR-A2: 영상을 골랐는데 안 올라간 채 제출하던 문제(아이폰 Safari 15초 초과 → video_url 없이 판매 신청 4건).
+// 2026-10-02 PR-A2: 영상을 골랐는데 안 올라간 채 제출하던 문제(아이폰 Safari 길이 한도 초과 — 당시 15초, 2026-10-12부터 30초 → video_url 없이 판매 신청 4건).
 // VideoUploader를 쓰는 폼(/sell·관리자 새 매물·관리자 매물 수정)이 같은 규칙을 씀:
 //   uploading → 제출 버튼 비활성 + VIDEO_UPLOADING_LABEL
 //   failed·rejected·pending(골랐지만 아직 안 올림) → 이 시트: [영상 빼고 등록] / [다시 고르기]

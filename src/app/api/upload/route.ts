@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { getPhotoLimit, photoLimitError, MAX_PHOTO_SLOTS } from "@/lib/photoLimit";
+import { getPhotoLimit, photoLimitError, ADMIN_PHOTO_LIMIT } from "@/lib/photoLimit";
 import { getMemberFromToken } from "@/lib/photoLimitServer";
 import { checkAdminAuth } from "@/lib/adminAuth";
 import { VIDEO_EXT, baseMimeType } from "@/lib/videoUpload";
@@ -8,7 +8,7 @@ import { VIDEO_EXT, baseMimeType } from "@/lib/videoUpload";
 const BUCKET = "deal-images";
 // 2026-10-02 PR-A: 화면(VideoUploader)은 이제 /api/upload/video-url로 Storage에 직접 올림 — 아래 영상 분기는 예전 클라이언트 호환용으로 남김
 // (이 함수를 거치면 Vercel 요청 한도 4.5MB가 먼저 걸림)
-const MAX_VIDEO_BYTES = 25 * 1024 * 1024; // 15초 영상은 대체로 이 안에 들어옵니다
+const MAX_VIDEO_BYTES = 25 * 1024 * 1024; // 옛 경로 한도(그대로) — 30초 영상은 /api/upload/video-url(100MB)로 올림
 // 2026-09-30: 형식·크기 검사 — 사진은 화면에서 JPEG로 줄여 보내지만(resizeImage) 직접 호출도 막기 위해 서버에서 다시 확인.
 // SVG는 스크립트를 담을 수 있어 제외. 확장자는 파일 이름이 아니라 형식에서 정함. 크기는 마이페이지 사진 한도(20MB) 기준.
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
@@ -33,14 +33,14 @@ export async function POST(req: NextRequest) {
   }
 
   // 2026-09-30: 로그인 회원(토큰) 또는 관리자(x-admin-key)만 업로드 — 판매 신청이 회원 전용이 되면서
-  // 비회원 업로드 경로가 없어짐. 회원 사진 한도(6 + 추천 보너스, 최대 16)는 토큰의 회원 기준으로 서버에서 다시 계산,
+  // 비회원 업로드 경로가 없어짐. 회원 사진 한도(12장, src/lib/photoLimit.ts)는 서버에서 다시 확인,
   // 관리자는 최대치. ImageUploader는 장당 1요청이라 매물 한 건의 총 장수는 /api/seller-requests에서 한 번 더 막는다.
   if (!supabaseUrl || !serviceKey) {
     // 데모 모드: 실제 저장 없이 빈 값 반환 (화면에서는 로컬 미리보기만 보임)
     return NextResponse.json({ urls: [], videoUrl: null, demo: true });
   }
   const supabaseAdmin = createClient(supabaseUrl, serviceKey);
-  let photoLimit = MAX_PHOTO_SLOTS;
+  let photoLimit = ADMIN_PHOTO_LIMIT;
   if (!(await checkAdminAuth(req)).ok) {
     const member = await getMemberFromToken(supabaseAdmin, formData.get("accessToken"));
     if (!member) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
 
   const urls: string[] = [];
 
-  // 2026-09-28: 기본 6장(+추천 리워드로 회원별 bonus_photo_slots만큼 추가, 무제한 아님)
+  // 2026-10-12: 판매자 12장 · 관리자 25장(src/lib/photoLimit.ts)
   // — 실제 업로드 개수 제한은 클라이언트(ImageUploader max prop)가 맥락별로 정확히
   // 계산해서 넘겨주므로, 여기 서버 쪽은 정확한 숫자를 다시 계산하지 않고 클라이언트가
   // 우회(개발자도구로 폼에 파일을 더 붙여 보내는 등)해도 과도하게 커지지 않도록 막는

@@ -8,7 +8,7 @@ import { useBackToClose } from "@/lib/useBackToClose";
 // 두 번 탭하면 2.5배/원래대로, 닫기 버튼·Esc. 확대 중에는 옆 넘기기를 잠가 사진이 밀리지 않게.
 const MAX_SCALE = 4;
 
-function ZoomableImage({ src, alt, onZoomChange }: { src: string; alt: string; onZoomChange: (zoomed: boolean) => void }) {
+function ZoomableImage({ src, alt, eager, onZoomChange }: { src: string; alt: string; eager: boolean; onZoomChange: (zoomed: boolean) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [t, setT] = useState({ scale: 1, x: 0, y: 0 });
   const tRef = useRef(t);
@@ -98,6 +98,7 @@ function ZoomableImage({ src, alt, onZoomChange }: { src: string; alt: string; o
       <img
         src={src}
         alt={alt}
+        loading={eager ? "eager" : "lazy"}
         draggable={false}
         className="max-w-full max-h-full object-contain select-none"
         style={{ transform: `translate(${t.x}px, ${t.y}px) scale(${t.scale})`, transition: pinchTransition(t.scale) }}
@@ -208,7 +209,8 @@ export default function PhotoViewer({
       >
         {images.map((src, i) => (
           <div key={i} className="flex-shrink-0 w-full h-full" style={{ scrollSnapAlign: "center" }}>
-            <ZoomableImage src={src} alt={`${alt} 사진 ${i + 1}`} onZoomChange={i === index ? setZoomed : noop} />
+            {/* 2026-10-12: 지금 사진과 양옆 1장만 바로, 나머지는 lazy(관리자 매물 최대 25장) */}
+            <ZoomableImage src={src} alt={`${alt} 사진 ${i + 1}`} eager={Math.abs(i - index) <= 1} onZoomChange={i === index ? setZoomed : noop} />
           </div>
         ))}
       </div>

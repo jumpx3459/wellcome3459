@@ -212,7 +212,7 @@ alter table public.seller_requests enable row level security;
 create policy "seller_requests_public_insert" on public.seller_requests
   for insert with check (true);
 
--- 매물/신청서에 짧은 소개 영상(최대 15초) 첨부 지원
+-- 매물/신청서에 짧은 소개 영상(최대 30초, 2026-10-12 — 예전 15초) 첨부 지원
 alter table public.deals add column if not exists video_url text;
 alter table public.seller_requests add column if not exists video_url text;
 
