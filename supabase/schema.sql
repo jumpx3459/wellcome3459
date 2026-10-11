@@ -1733,7 +1733,7 @@ create table if not exists public.deal_connection_events (
   connection_id uuid not null references public.deal_connections(id) on delete restrict,
   step text not null
     check (step in ('requested', 'accepted', 'seller_confirmed', 'buyer_confirmed', 'contact_sent', 'closed')),
-  method text not null check (method in ('phone', 'sms', 'kakao', 'app', 'alimtalk', 'system')),
+  method text check (method in ('phone', 'sms', 'kakao', 'app', 'alimtalk', 'system')),  -- 2026-10-11 not null 해제(migrations/20261011_connection_event_method_nullable.sql, 운영 실행 완료)
   actor_type text not null check (actor_type in ('person', 'system')),
   actor_admin_id uuid references public.admin_users(id) on delete set null,
   template_key text,

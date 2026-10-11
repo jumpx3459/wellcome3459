@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkAdminAuth, requirePerm } from "@/lib/adminAuth";
 import { maskPhone } from "@/lib/phone";
-import { isStuck, type ConnectionStatus } from "@/lib/connectionSteps";
+import { isResultDue, isStuck, sortBoard, type ConnectionStatus } from "@/lib/connectionSteps";
+import { getTestBuyerLookup } from "@/lib/kpiExclusion";
+import { normalizePhone } from "@/lib/phone";
 import { ownOnly } from "@/lib/adminPerms";
 
 // 2026-10-04 F-4 거래 연결 보드 — 목록. 진행 중(closed 아님) 전체 + 최근 종료 20건.
 // 구매자 번호는 가린 값만(maskPhone) — 전체 번호는 [번호 보기](/api/admin/connections/[id]/phone, 감사 로그).
-// 정렬: 멈춘 연결(24시간 변화 없음) 먼저 → 마지막 변경이 오래된 순.
 // 2026-10-10 권한표: 점핑매니저는 자기에게 배정된 건만(미배정 건은 안 보임) — 진행 중·최근 종료 모두
+// 2026-10-11 PR ② 4단계 보드: 테스트 건 표시(is_test — 구매자가 KPI 제외 대상: 회원 kpi_excluded_members, 비회원 kpi_excluded_phones·관리자 번호),
+//   ⑤ 연락처 전달 뒤 3일이 지나면 result_due(결과 확인 차례 — 멈춤 아님). 멈춘 건 숫자(stuckCount)에서 테스트 건 제외.
+//   정렬: 멈춤 → 3일 지난 결과 확인 → 마지막 변경이 오래된 순 → 테스트 건 맨 아래(sortBoard)
 const OPEN_LIMIT = 500;
 const CLOSED_LIMIT = 20;
 
@@ -64,10 +68,11 @@ export async function GET(req: NextRequest) {
   const adminIds = [...new Set(all.map((r) => r.assigned_admin_id).filter(Boolean))] as string[];
   const memberIds = [...new Set(all.map((r) => r.buyer_member_id).filter(Boolean))] as string[];
   const dealIds = [...new Set(all.map((r) => r.deal_id))];
-  const [adminsRes, membersRes, privRes] = await Promise.all([
+  const [adminsRes, membersRes, privRes, testLookup] = await Promise.all([
     adminIds.length ? db.from("admin_users").select("id, name").in("id", adminIds) : Promise.resolve({ data: [], error: null }),
     memberIds.length ? db.from("members").select("id, phone, member_no").in("id", memberIds) : Promise.resolve({ data: [], error: null }),
     dealIds.length ? db.from("deal_seller_private").select("deal_id, name_disclosure_ok").in("deal_id", dealIds) : Promise.resolve({ data: [], error: null }),
+    getTestBuyerLookup(db, memberIds),
   ]);
   for (const r of [adminsRes, membersRes, privRes]) if (r.error) console.error("[admin/connections] 부가 조회 실패", r.error.code, r.error.message);
   const adminName = new Map((adminsRes.data ?? []).map((a: { id: string; name: string }) => [a.id, a.name]));
@@ -107,15 +112,15 @@ export async function GET(req: NextRequest) {
       updated_at: r.updated_at,
       name_disclosure_ok: disclosure.get(r.deal_id) ?? false,
       stuck: isStuck(r.status, r.updated_at, now),
+      result_due: isResultDue(r.status, r.contact_sent_at, now),
+      is_test: r.buyer_member_id ? testLookup.memberIds.has(r.buyer_member_id) : !!r.buyer_phone && testLookup.phones.has(normalizePhone(r.buyer_phone)),
     };
   };
 
-  const open = openRows.map(shape);
-  // 멈춘 연결 먼저, 같은 묶음 안은 오래된 순(DB가 updated_at 오름차순으로 줌 — sort는 안정 정렬)
-  open.sort((a, b) => Number(b.stuck) - Number(a.stuck));
+  const open = sortBoard(openRows.map(shape));
   return NextResponse.json({
     open,
     closed: closedRows.map(shape),
-    stuckCount: open.filter((c) => c.stuck).length,
+    stuckCount: open.filter((c) => c.stuck && !c.is_test).length,
   });
 }
