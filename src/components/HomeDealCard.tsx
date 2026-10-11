@@ -1,7 +1,7 @@
 import type { MouseEvent } from "react";
 import Link from "next/link";
 import type { Deal } from "@/lib/mockData";
-import { formatCountdown, formatDealPrice } from "@/lib/format";
+import { formatTimeLeftLabel, formatDealPrice } from "@/lib/format";
 import { cardDiscountPct, showStrikePrice } from "@/lib/dealPriceAccess";
 import { dealPriceLabel, isNegotiable } from "@/lib/priceMode";
 import { isTimerRed, regionQtyText } from "@/lib/homeCard";
@@ -28,7 +28,7 @@ export default function HomeDealCard({
   eager?: boolean;
   onOpenPhotos?: (e: MouseEvent, images: string[], video: string | null) => void; // 사진 눌러 크게 보기
 }) {
-  const cd = formatCountdown(d.closes_at);
+  const cd = formatTimeLeftLabel(d.closes_at);
   const red = isTimerRed(d.closes_at);
   const pct = cardDiscountPct(d);
   const images = d.images ?? [];
@@ -44,7 +44,7 @@ export default function HomeDealCard({
     >
       <div className="flex" style={{ gap: 12 }}>
         <div className="flex-shrink-0" style={{ width: HOME_CARD_THUMB }}>
-          {/* 모든 형식("4일 7:52"·"03:15:19") 같은 글꼴 — 예전엔 시:분:초만 font-mono였음 */}
+          {/* 모든 형식 같은 글꼴 — 예전엔 시:분:초만 font-mono였음. 2026-10-11: "4일 7:52"(날짜로 읽힘) → "4일 남음"·"5시간 남음"·"12분 남음" */}
           <div
             data-timer
             data-timer-red={red ? "1" : undefined}
