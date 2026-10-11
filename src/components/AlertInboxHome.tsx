@@ -385,8 +385,10 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
         </div>
       )}
 
-      {/* 2026-09-30 (커밋 D): 단독 English 링크 → 사업자 정보 푸터의 링크 줄로 이동 */}
-      <BusinessFooter className="mt-2" />
+      {/* 2026-09-30 (커밋 D): 단독 English 링크 → 사업자 정보 푸터의 링크 줄로 이동.
+          2026-10-11: 푸터 위 간격(예전 mt-2 = 8px)이 흰 main을 드러내 목록 끝~푸터 사이 흰 띠 — 같은 8px를 목록 색으로 칠한 칸으로 */}
+      <div aria-hidden style={{ height: 8, background: HOME_LIST_BG }} data-footer-above />
+      <BusinessFooter />
 
       {/* 2026-10-09 4b-2: 떠 있는 "＋ 매물 등록" — 맨 아래 여백(하단 탭 64 + FAB_CLEARANCE). 2026-10-10: 푸터와 같은 색(흰 띠 없음),
           내용이 짧아 화면이 남으면 이 여백이 늘어나 푸터 색으로 채움 */}
