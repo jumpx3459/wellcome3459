@@ -16,6 +16,7 @@ import { EXAMPLE_DEALS, shouldShowExamples } from "@/lib/exampleDeals";
 import { rem } from "@/lib/rem";
 import HomeDealCard from "@/components/HomeDealCard";
 import SellFab from "@/components/SellFab";
+import { FOOTER_BELOW_BG, LIST_BG } from "@/lib/pageBg";
 import { selectWithPriceAccess, dealPriceFields } from "@/lib/dealPriceAccess";
 import type { DealRowLoose } from "@/lib/dealFields";
 import { SECTION_TITLE_STYLE } from "@/components/EcosystemGrid";
@@ -27,8 +28,8 @@ const INBOX_HEADER_GAP = 14;
 const ALERTS_OFF_TOP_GAP = 12; // 2026-10-10: 알림 꺼짐 안내가 맨 위에 올 때 머리와의 간격
 // 떠 있는 "＋ 매물 등록" 버튼에 마지막 카드가 가리지 않게 목록 맨 아래에 더하는 여백
 const FAB_CLEARANCE = 90;
-// 매물 목록 바탕(2026-10-09 4a: 네이비 → 밝은 회색) — 예시 카드 영역도 같은 바탕
-const HOME_LIST_BG = "#eef1f5";
+// 매물 목록 바탕(2026-10-09 4a: 네이비 → 밝은 회색) — 예시 카드 영역도 같은 바탕. 2026-10-10: /deals와 같은 값 한 곳(src/lib/pageBg.ts)
+const HOME_LIST_BG = LIST_BG;
 
 const INSTALL_DISMISS_KEY = "dj_home_install_dismissed";
 // 2026-09-28: 회원 홈 = 내 조건에 맞는 진행 중 매물만 (전체는 /deals). 매칭 규칙은 푸시 발송과
@@ -176,7 +177,8 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
   };
 
   return (
-    <main className="flex flex-col min-h-screen bg-white" style={{ paddingBottom: 64 + FAB_CLEARANCE, overflowX: "clip" }}>
+    // 2026-10-10: 맨 아래 여백(하단 탭 64 + FAB_CLEARANCE)은 main paddingBottom(흰 띠) 대신 푸터 아래 같은 색 여백으로 — 높이 그대로, main 바탕은 흰색 그대로
+    <main className="flex flex-col min-h-screen bg-white" style={{ overflowX: "clip" }}>
       {/* 2026-09-26: position:sticky였는데 실제로는 전혀 안 떠 있던 버그 발견 —
           layout.tsx의 overflow-x-hidden 단독 설정이 overflow-y를 auto로 계산시켜
           이 div가 의도치 않은 sticky 기준 컨테이너가 됐는데, 그 컨테이너 자체는
@@ -383,10 +385,14 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
         </div>
       )}
 
-      {/* 2026-09-30 (커밋 D): 단독 English 링크 → 사업자 정보 푸터의 링크 줄로 이동 */}
-      <BusinessFooter className="mt-2" />
+      {/* 2026-09-30 (커밋 D): 단독 English 링크 → 사업자 정보 푸터의 링크 줄로 이동.
+          2026-10-11: 푸터 위 간격(예전 mt-2 = 8px)이 흰 main을 드러내 목록 끝~푸터 사이 흰 띠 — 같은 8px를 목록 색으로 칠한 칸으로 */}
+      <div aria-hidden style={{ height: 8, background: HOME_LIST_BG }} data-footer-above />
+      <BusinessFooter />
 
-      {/* 2026-10-09 4b-2: 떠 있는 "＋ 매물 등록" — 맨 아래 여백(FAB_CLEARANCE)은 main paddingBottom에 */}
+      {/* 2026-10-09 4b-2: 떠 있는 "＋ 매물 등록" — 맨 아래 여백(하단 탭 64 + FAB_CLEARANCE). 2026-10-10: 푸터와 같은 색(흰 띠 없음),
+          내용이 짧아 화면이 남으면 이 여백이 늘어나 푸터 색으로 채움 */}
+      <div aria-hidden style={{ minHeight: 64 + FAB_CLEARANCE, flex: "1 0 auto", background: FOOTER_BELOW_BG }} data-footer-below />
       <SellFab />
 
       {viewer && (

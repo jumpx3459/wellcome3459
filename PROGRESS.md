@@ -50,6 +50,12 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
+## 최근 작업 (2026-10-10) — 목록 바탕 회색 통일·푸터 아래 흰 띠 제거, 공개 전 최소판 (브랜치 `style/page-bg-gray`)
+
+- **#87 병합 기록**(/deals·회원 홈 [＋ 매물 등록] 항상 표시, [무료 등록] 다 보일 때만 숨김): 병합 커밋 `7308644`(10/10 07:54 UTC, merge commit) · Deploy to Vercel #291(run 38036050558, 약 1분 20초) 성공 · PR CI #76(run 38035459103, head `83ae5bd`) 성공 · main 병합 뒤 CI run 없음.
+- **범위(대표 확정 — 나머지는 공개 후)**: ① /deals 목록 바탕 `bg-gray100`(#f5f6f8) → 회원 홈 목록과 같은 #eef1f5(값 한 곳 `src/lib/pageBg.ts` LIST_BG — 회원 홈 HOME_LIST_BG도 이 값을 씀). 디자인 토큰 --color-gray100은 그대로. ② 푸터 아래 흰 띠 제거 — /deals 90px 여백을 푸터 색(#F2F4F6, FOOTER_BELOW_BG)으로 칠함, 회원 홈은 main paddingBottom(하단 탭 64 + 90, 흰색) 대신 푸터 아래 같은 높이·같은 색 여백(내용이 짧으면 늘어나 푸터 색으로 채움). 높이 그대로, 회원 홈 main 바탕(흰색)은 그대로.
+- 조사 메모(공개 후 작업용): 회색 바탕 4가지 섞임(#f5f6f8 토큰·body·고객지원·공지·공유 링크 / #eef1f5 목록 / #F2F4F6 푸터 / #FAFBFC 설치 띠·#F7F9FB 관리자 안쪽 칸). 회원 화면 흰색은 AppShell `bg-white` 한 곳 + 회원 홈·로그인·가입 main 덮어쓰기, 관리자는 admin/page 3곳.
+
 ## 최근 작업 (2026-10-10) — /deals 하단 [＋ 매물 등록] 표시 로직 (브랜치 `fix/deals-fab-visibility`)
 
 - **#86 병합 기록**(PR ① 관리자 권한 3단계 + 매니저 실적 기록): 병합 커밋 `f0ca56f`(10/10 06:41 UTC, merge commit) · Deploy to Vercel #290(run 38031805734) 성공 · PR CI #75(run 38031587995, head `3950a8f`) 성공 · main 병합 뒤 CI run 없음. 운영 확인 순서(테스트 회원 점핑매니저 임명 → 숨김·배정 건·번호 가림 → 해제)는 대표 확인 대기.
