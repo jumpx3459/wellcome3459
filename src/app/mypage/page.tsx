@@ -182,6 +182,25 @@ function Switch({ on }: { on: boolean }) {
   );
 }
 
+// 펼친 패널 안 카드(푸시 상태·수신 동의 등)가 조금 늦게 그려져 자리가 밀리므로(2026-10-10 실측 0.7초 뒤 약 190px)
+// 1.5초 동안 두 번 더 맞춤 — 사용자가 직접 스크롤하면 멈춤
+function settleScrollTo(id: string, fallbackId?: string) {
+  let userMoved = false;
+  const stop = () => {
+    userMoved = true;
+  };
+  window.addEventListener("touchstart", stop, { once: true, passive: true });
+  window.addEventListener("wheel", stop, { once: true, passive: true });
+  const go = () => {
+    if (userMoved) return;
+    const el = document.getElementById(id) ?? (fallbackId ? document.getElementById(fallbackId) : null);
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  setTimeout(go, 60);
+  setTimeout(go, 700);
+  setTimeout(go, 1500);
+}
+
 const GROUP_GAP = <div aria-hidden style={{ height: 8, background: "#F2F4F6" }} />;
 
 export default function MyPage() {
@@ -347,43 +366,29 @@ export default function MyPage() {
     };
   }, [loading, notLoggedIn]);
 
-  // 해시로 들어온 경우 — 해당 메뉴를 펼친 채 그 자리로
+  // 해시로 들어온 경우 — 해당 메뉴를 펼친 채 그 자리로.
   useEffect(() => {
     if (loading || typeof window === "undefined") return;
     const hash = window.location.hash;
-    const scrollTo = (id: string, delay = 60) =>
-      setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }), delay);
     scrollToServicesIfHash(); // 매물 상세 "점핑 서비스 · 전체 보기"
     if (hash === "#alerts") {
       setOpen("alerts");
-      scrollTo("alerts");
+      settleScrollTo("alerts");
     }
     // 로그인 화면 권유 시트의 [지금 만들기] → /mypage#password: 비밀번호 설정을 바로 펼침
     if (hash === "#password") {
       setOpen("password");
-      scrollTo("account");
+      settleScrollTo("account");
     }
-    // 2026-10-10: 매물 상세 ♥ 담기 안내 "보기 ›" → 관심 표시한 매물(펼친 채).
-    //   위쪽이 조금 늦게 그려져 자리가 밀리므로 1.5초 동안 두 번 더 맞춤 — 사용자가 직접 스크롤하면 멈춤
+    // 2026-10-10: 매물 상세 ♥ 담기 안내 "보기 ›" → 관심 표시한 매물(펼친 채)
     if (hash === "#interests-section") {
       setOpen("interests");
-      let userMoved = false;
-      const stop = () => {
-        userMoved = true;
-      };
-      window.addEventListener("touchstart", stop, { once: true, passive: true });
-      window.addEventListener("wheel", stop, { once: true, passive: true });
-      const go = () => {
-        if (!userMoved) document.getElementById("interests-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      };
-      setTimeout(go, 60);
-      setTimeout(go, 700);
-      setTimeout(go, 1500);
+      settleScrollTo("interests-section");
     }
     // 2026-10-09 PR 4a: 회원 홈 머리 "내 조건 긴급매물 N건" → 알림 패널을 펼친 채 관심 카테고리 구역으로
     if (hash === "#categories") {
       setOpen("alerts");
-      scrollTo("alert-categories");
+      settleScrollTo("alert-categories");
     }
   }, [loading]);
 
@@ -633,10 +638,7 @@ export default function MyPage() {
   // 머리 숫자 칸 → 해당 메뉴를 펼친 채 그 자리로
   const openAndScroll = (key: MenuKey, id: string) => {
     setOpen(key);
-    setTimeout(() => {
-      const el = document.getElementById(id) ?? document.getElementById(key === "alerts" ? "alerts" : "interests-section");
-      el?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 60);
+    settleScrollTo(id, key === "alerts" ? "alerts" : "interests-section");
   };
 
   if (!isSupabaseConfigured) {
