@@ -56,10 +56,10 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - **운영 준비(대표, 이 PR 전)**: Supabase 지출 상한 해제 · Storage 전역 한도 100MB · `deal-images` 버킷 file_size_limit 104857600. 이 PR은 운영 호출·SQL·DB 변경 없음(`grant_referral_bonus` 트리거·`bonus_photo_slots` 칸 그대로 — 값이 쌓여도 한도에 안 씀).
 - **사진 한도** `src/lib/photoLimit.ts`: `SELLER_PHOTO_LIMIT` 12 · `ADMIN_PHOTO_LIMIT` 25, 추천 보너스 상수(`BASE_/MAX_BONUS_/MAX_PHOTO_SLOTS`·`isPhotoLimitMaxed`) 삭제. `getPhotoLimit`는 시그니처 유지·항상 12(판매 신청 API·업로드 API·/sell 그대로 따라옴). ImageUploader 기본 max 12, 관리자 폼 3곳 25(힌트 "최대 25장"), 업로드 API 관리자 25.
 - **서버 장수 검사**: 관리자 새 매물·판매 신청 승인(`/api/admin/deals` POST)·수정(`/manage` PATCH) 25장 초과 → 400 "사진은 최대 25장까지 올릴 수 있어요." field images. 판매 신청은 12장 초과 400(기존 문구).
-- **추천 "사진 슬롯" 문구 삭제**(대체 문구 없음): 마이페이지 점핑파트너 금색 안내 줄·"늘었어요" 배너(+보너스 state·effect), 추천 목록 빈 화면, /sell·/buy 완료 화면 카드 첫 줄(카드는 "추천 링크 보내러 가기 →"만 남음).
+- **추천 "사진 슬롯" 문구 삭제**(대체 문구 없음): 마이페이지 점핑파트너 금색 안내 줄·"늘었어요" 배너(+보너스 state·effect), 추천 목록 빈 화면, /sell·/buy 완료 화면 추천 카드는 카드째 삭제(대표 추가 지시 — "추천 링크 보내러 가기 →"도 없음, 내용 상자 → [홈으로]).
 - **영상**: VideoUploader `MAX_SECONDS` 30·문구 전부 30초, `MAX_VIDEO_BYTES` 100MB(버킷·전역 한도와 같음) — video-url API·VideoUploader가 같은 상수. 옛 `/api/upload` 영상 25MB는 그대로.
 - **상세**: PhotoCarousel 10장 넘으면 점 숨김·"1/N" 칩만, PhotoViewer 지금 사진±1장만 eager·나머지 lazy, 매물 상세·관리자 신청 목록 영상 `preload="metadata"`(알림함 자동 재생은 그대로).
-- 시험(가짜 env·`next build --webpack`·`.next`에 운영 Supabase 주소 0건·외부 요청은 Google Fonts만): 서버 10건(관리자 새 매물 25 통과/26 400·승인 25/26·수정 25/26·판매 신청 12/13·보너스 10 회원 13 → 400) · 화면 27건(점 2·10장 그대로/12·25장 숨김·칩 따라감·영상 preload·전체 화면 eager [0,1]→[3,4,5]·/sell 13장 골라도 12장·문구 삭제 4화면·넘침 360/412 × 100/130%) · 관리자 4건(25장·힌트·신청 목록 영상 preload·넘침) · 연결 보드 81 · 권한 69 · 4a 추가 19 · 단위 17건(새 `scripts/photo-limit-test.mts`) + 기존 18개(fx-route 포함) · 빌드 결과 "사진 슬롯" 0건(main 4) · tsc 0 · lint main과 같음(2 errors·56 warnings). 캡처 `captures-photo-video`(360px).
+- 시험(가짜 env·`next build --webpack`·`.next`에 운영 Supabase 주소 0건·외부 요청은 Google Fonts만): 서버 10건(관리자 새 매물 25 통과/26 400·승인 25/26·수정 25/26·판매 신청 12/13·보너스 10 회원 13 → 400) · 화면 27건(점 2·10장 그대로/12·25장 숨김·칩 따라감·영상 preload·전체 화면 eager [0,1]→[3,4,5]·/sell 13장 골라도 12장·문구 삭제 4화면·넘침 360/412 × 100/130%) · 관리자 4건(25장·힌트·신청 목록 영상 preload·넘침) · 완료 화면 6건(/sell·/buy 추천 카드 없음·넘침 100/130%) · 연결 보드 81 · 권한 69 · 4a 추가 19 · 단위 17건(새 `scripts/photo-limit-test.mts`) + 기존 18개(fx-route 포함) · 빌드 결과 "사진 슬롯" 0건(main 4) · tsc 0 · lint main과 같음(2 errors·56 warnings). 캡처 `captures-photo-video`(360px).
 
 ## 최근 작업 (2026-10-11) — PR ② 거래 연결 보드 4단계 (브랜치 `feat/connection-board-simple`)
 
