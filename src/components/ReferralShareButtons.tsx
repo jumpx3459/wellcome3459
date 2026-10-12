@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import { CheckCircle } from "lucide-react";
-import { UI_DESC, UI_LINK, UI_META, BTN_CLASS, btnStyle } from "@/lib/uiText";
+import { BTN_CLASS } from "@/lib/uiText";
+import { rem } from "@/lib/rem";
+import { MY_DESC, MY_META, myBtnStyle } from "@/lib/myText"; // MY·공유 전용 글자 크기 (2026-10-12)
+
+// 버튼 3개 글자 17px — 글자 키움 130%에서는 2줄까지 꺾여도 됨(잘림 없음). 버튼 최소 높이 52
+const TILE_LABEL = { fontSize: rem(17), fontWeight: 700, lineHeight: 1.25, wordBreak: "keep-all" } as const;
 import { useBackToClose } from "@/lib/useBackToClose";
 
 // 추천 링크 [링크 복사] [링크 공유] [QR 코드] (2026-09-29) — MY 점핑파트너·"내 추천 회원" 화면 공용.
@@ -51,25 +56,25 @@ export default function ReferralShareButtons({
     }
   };
 
-  const tile = "flex flex-col items-center gap-1 rounded-2xl bg-white border border-gray200";
+  const tile = "flex flex-col items-center justify-center gap-1 rounded-2xl bg-white border border-gray200 min-w-0 text-center";
   return (
     <>
       <div className="grid grid-cols-3 gap-2">
-        <button type="button" onClick={copy} className={tile} style={{ padding: "14px 8px" }}>
+        <button type="button" onClick={copy} className={tile} style={{ minHeight: 52, padding: "12px 6px" }}>
           {copied ? <CheckCircle className="w-5 h-5" style={{ color: "#2F9E44" }} /> : <span className="text-xl leading-none">🔗</span>}
-          <span className="text-navy" style={UI_LINK}>{copied ? "복사됨" : "링크 복사"}</span>
+          <span className="text-navy" style={TILE_LABEL}>{copied ? "복사됨" : "링크 복사"}</span>
         </button>
-        <button type="button" onClick={share} aria-label="추천 링크 공유" className={tile} style={{ padding: "14px 8px" }}>
+        <button type="button" onClick={share} aria-label="추천 링크 공유" className={tile} style={{ minHeight: 52, padding: "12px 6px" }}>
           {shared ? <CheckCircle className="w-5 h-5" style={{ color: "#2F9E44" }} /> : <span className="text-xl leading-none">📤</span>}
-          <span className="text-navy" style={UI_LINK}>{shared ? "공유됨" : "링크 공유"}</span>
+          <span className="text-navy" style={TILE_LABEL}>{shared ? "공유됨" : "링크 공유"}</span>
         </button>
-        <button type="button" onClick={() => setQrOpen(true)} className={tile} style={{ padding: "14px 8px" }}>
+        <button type="button" onClick={() => setQrOpen(true)} className={tile} style={{ minHeight: 52, padding: "12px 6px" }}>
           <span className="text-xl leading-none">⬛</span>
-          <span className="text-navy" style={UI_LINK}>QR 코드</span>
+          <span className="text-navy" style={TILE_LABEL}>QR 코드</span>
         </button>
       </div>
       {showUrl && refUrl && (
-        <p className="mt-2" style={{ ...UI_META, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{refUrl}</p>
+        <p className="mt-2" style={{ ...MY_META, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{refUrl}</p>
       )}
 
       {qrOpen && refUrl && (
@@ -80,10 +85,10 @@ export default function ReferralShareButtons({
               alt="추천 링크 QR 코드"
               className="w-44 h-44 rounded-xl border border-gray200"
             />
-            <p className="mt-3 text-center" style={UI_DESC}>
+            <p className="mt-3 text-center" style={MY_DESC}>
               명함 대신 QR로 보여주세요 · 스캔하면 제 추천으로 가입돼요
             </p>
-            <button type="button" onClick={() => setQrOpen(false)} className={`mt-4 w-full ${BTN_CLASS}`} style={btnStyle("secondary")}>
+            <button type="button" onClick={() => setQrOpen(false)} className={`mt-4 w-full ${BTN_CLASS}`} style={myBtnStyle("secondary")}>
               닫기
             </button>
           </div>

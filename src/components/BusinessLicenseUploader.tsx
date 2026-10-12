@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { authFetch } from "@/lib/authFetch";
+import { FORM_LABEL_STYLE } from "@/components/FormField";
+import { MY_BADGE, MY_DESC, MY_META } from "@/lib/myText"; // MY 전용 글자 크기 (2026-10-12)
 
 type Status = "none" | "pending" | "verified";
 
@@ -45,35 +47,35 @@ export default function BusinessLicenseUploader({
 
   return (
     <div>
-      <label className="text-sm font-bold text-navy mb-2 flex items-center gap-1.5 flex-wrap">
+      <label className="mb-2 flex items-center gap-1.5 flex-wrap" style={FORM_LABEL_STYLE}>
         사업자등록증
-        <span className="text-xs font-medium text-gray500 bg-gray100 px-2 py-0.5 rounded-full">
+        <span className="font-medium bg-gray100 px-2 py-0.5 rounded-full" style={MY_META}>
           선택
         </span>
         {status === "verified" && (
           <span
-            className="text-xs font-bold px-2 py-0.5 rounded-full"
-            style={{ background: "#E8F8EC", color: "#1D8A44" }}
+            className="px-2 py-0.5 rounded-full"
+            style={{ ...MY_BADGE, background: "#E8F8EC", color: "#1D8A44" }}
           >
             ✓ 인증된 사업자
           </span>
         )}
         {status === "pending" && (
           <span
-            className="text-xs font-bold px-2 py-0.5 rounded-full"
-            style={{ background: "#FFF6E5", color: "#B45309" }}
+            className="px-2 py-0.5 rounded-full"
+            style={{ ...MY_BADGE, background: "#FFF6E5", color: "#B45309" }}
           >
             인증 대기중
           </span>
         )}
       </label>
-      <p className="text-xs text-gray500 mb-2 leading-relaxed">
+      <p className="mb-2" style={MY_DESC}>
         비공개로 저장되며 점핑매니저만 확인해요. 다른 회원에게는 절대 공개되지 않아요.
       </p>
 
       <label
-        className="flex flex-col items-center justify-center border-2 border-dashed border-gray200 rounded-xl text-gray500 text-sm cursor-pointer"
-        style={{ minHeight: "72px" }}
+        className="flex flex-col items-center justify-center border-2 border-dashed border-gray200 rounded-xl text-gray500 cursor-pointer text-center"
+        style={{ minHeight: "72px", padding: "8px 12px", fontSize: MY_DESC.fontSize }}
       >
         {uploading ? "업로드 중..." : status === "none" ? "탭해서 사업자등록증 첨부" : "탭해서 다시 첨부"}
         <input
@@ -95,7 +97,7 @@ export default function BusinessLicenseUploader({
           style={{ opacity: uploading ? 0.5 : 1 }}
         />
       )}
-      {error && <p className="text-xs text-orange mt-1.5">{error}</p>}
+      {error && <p className="text-orange mt-1.5" style={{ fontSize: MY_META.fontSize }}>{error}</p>}
     </div>
   );
 }
