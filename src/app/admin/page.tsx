@@ -32,7 +32,7 @@ import { rem } from "@/lib/rem";
 import { isStockType, STOCK_TYPES, type StockType } from "@/lib/stockType";
 import FormAccordion, { FormSectionTitle, FORM_ROW2, FORM_ROW3 } from "@/components/FormAccordion";
 import StockTypeBadge from "@/components/StockTypeBadge";
-import { MAX_PHOTO_SLOTS } from "@/lib/photoLimit";
+import { ADMIN_PHOTO_LIMIT } from "@/lib/photoLimit";
 import { validateDealEdit, dealEditWarnings, type DealEditField, type DealEditInput } from "@/lib/dealEdit";
 import { DEAL_PRICE_UNITS, LUMP_SUM, isDealPriceUnit, isLumpSum, priceUnitSuffix } from "@/lib/priceUnit";
 import { UI_SECTION, UI_CARD_TITLE, UI_LINK, BTN_CLASS, btnStyle } from "@/lib/uiText";
@@ -1568,6 +1568,7 @@ function AdminDashboard({
               <video
                 src={r.video_url}
                 controls
+                preload="metadata"
                 playsInline
                 className="w-full rounded-lg mt-2 bg-black"
                 style={{ maxHeight: "180px" }}
@@ -2980,9 +2981,9 @@ function ActiveDealCard({
                 initialUrls={images}
                 onChange={setImages}
                 onStatusChange={setPhotoStatus}
-                max={MAX_PHOTO_SLOTS}
+                max={ADMIN_PHOTO_LIMIT}
                 label="매물 사진"
-                hint="탭해서 사진 추가 · × 로 삭제 후 아래 '변경사항 저장'으로 반영"
+                hint={`최대 ${ADMIN_PHOTO_LIMIT}장 · 탭해서 사진 추가 · × 로 삭제 후 아래 '변경사항 저장'으로 반영`}
               />
           </div>
 
@@ -3007,7 +3008,7 @@ function ActiveDealCard({
               onChange={setVideoUrl}
               onStatusChange={setVideoStatus}
               label="매물 영상"
-              hint="최대 15초 · 탭해서 교체, 아래 '변경사항 저장'으로 반영"
+              hint="최대 30초 · 탭해서 교체, 아래 '변경사항 저장'으로 반영"
             />
           </div>
 
@@ -3828,9 +3829,9 @@ function DealForm({
               onChange={setImages}
               onStatusChange={setPhotoStatus}
               label="매물 사진"
-              // 2026-09-29: 판매신청은 추천 보너스로 최대 16장까지 올 수 있어 관리자 폼도 최대치로 (src/lib/photoLimit.ts)
-              max={MAX_PHOTO_SLOTS}
-              hint={`최대 ${MAX_PHOTO_SLOTS}장 (신청서에 첨부된 사진 포함)`}
+              // 2026-10-12: 관리자 한도 25장(판매신청은 12장까지 오고 관리자가 더 붙일 수 있음) — src/lib/photoLimit.ts
+              max={ADMIN_PHOTO_LIMIT}
+              hint={`최대 ${ADMIN_PHOTO_LIMIT}장 (신청서에 첨부된 사진 포함)`}
               initialUrls={prefill?.images ?? []}
             />
             </div>
@@ -4187,7 +4188,7 @@ function NoticeForm({ adminKey, onDone }: { adminKey: string; onDone: () => void
         </div>
       </div>
 
-      <ImageUploader ref={imageUploaderRef} adminKey={adminKey} onChange={setImages} onStatusChange={setPhotoStatus} max={MAX_PHOTO_SLOTS} label="사진" hint={`부동산·설비 현장 사진, 최대 ${MAX_PHOTO_SLOTS}장`} />
+      <ImageUploader ref={imageUploaderRef} adminKey={adminKey} onChange={setImages} onStatusChange={setPhotoStatus} max={ADMIN_PHOTO_LIMIT} label="사진" hint={`부동산·설비 현장 사진, 최대 ${ADMIN_PHOTO_LIMIT}장`} />
 
       {error && <div className="text-orange font-medium" style={{ fontSize: rem(15) }}>{error}</div>}
 

@@ -7,13 +7,13 @@ import { usePointerFine } from "@/lib/usePointerFine";
 import { requestVideoUploadUrl, uploadToSignedUrlWithProgress } from "@/lib/uploadClient";
 import { MAX_VIDEO_BYTES, VIDEO_EXT, VIDEO_TOO_LARGE_MESSAGE, VIDEO_TYPE_MESSAGE, videoContentType } from "@/lib/videoUpload";
 
-const MAX_SECONDS = 15;
+const MAX_SECONDS = 30;
 
 type Phase = "idle" | "loading" | "need-trim" | "trimming" | "uploading" | "done" | "error";
 
 // 2026-10-02 PR-A2: 부모 폼에 알리는 상태 — 제출 막기용
 //   idle 영상 없음 · uploading 길이 확인·자르기·올리는 중 · pending 골랐지만 아직 안 올림(자르기 구간 선택 대기)
-//   done 올라감 · failed 올리기 실패 · rejected 올릴 수 없는 영상(형식·크기·길이, 자르기 미지원 브라우저의 15초 초과)
+//   done 올라감 · failed 올리기 실패 · rejected 올릴 수 없는 영상(형식·크기·길이, 자르기 미지원 브라우저의 30초 초과)
 export type VideoUploadStatus = "idle" | "uploading" | "pending" | "done" | "failed" | "rejected";
 export type VideoUploaderHandle = {
   /** 선택을 지우고 파일 고르기 창을 다시 엶 — 버튼 클릭 안에서 불러야 함(브라우저가 사용자 동작일 때만 창을 엶) */
@@ -23,9 +23,9 @@ export type VideoUploaderHandle = {
 };
 
 const TRIM_UNSUPPORTED_MESSAGE =
-  "이 브라우저에서는 15초 넘는 영상을 자를 수 없어요. 아이폰은 사진 앱 → 편집에서 길이를 줄이고, PC는 크롬에서 올려주세요.";
+  "이 브라우저에서는 30초 넘는 영상을 자를 수 없어요. 아이폰은 사진 앱 → 편집에서 길이를 줄이고, PC는 크롬에서 올려주세요.";
 
-// 자르기(15초 초과 영상)에 쓰는 기능이 있는지 — UA가 아니라 기능으로 판별.
+// 자르기(30초 초과 영상)에 쓰는 기능이 있는지 — UA가 아니라 기능으로 판별.
 // video.captureStream(또는 mozCaptureStream) + MediaRecorder webm 녹화. 아이폰 Safari는 captureStream이 없음.
 function canTrimInBrowser(): boolean {
   if (typeof window === "undefined" || typeof MediaRecorder === "undefined") return false;
@@ -49,7 +49,7 @@ function pickMimeType(): string {
 export default function VideoUploader({
   onChange,
   label = "소개 영상 첨부",
-  hint = "최대 15초 · 15초보다 길면 원하는 구간을 골라 잘라드려요",
+  hint = "최대 30초 · 30초보다 길면 원하는 구간을 골라 잘라드려요",
   initialUrl,
   adminKey,
   onStatusChange,
@@ -72,7 +72,7 @@ export default function VideoUploader({
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0); // 업로드 진행률(%)
   const [errorKind, setErrorKind] = useState<"failed" | "rejected">("failed");
-  const [trimUnsupported, setTrimUnsupported] = useState(false); // 자르기 미지원 + 15초 초과로 거절됨 → [다시 고르기]
+  const [trimUnsupported, setTrimUnsupported] = useState(false); // 자르기 미지원 + 30초 초과로 거절됨 → [다시 고르기]
   const inputRef = useRef<HTMLInputElement | null>(null);
   const inputId = useId();
 
@@ -178,7 +178,7 @@ export default function VideoUploader({
           return;
         }
         if (d <= MAX_SECONDS + 0.3) {
-          // 15초 이내면 바로 업로드
+          // 30초 이내면 바로 업로드
           uploadFile(file, file.name);
         } else if (!canTrimInBrowser()) {
           // 2026-10-02 PR-A2: 자르기 미지원(아이폰 Safari 등) — 자르기 화면을 띄우면 아무것도 안 올라간 채 제출됐음.
@@ -266,7 +266,7 @@ export default function VideoUploader({
       <label className="mb-2 flex items-center gap-1.5 flex-wrap" style={DEAL_LABEL_STYLE}>
         {label}
         <span className="font-medium text-gray500 bg-gray100 px-2 py-0.5 rounded-full" style={{ fontSize: rem(15) }}>
-          최대 15초
+          최대 30초
         </span>
       </label>
       <p className="mb-2" style={FORM_HINT_STYLE}>{hint}</p>
@@ -308,7 +308,7 @@ export default function VideoUploader({
             controls={false}
           />
           <p className="text-xs text-gray500 mt-2">
-            영상이 {Math.round(duration)}초라 15초를 넘어요. 시작 지점을 골라주세요 — 그 지점부터 15초가
+            영상이 {Math.round(duration)}초라 30초를 넘어요. 시작 지점을 골라주세요 — 그 지점부터 30초가
             잘려서 올라가요.
           </p>
           <input
@@ -349,7 +349,7 @@ export default function VideoUploader({
 
       {phase === "trimming" && (
         <div className="text-sm text-gray500 py-4 text-center">
-          영상을 자르는 중이에요... (재생되는 15초 동안 잠시만 기다려주세요)
+          영상을 자르는 중이에요... (재생되는 30초 동안 잠시만 기다려주세요)
         </div>
       )}
 
@@ -373,7 +373,7 @@ export default function VideoUploader({
           <video src={resultUrl} className="w-24 h-24 rounded-lg object-cover bg-black" muted />
           <div className="flex-1">
             <div className="text-sm font-bold text-navy">영상 첨부 완료</div>
-            <div className="text-xs text-gray500">최대 15초로 준비됐어요.</div>
+            <div className="text-xs text-gray500">최대 30초로 준비됐어요.</div>
           </div>
           <button
             type="button"

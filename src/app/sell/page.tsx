@@ -19,7 +19,7 @@ import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
 import type { ManifestRow } from "@/lib/parseCsv";
 import { rem } from "@/lib/rem";
 import { type StockType, STOCK_TYPES, isStockType } from "@/lib/stockType";
-import { getPhotoLimit, isPhotoLimitMaxed, MAX_PHOTO_SLOTS } from "@/lib/photoLimit";
+import { getPhotoLimit } from "@/lib/photoLimit";
 import { authFetch, AUTH_EXPIRED_EVENT, isAuthNetworkError } from "@/lib/authFetch";
 import { FieldLabel, DEAL_INPUT_FONT_SIZE, DEAL_HINT_STYLE, DEAL_CHIP_FONT_SIZE, DEAL_LABEL_STYLE } from "@/components/FormField";
 import FormAccordion, { FormSectionTitle, FORM_ROW2, FORM_ROW3 } from "@/components/FormAccordion";
@@ -628,21 +628,6 @@ export default function SellPage() {
             />
             <p className="text-sm font-bold text-navy">점핑매니저가 바로 연락드립니다.</p>
           </div>
-
-          {memberId && (
-            <TabLink
-              href="/mypage#referral"
-              className="w-full block text-left rounded-2xl mt-4"
-              style={{ background: "#FFF9EC", border: "1px solid #F0DCA8", padding: "13px 15px" }}
-            >
-              <p className="text-xs font-bold" style={{ color: "#8A6100" }}>
-                {isPhotoLimitMaxed({ bonus_photo_slots: bonusPhotoSlots })
-                  ? `🎁 사진 슬롯을 최대로 모았어요 (${MAX_PHOTO_SLOTS}장)`
-                  : `🎁 친구 추천하면 나도 친구도 사진 슬롯 +2장 (최대 ${MAX_PHOTO_SLOTS}장까지)`}
-              </p>
-              <p className="text-xs mt-1" style={{ color: "#8A6100" }}>추천 링크 보내러 가기 →</p>
-            </TabLink>
-          )}
 
           <TabLink
             href="/"

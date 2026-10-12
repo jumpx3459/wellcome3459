@@ -577,6 +577,7 @@ function DealDetailPageInner() {
           <video
             src={deal.video_url!}
             controls
+            preload="metadata"
             playsInline
             className="w-full rounded-2xl bg-black"
             style={{ maxHeight: "320px" }}

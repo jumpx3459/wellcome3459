@@ -27,7 +27,6 @@ import { rem } from "@/lib/rem";
 import { formatPhone } from "@/lib/phone";
 import { authFetch } from "@/lib/authFetch";
 import { isTestTitle } from "@/lib/categoryAvg";
-import { getPhotoLimit, isPhotoLimitMaxed, MAX_PHOTO_SLOTS } from "@/lib/photoLimit";
 import { clearReturningMember } from "@/lib/returningMember";
 import { UI_SECTION, UI_CARD_TITLE, UI_DESC, UI_META, UI_LINK } from "@/lib/uiText";
 import { FieldLabel, FORM_INPUT_FONT_SIZE } from "@/components/FormField";
@@ -80,8 +79,6 @@ export default function MyPage() {
   const [phone, setPhone] = useState("");
   const [memberNo, setMemberNo] = useState<number | null>(null);
   const [refCode, setRefCode] = useState("");
-  const [bonusPhotoSlots, setBonusPhotoSlots] = useState(0);
-  const [bannerDismissed, setBannerDismissed] = useState(true); // 값 로드 전 깜빡임 방지, 아래 effect가 실제 판정
   const [memberId, setMemberId] = useState<string | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
   const [alertsOpen, setAlertsOpen] = useState(false);
@@ -174,7 +171,7 @@ export default function MyPage() {
 
       const { data: member } = await supabase
         .from("members")
-        .select("phone, ref_code, member_no, company_name, name, email, business_verified, business_license_path, bonus_photo_slots, avatar_url, notice_alerts_opt_in")
+        .select("phone, ref_code, member_no, company_name, name, email, business_verified, business_license_path, avatar_url, notice_alerts_opt_in")
         .eq("id", userId)
         .single();
       if (member) {
@@ -185,7 +182,6 @@ export default function MyPage() {
         setEmail(member.email ?? "");
         setBusinessVerified(Boolean(member.business_verified));
         setHasBusinessLicense(Boolean(member.business_license_path));
-        setBonusPhotoSlots(member.bonus_photo_slots ?? 0);
         setAvatarUrl(member.avatar_url ?? null);
         setNoticeAlertsOptIn(Boolean(member.notice_alerts_opt_in));
       }
@@ -297,17 +293,6 @@ export default function MyPage() {
         setSelectedShareDealId(real[0]?.id ?? "");
       });
   }, []);
-
-  // 사진 슬롯이 "이전에 본 값"과 다르면(=새로 지급됨) 축하 배너를 다시 보여줌
-  useEffect(() => {
-    if (bonusPhotoSlots <= 0) return;
-    try {
-      const seen = localStorage.getItem("jumpx_bonus_banner_seen");
-      setBannerDismissed(seen === String(bonusPhotoSlots));
-    } catch {
-      setBannerDismissed(false);
-    }
-  }, [bonusPhotoSlots]);
 
   useEffect(() => {
     if (!memberId || !supabase) return;
@@ -1048,47 +1033,9 @@ export default function MyPage() {
               {referrals.length}명 추천함
             </span>
           </div>
-          <p className="mb-1" style={UI_DESC}>
+          <p className="mb-3" style={UI_DESC}>
             아래 링크로 가입하면 내가 추천한 회원으로 따로 관리돼요.
           </p>
-          {/* 2026-09-29: 굵은 금색 강조는 이 사진 슬롯 안내 한 곳만 */}
-          <p className="mb-3" style={{ ...UI_LINK, color: "#966B00", lineHeight: 1.55 }}>
-            {isPhotoLimitMaxed({ bonus_photo_slots: bonusPhotoSlots }) ? (
-              <>🎁 사진 슬롯을 최대로 모았어요 ({MAX_PHOTO_SLOTS}장)</>
-            ) : (
-              <>
-                🎁 추천 1명당 나도 친구도 사진 슬롯 +2장{" "}
-                <span className="whitespace-nowrap">
-                  (지금 내 사진 슬롯: {getPhotoLimit({ bonus_photo_slots: bonusPhotoSlots })}장 · 최대 {MAX_PHOTO_SLOTS}장)
-                </span>
-              </>
-            )}
-          </p>
-
-          {bonusPhotoSlots > 0 && !bannerDismissed && (
-            <div
-              className="flex items-start justify-between gap-3 rounded-xl mb-3"
-              style={{ background: "#E8F8EC", border: "1px solid #B8E6C2", padding: "12px 14px" }}
-            >
-              <p style={{ ...UI_LINK, color: "#1F7A34", lineHeight: 1.55 }}>
-                🎉 {referrals[0]?.company_name || (referrals[0]?.member_no != null ? `${formatMemberNo(referrals[0].member_no)} 회원` : "추천하신 분")}
-                이 추천으로 가입했어요! 사진 슬롯이 {getPhotoLimit({ bonus_photo_slots: bonusPhotoSlots })}장으로 늘었어요.
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setBannerDismissed(true);
-                  try {
-                    localStorage.setItem("jumpx_bonus_banner_seen", String(bonusPhotoSlots));
-                  } catch {}
-                }}
-                className="flex-shrink-0"
-                style={{ ...UI_LINK, color: "#1F7A34" }}
-              >
-                닫기
-              </button>
-            </div>
-          )}
 
           {shareDeals.length > 0 ? (
             <label className="mb-1.5 block font-bold" style={UI_META}>공유할 매물 선택</label>
@@ -1219,7 +1166,7 @@ export default function MyPage() {
               // (연한 배경 박스+아이콘+볼드)로 통일. "위 링크"는 이 문단과 실제
               // 버튼(링크복사/공유/QR) 사이에 "공식 점핑파트너" 카드가 끼어 있어
               // 위치상 멀어서 헷갈릴 수 있어 "링크 복사·공유 버튼"으로 직접 지칭.
-              // 2026-09-29: 금색 굵은 강조는 사진 슬롯 안내 한 곳만 — 이 안내는 일반 굵기·회색 톤
+              // 2026-09-29: 이 안내는 일반 굵기·회색 톤
               <div
                 className="flex items-center gap-2.5 rounded-xl"
                 style={{ background: "#F5F6F8", border: "1px solid #E4E7EB", padding: "12px 14px" }}

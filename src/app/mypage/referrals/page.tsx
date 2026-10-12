@@ -9,7 +9,6 @@ import { formatMemberNo } from "@/lib/format";
 import { rem } from "@/lib/rem";
 import { authFetch } from "@/lib/authFetch";
 import { SITE_URL } from "@/lib/siteUrl";
-import { MAX_PHOTO_SLOTS } from "@/lib/photoLimit";
 import { UI_CARD_TITLE, UI_DESC, UI_META } from "@/lib/uiText";
 import ReferralShareButtons from "@/components/ReferralShareButtons";
 
@@ -182,13 +181,10 @@ export default function PartnerReferralsPage() {
 
       <div className="px-5 py-5 flex flex-col gap-4">
         {items.length === 0 ? (
-          // 2026-09-29: 0명 빈 화면 — 실제 적용되는 혜택(사진 슬롯)만 안내
+          // 2026-09-29: 0명 빈 화면 (2026-10-12: 사진 슬롯 혜택 안내 삭제)
           <div className="flex flex-col items-center text-center">
             <img src="/images/manager-cut.png" alt="점핑매니저" style={{ width: 120, height: 120, objectFit: "contain", filter: "drop-shadow(0 6px 10px rgba(11,37,64,.2))" }} />
             <p className="mt-2" style={UI_CARD_TITLE}>첫 추천 회원을 만들어 보세요</p>
-            <p className="mt-1.5 font-bold" style={{ ...UI_DESC, color: "#966B00" }}>
-              🎁 추천 1명당 나도 친구도 사진 슬롯 +2장 (최대 {MAX_PHOTO_SLOTS}장)
-            </p>
             <ol className="mt-4 w-full flex flex-col gap-2 text-left">
               {["링크 보내기", "친구가 가입", "여기에 자동 표시"].map((t, n) => (
                 <li key={t} className="flex items-center gap-3 rounded-xl" style={{ background: "#F5F6F8", padding: "12px 14px" }}>

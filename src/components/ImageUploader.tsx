@@ -4,7 +4,7 @@ import { useEffect, useImperativeHandle, useRef, useState, type ClipboardEvent a
 import { resizeImageForUpload } from "@/lib/resizeImage";
 import { rem } from "@/lib/rem";
 import { uploadFormData } from "@/lib/uploadClient";
-import { BASE_PHOTO_SLOTS } from "@/lib/photoLimit";
+import { SELLER_PHOTO_LIMIT } from "@/lib/photoLimit";
 import { usePointerFine } from "@/lib/usePointerFine";
 import { DEAL_LABEL_STYLE, FORM_HINT_STYLE, UPLOAD_ERROR_CLASS, UPLOAD_ERROR_STYLE } from "@/components/FormField";
 import Toast, { useToast } from "@/components/Toast";
@@ -49,7 +49,7 @@ export default function ImageUploader({
   onStatusChange,
   label = "사진 첨부",
   hint,
-  max = BASE_PHOTO_SLOTS,
+  max = SELLER_PHOTO_LIMIT,
   initialUrls = [],
   adminKey,
   globalPaste = false,

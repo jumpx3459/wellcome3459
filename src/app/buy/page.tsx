@@ -222,17 +222,6 @@ export default function BuyPage() {
           </div>
 
           <TabLink
-            href="/mypage#referral"
-            className="w-full block text-left rounded-2xl mt-4"
-            style={{ background: "#FFF9EC", border: "1px solid #F0DCA8", padding: "13px 15px" }}
-          >
-            <p className="text-xs font-bold" style={{ color: "#8A6100" }}>
-              🎁 판매자 친구를 추천하면 서로 사진 슬롯 +2장을 드려요
-            </p>
-            <p className="text-xs mt-1" style={{ color: "#8A6100" }}>추천 링크 보내러 가기 →</p>
-          </TabLink>
-
-          <TabLink
             href="/"
             className={`w-full mt-5 ${BTN_CLASS}`}
             style={btnStyle("primary")}

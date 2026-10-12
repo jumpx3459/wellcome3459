@@ -1,11 +1,11 @@
 // 매물 영상 업로드 공용 값 (2026-10-02 PR-A) — 서버·브라우저 공용, 다른 모듈 import 없음.
 // 영상은 Vercel 함수 요청 한도(4.5MB) 때문에 /api/upload를 거치지 않고, /api/upload/video-url에서 받은
 // Storage 서명 업로드 URL로 브라우저가 직접 올린다. 크기·형식은 deal-images 버킷 설정과 같아야 함:
-//   file_size_limit 52428800(50MB) · allowed_mime_types에 아래 영상 4종(+사진 4종).
+//   file_size_limit 104857600(100MB, 2026-10-12 — Storage 전역 한도 100MB와 같음) · allowed_mime_types에 아래 영상 4종(+사진 4종).
 
 export const DEAL_MEDIA_BUCKET = "deal-images";
-export const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // 52428800 — 버킷 file_size_limit과 같은 값
-export const VIDEO_TOO_LARGE_MESSAGE = "영상은 50MB 이하만 올릴 수 있어요. 일반 화질로 짧게 찍어주세요";
+export const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 104857600 — 버킷 file_size_limit·Storage 전역 한도(100MB)와 같은 값
+export const VIDEO_TOO_LARGE_MESSAGE = "영상은 100MB 이하만 올릴 수 있어요. 일반 화질(1080p)로 찍어 주세요.";
 export const VIDEO_TYPE_MESSAGE = "MP4·MOV·WEBM 영상만 올릴 수 있어요.";
 
 // 형식(파라미터 뺀 기본형) → 저장 확장자

@@ -10,6 +10,7 @@ import { checkDealVideoUrl } from "@/lib/videoUploadServer";
 import { normalizeTitle, checkTitle, checkDescription, DUPLICATE_TITLE_WARNING } from "@/lib/titleGuard";
 import { isStorageType, isValidExpiryDate, storageSummary, priceWarnings, isMissingNewColumn, EXPIRY_REQUIRED_MESSAGE } from "@/lib/dealFields";
 import { isPassingCheck, NOT_CHECKED_MESSAGE, ALREADY_HANDLED_MESSAGE } from "@/lib/businessCheck";
+import { ADMIN_PHOTO_LIMIT, ADMIN_PHOTO_LIMIT_ERROR } from "@/lib/photoLimit";
 import { ntsStatus } from "@/lib/nts";
 import { isPriceMode } from "@/lib/priceMode";
 import { writeAudit, phoneTail } from "@/lib/adminAudit";
@@ -117,6 +118,8 @@ export async function POST(req: NextRequest) {
   if (!lumpSum && minOrderQty != null && !isPositive(minOrderQty)) return bad("최소 주문량은 0보다 커야 해요.", "minOrderQty");
   if (!lumpSum && minOrderQty != null && minOrderQty > totalQty) return bad("최소주문량은 재고 총수량보다 클 수 없어요.", "minOrderQty");
   if (!closesAt || Number.isNaN(Date.parse(closesAt))) return bad("마감 시간이 올바르지 않아요.", "closesAt");
+  // 2026-10-12: 사진 장수(관리자 25장, src/lib/photoLimit.ts) — 판매 신청 승인도 이 경로
+  if (Array.isArray(images) && images.length > ADMIN_PHOTO_LIMIT) return bad(ADMIN_PHOTO_LIMIT_ERROR, "images");
   // 2026-09-29: 재고 유형 — 10개 값만 (DB check와 같음), 안 보내면 general
   if (stockType != null && !isStockType(stockType)) return bad("재고 유형이 올바르지 않아요.", "stockType");
   // 2026-10-01 PR-B: 보관 조건·소비기한 (src/lib/dealFields.ts)
