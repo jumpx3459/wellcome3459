@@ -629,16 +629,6 @@ export default function SellPage() {
             <p className="text-sm font-bold text-navy">점핑매니저가 바로 연락드립니다.</p>
           </div>
 
-          {memberId && (
-            <TabLink
-              href="/mypage#referral"
-              className="w-full block text-left rounded-2xl mt-4"
-              style={{ background: "#FFF9EC", border: "1px solid #F0DCA8", padding: "13px 15px" }}
-            >
-              <p className="text-xs" style={{ color: "#8A6100" }}>추천 링크 보내러 가기 →</p>
-            </TabLink>
-          )}
-
           <TabLink
             href="/"
             className={`w-full mt-5 ${BTN_CLASS}`}
