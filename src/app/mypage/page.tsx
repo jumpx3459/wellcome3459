@@ -168,6 +168,15 @@ function MenuPanel({ children, data }: { children: ReactNode; data?: string }) {
   );
 }
 
+// 머리 "성명 · 회원번호" 사이 가운뎃점 — 폭 1.1em 고정(바깥 -1.1em과 짝)
+function HeadSep() {
+  return (
+    <span aria-hidden style={{ display: "inline-block", width: "1.1em", textAlign: "center" }}>
+      ·
+    </span>
+  );
+}
+
 function Switch({ on }: { on: boolean }) {
   return (
     <span
@@ -690,13 +699,25 @@ export default function MyPage() {
             <div className="truncate" data-my-head-name style={MY_HEAD_NAME}>
               {companyName || phone || "회원님"}
             </div>
-            <div className="flex items-center gap-x-1.5 mt-1 flex-wrap">
-              {companyName && fullName && <span style={MY_HEAD_SUB}>성명 {fullName}</span>}
-              {memberNo != null && (
-                <span style={MY_HEAD_SUB}>
-                  {companyName && fullName && "· "}회원번호 <span className="font-mono">{formatMemberNo(memberNo)}</span>
-                </span>
-              )}
+            {/* 성명 · 회원번호 — 칸마다 앞에 가운뎃점을 붙이고 바깥에서 왼쪽 1.1em을 잘라, 줄 맨 앞 칸의 점은 안 보이게.
+                가운뎃점+회원번호는 한 덩어리(nowrap)로 같이 줄바꿈 — 글자 130%에서 "· 회원번호"가 줄 맨 앞에 오던 것 */}
+            <div className="mt-1 overflow-hidden" style={MY_HEAD_SUB}>
+              <div className="flex items-center flex-wrap" style={{ marginLeft: "-1.1em" }}>
+                {companyName && fullName && (
+                  <span data-my-head-sep-item>
+                    <HeadSep />
+                    <span style={MY_HEAD_SUB}>성명 {fullName}</span>
+                  </span>
+                )}
+                {memberNo != null && (
+                  <span className="whitespace-nowrap" data-my-head-sep-item>
+                    <HeadSep />
+                    <span style={MY_HEAD_SUB}>
+                      회원번호 <span className="font-mono">{formatMemberNo(memberNo)}</span>
+                    </span>
+                  </span>
+                )}
+              </div>
             </div>
             {/* 2026-09-27: 신뢰 신호(사업자 인증·관리자) 배지 */}
             {((businessVerified || hasBusinessLicense) || adminInfo) && (
