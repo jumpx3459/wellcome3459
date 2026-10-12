@@ -155,7 +155,7 @@ export default function ReferralPartnerSection({ s }: { s: ReferralShareState })
               >
                 <div className="min-w-0">
                   <div style={MY_CARD_TITLE}>
-                    {r.member_no != null ? formatMemberNo(r.member_no) : "회원번호 없음"}
+                    <span className="whitespace-nowrap">{r.member_no != null ? formatMemberNo(r.member_no) : "회원번호 없음"}</span>
                     {r.company_name && (
                       <span className="font-medium ml-1.5" style={MY_META}>{r.company_name}</span>
                     )}
