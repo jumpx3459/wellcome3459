@@ -21,6 +21,9 @@ const TILES = [
   { href: "/notices", icon: "📋", title: "긴급 공지", desc: "부동산·설비 처분" },
 ];
 
+// MY "점핑 서비스"가 MY 글자 크기로 같은 칸을 그릴 때 씀 (2026-10-12) — 홈 EcosystemGrid는 그대로
+export const SERVICE_TILES = TILES;
+
 // 매물 상세 하단 "점핑 서비스" 컴팩트 2칸 (2026-09-29) — 링크는 위 TILES와 같은 경로를 그대로 씀.
 // 2026-10-08 4b-1: 예전 계산기 설명 "운임·관부가세"(매물 맥락용)는 관부가세 탭 삭제로 위와 같은 설명
 const COMPACT_TILES = [{ ...TILES[0] }, { ...TILES[1] }];

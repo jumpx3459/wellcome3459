@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { UI_CARD_TITLE, UI_DESC, UI_META } from "@/lib/uiText";
+import { MY_CARD_TITLE, MY_DESC, MY_META } from "@/lib/myText"; // MY 전용 글자 크기 (2026-10-12)
 import { rem } from "@/lib/rem";
 import { CONSENT_CHANGED_EVENT, announceConsents, fetchMyConsents, saveConsents, type ConsentState } from "@/lib/consentClient";
 import { formatConsentDate, type ConsentType } from "@/lib/consent";
@@ -59,10 +59,10 @@ export default function ConsentToggles() {
             aria-pressed={on}
           >
             <span className="flex-1 min-w-0 text-left">
-              <span className="block" style={UI_CARD_TITLE}>{row.title}</span>
-              <span className="block mt-0.5" style={UI_DESC}>{row.desc}</span>
+              <span className="block" style={MY_CARD_TITLE}>{row.title}</span>
+              <span className="block mt-0.5" style={MY_DESC}>{row.desc}</span>
               {cur && (
-                <span className="block mt-0.5" style={UI_META}>
+                <span className="block mt-0.5" style={MY_META}>
                   {formatConsentDate(cur.createdAt)} {on ? "동의" : "미동의"}
                 </span>
               )}
@@ -76,7 +76,7 @@ export default function ConsentToggles() {
           </button>
         );
       })}
-      {error && <p className="font-medium" style={{ fontSize: rem(14), color: "var(--color-orange)" }}>{error}</p>}
+      {error && <p className="font-medium" style={{ fontSize: rem(16), color: "var(--color-orange)" }}>{error}</p>}
     </div>
   );
 }

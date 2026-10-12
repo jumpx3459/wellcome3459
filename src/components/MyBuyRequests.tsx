@@ -2,12 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { rem } from "@/lib/rem";
 import { formatPriceWithUnit } from "@/lib/format";
-import { SECTION_TITLE_STYLE } from "@/components/EcosystemGrid";
 import { authFetch } from "@/lib/authFetch";
-import { UI_CARD_TITLE, UI_META } from "@/lib/uiText";
-import { BTN_CLASS, btnStyle } from "@/lib/uiText";
+import { BTN_CLASS } from "@/lib/uiText";
+import { MY_BADGE, MY_CARD_TITLE, MY_DESC, MY_META, MY_SECTION, myBtnStyle } from "@/lib/myText"; // MY 전용 글자 크기 (2026-10-12)
 
 // 마이페이지 "내 구매 요청" (2026-09-29) — 로그인 상태로 /buy에서 등록한 요청(buy_requests.member_id) 최근 10건.
 type Item = {
@@ -34,7 +32,8 @@ const fmtDate = (iso: string) => {
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
 };
 
-export default function MyBuyRequests() {
+// inMenu: MY 메뉴 "🔍 내 구매 요청" 펼친 패널 안 — 제목·구분선 없이 내용만 (2026-10-12)
+export default function MyBuyRequests({ inMenu = false }: { inMenu?: boolean }) {
   const [items, setItems] = useState<Item[] | null>(null);
 
   useEffect(() => {
@@ -47,17 +46,19 @@ export default function MyBuyRequests() {
   if (items === null) return null;
 
   return (
-    <div id="my-buy-requests" className="border-t border-gray200 pt-5">
-      <div className="mb-3" style={SECTION_TITLE_STYLE}>
-        내 구매 요청 ({items.length})
-      </div>
+    <div id="my-buy-requests" className={inMenu ? "" : "border-t border-gray200 pt-5"}>
+      {!inMenu && (
+        <div className="mb-3" style={MY_SECTION}>
+          내 구매 요청 ({items.length})
+        </div>
+      )}
       {items.length === 0 ? (
-        <div className="text-center rounded-2xl" style={{ padding: "22px 16px", background: "#F9FAFB" }}>
-          <p style={{ fontSize: rem(15), color: "#4B5563" }}>찾는 상품을 올려두면 점핑매니저가 매물을 찾아 연결해드려요.</p>
+        <div className="text-center rounded-2xl" style={{ padding: "22px 16px", background: inMenu ? "#fff" : "#F9FAFB" }}>
+          <p style={MY_DESC}>찾는 상품을 올려두면 점핑매니저가 매물을 찾아 연결해드려요.</p>
           <Link
             href="/buy"
             className={`mt-3 w-full ${BTN_CLASS}`}
-            style={btnStyle("primary")}
+            style={myBtnStyle("primary")}
           >
             구매 요청하기
           </Link>
@@ -76,10 +77,10 @@ export default function MyBuyRequests() {
             return (
               <div key={i.id} className="bg-white border border-gray200 rounded-xl flex items-center gap-3" style={{ padding: "12px 14px" }}>
                 <div className="flex-1 min-w-0">
-                  <div className="truncate" style={UI_CARD_TITLE}>{i.product_name}</div>
-                  <div className="mt-0.5" style={UI_META}>{detail}</div>
+                  <div className="truncate" style={MY_CARD_TITLE}>{i.product_name}</div>
+                  <div className="mt-0.5" style={MY_META}>{detail}</div>
                 </div>
-                <span className="flex-shrink-0 rounded-full font-bold" style={{ fontSize: rem(14), padding: "4px 10px", background: st.bg, color: st.color }}>
+                <span className="flex-shrink-0 rounded-full whitespace-nowrap" style={{ ...MY_BADGE, padding: "4px 10px", background: st.bg, color: st.color }}>
                   {st.label}
                 </span>
               </div>

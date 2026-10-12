@@ -1,37 +1,57 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
-import TabLink from "@/components/TabLink";
+import { useRouter } from "next/navigation";
 import BusinessFooter from "@/components/BusinessFooter";
 import { CheckCircle } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockCategories, categoryIcons, categoryColors } from "@/lib/mockData";
-import { formatPrice, formatMemberNo, formatRelativeTime, dealUrgencyState } from "@/lib/format";
+import { formatMemberNo, formatRelativeTime, dealUrgencyState } from "@/lib/format";
 import { dealPriceLabel, isNegotiable } from "@/lib/priceMode";
-import { generateRefCode } from "@/lib/refCode";
 import Toast, { useToast } from "@/components/Toast";
 import BusinessLicenseUploader from "@/components/BusinessLicenseUploader";
-import EcosystemGrid, { SECTION_TITLE_STYLE, SERVICES_ANCHOR_ID, scrollToServicesIfHash } from "@/components/EcosystemGrid";
-import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
+import { SERVICE_TILES, SERVICES_ANCHOR_ID, scrollToServicesIfHash } from "@/components/EcosystemGrid";
 import PushStatusCard from "@/components/PushStatusCard";
 import ConsentToggles from "@/components/ConsentToggles";
 import { CONSENT_CHANGED_EVENT, fetchMyConsents } from "@/lib/consentClient";
+import { fetchPushStatus, getPushState } from "@/lib/pushClient";
 import { MESSAGES_ENABLED, QUOTES_ENABLED } from "@/lib/features";
 import QuotesTeaserCard from "@/components/QuotesTeaserCard";
 import MyBuyRequests from "@/components/MyBuyRequests";
-import { SITE_URL } from "@/lib/siteUrl";
+import LoginRequired from "@/components/LoginRequired";
+import MyHeadTop from "@/components/MyHeadTop";
 import { resizeImageForUpload } from "@/lib/resizeImage";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 import { rem } from "@/lib/rem";
 import { formatPhone } from "@/lib/phone";
 import { authFetch } from "@/lib/authFetch";
-import { isTestTitle } from "@/lib/categoryAvg";
 import { clearReturningMember } from "@/lib/returningMember";
-import { UI_SECTION, UI_CARD_TITLE, UI_DESC, UI_META, UI_LINK } from "@/lib/uiText";
-import { FieldLabel, FORM_INPUT_FONT_SIZE } from "@/components/FormField";
-import { BTN_CLASS, btnStyle } from "@/lib/uiText";
-import ReferralShareButtons from "@/components/ReferralShareButtons";
+import { navReplace } from "@/lib/appNav";
+import { FieldLabel } from "@/components/FormField";
+import { BTN_CLASS } from "@/lib/uiText";
+import {
+  MY_BADGE,
+  MY_CARD_TITLE,
+  MY_DESC,
+  MY_GROUP,
+  MY_HEAD_BADGE,
+  MY_HEAD_BG,
+  MY_HEAD_EDIT,
+  MY_HEAD_LABEL,
+  MY_HEAD_NAME,
+  MY_HEAD_NUM,
+  MY_HEAD_SUB,
+  MY_INPUT_FONT_SIZE,
+  MY_LINK,
+  MY_META,
+  MY_PANEL_BG,
+  MY_ROW,
+  MY_ROW_RIGHT,
+  MY_TILE_DESC,
+  MY_TILE_TITLE,
+  myBtnStyle,
+} from "@/lib/myText";
 
 type InterestItem = {
   id: string;
@@ -45,17 +65,6 @@ type InterestItem = {
     status: string;
   } | null;
 };
-
-type ReferralItem = {
-  member_no: number | null;
-  is_business: boolean;
-  created_at: string;
-  phone: string;
-  company_name: string | null;
-  business_verified: boolean;
-};
-
-type PartnerStatus = "none" | "pending" | "approved" | "rejected";
 
 type AdminInfo = { name: string; role: string };
 
@@ -74,17 +83,146 @@ type AlertLogItem = {
   } | null;
 };
 
+// 2026-10-12 feat/my-menu-share: MY를 당근식 메뉴로 — 행을 누르면 그 자리에서 펼침(새 화면 없음, 한 번에 하나, 펼침 상태 기억 안 함).
+// 점핑파트너(추천 공유)는 하단 "공유" 탭 /share로 분리.
+type MenuKey = "interests" | "buyRequests" | "alerts" | "password";
+
+const ROW_PAD = "0 22px";
+const DIVIDER = "1px solid #F1F2F4";
+
+function MenuGroup({ title, id, children }: { title: string; id?: string; children: ReactNode }) {
+  return (
+    <section id={id} className="bg-white" style={{ scrollMarginTop: 12 }}>
+      <h2 style={{ ...MY_GROUP, padding: "18px 22px 6px" }}>{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+// 메뉴 행 — 최소 높이 60 · 좌우 22 · 아이콘 24 · 이름 20/700 · 오른쪽 상태 글자 또는 ›(펼침 행은 펼치면 아래로 돎)
+function MenuRow({
+  icon,
+  label,
+  right,
+  open,
+  onClick,
+  href,
+  labelStyle,
+  first,
+  chevron = true,
+  data,
+}: {
+  icon?: ReactNode;
+  label: ReactNode;
+  right?: ReactNode;
+  open?: boolean;
+  onClick?: () => void;
+  href?: string;
+  labelStyle?: CSSProperties;
+  first?: boolean;
+  chevron?: boolean;
+  data?: string;
+}) {
+  const inner = (
+    <>
+      {icon !== undefined && (
+        <span aria-hidden className="flex-shrink-0 flex items-center justify-center" style={{ width: 24, fontSize: 22, lineHeight: 1 }}>
+          {icon}
+        </span>
+      )}
+      <span className="flex-1 min-w-0" style={{ ...MY_ROW, ...labelStyle }}>{label}</span>
+      {right !== undefined && <span className="flex-shrink-0 whitespace-nowrap" style={MY_ROW_RIGHT}>{right}</span>}
+      {chevron && (
+        <span
+          aria-hidden
+          className="flex-shrink-0"
+          style={{ ...MY_ROW_RIGHT, display: "inline-block", transition: "transform .15s", transform: open ? "rotate(90deg)" : "none" }}
+        >
+          ›
+        </span>
+      )}
+    </>
+  );
+  const cls = "w-full flex items-center gap-3 text-left";
+  const style = { minHeight: 60, padding: ROW_PAD, borderTop: first ? undefined : DIVIDER };
+  if (href) {
+    return (
+      <Link href={href} className={cls} style={style} data-my-row={data}>
+        {inner}
+      </Link>
+    );
+  }
+  return (
+    <button type="button" onClick={onClick} className={cls} style={style} aria-expanded={open} data-my-row={data}>
+      {inner}
+    </button>
+  );
+}
+
+// 펼친 패널 — 바탕 #FFF7ED, 글자 17.5 #4B5563
+function MenuPanel({ children, data }: { children: ReactNode; data?: string }) {
+  return (
+    <div data-my-panel={data} style={{ background: MY_PANEL_BG, padding: "16px 22px 20px", ...MY_DESC }}>
+      {children}
+    </div>
+  );
+}
+
+// 머리 "성명 · 회원번호" 사이 가운뎃점 — 폭 1.1em 고정(바깥 -1.1em과 짝)
+function HeadSep() {
+  return (
+    <span aria-hidden style={{ display: "inline-block", width: "1.1em", textAlign: "center" }}>
+      ·
+    </span>
+  );
+}
+
+function Switch({ on }: { on: boolean }) {
+  return (
+    <span
+      className="flex-shrink-0 rounded-full relative"
+      style={{ width: 46, height: 26, background: on ? "var(--color-brandOrange)" : "#E4E7EB", transition: "background 0.15s" }}
+    >
+      <span
+        className="absolute rounded-full bg-white"
+        style={{ width: 20, height: 20, top: 3, left: on ? 23 : 3, transition: "left 0.15s", boxShadow: "0 1px 3px rgba(0,0,0,.25)" }}
+      />
+    </span>
+  );
+}
+
+// 펼친 패널 안 카드(푸시 상태·수신 동의 등)가 조금 늦게 그려져 자리가 밀리므로(2026-10-10 실측 0.7초 뒤 약 190px)
+// 1.5초 동안 두 번 더 맞춤 — 사용자가 직접 스크롤하면 멈춤
+function settleScrollTo(id: string, fallbackId?: string) {
+  let userMoved = false;
+  const stop = () => {
+    userMoved = true;
+  };
+  window.addEventListener("touchstart", stop, { once: true, passive: true });
+  window.addEventListener("wheel", stop, { once: true, passive: true });
+  const go = () => {
+    if (userMoved) return;
+    const el = document.getElementById(id) ?? (fallbackId ? document.getElementById(fallbackId) : null);
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  setTimeout(go, 60);
+  setTimeout(go, 700);
+  setTimeout(go, 1500);
+}
+
+const GROUP_GAP = <div aria-hidden style={{ height: 8, background: "#F2F4F6" }} />;
+
 export default function MyPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [phone, setPhone] = useState("");
   const [memberNo, setMemberNo] = useState<number | null>(null);
-  const [refCode, setRefCode] = useState("");
   const [memberId, setMemberId] = useState<string | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
-  const [alertsOpen, setAlertsOpen] = useState(false);
-  // 2026-09-28: 긴급 공지(부동산·설비 처분) 알림 — 기존 카테고리/지역 매칭 알림과
-  // 완전히 별개의 opt-in. 무분별한 전체발송으로 재고 알림 피로도가 올라가는 걸
-  // 막기 위해 기본 꺼짐, 회원이 직접 켜야만 받는다.
+  const [open, setOpen] = useState<MenuKey | null>(null);
+  const toggleOpen = (k: MenuKey) => setOpen((cur) => (cur === k ? null : k));
+  // 2026-09-28: 긴급 공지(부동산·설비 처분) 알림 — 기존 카테고리 매칭 알림과 완전히 별개의 opt-in.
+  // 무분별한 전체발송으로 재고 알림 피로도가 올라가는 걸 막기 위해 기본 꺼짐, 회원이 직접 켜야만 받는다.
   const [noticeAlertsOptIn, setNoticeAlertsOptIn] = useState(false);
   const [noticeAlertsSaving, setNoticeAlertsSaving] = useState(false);
   // 2026-09-30: 긴급 공지도 sendNoticePush가 deal_alert_ad 동의 회원에게만 보냄 — 동의 없으면 토글을 흐리게(값은 그대로 둠)
@@ -93,9 +231,6 @@ export default function MyPage() {
   const [interests, setInterests] = useState<InterestItem[]>([]);
   const [alertLog, setAlertLog] = useState<AlertLogItem[]>([]);
   const [alertLogCount, setAlertLogCount] = useState(0);
-  const [referrals, setReferrals] = useState<ReferralItem[]>([]);
-  const [shareDeals, setShareDeals] = useState<{ id: string; title: string; deal_price: number | null; price_mode?: string | null; quantity_unit: string | null; price_unit: string | null }[]>([]);
-  const [selectedShareDealId, setSelectedShareDealId] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -103,7 +238,6 @@ export default function MyPage() {
   const [companyName, setCompanyName] = useState("");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [emailExpanded, setEmailExpanded] = useState(false);
   const [businessVerified, setBusinessVerified] = useState(false);
   const [hasBusinessLicense, setHasBusinessLicense] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -112,13 +246,18 @@ export default function MyPage() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
-  // 2026-09-27: 재접속마다 휴대폰 OTP 인증(SMS)을 다시 받아야 하는 게 번거롭다는
-  // 피드백 — 특히 PWA 재설치처럼 세션이 통째로 날아가는 경우, 브라우저에 저장된
-  // 걸로는 어차피 자동 로그인이 불가능하므로 "기억하는 비밀번호"가 유일한 대안.
-  // Supabase Auth가 phone 계정에 비밀번호를 얹는 걸 기본 지원해서(updateUser),
-  // 별도 테이블/해싱 없이 여기서 설정 → /login에서 signInWithPassword로 사용.
-  const [settingPassword, setSettingPassword] = useState(false);
-  // 로그인 화면 권유 시트의 [지금 만들기] → /mypage#password: 비밀번호 설정을 바로 펼침
+  // 2026-09-27: 재접속마다 휴대폰 OTP 인증(SMS)을 다시 받아야 하는 게 번거롭다는 피드백 — "기억하는 비밀번호"가 유일한 대안.
+  // Supabase Auth가 phone 계정에 비밀번호를 얹는 걸 기본 지원해서(updateUser) 여기서 설정 → /login에서 signInWithPassword.
+  const [newPassword, setNewPassword] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordSaved, setPasswordSaved] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [adminInfo, setAdminInfo] = useState<AdminInfo | null>(null);
+  // 푸시 상태 카드를 "알림" 그룹 위에 항상 둘지 — 이 기기가 꺼짐·차단·미구독(또는 매물 알림 동의 없음)이면 true.
+  // null = 확인 전. 한 번 true가 되면 이 화면에선 계속 위에 둠(켠 직후 카드가 패널 안으로 숨어 사라지지 않게)
+  const [pushPinned, setPushPinned] = useState<boolean | null>(null);
+  const { message: toastMessage, showToast } = useToast();
+
   useEffect(() => {
     const load = () =>
       fetchMyConsents().then((c) => {
@@ -130,23 +269,17 @@ export default function MyPage() {
   }, []);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && window.location.hash === "#password") setSettingPassword(true);
-  }, []);
-  const [newPassword, setNewPassword] = useState("");
-  const [passwordSaving, setPasswordSaving] = useState(false);
-  const [passwordSaved, setPasswordSaved] = useState(false);
-  const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [isOfficialPartner, setIsOfficialPartner] = useState(false);
-  const [partnerStatus, setPartnerStatus] = useState<PartnerStatus>("none");
-  const [partnerForm, setPartnerForm] = useState({ businessType: "", channelInfo: "", message: "" });
-  const [partnerSubmitting, setPartnerSubmitting] = useState(false);
-  const [partnerError, setPartnerError] = useState("");
-  const [adminInfo, setAdminInfo] = useState<AdminInfo | null>(null);
-  const { message: toastMessage, showToast } = useToast();
+    if (dealConsent === false) setPushPinned(true);
+  }, [dealConsent]);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) {
       setLoading(false);
+      return;
+    }
+    // 2026-10-12: 점핑파트너가 /share로 분리 — 옛 주소(/mypage#referral)는 공유 화면으로 바꿔 엶
+    if (window.location.hash === "#referral") {
+      navReplace(router, "/share");
       return;
     }
 
@@ -171,7 +304,7 @@ export default function MyPage() {
 
       const { data: member } = await supabase
         .from("members")
-        .select("phone, ref_code, member_no, company_name, name, email, business_verified, business_license_path, avatar_url, notice_alerts_opt_in")
+        .select("phone, member_no, company_name, name, email, business_verified, business_license_path, avatar_url, notice_alerts_opt_in")
         .eq("id", userId)
         .single();
       if (member) {
@@ -184,18 +317,6 @@ export default function MyPage() {
         setHasBusinessLicense(Boolean(member.business_license_path));
         setAvatarUrl(member.avatar_url ?? null);
         setNoticeAlertsOptIn(Boolean(member.notice_alerts_opt_in));
-      }
-
-      if (member?.ref_code) {
-        setRefCode(member.ref_code);
-      } else {
-        // 이 기능이 생기기 전에 가입한 회원 — 지금 처음 코드를 발급해줌
-        const newCode = generateRefCode();
-        const { error: codeError } = await supabase
-          .from("members")
-          .update({ ref_code: newCode })
-          .eq("id", userId);
-        if (!codeError) setRefCode(newCode);
       }
 
       const { data: catRows } = await supabase
@@ -224,12 +345,6 @@ export default function MyPage() {
       setAlertLog((alertLogRows as unknown as AlertLogItem[]) ?? []);
       setAlertLogCount(alertLogTotal ?? 0);
 
-      // 2026-09-29: 토큰을 state에 저장해 재사용하지 않음 — authFetch가 호출할 때마다 최신 토큰(만료 시 갱신)
-      authFetch("/api/my-referrals")
-        .then((res) => (res.ok ? res.json() : { items: [] }))
-        .then((data) => setReferrals(data.items ?? []))
-        .catch(() => {});
-
       authFetch("/api/is-admin")
         .then((res): Promise<{ isAdmin?: boolean; name?: string; role?: string }> => (res.ok ? res.json() : Promise.resolve({})))
         .then((data) => {
@@ -239,105 +354,52 @@ export default function MyPage() {
 
       setLoading(false);
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 이 기기 푸시 상태(읽기 전용 — 권한 요청·저장 없음, 회원 홈 useAlertsOn과 같은 판정)
+  useEffect(() => {
+    if (loading || notLoggedIn) return;
+    let cancelled = false;
+    (async () => {
+      const s = await getPushState();
+      let ok = false;
+      if (s.status === "subscribed") {
+        const st = await fetchPushStatus(s.subscription.endpoint ?? null);
+        ok = Boolean(st && st.thisDeviceSaved && !st.optedOut);
+      }
+      if (!cancelled) setPushPinned((p) => (p === true ? true : !ok));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, notLoggedIn]);
+
+  // 해시로 들어온 경우 — 해당 메뉴를 펼친 채 그 자리로.
   useEffect(() => {
     if (loading || typeof window === "undefined") return;
-    if (window.location.hash === "#referral") {
-      requestAnimationFrame(() => {
-        document.getElementById("referral")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-    }
+    const hash = window.location.hash;
     scrollToServicesIfHash(); // 매물 상세 "점핑 서비스 · 전체 보기"
-    if (window.location.hash === "#alerts") {
-      setAlertsOpen(true);
-      requestAnimationFrame(() => {
-        document.getElementById("alerts")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
+    if (hash === "#alerts") {
+      setOpen("alerts");
+      settleScrollTo("alerts");
     }
-    // 2026-10-10: 매물 상세 ♥ 담기 안내 "보기 ›" → 관심 표시한 매물 구역으로.
-    //   위쪽 구역이 조금 늦게 그려져 자리가 밀리므로(실측 0.7초 뒤 약 190px) 1.5초 동안 두 번 더 맞춤 — 사용자가 직접 스크롤하면 멈춤
-    if (window.location.hash === "#interests-section") {
-      let userMoved = false;
-      const stop = () => { userMoved = true; };
-      window.addEventListener("touchstart", stop, { once: true, passive: true });
-      window.addEventListener("wheel", stop, { once: true, passive: true });
-      const go = () => {
-        if (!userMoved) document.getElementById("interests-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      };
-      requestAnimationFrame(go);
-      setTimeout(go, 700);
-      setTimeout(go, 1500);
+    // 로그인 화면 권유 시트의 [지금 만들기] → /mypage#password: 비밀번호 설정을 바로 펼침
+    if (hash === "#password") {
+      setOpen("password");
+      settleScrollTo("account");
     }
-    // 2026-10-09 PR 4a: 회원 홈 머리 "내 조건 긴급매물 N건" → 알림 조건을 펼친 채 관심 카테고리 구역으로(펼친 뒤 그려지길 기다렸다가)
-    if (window.location.hash === "#categories") {
-      setAlertsOpen(true);
-      setTimeout(() => document.getElementById("alert-categories")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+    // 2026-10-10: 매물 상세 ♥ 담기 안내 "보기 ›" → 관심 표시한 매물(펼친 채)
+    if (hash === "#interests-section") {
+      setOpen("interests");
+      settleScrollTo("interests-section");
+    }
+    // 2026-10-09 PR 4a: 회원 홈 머리 "내 조건 긴급매물 N건" → 알림 패널을 펼친 채 관심 카테고리 구역으로
+    if (hash === "#categories") {
+      setOpen("alerts");
+      settleScrollTo("alert-categories");
     }
   }, [loading]);
-
-  useEffect(() => {
-    if (!isSupabaseConfigured || !supabase) return;
-    // 공유 시 앱 홍보 문구 대신 실제 특가를 보여주는 게 더 잘 클릭됨
-    supabase
-      .from("deals")
-      .select("id, title, deal_price, price_mode, quantity_unit, price_unit")
-      .eq("status", "active")
-      .gt("closes_at", new Date().toISOString()) // 마감 지난 매물은 공유 목록에서 제외
-      .order("created_at", { ascending: false })
-      .limit(20)
-      .then(({ data }) => {
-        // 2026-09-29: 제목에 [테스트]가 들어간 매물은 공유 목록에서 제외 (기본 선택도 실매물 중 최신)
-        const real = (data ?? []).filter((d) => !isTestTitle(d.title)).slice(0, 8);
-        setShareDeals(real);
-        setSelectedShareDealId(real[0]?.id ?? "");
-      });
-  }, []);
-
-  useEffect(() => {
-    if (!memberId || !supabase) return;
-    (async () => {
-      const { data: member } = await supabase
-        .from("members")
-        .select("is_official_partner")
-        .eq("id", memberId)
-        .maybeSingle();
-      if (member?.is_official_partner) {
-        setIsOfficialPartner(true);
-        return;
-      }
-      const { data: req } = await supabase
-        .from("partner_requests")
-        .select("status")
-        .eq("member_id", memberId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (req?.status) setPartnerStatus(req.status as PartnerStatus);
-    })();
-  }, [memberId]);
-
-  async function submitPartnerRequest() {
-    if (!memberId || !supabase) return;
-    if (!partnerForm.businessType.trim() || !partnerForm.channelInfo.trim()) {
-      setPartnerError("업종/채널 정보를 입력해주세요.");
-      return;
-    }
-    setPartnerSubmitting(true);
-    setPartnerError("");
-    const { error } = await supabase.from("partner_requests").insert({
-      member_id: memberId,
-      business_type: partnerForm.businessType.trim(),
-      channel_info: partnerForm.channelInfo.trim(),
-      message: partnerForm.message.trim() || null,
-    });
-    setPartnerSubmitting(false);
-    if (error) {
-      setPartnerError("신청 중 오류가 발생했어요. 다시 시도해주세요.");
-      return;
-    }
-    setPartnerStatus("pending");
-  }
 
   type MessageThread = {
     key: string;
@@ -424,23 +486,6 @@ export default function MyPage() {
     window.location.replace("/"); // 전체 새로고침 — 남은 회원 상태 없이 홈으로
   };
 
-  const shareDeal = shareDeals.find((d) => d.id === selectedShareDealId) ?? null;
-
-  // 공유·QR 링크는 항상 정식 주소 — 비정식 주소(xxx.vercel.app)로 들어온 사람이 공유해도
-  // 그 주소가 퍼지지 않게 (src/lib/siteUrl.ts)
-  const refUrl = refCode
-    ? shareDeal
-      ? `${SITE_URL}/deals/${shareDeal.id}?ref=${refCode}`
-      : `${SITE_URL}/signup?ref=${refCode}`
-    : "";
-
-  // 추천 링크 공유 문구 (ReferralShareButtons가 공유창에 넣음)
-  const shareText = shareDeal
-    ? isNegotiable(shareDeal)
-      ? `[덤핑점핑] ${shareDeal.title} 가격 협의 매물! 이런 재고 알림 매일 받아보세요 → ${refUrl}`
-      : `[덤핑점핑] ${shareDeal.title} ${dealPriceLabel(shareDeal)} 특가! 이런 재고특가 알림 매일 받아보세요 → ${refUrl}`
-    : `점프엑스 덤핑점핑 - 재고 특가 알림 받아보세요! ${refUrl}`;
-
   const save = async () => {
     if (!supabase) return;
     setSaving(true);
@@ -500,8 +545,7 @@ export default function MyPage() {
     }
   };
 
-  // 2026-09-28: 카테고리/지역 알림처럼 별도 "저장" 버튼 없이, 스위치를 누르는
-  // 즉시 반영 — 체크박스 하나짜리 설정이라 저장 단계를 더 두면 오히려 번거로움.
+  // 2026-09-28: 별도 "저장" 버튼 없이, 스위치를 누르는 즉시 반영 — 체크박스 하나짜리 설정이라 저장 단계를 더 두면 오히려 번거로움.
   const toggleNoticeAlerts = async () => {
     if (!supabase || !memberId) return;
     const next = !noticeAlertsOptIn;
@@ -536,19 +580,13 @@ export default function MyPage() {
     authFetch("/api/auth/mark-password").catch(() => {});
     setPasswordSaved(true);
     setNewPassword("");
-    setSettingPassword(false);
-    setTimeout(() => setPasswordSaved(false), 2500);
+    setTimeout(() => setPasswordSaved(false), 4000);
   };
 
-  // 2026-09-27: 프로필 사진은 52px로만 보이므로 업로드 전 브라우저에서 축소.
-  // Vercel 서버리스 함수 요청 본문 한도(4.5MB)를 원본 휴대폰 사진(3~6MB 흔함)이
-  // 넘는 경우가 많아 축소 없이는 "업로드에 실패했어요"가 자주 뜰 수 있음.
-  // 2026-09-28: ImageUploader(매물 사진)도 같은 문제가 있어서 src/lib/resizeImage.ts로
-  // 공용 유틸을 뽑아냄 — 여기서는 아바타 전용 크기(640px)로 호출.
+  // 2026-09-27: 프로필 사진은 작게만 보이므로 업로드 전 브라우저에서 축소(Vercel 요청 본문 한도 4.5MB) — 아바타 전용 크기 640px
   const resizeImageForAvatar = (file: File) => resizeImageForUpload(file, 640, 0.85);
 
-  // 2026-09-27: 프로필 사진 업로드 — 기존 deal-images 업로드 API 재사용, 선택 즉시
-  // 업로드+저장(자동 반영). 본인 행 수정이라 members_self_update RLS로 충분.
+  // 2026-09-27: 프로필 사진 업로드 — 기존 deal-images 업로드 API 재사용, 선택 즉시 업로드+저장. 본인 행 수정이라 members_self_update RLS로 충분.
   const handleAvatarSelect = async (file: File | null) => {
     if (!file || !supabase) return;
     if (!file.type.startsWith("image/")) {
@@ -606,12 +644,18 @@ export default function MyPage() {
     }
   };
 
+  // 머리 숫자 칸 → 해당 메뉴를 펼친 채 그 자리로
+  const openAndScroll = (key: MenuKey, id: string) => {
+    setOpen(key);
+    settleScrollTo(id, key === "alerts" ? "alerts" : "interests-section");
+  };
+
   if (!isSupabaseConfigured) {
     return (
       <main className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
         <div className="text-4xl mb-4">🧪</div>
         <h1 className="font-display text-xl text-navy mb-2">데모 모드예요</h1>
-        <p className="text-gray500" style={UI_DESC}>
+        <p className="text-gray500" style={MY_DESC}>
           Supabase가 연결되면 여기서{" "}
           <br className="hidden sm:inline" />
           관심 매물과 알림 설정을 관리할 수 있어요.
@@ -622,94 +666,27 @@ export default function MyPage() {
 
   if (loading) {
     return (
-      <main className="flex items-center justify-center min-h-screen text-gray500" style={UI_DESC}>
+      <main className="flex items-center justify-center min-h-screen text-gray500" style={MY_DESC}>
         불러오는 중...
       </main>
     );
   }
 
-  if (notLoggedIn) {
-    return (
-      <main className="flex flex-col items-center justify-center min-h-screen px-6 text-center bg-white">
-        {/* 2026-09-27 (재검토): 다크 히어로 톤 대신 화이트로 전환 — 이 화면은
-            브라우징 탭이 아니라 로그인 유도 단일 목적 화면이라 다른 탭과 다크
-            톤을 맞출 이유가 없고, 화이트 배경이 오렌지 CTA를 더 도드라지게 함.
-            로고도 32px→80px(2.5배)로 확대, 캐릭터는 불투명 흰 배경이 박힌
-            manager.png 대신 투명 컷아웃 manager-cut.png로 교체. */}
-        <div className="rounded-xl px-3 py-2 inline-block mb-3">
-          <img src="/images/logo.png" alt="덤핑점핑" className="h-20 w-auto" />
-        </div>
-        <span
-          className="rounded-full font-medium mb-6"
-          style={{ fontSize: rem(11), color: "#6B7480", padding: "3px 9px", background: "#F0F1F3" }}
-        >
-          Powered by JumpX
-        </span>
-        <img
-          src="/images/manager-cut.png"
-          alt="점핑매니저"
-          className="w-24 h-24 object-contain mb-4"
-          style={{ filter: "drop-shadow(0 6px 10px rgba(11,37,64,.2))" }}
-        />
-        <h1 className="font-display text-xl mb-2" style={{ color: "#0B2540" }}>로그인이 필요해요</h1>
-        <p className="mb-6" style={UI_DESC}>
-          이미 가입하셨다면 번호 인증만으로 바로 들어올 수 있어요.
-        </p>
-        <Link
-          href="/login"
-          className={`px-8 ${BTN_CLASS}`}
-          style={btnStyle("primary")}
-        >
-          휴대폰 번호로 로그인
-        </Link>
-        <Link
-          href="/signup"
-          className="mt-3 text-center"
-          style={{ ...UI_LINK, color: "#6B7480", textDecoration: "underline", textUnderlineOffset: 4 }}
-        >
-          처음이신가요? 가입하기
-        </Link>
-        {/* 2026-09-30 (커밋 G): 비로그인 화면에도 사업자 정보 푸터 */}
-        <BusinessFooter className="self-stretch -mx-6 mt-10 text-left" />
-      </main>
-    );
-  }
+  if (notLoggedIn) return <LoginRequired />;
+
+  const categorySummary =
+    categories.length === 0 || categories.length === mockCategories.length ? "전체 카테고리" : categories.join("·");
+  const pushCard = <PushStatusCard />;
 
   return (
     <main className="flex flex-col min-h-screen">
-      <div
-        className="px-5 pt-5 pb-5 text-white"
-        style={{
-          backgroundImage:
-            "radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(120deg, #04101C, #1A4B78)",
-          backgroundSize: "16px 16px, cover",
-        }}
-      >
-        {/* 2026-09-27: buy/sell/deals와 동일한 헤더 구조로 통일 —
-            로고=홈 링크 + Powered by JumpX 배지 / 소제목 라벨+로테이션 태그 행.
-            마이페이지는 프로필 요약 카드라 caption(내 정보)만 맞추고
-            아바타·상호명·배지·통계 블록은 그대로 유지(이 화면의 "타이틀" 역할). */}
-        <div className="flex items-center gap-2 mb-3">
-          <TabLink href="/" className="bg-white rounded-lg px-2.5 py-1.5 inline-block shadow-sm">
-            <img src="/images/logo.png" alt="덤핑점핑" className="h-7 w-auto" />
-          </TabLink>
-          <span
-            className="rounded-full font-medium"
-            style={{ fontSize: rem(11), color: "rgba(255,255,255,0.6)", padding: "3px 9px", background: "rgba(255,255,255,0.08)" }}
-          >
-            Powered by JumpX
-          </span>
-        </div>
-        <div className="flex items-center justify-between flex-wrap gap-y-1.5 mb-2.5">
-          <div className="text-xs font-bold tracking-widest whitespace-nowrap" style={{ color: "#FFD166" }}>
-            내 정보
-          </div>
-          <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
-        </div>
+      <div className="px-5 pt-5 pb-5 text-white" style={MY_HEAD_BG}>
+        {/* 2026-09-27: buy/sell/deals와 동일한 헤더 구조 — 로고=홈 링크 + Powered by JumpX / 소제목 라벨+로테이션 태그 */}
+        <MyHeadTop caption="내 정보" />
         <div className="flex items-center gap-3">
           <div
             className="rounded-full flex items-center justify-center overflow-hidden flex-shrink-0"
-            style={{ width: 52, height: 52, background: "rgba(255,255,255,.14)", fontSize: rem(23) }}
+            style={{ width: 56, height: 56, background: "rgba(255,255,255,.14)", fontSize: rem(24) }}
           >
             {avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -719,842 +696,552 @@ export default function MyPage() {
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="truncate" style={{ fontSize: rem(18), fontWeight: 800, letterSpacing: "-0.02em" }}>
+            <div className="truncate" data-my-head-name style={MY_HEAD_NAME}>
               {companyName || phone || "회원님"}
             </div>
-            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-              {companyName && fullName && (
-                <span style={{ fontSize: rem(14), fontWeight: 600, color: "rgba(255,255,255,.8)" }}>
-                  성명 {fullName}
-                </span>
-              )}
-              {memberNo != null && (
-                <span style={{ fontSize: rem(14), fontWeight: 600, color: "rgba(255,255,255,.8)" }}>
-                  {companyName && fullName && "· "}회원번호 <span className="font-mono">{formatMemberNo(memberNo)}</span>
-                </span>
-              )}
+            {/* 성명 · 회원번호 — 칸마다 앞에 가운뎃점을 붙이고 바깥에서 왼쪽 1.1em을 잘라, 줄 맨 앞 칸의 점은 안 보이게.
+                가운뎃점+회원번호는 한 덩어리(nowrap)로 같이 줄바꿈 — 글자 130%에서 "· 회원번호"가 줄 맨 앞에 오던 것 */}
+            <div className="mt-1 overflow-hidden" style={MY_HEAD_SUB}>
+              <div className="flex items-center flex-wrap" style={{ marginLeft: "-1.1em" }}>
+                {companyName && fullName && (
+                  <span data-my-head-sep-item>
+                    <HeadSep />
+                    <span style={MY_HEAD_SUB}>성명 {fullName}</span>
+                  </span>
+                )}
+                {memberNo != null && (
+                  <span className="whitespace-nowrap" data-my-head-sep-item>
+                    <HeadSep />
+                    <span style={MY_HEAD_SUB}>
+                      회원번호 <span className="font-mono">{formatMemberNo(memberNo)}</span>
+                    </span>
+                  </span>
+                )}
+              </div>
             </div>
-            {/* 2026-09-27: 신뢰 신호(사업자 인증·관리자)가 12px로 너무 작아 존재감이
-                약하다는 피드백 — 배지 크기를 키움. */}
-            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-              {(businessVerified || hasBusinessLicense) && (
-                <span
-                  className="font-bold rounded-md"
-                  style={{
-                    fontSize: rem(14),
-                    padding: "4px 10px",
-                    background: businessVerified ? "rgba(47,158,68,.25)" : "rgba(255,255,255,.15)",
-                    color: businessVerified ? "#7EE2A0" : "rgba(255,255,255,.7)",
-                  }}
-                >
-                  {businessVerified ? "✔ 사업자 인증" : "사업자 인증 대기중"}
-                </span>
-              )}
-              {adminInfo && (
-                <Link
-                  href="/admin"
-                  className="font-bold rounded-md inline-flex items-center gap-1"
-                  style={{ fontSize: rem(14), padding: "4px 10px", background: "rgba(255,209,102,.2)", color: "#FFD166" }}
-                  title={`관리자 화면 · ${adminInfo.name}`}
-                >
-                  🛡️ 관리자
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
-        {/* 2026-09-27: 이모지가 숫자 위에 세로로 쌓여 있던 걸 숫자 옆(가로)으로
-            붙여 카드 높이를 줄이고 더 컴팩트하게 정리. */}
-        <div className="flex gap-2 mt-4.5">
-          {/* 2026-09-27: 3개 타일이 전부 클릭 가능한 버튼처럼 보이는데 실제론 그냥
-              <div>라 눌러도 반응이 없었음 — "받은 알림"/"관심 매물"은 이 페이지
-              더 아래에 해당 목록 섹션이 이미 있어서, 눌렀을 때 그 섹션으로
-              스크롤 이동하도록 연결(추천 회원은 이미 아래쪽 "대시보드 열기 →"
-              링크가 별도로 있어서 그대로 둠). */}
-          <button
-            type="button"
-            onClick={() =>
-              document.getElementById("alert-log-section")?.scrollIntoView({ behavior: "smooth", block: "start" })
-            }
-            className="flex-1 rounded-xl text-center"
-            style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px", border: "none" }}
-          >
-            <div className="flex items-center justify-center gap-1.5">
-              <span style={{ fontSize: rem(14) }}>🔔</span>
-              <span className="font-mono font-bold" style={{ fontSize: rem(18), color: "var(--color-brandOrangeAccent)" }}>{alertLogCount}</span>
-            </div>
-            <div className="mt-1 font-bold" style={{ fontSize: rem(14), color: "rgba(255,255,255,.8)" }}>받은 알림</div>
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              document.getElementById("interests-section")?.scrollIntoView({ behavior: "smooth", block: "start" })
-            }
-            className="flex-1 rounded-xl text-center"
-            style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px", border: "none" }}
-          >
-            <div className="flex items-center justify-center gap-1.5">
-              <span style={{ fontSize: rem(14) }}>❤️</span>
-              <span className="font-mono font-bold" style={{ fontSize: rem(18), color: "var(--color-brandOrangeAccent)" }}>{interests.length}</span>
-            </div>
-            <div className="mt-1 font-bold" style={{ fontSize: rem(14), color: "rgba(255,255,255,.8)" }}>관심 매물</div>
-          </button>
-          <div className="flex-1 rounded-xl text-center" style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px" }}>
-            <div className="flex items-center justify-center gap-1.5">
-              <span style={{ fontSize: rem(14) }}>🎁</span>
-              <span className="font-mono font-bold" style={{ fontSize: rem(18), color: "var(--color-brandOrangeAccent)" }}>{referrals.length}</span>
-            </div>
-            <div className="mt-1 font-bold" style={{ fontSize: rem(14), color: "rgba(255,255,255,.8)" }}>추천 회원</div>
-          </div>
-        </div>
-
-        {profileComplete && !editingProfile && (
-          <div
-            className="flex items-center justify-between gap-3 mt-3 pt-3"
-            style={{ borderTop: "1px solid rgba(255,255,255,.12)" }}
-          >
-            {/* 2026-09-29: 긴 이메일이 단어 중간에서 꺾이던 문제 — 한 줄 말줄임, 누르면 전체(다시 누르면 접힘) */}
-            <button
-              type="button"
-              onClick={() => email && setEmailExpanded((v) => !v)}
-              title={email || undefined}
-              className={`min-w-0 flex-1 text-left ${emailExpanded ? "" : "truncate"}`}
-              style={{ fontSize: rem(14), color: "rgba(255,255,255,.7)", overflowWrap: emailExpanded ? "anywhere" : undefined }}
-            >
-              {email || "이메일 미등록"}
-            </button>
-            <div className="flex items-center gap-3 flex-shrink-0">
-              {/* 2026-09-27: 재접속마다(특히 재설치 후) 휴대폰 OTP를 다시 받아야
-                  해서 번거롭다는 피드백 — 비밀번호를 설정해두면 /login에서
-                  SMS 없이 바로 로그인 가능(잊으면 그냥 기존 OTP로 로그인). */}
-              <button
-                type="button"
-                onClick={() => setSettingPassword((v) => !v)}
-                className="whitespace-nowrap"
-                style={{ ...UI_LINK, color: "#FFD166" }}
-              >
-                비밀번호 설정 ›
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditingProfile(true)}
-                className="whitespace-nowrap"
-                style={{ ...UI_LINK, color: "#FFD166" }}
-              >
-                정보 수정 ›
-              </button>
-            </div>
-          </div>
-        )}
-
-        {passwordSaved && (
-          <div className="mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,.12)" }}>
-            <span className="font-bold" style={{ fontSize: rem(14), color: "#5EEAD4" }}>
-              ✔ 비밀번호를 설정했어요 · 다음부터 SMS 없이 로그인할 수 있어요
-            </span>
-          </div>
-        )}
-
-        {settingPassword && (
-          <div className="mt-3 pt-3 flex flex-col gap-2" style={{ borderTop: "1px solid rgba(255,255,255,.12)" }}>
-            <input
-              type="password"
-              className="w-full rounded-xl outline-none"
-              style={{ border: "1.5px solid rgba(255,255,255,.25)", background: "rgba(255,255,255,.08)", color: "#fff", padding: 12, fontSize: FORM_INPUT_FONT_SIZE }}
-              placeholder="새 비밀번호 (8자 이상)"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-            />
-            {passwordError && (
-              <span className="font-bold" style={{ fontSize: rem(14), color: "#FF8A8A" }}>{passwordError}</span>
+            {/* 2026-09-27: 신뢰 신호(사업자 인증·관리자) 배지 */}
+            {((businessVerified || hasBusinessLicense) || adminInfo) && (
+              <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                {(businessVerified || hasBusinessLicense) && (
+                  <span
+                    className="rounded-md"
+                    style={{
+                      ...MY_HEAD_BADGE,
+                      padding: "4px 10px",
+                      background: businessVerified ? "rgba(47,158,68,.25)" : "rgba(255,255,255,.15)",
+                      color: businessVerified ? "#7EE2A0" : "rgba(255,255,255,.7)",
+                    }}
+                  >
+                    {businessVerified ? "✔ 사업자 인증" : "사업자 인증 대기중"}
+                  </span>
+                )}
+                {adminInfo && (
+                  <Link
+                    href="/admin"
+                    className="rounded-md inline-flex items-center gap-1"
+                    style={{ ...MY_HEAD_BADGE, padding: "4px 10px", background: "rgba(255,209,102,.2)", color: "#FFD166" }}
+                    title={`관리자 화면 · ${adminInfo.name}`}
+                    data-admin-badge
+                  >
+                    🛡️ 관리자
+                  </Link>
+                )}
+              </div>
             )}
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={savePassword}
-                disabled={passwordSaving}
-                className={`flex-1 ${BTN_CLASS}`}
-                style={btnStyle("primary")}
-              >
-                {passwordSaving ? "저장 중..." : "저장"}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSettingPassword(false);
-                  setPasswordError(null);
-                  setNewPassword("");
-                }}
-                className={`flex-1 ${BTN_CLASS}`}
-                // 네이비 헤더 위라 보조 버튼을 어두운 배경용(투명 + 흰 테두리)으로
-                style={{ ...btnStyle("secondary"), background: "transparent", border: "1.5px solid rgba(255,255,255,.35)", color: "#fff" }}
-              >
-                취소
-              </button>
-            </div>
+          </div>
+        </div>
+
+        {/* 숫자 칸 2개(받은 알림·관심 매물) — 누르면 그 메뉴를 펼친 채 그 자리로. 2026-10-12: 추천 회원 칸은 /share 머리로 */}
+        <div className="flex gap-2 mt-4.5">
+          {[
+            { key: "alerts" as const, target: "alert-log-section", icon: "🔔", n: alertLogCount, label: "받은 알림" },
+            { key: "interests" as const, target: "interests-section", icon: "❤️", n: interests.length, label: "관심 매물" },
+          ].map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              data-my-stat={t.key}
+              onClick={() => openAndScroll(t.key, t.target)}
+              className="flex-1 min-w-0 rounded-xl text-center"
+              style={{ background: "rgba(255,255,255,.1)", padding: "12px 8px", border: "none" }}
+            >
+              <div className="flex items-center justify-center gap-1.5">
+                <span style={{ fontSize: rem(17) }}>{t.icon}</span>
+                <span className="font-mono" style={{ ...MY_HEAD_NUM, color: "var(--color-brandOrangeAccent)" }}>{t.n}</span>
+              </div>
+              <div className="mt-1" style={MY_HEAD_LABEL}>{t.label}</div>
+            </button>
+          ))}
+        </div>
+
+        {/* 2026-10-12: 이메일 줄 삭제(이메일은 정보 수정 화면 안에) · "비밀번호 설정"은 아래 계정 메뉴로 */}
+        {profileComplete && !editingProfile && (
+          <div className="flex justify-end mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,.12)" }}>
+            <button type="button" onClick={() => setEditingProfile(true)} className="whitespace-nowrap" style={MY_HEAD_EDIT} data-my-edit>
+              정보 수정 ›
+            </button>
           </div>
         )}
       </div>
 
-      <div className="flex-1 px-5 py-5 flex flex-col gap-6">
-        {(!profileComplete || editingProfile) && (
-          <div className="flex flex-col gap-4">
-              <div>
-                <div className="mb-1" style={UI_CARD_TITLE}>프로필 완성하기</div>
-                <p style={UI_DESC}>
-                  채워주시면 점핑매니저가 더 정확하게 도와드려요. 전부 선택 입력이라 지금 안 채워도 괜찮아요.
-                </p>
-              </div>
+      {(!profileComplete || editingProfile) && (
+        <div className="px-5 py-5 flex flex-col gap-4" data-my-profile-form>
+          <div>
+            <div className="mb-1" style={MY_CARD_TITLE}>{profileComplete ? "정보 수정" : "프로필 완성하기"}</div>
+            <p style={MY_DESC}>
+              채워주시면 점핑매니저가 더 정확하게 도와드려요. 전부 선택 입력이라 지금 안 채워도 괜찮아요.
+            </p>
+          </div>
 
-              <div>
-                <FieldLabel need="optional">프로필 사진</FieldLabel>
-                <div className="flex items-center gap-3">
-                  <div
-                    className="rounded-full flex items-center justify-center overflow-hidden flex-shrink-0"
-                    style={{ width: 60, height: 60, background: "#F5F6F8", fontSize: rem(26) }}
-                  >
-                    {avatarUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={avatarUrl} alt="프로필 사진" className="w-full h-full object-cover" />
-                    ) : (
-                      "🏪"
+          <div>
+            <FieldLabel need="optional">프로필 사진</FieldLabel>
+            <div className="flex items-center gap-3">
+              <div
+                className="rounded-full flex items-center justify-center overflow-hidden flex-shrink-0"
+                style={{ width: 60, height: 60, background: "#F5F6F8", fontSize: rem(26) }}
+              >
+                {avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={avatarUrl} alt="프로필 사진" className="w-full h-full object-cover" />
+                ) : (
+                  "🏪"
+                )}
+              </div>
+              <div className="flex flex-col items-start gap-1.5">
+                <label className="rounded-lg cursor-pointer text-navy" style={{ ...MY_LINK, padding: "8px 14px", border: "2px solid #E4E7EB" }}>
+                  {avatarUploading ? "업로드 중..." : avatarUrl ? "사진 변경" : "사진 추가"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={avatarUploading}
+                    onChange={(e) => {
+                      handleAvatarSelect(e.target.files?.[0] ?? null);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                {avatarUrl && !avatarUploading && (
+                  <button type="button" onClick={handleAvatarRemove} className="underline text-left" style={MY_META}>
+                    기본 아이콘으로 되돌리기
+                  </button>
+                )}
+              </div>
+            </div>
+            {avatarError && <p className="text-orange mt-1.5" style={{ fontSize: rem(16) }}>{avatarError}</p>}
+          </div>
+
+          <div>
+            <FieldLabel need="optional">상호명</FieldLabel>
+            <input
+              className="w-full border-2 border-gray200 rounded-xl px-4 outline-none focus:border-orange"
+              style={{ height: "54px", fontSize: MY_INPUT_FONT_SIZE }}
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              placeholder="예: 웰컴코리아(주)"
+            />
+          </div>
+
+          <div>
+            <FieldLabel need="optional">성명</FieldLabel>
+            <input
+              className="w-full border-2 border-gray200 rounded-xl px-4 outline-none focus:border-orange"
+              style={{ height: "54px", fontSize: MY_INPUT_FONT_SIZE }}
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="담당자 성함"
+            />
+          </div>
+
+          <div>
+            <FieldLabel need="optional">이메일</FieldLabel>
+            <input
+              type="email"
+              data-my-email
+              className="w-full border-2 border-gray200 rounded-xl px-4 outline-none focus:border-orange"
+              style={{ height: "54px", fontSize: MY_INPUT_FONT_SIZE }}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="example@company.com"
+            />
+          </div>
+
+          <BusinessLicenseUploader
+            status={businessVerified ? "verified" : hasBusinessLicense ? "pending" : "none"}
+            onUploaded={() => {
+              setHasBusinessLicense(true);
+              setBusinessVerified(false);
+              showToast("업로드됐어요. 확인 후 인증 완료로 전환돼요.");
+            }}
+          />
+
+          <div className="flex gap-2">
+            <button onClick={saveProfile} disabled={profileSaving} className={`flex-1 ${BTN_CLASS}`} style={myBtnStyle("primary")}>
+              {profileSaving ? (
+                "저장 중..."
+              ) : profileSaved ? (
+                <span className="inline-flex items-center justify-center gap-1">
+                  <CheckCircle className="w-4 h-4" /> 저장됐어요
+                </span>
+              ) : (
+                "프로필 저장"
+              )}
+            </button>
+            {profileComplete && (
+              <button type="button" onClick={() => setEditingProfile(false)} className={BTN_CLASS} style={myBtnStyle("secondary")}>
+                취소
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 flex flex-col" style={{ background: "#F2F4F6" }}>
+        {/* ── 내 거래 ── */}
+        <MenuGroup title="내 거래">
+          <div id="interests-section" style={{ scrollMarginTop: 12 }}>
+            <MenuRow
+              first
+              data="interests"
+              icon="♡"
+              label="관심 표시한 매물"
+              right={`${interests.length}개`}
+              open={open === "interests"}
+              onClick={() => toggleOpen("interests")}
+            />
+            {open === "interests" && (
+              <MenuPanel data="interests">
+                {interests.length === 0 ? (
+                  <p className="text-center py-2">아직 관심 표시한 매물이 없어요.</p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {interests.map((i) =>
+                      i.deals ? (
+                        <Link
+                          key={i.id}
+                          href={`/deals/${i.deals.id}`}
+                          className="bg-white border border-gray200 rounded-xl px-4 py-3 flex items-center justify-between gap-2"
+                        >
+                          <div className="min-w-0">
+                            <div className="truncate" style={MY_CARD_TITLE}>{i.deals.title}</div>
+                            <div className="mt-0.5 truncate" style={{ ...MY_LINK, color: "#0B2540" }}>
+                              {dealPriceLabel(i.deals)}
+                            </div>
+                          </div>
+                          <span
+                            className="px-2.5 py-1 rounded-full flex-shrink-0 whitespace-nowrap"
+                            style={
+                              i.deals.status === "active"
+                                ? { ...MY_BADGE, background: "#E8F8EC", color: "#1D8A44" }
+                                : { ...MY_BADGE, background: "#F5F6F8", color: "#6B7480" }
+                            }
+                          >
+                            {i.deals.status === "active" ? "진행중" : "마감"}
+                          </span>
+                        </Link>
+                      ) : null
                     )}
                   </div>
-                  <div className="flex flex-col items-start gap-1.5">
-                    <label
-                      className="rounded-lg cursor-pointer text-navy"
-                      style={{ ...UI_LINK, padding: "8px 14px", border: "2px solid #E4E7EB" }}
-                    >
-                      {avatarUploading ? "업로드 중..." : avatarUrl ? "사진 변경" : "사진 추가"}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        disabled={avatarUploading}
-                        onChange={(e) => {
-                          handleAvatarSelect(e.target.files?.[0] ?? null);
-                          e.target.value = "";
-                        }}
-                      />
-                    </label>
-                    {avatarUrl && !avatarUploading && (
+                )}
+              </MenuPanel>
+            )}
+          </div>
+          <MenuRow data="buyRequests" icon="🔍" label="내 구매 요청" open={open === "buyRequests"} onClick={() => toggleOpen("buyRequests")} />
+          {open === "buyRequests" && (
+            <MenuPanel data="buyRequests">
+              <MyBuyRequests inMenu />
+            </MenuPanel>
+          )}
+          {/* 예전 "긴급 매물 등록하기" 카드와 같은 이동(/sell) */}
+          <MenuRow data="sell" icon="＋" label="매물 등록하기" href="/sell" />
+        </MenuGroup>
+
+        {GROUP_GAP}
+
+        {/* ── 알림 ── 푸시가 꺼짐·차단·미구독이면 상태 카드를 그룹 위에 항상 보이게 */}
+        <div id="alerts" style={{ scrollMarginTop: 12 }}>
+          {pushPinned === true && (
+            <div className="bg-white" data-push-pinned style={{ padding: "16px 22px 2px" }}>
+              {pushCard}
+            </div>
+          )}
+          <MenuGroup title="알림">
+            <MenuRow
+              first
+              data="alerts"
+              icon="🔔"
+              label="알림 받기·조건"
+              right={categories.length === 0 || categories.length === mockCategories.length ? "전체" : `${categories.length}개`}
+              open={open === "alerts"}
+              onClick={() => toggleOpen("alerts")}
+            />
+            {open === "alerts" && (
+              <MenuPanel data="alerts">
+                <div className="flex flex-col gap-3">
+                  {pushPinned === false && pushCard}
+                  <ConsentToggles />
+                  <div id="alert-categories" className="rounded-2xl p-4 bg-white" style={{ border: "1px solid #E4E7EB", scrollMarginTop: 12 }}>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span style={MY_CARD_TITLE}>내 알림 조건</span>
                       <button
                         type="button"
-                        onClick={handleAvatarRemove}
-                        className="underline"
-                        style={UI_META}
+                        onClick={() => setCategories(categories.length === mockCategories.length ? [] : [...mockCategories])}
+                        className="text-orange whitespace-nowrap"
+                        style={MY_LINK}
                       >
-                        기본 아이콘으로 되돌리기
+                        {categories.length === mockCategories.length ? "전체 해제" : "전체 선택"}
                       </button>
+                    </div>
+                    <p className="mb-3" style={MY_META}>{categorySummary}</p>
+                    {/* 2026-09-27: 가입 카테고리 선택 화면과 같은 톤 — 흰 배경 + 선택 시 주황 테두리 */}
+                    <div className="grid grid-cols-3 gap-2">
+                      {mockCategories.map((c) => {
+                        const picked = categories.includes(c);
+                        return (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => toggle(categories, setCategories, c)}
+                            aria-pressed={picked}
+                            className="flex flex-col items-center justify-center gap-1.5 rounded-xl py-3.5 px-1 text-center min-w-0"
+                            style={{ background: "#fff", border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB" }}
+                          >
+                            <span
+                              className="rounded-full flex items-center justify-center flex-shrink-0"
+                              style={{ width: 32, height: 32, fontSize: rem(16), background: categoryColors[c].bg }}
+                            >
+                              {categoryIcons[c]}
+                            </span>
+                            <span className="font-bold leading-tight" style={{ fontSize: rem(16), color: "#1A1F26" }}>
+                              {c}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <button onClick={save} disabled={saving} className={`w-full ${BTN_CLASS}`} style={myBtnStyle("primary")} data-my-save>
+                    {saving ? (
+                      "저장 중..."
+                    ) : saved ? (
+                      <span className="inline-flex items-center justify-center gap-1">
+                        <CheckCircle className="w-4 h-4" /> 저장됐어요
+                      </span>
+                    ) : (
+                      "설정 저장"
                     )}
-                  </div>
-                </div>
-                {avatarError && <p className="text-orange mt-1.5" style={{ fontSize: rem(14) }}>{avatarError}</p>}
-              </div>
+                  </button>
+                  {saveError && <div className="text-orange font-medium" style={{ fontSize: rem(16) }}>{saveError}</div>}
 
-              <div>
-                <FieldLabel need="optional">상호명</FieldLabel>
-                <input
-                  className="w-full border-2 border-gray200 rounded-xl px-4 outline-none focus:border-orange"
-                  style={{ height: "52px", fontSize: FORM_INPUT_FONT_SIZE }}
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  placeholder="예: 웰컴코리아(주)"
-                />
-              </div>
-
-              <div>
-                <FieldLabel need="optional">성명</FieldLabel>
-                <input
-                  className="w-full border-2 border-gray200 rounded-xl px-4 outline-none focus:border-orange"
-                  style={{ height: "52px", fontSize: FORM_INPUT_FONT_SIZE }}
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="담당자 성함"
-                />
-              </div>
-
-              <div>
-                <FieldLabel need="optional">이메일</FieldLabel>
-                <input
-                  type="email"
-                  className="w-full border-2 border-gray200 rounded-xl px-4 outline-none focus:border-orange"
-                  style={{ height: "52px", fontSize: FORM_INPUT_FONT_SIZE }}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="example@company.com"
-                />
-              </div>
-
-              <BusinessLicenseUploader
-                status={businessVerified ? "verified" : hasBusinessLicense ? "pending" : "none"}
-                onUploaded={() => {
-                  setHasBusinessLicense(true);
-                  setBusinessVerified(false);
-                  showToast("업로드됐어요. 확인 후 인증 완료로 전환돼요.");
-                }}
-              />
-
-              <div className="flex gap-2">
-                <button
-                  onClick={saveProfile}
-                  disabled={profileSaving}
-                  className={`flex-1 ${BTN_CLASS}`}
-                  style={btnStyle("primary")}
-                >
-                  {profileSaving ? (
-                    "저장 중..."
-                  ) : profileSaved ? (
-                    <span className="inline-flex items-center justify-center gap-1">
-                      <CheckCircle className="w-4 h-4" /> 저장됐어요
-                    </span>
-                  ) : (
-                    "프로필 저장"
+                  {alertLog.length > 0 && (
+                    <div id="alert-log-section" className="mt-2" style={{ scrollMarginTop: 12 }}>
+                      <div className="flex items-center justify-between mb-2.5">
+                        <span style={MY_CARD_TITLE}>최근 받은 알림</span>
+                        <span style={MY_META}>최근 활동</span>
+                      </div>
+                      <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #E4E7EB", background: "#fff" }}>
+                        {alertLog.map((a) => {
+                          if (!a.deals) return null;
+                          const { closed, urgent } = dealUrgencyState(a.deals.closes_at);
+                          const discount =
+                            !isNegotiable(a.deals) && a.deals.original_price && a.deals.deal_price != null
+                              ? Math.round(((a.deals.original_price - a.deals.deal_price) / a.deals.original_price) * 100)
+                              : 0;
+                          return (
+                            <Link
+                              key={a.id}
+                              href={`/deals/${a.deals.id}`}
+                              className="flex items-center gap-2.5 w-full text-left"
+                              style={{ borderBottom: "1px solid #F1F3F5", padding: "13px 14px" }}
+                            >
+                              <span className="flex-1 min-w-0">
+                                <span className="block truncate" style={{ ...MY_LINK, color: "#1A1F26" }}>{a.deals.title}</span>
+                                <span className="block mt-0.5" style={MY_META}>
+                                  {formatRelativeTime(a.sent_at)} · {a.deals.categories?.name ?? "기타"}
+                                  {discount > 0 && ` · -${discount}%`}
+                                </span>
+                              </span>
+                              <span
+                                className="flex-shrink-0 whitespace-nowrap"
+                                style={{ ...MY_BADGE, color: closed ? "#6B7480" : urgent ? "var(--color-urgent)" : "var(--color-verified)" }}
+                              >
+                                {closed ? "마감" : urgent ? "마감임박" : "진행중"}
+                              </span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </div>
                   )}
-                </button>
-                {profileComplete && (
-                  <button
-                    type="button"
-                    onClick={() => setEditingProfile(false)}
-                    className={BTN_CLASS}
-                    style={btnStyle("secondary")}
-                  >
-                    취소
-                  </button>
-                )}
-              </div>
-          </div>
-        )}
-
-        <div id="referral" className="border-t border-gray200 pt-5">
-          <div className="mb-1 flex items-center gap-1.5" style={UI_SECTION}>
-            🤝 점핑파트너
-            <span className="font-medium bg-gray100 px-2 py-0.5 rounded-full" style={UI_META}>
-              {referrals.length}명 추천함
-            </span>
-          </div>
-          <p className="mb-3" style={UI_DESC}>
-            아래 링크로 가입하면 내가 추천한 회원으로 따로 관리돼요.
-          </p>
-
-          {shareDeals.length > 0 ? (
-            <label className="mb-1.5 block font-bold" style={UI_META}>공유할 매물 선택</label>
-          ) : (
-            <p className="mb-2" style={UI_META}>공유할 매물이 아직 없어요 · 가입 추천 링크로 보내져요</p>
-          )}
-          {shareDeals.length > 0 && (
-            <select
-              value={selectedShareDealId}
-              onChange={(e) => setSelectedShareDealId(e.target.value)}
-              className="w-full border-2 border-gray200 rounded-xl mb-2 outline-none"
-              style={{ padding: "10px 12px", color: "#0B2540", ...UI_LINK }}
+                </div>
+              </MenuPanel>
+            )}
+            {/* 2026-09-28: 긴급 공지(부동산·설비 처분) — "내 알림 조건"과 별개의 opt-in, 기본 꺼짐. 누르는 즉시 저장 */}
+            <button
+              type="button"
+              onClick={toggleNoticeAlerts}
+              disabled={noticeAlertsSaving || noticeLocked}
+              aria-pressed={noticeAlertsOptIn}
+              data-my-row="notice"
+              className={`w-full flex items-center gap-3 text-left ${noticeLocked ? "disabled:opacity-45" : "disabled:opacity-60"}`}
+              style={{ minHeight: 60, padding: "10px 22px", borderTop: DIVIDER }}
             >
-              {shareDeals.map((d) => (
-                <option key={d.id} value={d.id}>
-                  📦 {d.title} · {dealPriceLabel(d)}
-                </option>
-              ))}
-              <option value="">🔗 매물 없이 가입 추천만 보내기</option>
-            </select>
-          )}
-
-          {/* design-v2: URL 박스 + 복사 + 공유 버튼 3개가 한 줄에 나열되고 QR이
-              항상 펼쳐져 있어 복잡해 보인다는 피드백 → 카카오톡 오픈채팅방 서랍
-              스타일(아이콘+라벨 3열, QR은 탭해서 펼침) 벤치마킹해 아이콘 그리드로
-              압축 (2026-09-26). URL 전체 텍스트는 작은 캡션으로만 남김. */}
-          {/* 2026-09-29: "내 추천 회원" 화면과 같은 공용 버튼 */}
-          <ReferralShareButtons refUrl={refUrl} shareText={shareText} />
-
-          <div className="mt-6 rounded-2xl" style={{ background: "#FFF9EC", border: "1px solid #F0DCA8", padding: "14px 15px" }}>
-            <h3 style={{ ...UI_CARD_TITLE, color: "#0B2540" }}>🏅 공식 점핑파트너</h3>
-            {!isOfficialPartner && (
-              <>
-                <p className="mt-1.5" style={UI_DESC}>
-                  이미 덤핑·재고 유통업, 도매업, 밴드/카톡채널/블로그 등 SNS 운영자, 대기업 대리점,
-                  제조·수입·커뮤니티 운영자로 활동 중이신가요? 공급자이자 수요자 역할을 함께 할 수 있는
-                  리더에게 드리는 공식 등급입니다.
-                </p>
-                <ul className="mt-2.5 space-y-1.5">
-                  {[
-                    "공식 파트너 배지 표시",
-                    "향후 리워드 제도 도입 시 우선 적용",
-                    "점핑매니저와 우선 연결",
-                    "내 판매·구매 신청 현황을 마이페이지에서 한 번에 확인",
-                  ].map((b) => (
-                    <li key={b} className="flex items-start gap-1.5" style={UI_DESC}>
-                      <span style={{ color: "#2F9E44", fontWeight: 900 }}>✔</span>{b}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-            {isOfficialPartner && (
-              // 2026-09-29: 실제로 적용되는 건 배지뿐 — 리워드·우선 연결은 등급제 오픈 전이라 따로 안내
-              <div className="mt-1.5">
-                <p style={UI_DESC}>공식 파트너 배지를 받았어요.</p>
-                <p className="mt-0.5" style={UI_META}>우선 리워드 · 점핑매니저 우선 연결은 등급제 오픈 시 제공돼요.</p>
-              </div>
-            )}
-
-            {isOfficialPartner ? (
-              <div className="mt-2.5 inline-flex items-center gap-1.5 rounded-full" style={{ background: "#E8F8EC", padding: "6px 12px" }}>
-                <span style={{ color: "#2F9E44", fontWeight: 900 }}>✔</span>
-                <span style={{ ...UI_LINK, color: "#2F9E44" }}>공식 점핑파트너입니다</span>
-              </div>
-            ) : partnerStatus === "pending" ? (
-              <div className="flex items-center gap-2.5 mt-2.5 rounded-xl" style={{ background: "#FFF4E0", padding: "12px 13px" }}>
-                <span className="font-bold flex-shrink-0 rounded" style={{ fontSize: rem(14), padding: "3px 9px", background: "#F5E3BC", color: "#966B00" }}>심사중</span>
-                <span className="flex-1" style={UI_DESC}>
-                  신청서를 검토하고 있어요. 보통 2영업일 안에 결과를 알려드립니다.
-                </span>
-              </div>
-            ) : partnerStatus === "rejected" ? (
-              <p className="mt-2.5 rounded-xl text-center" style={{ background: "#F5F6F8", padding: "10px", ...UI_DESC }}>
-                신청이 반려되었어요. 문의는 점핑매니저에게 연락주세요.
+              <span aria-hidden className="flex-shrink-0 flex items-center justify-center" style={{ width: 24, fontSize: 22, lineHeight: 1 }}>📢</span>
+              <span className="flex-1 min-w-0">
+                <span className="block" style={MY_ROW}>긴급 공지 알림</span>
+                <span className="block mt-0.5" style={MY_META}>폐업·정리 부동산·설비 소식 — 재고 매물 알림과 별개예요</span>
+              </span>
+              <Switch on={noticeAlertsOptIn} />
+            </button>
+            {noticeLocked && (
+              <p className="font-medium" style={{ fontSize: rem(16), color: "#4B5563", padding: "0 22px 14px 58px" }}>
+                매물 알림 수신 동의 후 받을 수 있어요
               </p>
-            ) : (
-              <div className="mt-2.5 space-y-2.5">
-                <input
-                  className="w-full rounded-xl outline-none"
-                  style={{ border: "1.5px solid #E4D5AE", padding: 12, fontSize: FORM_INPUT_FONT_SIZE }}
-                  placeholder="업종/사업형태 (예: 냉동수산물 도매)"
-                  value={partnerForm.businessType}
-                  onChange={(e) => setPartnerForm((f) => ({ ...f, businessType: e.target.value }))}
-                />
-                <input
-                  className="w-full rounded-xl outline-none"
-                  style={{ border: "1.5px solid #E4D5AE", padding: 12, fontSize: FORM_INPUT_FONT_SIZE }}
-                  placeholder="채널 정보 (카카오톡 채널/블로그 URL 등)"
-                  value={partnerForm.channelInfo}
-                  onChange={(e) => setPartnerForm((f) => ({ ...f, channelInfo: e.target.value }))}
-                />
-                <textarea
-                  className="w-full rounded-xl outline-none resize-none"
-                  style={{ border: "1.5px solid #E4D5AE", padding: 12, fontSize: FORM_INPUT_FONT_SIZE, lineHeight: 1.5, height: 80 }}
-                  placeholder="추가로 전달하고 싶은 내용 (선택)"
-                  value={partnerForm.message}
-                  onChange={(e) => setPartnerForm((f) => ({ ...f, message: e.target.value }))}
-                />
-                {partnerError && <p style={{ fontSize: rem(15), color: "var(--color-orange)" }}>{partnerError}</p>}
-                <button
-                  onClick={submitPartnerRequest}
-                  disabled={partnerSubmitting}
-                  className={`w-full ${BTN_CLASS}`}
-                  style={btnStyle("primary")}
-                >
-                  {partnerSubmitting ? "신청 중..." : "공식 점핑파트너 신청하기"}
-                </button>
-              </div>
             )}
-          </div>
-
-          <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3 mt-4 mb-2">
-            <p style={UI_DESC}>
-              내가 추천한 회원은 여기서 확인할 수 있어요.
-            </p>
-            {/* 2026-09-27: 추천 0명일 때도 링크는 항상 보이게 — 대시보드
-                (/mypage/referrals)가 0명 상태를 이미 잘 보여주고 있어서, 첫
-                추천이 생기기 전까지 진입로 자체를 숨길 이유가 없음. */}
-            <Link href="/mypage/referrals" className="flex-shrink-0" style={{ ...UI_LINK, color: "#E25100" }}>
-              대시보드 열기 →
-            </Link>
-          </div>
-          <div className="flex flex-col gap-2">
-            {referrals.length === 0 ? (
-              // 2026-09-28: 기존엔 회색 텍스트 한 줄이라 눈에 잘 안 띈다는 피드백 —
-              // 깜빡임 대신, 이미 있는 보너스 배너(🎉 ...늘었어요)와 같은 스타일
-              // (연한 배경 박스+아이콘+볼드)로 통일. "위 링크"는 이 문단과 실제
-              // 버튼(링크복사/공유/QR) 사이에 "공식 점핑파트너" 카드가 끼어 있어
-              // 위치상 멀어서 헷갈릴 수 있어 "링크 복사·공유 버튼"으로 직접 지칭.
-              // 2026-09-29: 이 안내는 일반 굵기·회색 톤
-              <div
-                className="flex items-center gap-2.5 rounded-xl"
-                style={{ background: "#F5F6F8", border: "1px solid #E4E7EB", padding: "12px 14px" }}
-              >
-                <span className="text-lg flex-shrink-0">📣</span>
-                <p style={UI_DESC}>
-                  아직 추천으로 가입한 회원이 없어요. 위쪽 링크 복사·공유 버튼으로 친구에게 보내보세요!
-                </p>
-              </div>
-            ) : (
-              <>
-                {referrals.slice(0, 3).map((r, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between bg-white border border-gray200 rounded-xl px-4 py-3"
-                  >
-                    <div>
-                      <div style={UI_CARD_TITLE}>
-                        {r.member_no != null ? formatMemberNo(r.member_no) : "회원번호 없음"}
-                        {r.company_name && (
-                          <span className="font-medium ml-1.5" style={UI_META}>{r.company_name}</span>
-                        )}
-                      </div>
-                      <div className="mt-0.5" style={UI_META}>
-                        {r.phone}
-                        {" · "}
-                        {new Date(r.created_at).toLocaleDateString("ko-KR")} 가입
-                        {r.is_business && " · 사업자"}
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                      <span
-                        className="font-bold px-2.5 py-1 rounded-full"
-                        style={{ fontSize: rem(14), background: "#E8F8EC", color: "#1D8A44" }}
-                      >
-                        가입완료
-                      </span>
-                      {r.business_verified && (
-                        <span
-                          className="font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1"
-                          style={{ fontSize: rem(14), background: "#E8F8EC", color: "#1D8A44" }}
-                        >
-                          <CheckCircle className="w-3 h-3" /> 인증된 사업자
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                {referrals.length > 3 && (
-                  <Link
-                    href="/mypage/referrals"
-                    className="text-center py-2"
-                    style={{ ...UI_LINK, color: "#6B7480" }}
-                  >
-                    +{referrals.length - 3}명 더 보기 →
-                  </Link>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-
-        <div id="alerts" className="border-t border-gray200 pt-5 flex flex-col gap-3">
-          <PushStatusCard />
-          <ConsentToggles />
-          <div>
-          <button
-            type="button"
-            onClick={() => setAlertsOpen((v) => !v)}
-            className="w-full flex items-center gap-3 rounded-2xl text-left"
-            style={{ border: "1px solid #E4E7EB", padding: "15px 16px" }}
-          >
-            <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 38, height: 38, background: "#FDEEE8", fontSize: rem(17) }}>🔔</span>
-            <span className="flex-1 min-w-0">
-              <span className="block" style={UI_CARD_TITLE}>내 알림 조건</span>
-              {/* 2026-09-29: "외 5" 식 과한 말줄임 대신 이름을 다 쓰고 2줄까지 */}
-              <span className="block mt-0.5" style={{ ...UI_DESC, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                {categories.length === 0 || categories.length === mockCategories.length ? "전체 카테고리" : categories.join("·")}
-              </span>
-            </span>
-            <span className="flex-shrink-0 whitespace-nowrap" style={{ ...UI_LINK, color: "#6B7480" }}>{alertsOpen ? "접기 ▲" : "변경하기 ›"}</span>
-          </button>
-
-          {alertsOpen && (
-            <div className="mt-3.5 flex flex-col gap-5">
-              <div id="alert-categories" style={{ scrollMarginTop: 12 }}>
-                <div className="flex items-center justify-between mb-2">
-                  <span style={UI_CARD_TITLE}>관심 카테고리</span>
-                  <button
-                    type="button"
-                    onClick={() => setCategories(categories.length === mockCategories.length ? [] : [...mockCategories])}
-                    className="text-orange"
-                    style={UI_LINK}
-                  >
-                    {categories.length === mockCategories.length ? "전체 해제" : "전체 선택"}
-                  </button>
-                </div>
-                {/* 2026-09-27: 가입(signup) 카테고리 선택 화면과 톤을 맞춤 — 배경을
-                    꽉 채우는 대신 흰 배경 고정 + 선택 시 테두리(라인)만 주황으로
-                    두껍게 바꾸는 방식. 아이콘도 카테고리별 색 뱃지로 통일. */}
-                <div className="grid grid-cols-3 gap-2">
-                  {mockCategories.map((c) => {
-                    const picked = categories.includes(c);
-                    return (
-                      <button
-                        key={c}
-                        onClick={() => toggle(categories, setCategories, c)}
-                        className="flex flex-col items-center justify-center gap-1.5 rounded-xl py-3.5 px-1 text-center"
-                        style={{
-                          background: "#fff",
-                          border: picked ? "2px solid var(--color-brandOrange)" : "1.5px solid #E4E7EB",
-                        }}
-                      >
-                        <span
-                          className="rounded-full flex items-center justify-center flex-shrink-0"
-                          style={{ width: 30, height: 30, fontSize: rem(15), background: categoryColors[c].bg }}
-                        >
-                          {categoryIcons[c]}
-                        </span>
-                        <span className="font-bold leading-tight" style={{ fontSize: rem(15), color: "#1A1F26" }}>
-                          {c}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-            </div>
-          )}
-          </div>
-        </div>
-
-        {/* 2026-09-28: 긴급 공지(부동산·설비 처분) 알림 — "내 알림 조건"(카테고리/
-            지역 매칭)과 완전히 별개의 opt-in이라, 헷갈리지 않도록 별도 카드로
-            분리. 기본 꺼짐 — 무분별한 전체발송으로 재고 알림 피로도가 올라가는
-            걸 막기 위함. */}
-        <div className="rounded-2xl p-4" style={{ border: "1px solid #E4E7EB", background: "#fff" }}>
-          <button
-            type="button"
-            onClick={toggleNoticeAlerts}
-            disabled={noticeAlertsSaving || noticeLocked}
-            className={`w-full flex items-center gap-3 ${noticeLocked ? "disabled:opacity-45" : "disabled:opacity-60"}`}
-          >
-            {/* 2026-09-29: 설명이 토글 밑으로 겹치던 문제 — 글자 영역(flex-1)과 토글(shrink-0) 분리 */}
-            <span className="flex-1 min-w-0 text-left">
-              <span className="block" style={UI_CARD_TITLE}>긴급 공지 알림</span>
-              <span className="block mt-0.5" style={UI_DESC}>
-                폐업·정리 부동산·설비 소식 — 재고 매물 알림과 별개예요
-              </span>
-            </span>
-            <span
-              className="flex-shrink-0 rounded-full relative"
-              style={{
-                width: 42,
-                height: 24,
-                background: noticeAlertsOptIn ? "var(--color-brandOrange)" : "#E4E7EB",
-                transition: "background 0.15s",
-              }}
-            >
-              <span
-                className="absolute rounded-full bg-white"
-                style={{
-                  width: 18,
-                  height: 18,
-                  top: 3,
-                  left: noticeAlertsOptIn ? 21 : 3,
-                  transition: "left 0.15s",
-                  boxShadow: "0 1px 3px rgba(0,0,0,.25)",
-                }}
-              />
-            </span>
-          </button>
-          {noticeLocked && (
-            <p className="mt-2 font-medium" style={{ fontSize: rem(14), color: "#4B5563" }}>
-              매물 알림 수신 동의 후 받을 수 있어요
-            </p>
-          )}
-        </div>
-
-        {alertLog.length > 0 && (
-          <div id="alert-log-section">
-            <div className="flex items-center justify-between mb-2.5">
-              <span style={UI_SECTION}>최근 받은 알림</span>
-              <span style={UI_META}>최근 활동</span>
-            </div>
-            <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #E4E7EB", background: "#fff" }}>
-              {alertLog.map((a) => {
-                if (!a.deals) return null;
-                const { closed, urgent } = dealUrgencyState(a.deals.closes_at);
-                const discount =
-                  !isNegotiable(a.deals) && a.deals.original_price && a.deals.deal_price != null
-                    ? Math.round(((a.deals.original_price - a.deals.deal_price) / a.deals.original_price) * 100)
-                    : 0;
-                return (
-                  <Link
-                    key={a.id}
-                    href={`/deals/${a.deals.id}`}
-                    className="flex items-center gap-2.5 w-full text-left"
-                    style={{ borderBottom: "1px solid #F1F3F5", padding: "13px 14px" }}
-                  >
-                    <span className="flex-1 min-w-0">
-                      <span className="block truncate" style={{ ...UI_LINK, color: "#1A1F26" }}>{a.deals.title}</span>
-                      <span className="block mt-0.5" style={UI_META}>
-                        {formatRelativeTime(a.sent_at)} · {a.deals.categories?.name ?? "기타"}
-                        {discount > 0 && ` · -${discount}%`}
-                      </span>
-                    </span>
-                    <span
-                      className="flex-shrink-0 font-bold"
-                      style={{ fontSize: rem(14), color: closed ? "#6B7480" : urgent ? "var(--color-urgent)" : "var(--color-verified)" }}
-                    >
-                      {closed ? "마감" : urgent ? "마감임박" : "진행중"}
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        <button
-          onClick={save}
-          disabled={saving}
-          className={`w-full ${BTN_CLASS}`}
-          style={btnStyle("primary")}
-        >
-          {saving ? (
-            "저장 중..."
-          ) : saved ? (
-            <span className="inline-flex items-center justify-center gap-1">
-              <CheckCircle className="w-4 h-4" /> 저장됐어요
-            </span>
-          ) : (
-            "설정 저장"
-          )}
-        </button>
-        {saveError && <div className="text-orange font-medium" style={{ fontSize: rem(15) }}>{saveError}</div>}
-
-        <div id="interests-section" className="border-t border-gray200 pt-5">
-          <div className="mb-3" style={SECTION_TITLE_STYLE}>
-            관심 표시한 매물 ({interests.length})
-          </div>
-          {interests.length === 0 && (
-            <div className="text-center py-6" style={UI_DESC}>
-              아직 관심 표시한 매물이 없어요.
-            </div>
-          )}
-          <div className="flex flex-col gap-2">
-            {interests.map((i) =>
-              i.deals ? (
-                <Link
-                  key={i.id}
-                  href={`/deals/${i.deals.id}`}
-                  className="bg-white border border-gray200 rounded-xl px-4 py-3 flex items-center justify-between"
-                >
-                  <div className="min-w-0">
-                    <div className="truncate" style={UI_CARD_TITLE}>{i.deals.title}</div>
-                    <div className="mt-0.5 truncate" style={{ ...UI_LINK, color: "#0B2540" }}>
-                      {dealPriceLabel(i.deals)}
-                    </div>
-                  </div>
-                  <span
-                    className="font-bold px-2.5 py-1 rounded-full flex-shrink-0"
-                    style={
-                      i.deals.status === "active"
-                        ? { fontSize: rem(14), background: "#E8F8EC", color: "#1D8A44" }
-                        : { fontSize: rem(14), background: "#F5F6F8", color: "#6B7480" }
-                    }
-                  >
-                    {i.deals.status === "active" ? "진행중" : "마감"}
-                  </span>
-                </Link>
-              ) : null
-            )}
-          </div>
+          </MenuGroup>
         </div>
 
         {MESSAGES_ENABLED && (
-        <div id="messages" className="border-t border-gray200 pt-5">
-          <div className="text-base font-bold text-navy mb-3">쪽지함 ({threads.length})</div>
-          {threads.length === 0 && (
-            <div className="text-center text-gray500 text-sm py-6">아직 주고받은 쪽지가 없어요.</div>
-          )}
-          <div className="flex flex-col gap-3">
-            {threads.map((t) => (
-              <div key={t.key} className="bg-white border border-gray200 rounded-xl p-3.5">
-                <div className="flex items-center justify-between mb-2">
-                  <Link href={`/deals/${t.dealId}`} className="text-sm font-bold text-gray500 truncate">
-                    {t.dealTitle}
-                  </Link>
-                  <span className="text-sm font-bold text-navy flex-shrink-0 ml-2">{t.counterpartLabel}</span>
-                </div>
-                <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto">
-                  {t.items.map((m) => (
-                    <div
-                      key={m.id}
-                      className={`text-base rounded-xl px-3 py-2 max-w-[85%] ${m.mine ? "self-end text-white" : "self-start bg-gray100 text-gray900"}`}
-                      style={m.mine ? { background: "#0B2540" } : undefined}
+          <div id="messages" className="bg-white px-5 py-5 mt-2">
+            <div className="text-base font-bold text-navy mb-3">쪽지함 ({threads.length})</div>
+            {threads.length === 0 && (
+              <div className="text-center text-gray500 text-sm py-6">아직 주고받은 쪽지가 없어요.</div>
+            )}
+            <div className="flex flex-col gap-3">
+              {threads.map((t) => (
+                <div key={t.key} className="bg-white border border-gray200 rounded-xl p-3.5">
+                  <div className="flex items-center justify-between mb-2">
+                    <Link href={`/deals/${t.dealId}`} className="text-sm font-bold text-gray500 truncate">
+                      {t.dealTitle}
+                    </Link>
+                    <span className="text-sm font-bold text-navy flex-shrink-0 ml-2">{t.counterpartLabel}</span>
+                  </div>
+                  <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto">
+                    {t.items.map((m) => (
+                      <div
+                        key={m.id}
+                        className={`text-base rounded-xl px-3 py-2 max-w-[85%] ${m.mine ? "self-end text-white" : "self-start bg-gray100 text-gray900"}`}
+                        style={m.mine ? { background: "#0B2540" } : undefined}
+                      >
+                        {m.body}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 mt-2.5">
+                    <input
+                      value={replyDraft[t.key] ?? ""}
+                      onChange={(e) => setReplyDraft((prev) => ({ ...prev, [t.key]: e.target.value }))}
+                      placeholder="답장 입력..."
+                      maxLength={1000}
+                      className="flex-1 min-w-0 border-2 border-gray200 rounded-xl px-3 text-sm outline-none focus:border-navy"
+                      style={{ height: "40px" }}
+                    />
+                    <button
+                      onClick={() => sendReply(t)}
+                      disabled={replySending === t.key}
+                      className="text-white font-bold rounded-xl px-4 text-sm flex-shrink-0 disabled:opacity-60"
+                      style={{ background: "#0B2540" }}
                     >
-                      {m.body}
-                    </div>
-                  ))}
+                      전송
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-2 mt-2.5">
-                  <input
-                    value={replyDraft[t.key] ?? ""}
-                    onChange={(e) => setReplyDraft((prev) => ({ ...prev, [t.key]: e.target.value }))}
-                    placeholder="답장 입력..."
-                    maxLength={1000}
-                    className="flex-1 min-w-0 border-2 border-gray200 rounded-xl px-3 text-sm outline-none focus:border-navy"
-                    style={{ height: "40px" }}
-                  />
-                  <button
-                    onClick={() => sendReply(t)}
-                    disabled={replySending === t.key}
-                    className="text-white font-bold rounded-xl px-4 text-sm flex-shrink-0 disabled:opacity-60"
-                    style={{ background: "#0B2540" }}
-                  >
-                    전송
-                  </button>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
         )}
 
-        <MyBuyRequests />
+        {GROUP_GAP}
 
-        {/* design-v2: 홈 화면 "잠든 재고" 카드와 동일 스타일로 일괄 정리 —
-            배경 화이트 + 서브텍스트를 이모지 폭(24px)만큼 들여씀. */}
-        <div className="border-t border-gray200 pt-5">
-          <Link
-            href="/sell"
-            className="flex items-center justify-between rounded-2xl"
-            style={{ background: "#fff", border: "2px solid #FF6F0F", padding: "16px 20px" }}
-          >
-            <div>
-              <div style={UI_CARD_TITLE}>
-                <span className="inline-block" style={{ width: 24 }}>📦</span>
-                긴급 매물 등록하기
-              </div>
-              <div className="font-bold mt-0.5" style={{ fontSize: rem(15), color: "#C2410C", marginLeft: 24 }}>
-                남는 재고 있으세요? 무료로 바로 등록
-              </div>
+        {/* ── 점핑 서비스 ── 홈과 같은 2×2 칸(칸 이름 그대로) + 견적함. 글자만 MY 크기 */}
+        <MenuGroup title="점핑 서비스" id={SERVICES_ANCHOR_ID}>
+          <div style={{ padding: "6px 22px 20px" }}>
+            <div className="grid grid-cols-2 gap-2">
+              {SERVICE_TILES.map((t) => (
+                <Link
+                  key={t.href}
+                  href={t.href}
+                  className="flex flex-col items-center text-center rounded-2xl bg-white border border-gray200 min-w-0"
+                  style={{ padding: "18px 8px 16px" }}
+                >
+                  <div
+                    className="rounded-2xl flex items-center justify-center flex-shrink-0"
+                    style={{ width: 60, height: 60, background: "rgba(27,58,92,0.08)" }}
+                  >
+                    <span className="leading-none" style={{ fontSize: rem(34) }} aria-hidden>
+                      {t.icon}
+                    </span>
+                  </div>
+                  <div className="mt-2.5" style={MY_TILE_TITLE}>{t.title}</div>
+                  <div className="mt-0.5" style={MY_TILE_DESC}>{t.desc}</div>
+                </Link>
+              ))}
             </div>
-            <span className="text-xl" style={{ color: "#FF6F0F" }}>→</span>
-          </Link>
-        </div>
+            {/* 2026-09-29: "곧 오픈" 예고 카드 + 오픈 알림 신청. 실제 견적함이 생기면 QUOTES_ENABLED = true */}
+            {!QUOTES_ENABLED && (
+              <div className="mt-2.5">
+                <QuotesTeaserCard memberId={memberId} />
+              </div>
+            )}
+          </div>
+        </MenuGroup>
 
-        {/* design-v2: /deals 헤더에 있던 "정부지원금" 링크를 이동 — 매물 탐색 화면과
-            성격이 다른(사업자 지원사업 정보) 기능이라 마이페이지 메뉴로 옮겨서 정리.
-            /support는 이미 /api/support로 기업마당 연동 로직이 있어 "준비중"이 아님.
-            타일 3개(화물배차/계산기/정부지원금)는 홈 화면과 마크업이 완전히 겹쳐서
-            <EcosystemGrid />로 추출함 (2026-09-26). ("사업자 전용" 배지는 실제
-            접근 제한이 없어 제거 — 위 커밋 참고).
-            2026-09-28: 홈 화면엔 "점핑 서비스" 라벨이 있는데 마이페이지엔 없어서
-            같은 타일 그룹인데도 소속감이 없어 보인다는 피드백 — 홈과 동일하게
-            라벨 추가. */}
-        <div id={SERVICES_ANCHOR_ID} className="border-t border-gray200 pt-5" style={{ scrollMarginTop: 12 }}>
-          <div className="mb-2.5" style={SECTION_TITLE_STYLE}>점핑 서비스</div>
-          <EcosystemGrid />
+        {GROUP_GAP}
 
-          {/* 2026-09-29: "견적함 · 준비중"(누르면 토스트만) → "곧 오픈" 예고 카드 + 오픈 알림 신청.
-              실제 견적함이 생기면 QUOTES_ENABLED = true로 바꾸고 이 자리에 진짜 진입점을 둘 것. */}
-          {!QUOTES_ENABLED && (
-            <div className="mt-2.5">
-              <QuotesTeaserCard memberId={memberId} />
-            </div>
+        {/* ── 계정 ── */}
+        <MenuGroup title="계정" id="account">
+          {/* 2026-09-27: 비밀번호를 설정해두면 /login에서 SMS 없이 바로 로그인 가능(잊으면 그냥 기존 OTP로 로그인) */}
+          <MenuRow
+            first
+            data="password"
+            icon="🔑"
+            label="비밀번호 설정"
+            open={open === "password"}
+            onClick={() => toggleOpen("password")}
+          />
+          {open === "password" && (
+            <MenuPanel data="password">
+              {passwordSaved ? (
+                <p className="font-bold" style={{ color: "#1D8A44" }}>✔ 비밀번호를 설정했어요 · 다음부터 SMS 없이 로그인할 수 있어요</p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <p>설정해두면 다음부터 SMS 인증 없이 로그인할 수 있어요.</p>
+                  <input
+                    type="password"
+                    className="w-full rounded-xl outline-none bg-white"
+                    style={{ border: "1.5px solid #E4E7EB", padding: 12, fontSize: MY_INPUT_FONT_SIZE }}
+                    placeholder="새 비밀번호 (8자 이상)"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
+                  {passwordError && <span className="font-bold" style={{ fontSize: rem(16), color: "#E25100" }}>{passwordError}</span>}
+                  <div className="flex gap-2">
+                    <button type="button" onClick={savePassword} disabled={passwordSaving} className={`flex-1 ${BTN_CLASS}`} style={myBtnStyle("primary")}>
+                      {passwordSaving ? "저장 중..." : "저장"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpen(null);
+                        setPasswordError(null);
+                        setNewPassword("");
+                      }}
+                      className={`flex-1 ${BTN_CLASS}`}
+                      style={myBtnStyle("secondary")}
+                    >
+                      취소
+                    </button>
+                  </div>
+                </div>
+              )}
+            </MenuPanel>
           )}
-        </div>
+          {/* 2026-09-29: 회원 로그아웃 — 이 기기에서만(scope local). 명시적 로그아웃이라 재방문 화면 신호(로그인 기록·방식)도 지움 */}
+          <MenuRow data="logout" icon="↩" label={loggingOut ? "로그아웃 중…" : "로그아웃"} onClick={logout} chevron={false} />
+          <MenuRow data="unsubscribe" label="알림 해지·탈퇴" href="/unsubscribe" labelStyle={{ fontWeight: 500, color: "#6B7480" }} />
+        </MenuGroup>
 
-        {/* 2026-09-29: 회원 로그아웃 — 이 기기에서만(scope local, 다른 기기·설치 앱 세션은 유지).
-            명시적 로그아웃이라 재방문 화면 신호(로그인 기록·방식)도 지움 */}
-        <button
-          type="button"
-          onClick={logout}
-          disabled={loggingOut}
-          className={`w-full ${BTN_CLASS}`}
-          style={btnStyle("secondary")}
-        >
-          {loggingOut ? "로그아웃 중…" : "로그아웃"}
-        </button>
-        <Link href="/unsubscribe" className="text-center underline py-2" style={{ ...UI_LINK, fontWeight: 500, color: "#6B7480" }}>
-          알림이 필요 없으신가요? 알림 해지 · 탈퇴
-        </Link>
-        <BusinessFooter className="-mx-5 -mb-5" />
+        <BusinessFooter />
       </div>
 
       <Toast message={toastMessage} />

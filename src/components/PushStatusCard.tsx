@@ -9,7 +9,8 @@ import PushBlockerNotice from "@/components/PushBlockerNotice";
 import IosInstallSteps from "@/components/IosInstallSteps";
 import { copyCurrentUrl, externalTarget, openExternal } from "@/lib/openExternal";
 import { isKakaoInApp } from "@/lib/browserEnv";
-import { UI_CARD_TITLE, UI_DESC, UI_LINK, BTN_CLASS, btnStyle } from "@/lib/uiText";
+import { BTN_CLASS } from "@/lib/uiText";
+import { MY_CARD_TITLE, MY_DESC, MY_LINK, myBtnStyle } from "@/lib/myText"; // MY 전용 글자 크기 (2026-10-12)
 import ConsentSheet from "@/components/ConsentSheet";
 import { CONSENT_TEXT } from "@/lib/consent";
 import { announceConsents, saveConsents } from "@/lib/consentClient";
@@ -161,31 +162,31 @@ export default function PushStatusCard() {
         <div className="flex items-center gap-3">
           <span className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 38, height: 38, background: "#FDEEE8", fontSize: rem(17) }}>📲</span>
           <span className="flex items-center gap-1.5 flex-wrap">
-            <span style={UI_CARD_TITLE}>이 기기 푸시 알림</span>
-            <span className="rounded-full font-bold whitespace-nowrap" style={{ fontSize: rem(14), padding: "2px 9px", background: "#FEF3C7", color: "#92400E" }}>
+            <span style={MY_CARD_TITLE}>이 기기 푸시 알림</span>
+            <span className="rounded-full font-bold whitespace-nowrap" style={{ fontSize: rem(16), padding: "2px 9px", background: "#FEF3C7", color: "#92400E" }}>
               받을 수 없음
             </span>
           </span>
         </div>
-        <p className="mt-3 font-extrabold" style={{ fontSize: rem(15), color: "#1A1F26", lineHeight: 1.5 }}>동의는 저장됐어요 · 이 기기는 아직 알림을 받을 수 없어요</p>
+        <p className="mt-3 font-extrabold" style={{ fontSize: rem(17.5), color: "#1A1F26", lineHeight: 1.5 }}>동의는 저장됐어요 · 이 기기는 아직 알림을 받을 수 없어요</p>
 
         {state === "inapp" && (
           <>
-            <p className="mt-1" style={{ fontSize: rem(15), color: "#4B5563", lineHeight: 1.55 }}>
+            <p className="mt-1" style={{ fontSize: rem(17.5), color: "#4B5563", lineHeight: 1.55 }}>
               {isKakaoInApp() ? "카카오톡" : "이 앱"} 안에서는 알림을 받을 수 없어요. {target ? `${target.browser}에서 열어 알림을 켜 주세요.` : "사파리에서 열어 알림을 켜 주세요."}
             </p>
             {target ? (
-              <button type="button" onClick={() => openExternal()} className={`mt-3 w-full ${BTN_CLASS}`} style={btnStyle("primary")}>
+              <button type="button" onClick={() => openExternal()} className={`mt-3 w-full ${BTN_CLASS}`} style={myBtnStyle("primary")}>
                 {target.browser}에서 열기
               </button>
             ) : (
               <>
-                <p className="mt-2" style={{ fontSize: rem(14), color: "#495057" }}>화면 오른쪽 위 <b>···</b> 메뉴 → <b>사파리로 열기</b>를 눌러주세요.</p>
+                <p className="mt-2" style={{ fontSize: rem(16), color: "#495057" }}>화면 오른쪽 위 <b>···</b> 메뉴 → <b>사파리로 열기</b>를 눌러주세요.</p>
                 <button
                   type="button"
                   onClick={async () => setLinkCopied(await copyCurrentUrl())}
                   className={`mt-3 w-full ${BTN_CLASS}`}
-                  style={btnStyle("secondary")}
+                  style={myBtnStyle("secondary")}
                 >
                   {linkCopied ? "링크 복사됨 ✓" : "링크 복사"}
                 </button>
@@ -196,7 +197,7 @@ export default function PushStatusCard() {
 
         {state === "ios_needs_install" && (
           <>
-            <p className="mt-1" style={{ fontSize: rem(15), color: "#4B5563", lineHeight: 1.55 }}>아이폰은 홈 화면에 추가해야 알림이 와요.</p>
+            <p className="mt-1" style={{ fontSize: rem(17.5), color: "#4B5563", lineHeight: 1.55 }}>아이폰은 홈 화면에 추가해야 알림이 와요.</p>
             <div className="mt-3 rounded-lg" style={{ background: "#F5F6F8", padding: "12px 14px" }}>
               <IosInstallSteps />
             </div>
@@ -205,13 +206,13 @@ export default function PushStatusCard() {
 
         {state === "denied" && (
           <>
-            <p className="mt-1" style={{ fontSize: rem(15), color: "#4B5563", lineHeight: 1.55 }}>
+            <p className="mt-1" style={{ fontSize: rem(17.5), color: "#4B5563", lineHeight: 1.55 }}>
               알림 권한이 꺼져 있어요. (권한 팝업을 닫은 경우도 같아요)
             </p>
-            <button type="button" onClick={subscribe} disabled={busy} className={`mt-3 w-full ${BTN_CLASS}`} style={btnStyle("primary")}>
+            <button type="button" onClick={subscribe} disabled={busy} className={`mt-3 w-full ${BTN_CLASS}`} style={myBtnStyle("primary")}>
               {busy ? "켜는 중…" : "다시 시도"}
             </button>
-            <p className="mt-3 rounded-lg leading-relaxed" style={{ fontSize: rem(14), color: "#4B5563", background: "#F5F6F8", padding: "10px 12px" }}>
+            <p className="mt-3 rounded-lg leading-relaxed" style={{ fontSize: rem(16), color: "#4B5563", background: "#F5F6F8", padding: "10px 12px" }}>
               {hardDenied ? "브라우저에서 알림을 막아 둔 상태예요. " : ""}계속 안 되면: 주소창 왼쪽 자물쇠(또는 ⋮ 메뉴 → 사이트 설정) → <b style={{ color: "#1A1F26" }}>알림 → 허용</b> 후 새로고침
             </p>
           </>
@@ -219,15 +220,15 @@ export default function PushStatusCard() {
 
         {state === "saveFailed" && (
           <>
-            <p className="mt-1" style={{ fontSize: rem(15), color: "#4B5563", lineHeight: 1.55 }}>알림 등록 중 문제가 생겼어요. 잠시 후 다시 시도해 주세요.</p>
-            <button type="button" onClick={enable} disabled={busy} className={`mt-3 w-full ${BTN_CLASS}`} style={btnStyle("primary")}>
+            <p className="mt-1" style={{ fontSize: rem(17.5), color: "#4B5563", lineHeight: 1.55 }}>알림 등록 중 문제가 생겼어요. 잠시 후 다시 시도해 주세요.</p>
+            <button type="button" onClick={enable} disabled={busy} className={`mt-3 w-full ${BTN_CLASS}`} style={myBtnStyle("primary")}>
               {busy ? "켜는 중…" : "다시 시도"}
             </button>
           </>
         )}
 
         {consentError && (
-          <p className="mt-3 font-medium" style={{ fontSize: rem(14), color: "var(--color-orange)" }}>{consentError}</p>
+          <p className="mt-3 font-medium" style={{ fontSize: rem(16), color: "var(--color-orange)" }}>{consentError}</p>
         )}
       </div>
     );
@@ -240,19 +241,19 @@ export default function PushStatusCard() {
         <span className="flex-1 min-w-0">
           {/* 2026-09-29: 배지를 제목 옆으로 — 오른쪽에 두면 설명이 3줄로 꺾였음. 설명은 최대 2줄 */}
           <span className="flex items-center gap-1.5 flex-wrap">
-            <span style={UI_CARD_TITLE}>이 기기 푸시 알림</span>
+            <span style={MY_CARD_TITLE}>이 기기 푸시 알림</span>
             {isAlertsOn(state === "on", dealConsent) && (
-              <span className="rounded-full font-bold whitespace-nowrap" style={{ fontSize: rem(14), padding: "2px 9px", background: "#E8F8EC", color: "#1D8A44" }}>
+              <span className="rounded-full font-bold whitespace-nowrap" style={{ fontSize: rem(16), padding: "2px 9px", background: "#E8F8EC", color: "#1D8A44" }}>
                 알림 받는 중
               </span>
             )}
             {needsConsent && (
-              <span className="rounded-full font-bold whitespace-nowrap" style={{ fontSize: rem(14), padding: "2px 9px", background: "#FDEEE8", color: "#E25100" }}>
+              <span className="rounded-full font-bold whitespace-nowrap" style={{ fontSize: rem(16), padding: "2px 9px", background: "#FDEEE8", color: "#E25100" }}>
                 동의 필요
               </span>
             )}
           </span>
-          <span className="block mt-0.5" style={{ ...UI_DESC, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+          <span className="block mt-0.5" style={{ ...MY_DESC, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
             {state === "on" && dealConsent !== false && "조건에 맞는 매물이 뜨면 빠르게 알려드려요"}
             {state === "on" && dealConsent === false && "매물 알림 수신에 동의하지 않아 알림이 가지 않아요"}
             {(state === "inapp" || state === "ios_needs_install") && "지금 이 화면에서는 알림을 켤 수 없어요"}
@@ -270,7 +271,7 @@ export default function PushStatusCard() {
             onClick={enable}
             disabled={busy}
             className="flex-shrink-0 rounded-full text-white disabled:opacity-60 whitespace-nowrap"
-            style={{ ...UI_LINK, padding: "8px 14px", background: "var(--color-brandOrangeDeep)" }}
+            style={{ ...MY_LINK, padding: "8px 14px", background: "var(--color-brandOrangeDeep)" }}
           >
             {busy ? "켜는 중…" : state === "saveFailed" ? "다시 시도" : state === "optedOut" ? "다시 켜기" : "알림 켜기"}
           </button>
@@ -279,7 +280,7 @@ export default function PushStatusCard() {
 
       {state === "on" && (
         <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
-          <span style={{ fontSize: rem(14), color: "#6B7480" }}>
+          <span style={{ fontSize: rem(16), color: "#6B7480" }}>
             이 기기: {thisDevice ?? "이 브라우저"}
             {lastSuccessAt
               ? ` · 마지막 알림 ${new Date(lastSuccessAt).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}`
@@ -290,7 +291,7 @@ export default function PushStatusCard() {
             onClick={turnOffThisDevice}
             disabled={turningOff}
             className="rounded-full font-bold whitespace-nowrap disabled:opacity-60"
-            style={{ fontSize: rem(14), padding: "6px 12px", border: "1px solid #E4E7EB", background: "#fff", color: "#4B5563" }}
+            style={{ fontSize: rem(16), padding: "6px 12px", border: "1px solid #E4E7EB", background: "#fff", color: "#4B5563" }}
           >
             {turningOff ? "끄는 중…" : "이 기기 알림 끄기"}
           </button>
@@ -306,14 +307,14 @@ export default function PushStatusCard() {
           }}
           disabled={busy}
           className={`${BTN_CLASS} w-full mt-3`}
-          style={btnStyle("primary")}
+          style={myBtnStyle("primary")}
         >
           {busy ? "저장 중…" : "동의하고 알림 받기"}
         </button>
       )}
 
       {consentError && (
-        <p className="mt-3 font-medium" style={{ fontSize: rem(14), color: "var(--color-orange)" }}>{consentError}</p>
+        <p className="mt-3 font-medium" style={{ fontSize: rem(16), color: "var(--color-orange)" }}>{consentError}</p>
       )}
 
       {sheetOpen && (
@@ -330,18 +331,18 @@ export default function PushStatusCard() {
 
       {/* 이 기기는 꺼져 있어도 다른 기기(폰·PC 등)로는 받고 있을 수 있음 */}
       {thisDeviceOff && state !== "optedOut" && otherDevices > 0 && (
-        <p className="mt-3 rounded-lg" style={{ fontSize: rem(14), color: "#1D8A44", background: "#E8F8EC", padding: "8px 12px" }}>
+        <p className="mt-3 rounded-lg" style={{ fontSize: rem(16), color: "#1D8A44", background: "#E8F8EC", padding: "8px 12px" }}>
           ✓ 다른 기기 {otherDevices}대에서 알림 받는 중이에요
         </p>
       )}
 
       {state === "denied" && (
-        <p className="mt-3 rounded-lg leading-relaxed" style={{ fontSize: rem(14), color: "#4B5563", background: "#F5F6F8", padding: "10px 12px" }}>
+        <p className="mt-3 rounded-lg leading-relaxed" style={{ fontSize: rem(16), color: "#4B5563", background: "#F5F6F8", padding: "10px 12px" }}>
           주소창 왼쪽 자물쇠(또는 ⋮ 메뉴 → 사이트 설정)에서 <b style={{ color: "#1A1F26" }}>알림 → 허용</b>으로 바꾼 뒤 이 페이지를 새로고침해주세요.
         </p>
       )}
       {state === "noncanonical" && (
-        <p className="mt-3 rounded-lg leading-relaxed" style={{ fontSize: rem(14), color: "#4B5563", background: "#F5F6F8", padding: "10px 12px" }}>
+        <p className="mt-3 rounded-lg leading-relaxed" style={{ fontSize: rem(16), color: "#4B5563", background: "#F5F6F8", padding: "10px 12px" }}>
           정식 주소에서 알림을 켜주세요 →{" "}
           <a href={`${SITE_URL}/mypage`} className="font-bold underline" style={{ color: "#E25100" }}>
             {SITE_URL.replace(/^https?:\/\//, "")}

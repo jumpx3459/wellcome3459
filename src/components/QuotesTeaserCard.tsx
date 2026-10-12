@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { rem } from "@/lib/rem";
-import { UI_CARD_TITLE, UI_DESC } from "@/lib/uiText";
-import { BTN_CLASS, btnStyle } from "@/lib/uiText";
+import { BTN_CLASS } from "@/lib/uiText";
+import { MY_CARD_TITLE, MY_DESC, myBtnStyle } from "@/lib/myText"; // MY 전용 글자 크기 (2026-10-12)
 import { useBackToClose } from "@/lib/useBackToClose";
 
 // 2026-09-29: "견적함 · 준비중" 자리를 "곧 오픈" 예고 카드로. 실제 견적함은 아직 없음
@@ -59,7 +59,7 @@ export default function QuotesTeaserCard({ memberId }: { memberId: string | null
       onClick={() => join(role)}
       disabled={busy !== null}
       className={`flex-1 ${BTN_CLASS}`}
-      style={btnStyle("primary")}
+      style={myBtnStyle("primary")}
     >
       {busy === role ? "신청 중…" : label}
     </button>
@@ -77,12 +77,12 @@ export default function QuotesTeaserCard({ memberId }: { memberId: string | null
           📋
         </span>
         <span className="flex-1 min-w-0">
-          <span className="block" style={UI_CARD_TITLE}>내 견적함</span>
-          <span className="block mt-0.5" style={UI_DESC}>받은·보낸 견적서, 가격 변동까지 한눈에</span>
+          <span className="block" style={MY_CARD_TITLE}>내 견적함</span>
+          <span className="block mt-0.5" style={MY_DESC}>받은·보낸 견적서, 가격 변동까지 한눈에</span>
         </span>
         <span
-          className="flex-shrink-0 rounded-full font-bold"
-          style={{ fontSize: rem(14), padding: "4px 10px", background: "#FDEEE8", color: "#C2410C" }}
+          className="flex-shrink-0 rounded-full font-bold whitespace-nowrap"
+          style={{ fontSize: rem(15), padding: "4px 10px", background: "#FDEEE8", color: "#C2410C" }}
         >
           {joined ? "✓ 신청함" : "곧 오픈"}
         </span>
@@ -102,10 +102,10 @@ export default function QuotesTeaserCard({ memberId }: { memberId: string | null
             style={{ padding: "26px 20px calc(20px + env(safe-area-inset-bottom))" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="font-black text-center" style={{ fontSize: rem(20), color: "#0B2540" }}>
+            <p className="font-black text-center" style={{ fontSize: rem(22.5), color: "#0B2540" }}>
               📋 내 견적함이 곧 열려요
             </p>
-            <ul className="mt-4 flex flex-col gap-2" style={{ fontSize: rem(15), color: "#1F2937" }}>
+            <ul className="mt-4 flex flex-col gap-2" style={{ fontSize: rem(17.5), color: "#1F2937" }}>
               {POINTS.map((t) => (
                 <li key={t} className="flex gap-2">
                   <span aria-hidden style={{ color: "#C2410C" }}>·</span>
@@ -120,11 +120,11 @@ export default function QuotesTeaserCard({ memberId }: { memberId: string | null
 
             {!memberId ? (
               <>
-                <p className="mt-5 text-center" style={{ fontSize: rem(15), color: "#1A1F26" }}>가입하면 오픈 알림을 받을 수 있어요</p>
+                <p className="mt-5 text-center" style={{ fontSize: rem(17.5), color: "#1A1F26" }}>가입하면 오픈 알림을 받을 수 있어요</p>
                 <Link
                   href="/signup"
                   className={`w-full mt-3 ${BTN_CLASS}`}
-                  style={btnStyle("primary")}
+                  style={myBtnStyle("primary")}
                 >
                   무료로 가입하기
                 </Link>
@@ -132,21 +132,21 @@ export default function QuotesTeaserCard({ memberId }: { memberId: string | null
             ) : joined ? (
               <div
                 className="mt-5 text-center font-black rounded-2xl"
-                style={{ minHeight: 56, lineHeight: "56px", fontSize: rem(16), background: "#E8F8EC", color: "#1D8A44" }}
+                style={{ minHeight: 56, lineHeight: "56px", fontSize: rem(18), background: "#E8F8EC", color: "#1D8A44" }}
               >
                 ✓ 오픈하면 알려드릴게요
               </div>
             ) : (
               <>
-                <p className="mt-5 text-center font-bold" style={{ fontSize: rem(16), color: "#1F2937" }}>어떻게 쓰실 건가요?</p>
+                <p className="mt-5 text-center font-bold" style={{ fontSize: rem(18), color: "#1F2937" }}>어떻게 쓰실 건가요?</p>
                 <div className="flex gap-2 mt-2.5">
                   {roleBtn("receiver", "받은 견적 보관")}
                   {roleBtn("sender", "보낸 견적 관리")}
                 </div>
               </>
             )}
-            {error && <p className="mt-2 text-center" style={{ fontSize: rem(14), color: "#C2410C" }}>{error}</p>}
-            <button type="button" onClick={() => setOpen(false)} className="mt-3 w-full" style={{ minHeight: 44, fontSize: rem(15), color: "#6B7480" }}>
+            {error && <p className="mt-2 text-center" style={{ fontSize: rem(16), color: "#C2410C" }}>{error}</p>}
+            <button type="button" onClick={() => setOpen(false)} className="mt-3 w-full" style={{ minHeight: 48, fontSize: rem(17.5), color: "#6B7480" }}>
               닫기
             </button>
           </div>

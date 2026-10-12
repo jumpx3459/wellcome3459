@@ -24,7 +24,8 @@ const BASE_TABS = [
 // 2026-10-04 4.5: 비회원 4번째 탭 "알림" → "가입" — 관심있어요(번호 입력)와 알림을 헷갈리지 않게 가입 경로를 하나로
 // 비회원 "가입" 탭 아이콘은 지시 5종 밖이라 같은 Fluent 3D의 Memo(가입서 쓰기)
 const SIGNUP_TAB = { href: "/signup", label: "가입", icon: NAV_ICON("signup") };
-const SHARE_TAB = { href: "/mypage#referral", label: "공유", icon: NAV_ICON("share") };
+// 2026-10-12 feat/my-menu-share: 공유 탭은 MY 안 해시(/mypage#referral)가 아니라 따로 뗀 화면 /share
+const SHARE_TAB = { href: "/share", label: "공유", icon: NAV_ICON("share") };
 const MY_TAB = { href: "/mypage", label: "MY", icon: NAV_ICON("my") };
 
 type Tab = { href: string; label: string; icon: string };
@@ -34,8 +35,6 @@ export default function BottomNav() {
   // 2026-09-28: 세션 확인 전엔 "unknown" — 예전엔 초기값 false라 회원도 잠깐 "알림"(지금은 "가입") 탭이
   // 보였다가 "공유"로 바뀌었음. 확인 전엔 4번째 칸을 중립 자리표시로 둔다.
   const [auth, setAuth] = useState<"unknown" | "member" | "guest">(isSupabaseConfigured ? "unknown" : "guest");
-  // usePathname엔 #이 없어서 해시를 따로 추적 (/mypage#referral에서만 "공유" 활성)
-  const [hash, setHash] = useState("");
   // 비회원 "가입" 탭이 지금 보던 화면(매물 상세 등)으로 돌아오게 returnTo에 붙일 쿼리 — useSearchParams는 루트 레이아웃에서
   // Suspense 없이 쓰면 빌드가 깨져서 경로가 바뀔 때 window에서 직접 읽음
   const [search, setSearch] = useState("");
@@ -53,27 +52,24 @@ export default function BottomNav() {
 
   useEffect(() => {
     const sync = () => {
-      setHash(window.location.hash);
       // 가입 후 자동 관심 기록이 따라가지 않게 autoInterest는 returnTo에서 뺌(옛 링크로 들어온 경우)
       const q = new URLSearchParams(window.location.search);
       q.delete("autoInterest");
       const qs = q.toString();
       setSearch(qs ? `?${qs}` : "");
     };
-    // 경로가 바뀔 때마다 현재 해시 반영. Next Link의 같은 페이지 해시 이동은 hashchange가 안 날 수 있어
-    // 탭 클릭 시에도 직접 갱신한다(아래 onClick).
+    // 경로가 바뀔 때마다 현재 쿼리 반영
     const t = setTimeout(sync, 0);
-    window.addEventListener("hashchange", sync);
     window.addEventListener("popstate", sync);
     return () => {
       clearTimeout(t);
-      window.removeEventListener("hashchange", sync);
       window.removeEventListener("popstate", sync);
     };
   }, [pathname]);
 
   const path = pathname ?? "";
-  const shareActive = path === "/mypage" && hash === "#referral";
+  // 추천 회원 대시보드(/mypage/referrals)는 공유 화면에서 들어가는 하위 화면이라 "공유" 켜짐
+  const shareActive = path.startsWith("/share") || path.startsWith("/mypage/referrals");
   const isActive = (tab: Tab) => {
     if (tab.href === "/") return path === "/";
     if (tab === SHARE_TAB) return shareActive;
@@ -104,7 +100,6 @@ export default function BottomNav() {
           <TabLink
             key={tab.href}
             href={tab.href}
-            onClick={() => setHash(tab.href.includes("#") ? `#${tab.href.split("#")[1]}` : "")}
             className="relative flex-1 flex flex-col items-center justify-center gap-0.5"
             aria-current={active ? "page" : undefined}
             data-nav-active={active ? "1" : undefined}
