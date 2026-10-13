@@ -4,6 +4,8 @@ import { checkContactPhone } from "@/lib/auth";
 import { sendAdminPush } from "@/lib/sendPush";
 import { PRICE_UNITS } from "@/lib/format";
 import { TERMS_VERSION } from "@/lib/consent";
+import { hasContactOrLink } from "@/lib/titleGuard";
+import { BUY_PRODUCT_CONTACT_ERROR } from "@/lib/buyNotice";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -13,6 +15,10 @@ export async function POST(req: NextRequest) {
 
   if (!productName || !contactPhone) {
     return NextResponse.json({ error: "필수 항목이 누락되었습니다." }, { status: 400 });
+  }
+  // 2026-10-13: 품목이 /deals "찾습니다" 알림판에 보일 수 있어 연락처·링크·메신저 ID가 섞이면 막음 — 화면(buy/page.tsx)과 같은 검사·문구
+  if (typeof productName === "string" && hasContactOrLink(productName)) {
+    return NextResponse.json({ error: BUY_PRODUCT_CONTACT_ERROR, field: "productName" }, { status: 400 });
   }
   // 2026-09-30: [필수] 개인정보 수집·이용 동의 (화면 GuestPrivacyConsent). 동의 시각 저장은 consented_at 컬럼 SQL 실행 후
   if (privacyConsent !== true) {

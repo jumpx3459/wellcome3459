@@ -58,6 +58,8 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - **규칙 `src/lib/buyNotice.ts`**(순수 함수): 0건 "찾는 상품, 연결해드려요" / 1~2건: 이름 0 "지금 찾는 상품이 있어요" · 1 "{이름} 찾는 중" · 2 합 ≤ 9자 "{이름1}·{이름2} 찾는 중", 넘으면 "{이름1} 외 1건 찾는 중" / 3건 이상: 이름 0 "지금 찾는 상품 N건" · 있으면 "N건 · {이름1} 외". 상품명·건수 굵게(800 #0b2540).
 - **알림판 `NoticeBoard.tsx`**(items 배열, 지금은 1개 고정 — 로테이션은 공개 후 모집·긴급 공지 때): 높이 44px 고정 · 흰 바탕 · 테두리 1px #cbd5e1 · 둥글기 12 · 좌우 12 · 간격 8 · 꼬리표 12px/800 #dcfce7·#166534 · 본문 rem(15)/600 한 줄 말줄임 · 오른쪽 › 18px #94a3b8 · 전체 링크 → /buy. **`BuyNoticeBoard.tsx`**가 요약을 받아 그림(받기 전·실패면 0건 문구).
 - **/deals**: 주황 배너(`data-sell-banner`) 바로 다음, 건수·정렬 줄 앞 1곳. 회원·비회원 같음(진행중·지난 매물 탭 모두).
+- **/buy**: 개인정보 동의 아래 보조 문구(`FORM_HINT_STYLE`) "요청 내용(연락처 제외)은 다른 회원에게 보일 수 있어요". 품목에 연락처·링크·메신저 ID(`titleGuard.hasContactOrLink`)가 있으면 화면·`/api/buy-requests` 모두 막음 — 400 `field: "productName"`, 문구 "상품명에는 연락처나 링크를 적지 말아 주세요"(알약·칸 아래 같은 문구). 비회원 등록·회원 member_id·연락처 자동 입력은 그대로.
+- 시험(운영 호출 0, 가짜 Supabase 127.0.0.1만, 빌드 결과에 운영 Supabase 주소 0건): 새 `scripts/buy-notice-test.mts` 30건(문구 6경우·합 9자 경계·이름 자르기 이모지/영문·행 요약) + 기존 단위 시험 19개 통과 · summary·/api/buy-requests 서버 시험 20건(응답 키 count·names만·금지 칸/값 0·시험 회원/관리자 번호/제외 번호/31일 전/matched·no_match 제외·미연락 이름 미노출·DB 오류 500·연락처/링크 품목 5종 400·정상 품목 200) — main에선 15건 실패, 일부러 contact_phone을 넣은 변형 빌드는 3건 실패(시험이 잡음) · Playwright 360px(isMobile·hasTouch) 화면 시험 26건(문구 4단계·높이 44·넘침 0·숫자 전부·첫 카드 +57.5px(44 + gap 13.5)·130%에서 +61.5px·SellFab 전/후 같음·API 실패 → 0건 문구·회원 같음·/buy 문구·오류·정상 등록) · tsc 0 · lint 2 errors·55 warnings(main과 같음) · `next build --webpack` 성공. 캡처 `../captures-deals-buy-notice/`.
 
 ## 최근 작업 (2026-10-12) — 인증 문자 솔라피 Send SMS Hook (브랜치 `feat/solapi-sms-hook`)
 
