@@ -6,6 +6,7 @@ import Link from "next/link";
 import TabLink from "@/components/TabLink";
 import BusinessFooter from "@/components/BusinessFooter";
 import { useSearchParams } from "next/navigation";
+import { isDealsCompact } from "@/lib/dealsCompact";
 import { useCurrentPath } from "@/lib/useCurrentPath";
 import { withReturnTo } from "@/lib/safeReturnTo";
 import { DealListCardSkeleton, LoadFailNote, useSlowLoad } from "@/components/LoadingCards";
@@ -243,11 +244,16 @@ function DealsPageInner() {
   }, []);
 
   const notExpired = deals.filter((d) => new Date(d.closes_at).getTime() > now);
+  // 2026-10-13: 진행 중 매물이 15건 미만이면(불러오는 중 포함) 고르기·정렬 줄 숨김 — 진행중·지난 매물 탭 같은 값.
+  //   숨김 동안 지역은 "전체", 정렬은 마감 임박순 고정(상태값은 그대로 둠). 카테고리는 ?category= 진입만 알약으로 표시·해제
+  const compact = isDealsCompact(notExpired.length);
+  const region = compact ? "전체" : activeRegion;
+  const sortKey = compact ? "urgent" : sort;
   const sourceList = view === "active" ? notExpired : closedDeals;
   const byCategory = activeCat === "전체" ? sourceList : sourceList.filter((d) => d.category === activeCat);
-  const byRegion = activeRegion === "전체" ? byCategory : byCategory.filter((d) => d.region === activeRegion);
+  const byRegion = region === "전체" ? byCategory : byCategory.filter((d) => d.region === region);
   const filtered = [...byRegion].sort((a, b) => {
-    if (sort === "urgent") return new Date(a.closes_at).getTime() - new Date(b.closes_at).getTime();
+    if (sortKey === "urgent") return new Date(a.closes_at).getTime() - new Date(b.closes_at).getTime();
     return discountSortKey(b) - discountSortKey(a);
   });
 
@@ -311,6 +317,33 @@ function DealsPageInner() {
           </button>
         </div>
 
+        {compact ? (
+          activeCat !== "전체" && (
+            <div
+              className="w-full flex items-center gap-2 text-sm rounded-full mt-3"
+              style={{ padding: "7px 12px", background: "rgba(255,255,255,.12)", fontWeight: 700 }}
+              data-cat-pill
+            >
+              <span className="flex-1 min-w-0 truncate" style={{ color: "#FFD166" }}>
+                {categoryIcons[activeCat] ?? "🗂️"} {activeCat}만 보는 중
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveCat("전체");
+                  // router.replace("/deals")는 같은 화면에서 쿼리만 빼는 이동을 무시함(Next 16.2 시험에서 주소 그대로) —
+                  // Next 문서의 native History API(replaceState, useSearchParams와 동기화)로 주소만 바꿈. 스크롤 그대로
+                  window.history.replaceState(null, "", "/deals");
+                }}
+                className="flex-shrink-0 whitespace-nowrap"
+                style={{ color: "#fff", fontWeight: 800 }}
+              >
+                ✕ 전체 보기
+              </button>
+            </div>
+          )
+        ) : (
+        <>
         <div className="flex gap-2 mt-3">
           <div className="relative flex-1 min-w-0">
             <button
@@ -420,6 +453,8 @@ function DealsPageInner() {
             }}
           />
         )}
+        </>
+        )}
       </div>
 
       {/* 2026-10-10: 목록 바탕을 회원 홈 목록과 같은 색(LIST_BG #eef1f5)으로 — 예전 bg-gray100(#f5f6f8) */}
@@ -448,7 +483,7 @@ function DealsPageInner() {
         {/* 2026-10-13: "찾습니다" 알림판 — 주황 배너 바로 다음, 항상 표시(높이 44px 고정) */}
         <BuyNoticeBoard />
 
-        {filtered.length > 0 && activeSettled && (
+        {!compact && filtered.length > 0 && activeSettled && (
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-gray500">{filtered.length}건</span>
             <button
@@ -473,7 +508,7 @@ function DealsPageInner() {
         )}
         {filtered.length === 0 && activeSettled && (
           view === "active" ? (
-            <EmptyState category={activeCat} region={activeRegion} isMember={isMember} />
+            <EmptyState category={activeCat} region={region} isMember={isMember} />
           ) : (
             <div className="text-center text-gray500 text-base py-10">아직 마감된 매물이 없어요.</div>
           )
