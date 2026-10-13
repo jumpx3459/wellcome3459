@@ -8,8 +8,7 @@ import { CheckCircle } from "lucide-react";
 import { mockRegions, categoryIcons, quantityUnits, guessCategory, logUnmatchedProductName } from "@/lib/mockData";
 import { formatPriceInput, parsePriceInput, PRICE_UNITS, formatPriceWithUnit } from "@/lib/format";
 import { checkContactPhone } from "@/lib/auth";
-import { hasContactOrLink } from "@/lib/titleGuard";
-import { BUY_PRODUCT_CONTACT_ERROR, BUY_VISIBILITY_NOTE } from "@/lib/buyNotice";
+import { BUY_VISIBILITY_NOTE } from "@/lib/buyNotice";
 import { formatPhone } from "@/lib/phone";
 import ContactPhoneInput from "@/components/ContactPhoneInput";
 import GuestPrivacyConsent from "@/components/GuestPrivacyConsent";
@@ -65,7 +64,7 @@ export default function BuyPage() {
   const [error, setError] = useState<string | null>(null);
   // 2026-10-07 테스터 피드백: 필수값이 비었을 때 안내(작은 주황 알약)를 못 봄 →
   // 가입 화면과 같은 짙은 안내(tone="dark") 2.5초 + 빈 칸 빨간 표시 + 첫 빈 칸으로 스크롤 + 버튼 흔들림
-  const [productError, setProductError] = useState<string | null>(null); // 품목 칸 아래 안내 문구(빈 칸 / 연락처·링크)
+  const [productError, setProductError] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
   useEffect(() => {
     if (!error) return;
@@ -119,13 +118,11 @@ export default function BuyPage() {
     setError(null);
     // 필수 칸(찾는 품목·연락처·개인정보 동의)을 한꺼번에 검사해 빈 칸을 전부 빨갛게 표시한다
     // 2026-09-29: 사무실 번호(02-, 031-…, 대표번호 15xx 등)도 허용 · 2026-10-06: 휴대폰은 010 + 8자리만 — 서버도 같은 checkContactPhone
-    // 2026-10-13: 품목에 연락처·링크가 섞이면 막음(알림판에 품목이 보일 수 있어서) — 서버 /api/buy-requests도 같은 검사·같은 문구
-    const productProblem = !productName.trim() ? "찾는 품목을 적어 주세요" : hasContactOrLink(productName) ? BUY_PRODUCT_CONTACT_ERROR : null;
-    const noProduct = !!productProblem;
+    const noProduct = !productName.trim();
     const contactProblem = !contactPhone ? "연락처를 적어 주세요" : checkContactPhone(contactPhone);
     const noConsent = !privacyConsent;
     if (noProduct || contactProblem || noConsent) {
-      setProductError(productProblem);
+      setProductError(noProduct);
       setContactError(contactProblem);
       setPrivacyConsentError(noConsent);
       setShakeKey((k) => k + 1);
@@ -149,7 +146,7 @@ export default function BuyPage() {
         window.scrollTo({ top: window.scrollY + f.top - margin, behavior: "smooth" });
       }, 60);
       // 알약 문구 = 첫 오류 칸 아래 안내 문구와 똑같이(빈 칸 "적어 주세요" / 형식 틀림은 checkContactPhone 문구)
-      setError(productProblem ? productProblem : contactProblem ? contactProblem : "개인정보 수집·이용에 동의해 주세요");
+      setError(noProduct ? "찾는 품목을 적어 주세요" : contactProblem ? contactProblem : "개인정보 수집·이용에 동의해 주세요");
       return;
     }
     setSubmitting(true);
@@ -178,14 +175,6 @@ export default function BuyPage() {
           setContactError(data.error ?? "연락처를 확인해주세요.");
           setShakeKey((k) => k + 1);
           document.getElementById("contact-phone")?.focus();
-          return;
-        }
-        if (data.field === "productName") {
-          // 서버가 품목을 막음(연락처·링크) — 알약·칸 아래 안내 같은 문구
-          const msg = data.error ?? BUY_PRODUCT_CONTACT_ERROR;
-          setProductError(msg);
-          setError(msg);
-          setShakeKey((k) => k + 1);
           return;
         }
         throw new Error();
@@ -322,14 +311,14 @@ export default function BuyPage() {
             value={productName}
             onChange={(e) => {
               setProductName(e.target.value);
-              setProductError(null);
+              setProductError(false);
             }}
             onBlur={() => logUnmatchedProductName("buy", productName)}
             placeholder="예: 냉동 삼겹살 500kg 이상"
           />
           {productError && (
             <p className="mt-1.5 font-bold" style={{ fontSize: rem(15), color: "#DC2626" }} data-field-error>
-              {productError}
+              찾는 품목을 적어 주세요
             </p>
           )}
         </div>
@@ -356,7 +345,7 @@ export default function BuyPage() {
               error={privacyConsentError}
               strongError
             />
-            {/* 2026-10-13: 품목이 /deals "찾습니다" 알림판에 보일 수 있어 알림(보조 문구 스타일) */}
+            {/* 2026-10-13: 찾는 상품명이 /deals "찾습니다" 알림판에 보일 수 있어 알림(보조 문구 스타일) */}
             <p className="mt-1.5" style={FORM_HINT_STYLE} data-buy-visibility-note>
               {BUY_VISIBILITY_NOTE}
             </p>

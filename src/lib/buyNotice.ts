@@ -5,14 +5,13 @@
 export const BUY_NOTICE_DAYS = 30;
 export const BUY_NOTICE_NAME_MAX = 7; // 글자 수(Array.from — 이모지 1개 = 1자)
 export const BUY_NOTICE_MAX_NAMES = 2;
-export const BUY_NOTICE_PAIR_MAX = 9; // 두 이름 글자 합이 이 이하면 "이름1·이름2", 넘으면 "이름1 외 1건"
+export const BUY_NOTICE_PAIR_MAX = 9; // 2건·두 이름 글자 합이 이 이하면 "이름1·이름2", 넘으면 "이름1 외 1건"
 
-// /buy 상품명에 연락처·링크(titleGuard hasContactOrLink) → 등록 막음. 화면 알약·칸 아래 안내·서버 400 문구가 같은 값
-export const BUY_PRODUCT_CONTACT_ERROR = "상품명에는 연락처나 링크를 적지 말아 주세요";
-// /buy 개인정보 동의 아래 보조 문구 — 품목이 알림판에 보일 수 있음을 알림
-export const BUY_VISIBILITY_NOTE = "요청 내용(연락처 제외)은 다른 회원에게 보일 수 있어요";
+// /buy 개인정보 동의 아래 보조 문구 — 찾는 상품명이 알림판에 보일 수 있음을 알림
+// (입력 차단은 하지 않음 — 10/13 2차: 정상 상품명 오차단. 연락처·링크 섞인 이름은 summary에서 숨김)
+export const BUY_VISIBILITY_NOTE = "찾는 상품명은 다른 이용자에게 보일 수 있어요(연락처 제외)";
 
-export type BuySummary ={ count: number; names: string[] };
+export type BuySummary = { count: number; names: string[] };
 export type NoticePiece = { text: string; strong?: boolean };
 
 /** 앞뒤 공백 정리(가운데 연속 공백·줄바꿈은 1칸) 후 7자 넘으면 7자 + "…". 빈 문자열이면 "" */
@@ -47,22 +46,21 @@ export function summarizeBuyRows<R extends BuyNoticeRow>(
   return { count: live.length, names };
 }
 
-/** 알림판 본문 조각 — strong은 상품명·건수(굵게). "…"이 붙은 이름도 글자 수에 포함 */
+/**
+ * 알림판 본문 조각 (10/13 2차: 상품명 먼저, 건수는 꼬리) — strong은 상품명만(굵게). "…"이 붙은 이름도 글자 수에 포함
+ *   0건 "찾는 상품, 연결해드려요" / 이름 없음: 1~2건 "지금 찾는 상품이 있어요" · 3건 이상 "지금 찾는 상품 N건"
+ *   이름 있음: 1건 "{이름1} 찾는 중" · 2건·이름 2개·합 ≤ 9자 "{이름1}·{이름2} 찾는 중" · 그 외 "{이름1} 외 {N-1}건 찾는 중"
+ */
 export function buyNoticePieces({ count, names }: BuySummary): NoticePiece[] {
   const n = Math.max(0, Math.floor(count || 0));
   const list = (names ?? []).filter(Boolean).slice(0, BUY_NOTICE_MAX_NAMES);
   if (n === 0) return [{ text: "찾는 상품, 연결해드려요" }];
-  if (n >= 3) {
-    if (list.length === 0) return [{ text: "지금 찾는 상품 " }, { text: `${n}건`, strong: true }];
-    return [{ text: `${n}건`, strong: true }, { text: " · " }, { text: list[0], strong: true }, { text: " 외" }];
-  }
-  if (list.length === 0) return [{ text: "지금 찾는 상품이 있어요" }];
-  if (list.length === 1) return [{ text: list[0], strong: true }, { text: " 찾는 중" }];
-  const len = Array.from(list[0]).length + Array.from(list[1]).length;
-  if (len <= BUY_NOTICE_PAIR_MAX) {
+  if (list.length === 0) return [{ text: n >= 3 ? `지금 찾는 상품 ${n}건` : "지금 찾는 상품이 있어요" }];
+  if (n === 1) return [{ text: list[0], strong: true }, { text: " 찾는 중" }];
+  if (n === 2 && list.length === 2 && Array.from(list[0]).length + Array.from(list[1]).length <= BUY_NOTICE_PAIR_MAX) {
     return [{ text: list[0], strong: true }, { text: "·" }, { text: list[1], strong: true }, { text: " 찾는 중" }];
   }
-  return [{ text: list[0], strong: true }, { text: " 외 1건 찾는 중" }];
+  return [{ text: list[0], strong: true }, { text: ` 외 ${n - 1}건 찾는 중` }];
 }
 
 export const buyNoticeText = (s: BuySummary) => buyNoticePieces(s).map((p) => p.text).join("");
