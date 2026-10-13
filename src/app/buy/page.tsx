@@ -8,6 +8,7 @@ import { CheckCircle } from "lucide-react";
 import { mockRegions, categoryIcons, quantityUnits, guessCategory, logUnmatchedProductName } from "@/lib/mockData";
 import { formatPriceInput, parsePriceInput, PRICE_UNITS, formatPriceWithUnit } from "@/lib/format";
 import { checkContactPhone } from "@/lib/auth";
+import { BUY_VISIBILITY_NOTE } from "@/lib/buyNotice";
 import { formatPhone } from "@/lib/phone";
 import ContactPhoneInput from "@/components/ContactPhoneInput";
 import GuestPrivacyConsent from "@/components/GuestPrivacyConsent";
@@ -344,6 +345,10 @@ export default function BuyPage() {
               error={privacyConsentError}
               strongError
             />
+            {/* 2026-10-13: 찾는 상품명이 /deals "찾습니다" 알림판에 보일 수 있어 알림(보조 문구 스타일) */}
+            <p className="mt-1.5" style={FORM_HINT_STYLE} data-buy-visibility-note>
+              {BUY_VISIBILITY_NOTE}
+            </p>
           </div>
         </div>
 

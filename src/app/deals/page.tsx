@@ -13,6 +13,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockDeals, mockCategories, mockRegions, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import AdSlot from "@/components/AdSlot";
 import SellFab from "@/components/SellFab";
+import BuyNoticeBoard from "@/components/BuyNoticeBoard";
 import { FOOTER_BELOW_BG, LIST_BG } from "@/lib/pageBg";
 import { fetchHeartCounts } from "@/lib/heartCountClient";
 
@@ -443,6 +444,9 @@ function DealsPageInner() {
             무료 등록 →
           </span>
         </Link>
+
+        {/* 2026-10-13: "찾습니다" 알림판 — 주황 배너 바로 다음, 항상 표시(높이 44px 고정) */}
+        <BuyNoticeBoard />
 
         {filtered.length > 0 && activeSettled && (
           <div className="flex items-center justify-between">
