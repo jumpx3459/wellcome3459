@@ -48,13 +48,13 @@ export function summarizeBuyRows<R extends BuyNoticeRow>(
 
 /**
  * 알림판 본문 조각 (10/13 2차: 상품명 먼저, 건수는 꼬리) — strong은 상품명만(굵게). "…"이 붙은 이름도 글자 수에 포함
- *   0건 "찾는 상품, 연결해드려요" / 이름 없음: 1~2건 "지금 찾는 상품이 있어요" · 3건 이상 "지금 찾는 상품 N건"
+ *   0건 "구하기 힘든 상품, 찾아드려요" / 이름 없음: 1~2건 "지금 찾는 상품이 있어요" · 3건 이상 "지금 찾는 상품 N건"
  *   이름 있음: 1건 "{이름1} 찾는 중" · 2건·이름 2개·합 ≤ 9자 "{이름1}·{이름2} 찾는 중" · 그 외 "{이름1} 외 {N-1}건 찾는 중"
  */
 export function buyNoticePieces({ count, names }: BuySummary): NoticePiece[] {
   const n = Math.max(0, Math.floor(count || 0));
   const list = (names ?? []).filter(Boolean).slice(0, BUY_NOTICE_MAX_NAMES);
-  if (n === 0) return [{ text: "찾는 상품, 연결해드려요" }];
+  if (n === 0) return [{ text: "구하기 힘든 상품, 찾아드려요" }];
   if (list.length === 0) return [{ text: n >= 3 ? `지금 찾는 상품 ${n}건` : "지금 찾는 상품이 있어요" }];
   if (n === 1) return [{ text: list[0], strong: true }, { text: " 찾는 중" }];
   if (n === 2 && list.length === 2 && Array.from(list[0]).length + Array.from(list[1]).length <= BUY_NOTICE_PAIR_MAX) {
