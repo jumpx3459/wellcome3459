@@ -126,16 +126,20 @@ export default function QuotesTeaserCard({ memberId, variant = "my" }: { memberI
           📋
         </span>
         <span className="flex-1 min-w-0">
-          <span className="block" style={isHome ? { fontSize: rem(17), fontWeight: 800, color: "#0f1f3d" } : MY_CARD_TITLE}>내 견적함</span>
-          <span className="block mt-0.5" style={isHome ? { fontSize: rem(15), color: "#64748b", lineHeight: 1.45 } : MY_DESC}>
+          {/* 2026-10-14: 알약을 제목 줄로(오른쪽 칸 없음 → 본문이 아이콘 옆 남은 폭 전부). 넘치면 줄바꿈(flex-wrap) — 제목은 말줄임 없이 한 덩어리 */}
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1" data-quotes-title-row>
+            <span className="whitespace-nowrap" style={isHome ? { fontSize: rem(17), fontWeight: 800, color: "#0f1f3d" } : MY_CARD_TITLE}>내 견적함</span>
+            <span
+              className="flex-shrink-0 rounded-full font-bold whitespace-nowrap"
+              style={{ fontSize: rem(15), padding: "4px 10px", background: joined ? "#E8F8EC" : "#FDEEE8", color: joined ? "#1D8A44" : "#C2410C" }}
+              data-quotes-pill
+            >
+              {joined ? "✓ 신청함" : "준비 중"}
+            </span>
+          </span>
+          <span className="block mt-0.5" style={isHome ? { fontSize: rem(15), color: "#64748b", lineHeight: 1.45 } : MY_DESC} data-quotes-desc>
             카톡·문자로 주고받은 견적, 한곳에 모아 단가를 비교하세요
           </span>
-        </span>
-        <span
-          className="flex-shrink-0 rounded-full font-bold whitespace-nowrap"
-          style={{ fontSize: rem(15), padding: "4px 10px", background: joined ? "#E8F8EC" : "#FDEEE8", color: joined ? "#1D8A44" : "#C2410C" }}
-        >
-          {joined ? "✓ 신청함" : "준비 중"}
         </span>
       </button>
 
@@ -171,7 +175,7 @@ export default function QuotesTeaserCard({ memberId, variant = "my" }: { memberI
             <ol className="mt-1.5 flex flex-col gap-1.5" style={BODY}>
               {FEATURES.map((t, i) => (
                 <li key={t} className="flex gap-2">
-                  <span aria-hidden className="font-bold" style={{ color: "#C2410C" }}>{i + 1}.</span>
+                  <span aria-hidden className="font-bold flex-shrink-0 whitespace-nowrap" style={{ color: "#C2410C", width: "1.5em" }} data-quotes-num>{i + 1}.</span>
                   <span className="min-w-0">{t}</span>
                 </li>
               ))}
@@ -201,8 +205,8 @@ export default function QuotesTeaserCard({ memberId, variant = "my" }: { memberI
             ) : joined ? (
               <>
                 <div
-                  className="mt-5 text-center font-black rounded-2xl"
-                  style={{ minHeight: 56, lineHeight: "56px", fontSize: rem(18), background: "#E8F8EC", color: "#1D8A44" }}
+                  className="mt-5 text-center font-black rounded-2xl flex items-center justify-center"
+                  style={{ minHeight: 56, padding: "12px 14px", lineHeight: 1.4, fontSize: rem(18), background: "#E8F8EC", color: "#1D8A44" }}
                   data-quotes-done
                 >
                   신청됐어요. 오픈하면 알려드릴게요.
@@ -211,10 +215,10 @@ export default function QuotesTeaserCard({ memberId, variant = "my" }: { memberI
               </>
             ) : (
               <>
-                <p className="mt-5 font-bold" style={{ fontSize: rem(17.5), color: "#1F2937" }}>나는 주로</p>
+                <p className="mt-5 font-bold" style={{ fontSize: rem(17.5), color: "#1F2937" }}>나는 주로 견적을</p>
                 <div className="flex gap-2 mt-2">
-                  {roleBtn("receiver", "견적을 받아요")}
-                  {roleBtn("sender", "견적을 보내요")}
+                  {roleBtn("receiver", "받아요")}
+                  {roleBtn("sender", "보내요")}
                 </div>
                 <button
                   type="button"
