@@ -508,6 +508,7 @@ function AdminDashboard({
   // 우선 핵심 구간(조치 필요·참고 지표·진행 중인 매물)에만 적용.
   const [viewMode, setViewMode] = useState<"auto" | "mobile" | "desktop">("auto");
   const [quotesWaitlist, setQuotesWaitlist] = useState<{ total: number; receiver: number; sender: number } | null>(null);
+  const [jumpxWaitlist, setJumpxWaitlist] = useState<number | null>(null); // 점프엑스 둘러보기 오픈 알림 신청 수(jumpx_open)
   // 2026-09-29: 핵심 지표·최근 7일 추세 (/api/admin/dashboard-metrics, 읽기 전용 집계)
   const [metrics, setMetrics] = useState<{
     members: { total: number; withPush: number };
@@ -615,8 +616,14 @@ function AdminDashboard({
       // 내 견적함 오픈 알림 신청 수 — 테이블이 아직 없거나 실패하면 null("—" 표시)
       allowed("dashboard", "/api/admin/feature-waitlist")
         .then((r) => (r.ok ? r.json() : null))
-        .then((d) => setQuotesWaitlist(d?.quotes ?? null))
-        .catch(() => setQuotesWaitlist(null)),
+        .then((d) => {
+          setQuotesWaitlist(d?.quotes ?? null);
+          setJumpxWaitlist(typeof d?.jumpx?.total === "number" ? d.jumpx.total : null);
+        })
+        .catch(() => {
+          setQuotesWaitlist(null);
+          setJumpxWaitlist(null);
+        }),
       allowed("dashboard", "/api/admin/category-kpis")
         .then((r) => r.json())
         .then((d) => setCategoryKpis(d.items ?? [])),
@@ -2153,7 +2160,8 @@ function AdminDashboard({
               {
                 label: "내 견적함 오픈 알림 신청",
                 value: quotesWaitlist === null ? "—" : `${quotesWaitlist.total}명`,
-                sub: quotesWaitlist === null ? undefined : `받은 견적 ${quotesWaitlist.receiver} / 보낸 견적 ${quotesWaitlist.sender}`,
+                sub: quotesWaitlist === null ? undefined : `견적을 받는 쪽 ${quotesWaitlist.receiver} / 보내는 쪽 ${quotesWaitlist.sender}`,
+                sub2: `점프엑스 둘러보기 오픈 알림 ${jumpxWaitlist === null ? "—" : `${jumpxWaitlist}명`}`,
                 wide: true,
               },
             ].map((stat) => (
@@ -2161,6 +2169,7 @@ function AdminDashboard({
                 <div style={{ ...BIG_NUM, color: "#0B2540" }}>{stat.value}</div>
                 <div className="mt-0.5 font-bold" style={LABEL}>{stat.label}</div>
                 {stat.sub && <div style={LABEL}>{stat.sub}</div>}
+                {"sub2" in stat && stat.sub2 && <div style={LABEL} data-waitlist-jumpx>{stat.sub2}</div>}
               </div>
             ))}
           </div>

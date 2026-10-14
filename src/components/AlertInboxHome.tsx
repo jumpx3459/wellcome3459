@@ -22,6 +22,8 @@ import type { DealRowLoose } from "@/lib/dealFields";
 import { SECTION_TITLE_STYLE } from "@/components/EcosystemGrid";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 import { useBackToClose } from "@/lib/useBackToClose";
+import QuotesTeaserCard from "@/components/QuotesTeaserCard";
+import { QUOTES_ENABLED } from "@/lib/features";
 
 // 헤더-콘텐츠 간격. 2026-10-09 4b-2: 헤더 고정(fixed) 해제 — 예전 실측 높이(83px) paddingTop 보정은 필요 없어짐
 const INBOX_HEADER_GAP = 14;
@@ -62,6 +64,7 @@ function bucketDeals(deals: Deal[]): FeedGroup[] {
 export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: boolean }) {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [memberId, setMemberId] = useState<string | null>(null); // 내 견적함 예고 카드(신청 상태 조회·기록)용
   const [outsideCount, setOutsideCount] = useState(0); // 내 조건 밖 진행 중 매물 수
   const [showInstall, setShowInstall] = useState(true);
   const { canInstall, promptInstall, hasNativePrompt } = useInstallPrompt();
@@ -94,6 +97,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
         setLoaded(true);
         return;
       }
+      setMemberId(userId);
 
       const { data: catRows } = await supabase.from("member_categories").select("category_id, categories(name)").eq("member_id", userId);
       const catIds = (catRows ?? []).map((r) => r.category_id as number);
@@ -382,6 +386,13 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
             <span style={{ fontSize: rem(13), color: "#6B7480" }}>내 조건 밖 진행 중 매물 {outsideCount}건</span>
             <span className="font-bold flex-shrink-0" style={{ fontSize: rem(13), color: "#E25100" }}>전체 매물 보기 →</span>
           </Link>
+        </div>
+      )}
+
+      {/* 2026-10-14 내 견적함 1단계: 카드 목록 맨 아래·푸터 바로 위 한 장(회원 홈만 — 비회원 홈엔 없음). 예고 카드라 MY와 같이 !QUOTES_ENABLED일 때만. 목록과 같은 바탕·바깥 여백 8px */}
+      {!QUOTES_ENABLED && loaded && memberId && (
+        <div style={{ background: HOME_LIST_BG, padding: "8px 8px 0" }} data-home-quotes>
+          <QuotesTeaserCard memberId={memberId} variant="home" />
         </div>
       )}
 
