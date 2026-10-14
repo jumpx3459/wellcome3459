@@ -28,8 +28,14 @@ export const isAlertsOn = (deviceSubscribed: boolean, dealConsent: boolean | nul
 /** 회원 홈용 읽기 전용 판정 — 저장·권한 요청 없이, 브라우저 구독이 있고 서버에도 이 기기가 저장돼 있으며 "알림 끔"이 아닐 때만 구독으로 봄.
  * 화면이 다시 보일 때 다시 확인(다른 화면에서 켜고/끄고 돌아온 경우). */
 export function useAlertsOn(): boolean {
+  return useAlertsOnState() === true;
+}
+
+/** useAlertsOn과 같은 판정 + "아직 모름"(null) 구분 — 켜짐/꺼짐이 확실해진 뒤에만 문구를 보여야 하는 곳(견적함 신청 완료)용.
+ * 동의가 확실히 없으면(false) 구독 조회를 기다리지 않고 false, 동의·구독 조회가 모두 끝나야 true/false. 동의 조회 실패는 계속 null */
+export function useAlertsOnState(): boolean | null {
   const dealConsent = useDealAlertConsent();
-  const [deviceSubscribed, setDeviceSubscribed] = useState(false);
+  const [deviceSubscribed, setDeviceSubscribed] = useState<boolean | null>(null);
   useEffect(() => {
     let cancelled = false;
     const check = async () => {
@@ -51,6 +57,8 @@ export function useAlertsOn(): boolean {
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);
+  if (dealConsent === false) return false;
+  if (dealConsent === null || deviceSubscribed === null) return null;
   return isAlertsOn(deviceSubscribed, dealConsent);
 }
 

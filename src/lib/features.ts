@@ -5,8 +5,9 @@
 // 전송이 실패한다 — 재오픈 절차는 supabase/schema.sql의 "[재오픈용]" 주석 참고.
 export const MESSAGES_ENABLED = false;
 
-// 내 견적함 — 2026-09-29 아직 실제 기능 없음. false인 동안 마이페이지엔 "곧 오픈" 예고 카드
-// (QuotesTeaserCard)만 보이고, 오픈 알림 신청은 feature_waitlist(feature = "quotes")에 쌓인다.
+// 내 견적함 — 2026-09-29 아직 실제 기능 없음. 이 값은 "본 기능(견적서 저장) 오픈 스위치"다 — 예고 카드 노출 스위치가 아님.
+// false인 동안 마이페이지·회원 홈(2026-10-14~)엔 "준비 중" 예고 카드(QuotesTeaserCard, !QUOTES_ENABLED일 때만)가 보이고,
+// 오픈 알림 신청은 feature_waitlist(feature = "quotes")에 쌓인다. 실제 견적함이 생기면 true로 바꿔 예고 카드를 내리고 진짜 진입점을 둘 것.
 export const QUOTES_ENABLED = false;
 
 // 예시 매물(mockData) 사진·영상 스위치 — 2026-09-29. 출처 미확인 미디어(저장소 예시 사진·영상,
