@@ -49,7 +49,7 @@ export default function SellFab() {
         background: "#FF6F0F",
         fontSize: rem(17),
         fontWeight: 800,
-        boxShadow: "0 6px 16px rgba(249,115,22,.45)",
+        boxShadow: "0 6px 16px rgba(255,111,15,.45)",
         opacity: hidden ? 0 : 1,
         transform: hidden ? "translateY(24px)" : "none",
         pointerEvents: hidden ? "none" : undefined,
