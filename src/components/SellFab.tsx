@@ -46,7 +46,7 @@ export default function SellFab() {
         bottom: "calc(var(--nav-bottom) + 14px)",
         height: 48,
         padding: "0 18px",
-        background: "#f97316",
+        background: "#FF6F0F",
         fontSize: rem(17),
         fontWeight: 800,
         boxShadow: "0 6px 16px rgba(249,115,22,.45)",

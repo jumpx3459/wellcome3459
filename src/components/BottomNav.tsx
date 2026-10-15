@@ -12,7 +12,7 @@ export const NAV_HEIGHT = 64;
 export const NAV_BOTTOM = "var(--nav-bottom)";
 
 // 2026-10-09 4b-2: 아이콘을 Microsoft Fluent Emoji 3D PNG(MIT, public/icons/nav/LICENSE)로 — 이모지 문자는 기기마다 모양이 달라 쓰지 않음.
-// 96×96 파일을 30×30 칸(안 여백 2px, 모서리 10px)에 표시. 현재 탭: 이름 #ea580c 800 + 아이콘 뒤 바탕 #fdba74 + 탭 맨 위 3px 주황 막대
+// 96×96 파일을 30×30 칸(안 여백 2px, 모서리 10px)에 표시. 현재 탭: 이름 #ea580c 800 + 아이콘 뒤 바탕 #fdba74 + 탭 맨 위 3px 주황 막대(2026-10-15: 막대만 #FF6F0F로 — 이름 글자는 흰 바탕 명암비 때문에 #ea580c 유지)
 // (2026-10-09 4a: 바탕 #ffedd5 → #fdba74, 막대 추가 — 연한 바탕만으로는 현재 탭이 잘 안 보였음). 선택 안 된 탭 아이콘은 원래 색 그대로
 const NAV_ICON = (name: string) => `/icons/nav/${name}.png`;
 const BASE_TABS = [
@@ -105,7 +105,7 @@ export default function BottomNav() {
             data-nav-active={active ? "1" : undefined}
           >
             {active && (
-              <span aria-hidden data-nav-bar className="absolute" style={{ top: 0, left: 10, right: 10, height: 3, background: "#ea580c", borderRadius: "0 0 3px 3px" }} />
+              <span aria-hidden data-nav-bar className="absolute" style={{ top: 0, left: 10, right: 10, height: 3, background: "#FF6F0F", borderRadius: "0 0 3px 3px" }} />
             )}
             <span
               className="flex items-center justify-center flex-shrink-0"
