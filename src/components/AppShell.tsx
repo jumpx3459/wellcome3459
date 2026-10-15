@@ -14,6 +14,7 @@ import { noteRouteChange, consumeReplaceFlag } from "@/lib/appNav";
 import { supabase } from "@/lib/supabase";
 import { markReturningMember } from "@/lib/returningMember";
 import { saveRefFromSearch } from "@/lib/refStore";
+import { saveUtmFromSearch } from "@/lib/utmStore";
 
 // 관리자 화면은 운영자 전용 도구라 회원용 하단 탭바를 보여주지 않습니다.
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -62,6 +63,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         if (supabase) loggedIn = Boolean((await supabase.auth.getSession()).data.session?.user);
       } catch {}
       if (!cancelled && !loggedIn) saveRefFromSearch(window.location.search);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+  // 2026-10-15: SNS 유입(?utm_source=…)도 같은 방식으로 기기에 30일 저장 — 첫 접촉 기준(이미 저장돼 있으면 유지), 가입 INSERT 때만 members에 기록 (src/lib/utmStore.ts)
+  useEffect(() => {
+    if (!window.location.search.includes("utm_source=")) return;
+    let cancelled = false;
+    (async () => {
+      let loggedIn = false;
+      try {
+        if (supabase) loggedIn = Boolean((await supabase.auth.getSession()).data.session?.user);
+      } catch {}
+      if (!cancelled && !loggedIn) saveUtmFromSearch(window.location.search);
     })();
     return () => {
       cancelled = true;

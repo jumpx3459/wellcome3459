@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { isInAppBrowser, isKakaoInApp, isStandalone } from "@/lib/browserEnv";
 import { copyCurrentUrl, externalTarget, openExternal } from "@/lib/openExternal";
 import { withSavedRef } from "@/lib/refStore";
+import { withSavedUtm } from "@/lib/utmStore";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { rem } from "@/lib/rem";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
@@ -20,6 +21,9 @@ import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 export const INAPP_GATE_SKIP_KEY = "dj_inapp_gate_skip";
 
 type Info = { browser: "크롬" | "사파리"; manual: boolean; reason: string };
+
+// 외부 브라우저로 넘길 주소 — 저장된 추천 코드(ref)와 SNS 유입(utm_*)을 주소에 붙임 (각각 주소에 이미 있으면 그대로)
+const externalUrl = () => withSavedUtm(withSavedRef(window.location.href));
 
 export default function InAppExternalGate() {
   const pathname = usePathname();
@@ -107,7 +111,7 @@ export default function InAppExternalGate() {
                   </p>
                   <button
                     type="button"
-                    onClick={async () => setCopied(await copyCurrentUrl(withSavedRef(window.location.href)))}
+                    onClick={async () => setCopied(await copyCurrentUrl(externalUrl()))}
                     className={`mt-3 w-full ${BTN_CLASS}`}
                     style={btnStyle("secondary")}
                   >
@@ -115,14 +119,14 @@ export default function InAppExternalGate() {
                   </button>
                   {copied === false && (
                     <p className="mt-2 break-all" style={{ fontSize: rem(13), color: "#495057" }}>
-                      {withSavedRef(window.location.href)}
+                      {externalUrl()}
                     </p>
                   )}
                 </>
               ) : (
                 <button
                   type="button"
-                  onClick={() => openExternal(withSavedRef(window.location.href))}
+                  onClick={() => openExternal(externalUrl())}
                   className={`mt-5 w-full ${BTN_CLASS}`}
                   style={btnStyle("primary")}
                 >

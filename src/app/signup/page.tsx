@@ -11,6 +11,7 @@ import { mockCategories, categoryIcons, categoryColors } from "@/lib/mockData";
 import { subscribeToPush, savePushSubscription } from "@/lib/pushClient";
 import { generateRefCode } from "@/lib/refCode";
 import { clearSavedRef, resolveSignupRef } from "@/lib/refStore";
+import { clearSavedUtm, savedUtmColumns } from "@/lib/utmStore";
 import Toast, { useToast } from "@/components/Toast";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 import { fmtLeft } from "@/lib/format";
@@ -351,7 +352,7 @@ function SignupPageInner() {
         .eq("id", userId)
         .maybeSingle();
 
-      const { error: memberError } = await supabase.from("members").upsert({
+      const memberRow = {
         id: userId,
         phone,
         is_business: isBusiness,
@@ -361,7 +362,15 @@ function SignupPageInner() {
         // 트리거(grant_referral_bonus)가 먼저 돌아 추천인에게 사진 슬롯 +2가 또 지급되던 문제.
         // (referred_by 자체는 members_protect_columns 트리거가 가입 후 변경을 막음)
         ...(referredById && !existingMember ? { referred_by: referredById } : {}),
-      });
+      };
+      // 2026-10-15: SNS 유입(utm_*)은 신규 가입 INSERT 때만 보냄 — 기존 회원 재인증·정보 수정엔 안 보냄(DB 트리거도 가입 후 변경 차단)
+      const utmCols = existingMember ? {} : savedUtmColumns();
+      let { error: memberError } = await supabase.from("members").upsert({ ...memberRow, ...utmCols });
+      // utm 컬럼 SQL이 아직 운영에 없을 때(PGRST204 "column not found" / 42703)도 가입은 되게 — utm 없이 한 번 더
+      if (memberError && Object.keys(utmCols).length > 0 && (memberError.code === "PGRST204" || memberError.code === "42703")) {
+        debugLog(`[signup] members upsert utm column missing code=${memberError.code} — retry without utm`);
+        ({ error: memberError } = await supabase.from("members").upsert(memberRow));
+      }
       if (memberError) {
         debugLog(`[signup] members upsert error code=${memberError.code} closing kakaoWindow=${!!kakaoWindow}`);
         if (kakaoWindow) kakaoWindow.close();
@@ -375,6 +384,7 @@ function SignupPageInner() {
       }
 
       clearSavedRef(); // 가입 성공 — 저장해 둔 추천 코드는 쓴 것
+      clearSavedUtm(); // 저장해 둔 SNS 유입도 쓴 것(재가입이면 안 보냈어도 지움)
       if (kakaoWindow) {
         debugLog(`[signup] redirecting kakaoWindow -> ${KAKAO_CHANNEL_URL}`);
         kakaoWindow.location.href = KAKAO_CHANNEL_URL;
