@@ -30,7 +30,9 @@ export default function ConfirmStub() {
             카카오톡 채널로 문의
           </a>
           <a href={telHref(b.tel)} className={`w-full ${BTN_CLASS}`} style={btnStyle("secondary")}>
-            고객센터 전화 {b.tel}
+            <span>
+              고객센터 전화 <span className="whitespace-nowrap">{b.tel}</span>
+            </span>
           </a>
           <Link href="/" className={`w-full ${BTN_CLASS}`} style={btnStyle("secondary")}>
             덤핑점핑 홈으로
