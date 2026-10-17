@@ -22,14 +22,16 @@ export default function PrivacyBody() {
           {large ? "가 작게" : "가 크게 보기"}
         </button>
       </div>
-      <p className="text-sm text-gray500 mb-6">시행일: 2026년 10월 7일</p>
+      <p className="text-sm text-gray500 mb-6">시행일: 2026년 10월 18일</p>
 
       <div style={{ zoom: large ? 1.3 : 1 }}>
         {/* 2026-09-30: docs/legal/consent-texts-2026-10-07.md 6번 반영 (수집 항목 표·제3자 제공 신설·처리 위탁·
             보유 기간·광고성 정보·보호책임자). [확인] 자리는 코드로 확인한 값·대표 확인 값(Supabase 서울, 문자 Twilio,
             Vercel 미국)으로 채움. 국외 이전 연락처는 각 사 개인정보 처리방침에 공개된 주소.
             2026-10-03 F-3a: 거래 연결 동의(7-1) 배포 — 임시 문구 삭제, 수집 항목(거래 연결·비회원 관심·관리자 작업 기록)·보유 기간
-            (연결 기록 3년·판매자 비공개 정보 1년·백업 7일)·위탁 처리 위치 추가. 판매자 신원 항목은 다음 PR. */}
+            (연결 기록 3년·판매자 비공개 정보 1년·백업 7일)·위탁 처리 위치 추가. 판매자 신원 항목은 다음 PR.
+            2026-10-18: 처리 위탁에 솔라피(인증 문자·알림톡·문자 발송 대행, 국내) 추가·시행일 갱신 — 인증 문자를 Twilio에서 솔라피로 바꾸기 전 반영.
+            Twilio는 솔라피 실패 시 대체 발송용으로 계속 쓰므로 위탁·국외 이전 표에 그대로 둠(솔라피는 국내라 국외 이전 표에 넣지 않음). */}
         <section className="flex flex-col gap-5 text-sm text-gray900 leading-relaxed">
           <div>
             <h2 className="font-bold text-navy mb-1.5">1. 수집하는 개인정보 항목</h2>
@@ -99,6 +101,7 @@ export default function PrivacyBody() {
               rows={[
                 ["Supabase Inc.", "데이터베이스·회원 인증", "서울 리전"],
                 ["Vercel Inc.", "웹 호스팅·서버 실행", "서울 리전"],
+                ["주식회사 솔라피", "휴대폰 인증번호 문자 발송, 카카오 알림톡 및 문자 메시지 발송 대행", "국내"],
                 ["Twilio Inc.", "인증번호 문자 발송", "미국"],
                 ["브라우저 푸시 서비스(Google·Apple·Samsung 등)", "알림 전달", "각 사(국외 포함)"],
               ]}
