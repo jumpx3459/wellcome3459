@@ -292,7 +292,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
             style={{ background: "#ffffff", color: "#c2410c", fontWeight: 800, padding: "7px 12px", boxShadow: "0 1px 3px rgba(0,0,0,.12)", fontSize: "max(13px, 0.76em)" }}
             data-sell-banner-button
           >
-            무료 등록 →
+            무료로 팔기 →
           </span>
         </Link>
       </div>

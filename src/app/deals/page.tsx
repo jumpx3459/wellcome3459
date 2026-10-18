@@ -467,8 +467,8 @@ function DealsPageInner() {
         >
           {/* 2026-10-10: 회원 홈 배너와 같은 방식 — 두 덩어리(각각 줄바꿈 없음), 한 줄에 안 들어가면 "매물" 뒤에서만 줄바꿈·둘째 줄 들여쓰기(내어쓰기 1.6em) */}
           <span className="min-w-0 text-sm font-bold text-white" style={{ paddingLeft: "1.6em", textIndent: "-1.6em" }} data-sell-banner-text>
-            <span className="inline-block whitespace-nowrap" style={{ textIndent: 0 }} data-banner-part>📦 나도 긴급 매물</span>{" "}
-            <span className="inline-block whitespace-nowrap" style={{ textIndent: 0 }} data-banner-part>등록하기</span>
+            <span className="inline-block whitespace-nowrap" style={{ textIndent: 0 }} data-banner-part>📦 남는 재고,</span>{" "}
+            <span className="inline-block whitespace-nowrap" style={{ textIndent: 0 }} data-banner-part>현금으로</span>
           </span>
           {/* 2026-10-10 PR 4a: 회원 홈 배너와 같은 흰 알약(흰 바탕·#c2410c 800·7px 12px·그림자). 글자 크기는 그대로 text-xs(13.5px) */}
           <span
@@ -476,7 +476,7 @@ function DealsPageInner() {
             style={{ background: "#ffffff", color: "#c2410c", fontWeight: 800, padding: "7px 12px", boxShadow: "0 1px 3px rgba(0,0,0,.12)" }}
             data-sell-banner-button
           >
-            무료 등록 →
+            무료로 팔기 →
           </span>
         </Link>
 
