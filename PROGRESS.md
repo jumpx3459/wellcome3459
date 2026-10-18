@@ -50,6 +50,13 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
+## 최근 작업 (2026-10-18) — 판매 입구 문구 변경 (브랜치 `fix/sell-cta-wording`)
+
+- **#100 병합 기록**(알림톡 심사용 확인 페이지 `/c/[code]`): 병합 커밋 `30ec541`(10/16, merge commit) · Deploy to Vercel(run 38876241443) 성공 · PR CI(run 38876082278) 성공 · 운영 `/c/test` 200·링크 3개·noindex 확인.
+- **#101 병합 기록**(처리방침 솔라피 수탁자 추가): 병합 커밋 `6138c82`(squash, 10/17 01:56 UTC) · PR CI(run 38992545917, head `2cd5bcb`) 성공 · Deploy to Vercel(run 38992931760) 성공(약 1분) · 운영 `/privacy` 확인: 200 · "주식회사 솔라피" 1회 · 시행일 2026년 10월 18일 · Twilio 행(위탁 표·국외 이전 표) 유지. 솔라피 법인명 확인 완료(솔라피(주) = 주식회사 솔라피, 사업자등록번호 217-81-33791, 10/17 대표) — `docs/ops/solapi-cutover.md` 체크 항목 완료 처리. SMS Hook·Vercel env·Supabase 설정은 070 승인 후 별도.
+- 문구만 변경(로직·스타일·라우트 그대로, 오픈 10/19 전날): 주황 배너 오른쪽 흰 알약 "무료 등록 →" → **"무료로 팔기 →"**(처음 "무료로 재고 팔기"로 했더니 360px·글자 130% /deals 배너에서 알약이 왼쪽 글 "나도 긴급 매물"을 가려서 대표 지시대로 짧은 문구로 — 100·130% 모두 겹침 0)(`/deals` 배너 `deals/page.tsx`, 회원 홈 배너 `AlertInboxHome.tsx` — 같은 배너 문구라 둘 다), 떠 있는 버튼 "＋ 매물 등록" → "＋ 재고 팔기"(`SellFab.tsx`, 회원 홈·/deals 공용). 세 곳 모두 `aria-label`·`title` 없음(링크 안 글자가 그대로 접근성 이름) — 글자가 바뀌면 같이 바뀜.
+- 안 바꾼 것(조사만): 배너 왼쪽 글("나도 긴급 매물 등록하기"·"잠든 재고, 깨워서 현금으로"), 비회원 홈 카드 "판매 등록은 무료 · 지금 등록하기", MY "매물 등록하기", `/sell` 안 제목·버튼 "재고 판매 등록"·"무료로 매물 등록하기".
+
 ## 최근 작업 (2026-10-18) — 개인정보처리방침에 솔라피 수탁자 추가 (브랜치 `docs/privacy-solapi`)
 
 - **#99 병합 기록**(SNS 유입 UTM 1단계): 병합 커밋 `c0f67e5`(10/16) · Deploy to Vercel(run 38871200965) 성공 · PR CI(run 38870167697) 성공 · 운영 SQL 10/16 실행(U-2~U-4 통과) — 이미 앞 작업에 적었으나 다시 확인용으로 둠.

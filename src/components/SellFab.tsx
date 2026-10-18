@@ -57,7 +57,7 @@ export default function SellFab() {
       data-sell-fab
       data-fab-hidden={hidden ? "1" : undefined}
     >
-      ＋ 매물 등록
+      ＋ 재고 팔기
     </Link>
   );
 }
