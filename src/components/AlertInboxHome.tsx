@@ -23,6 +23,7 @@ import { SECTION_TITLE_STYLE } from "@/components/EcosystemGrid";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 import { useBackToClose } from "@/lib/useBackToClose";
 import QuotesTeaserCard from "@/components/QuotesTeaserCard";
+import BuyNoticeBoard from "@/components/BuyNoticeBoard";
 import { QUOTES_ENABLED } from "@/lib/features";
 
 // 헤더-콘텐츠 간격. 2026-10-09 4b-2: 헤더 고정(fixed) 해제 — 예전 실측 높이(83px) paddingTop 보정은 필요 없어짐
@@ -295,6 +296,10 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
             무료로 팔기 →
           </span>
         </Link>
+        {/* 2026-10-20: "찾습니다" 띠 — 매물 탭과 같은 부품·같은 요약 API, 주황 배너 바로 아래(높이 44px 고정). 누르면 /buy 목록 */}
+        <div style={{ marginTop: 8 }}>
+          <BuyNoticeBoard />
+        </div>
       </div>
 
       {/* 2026-10-09 PR 4a: 조건 줄("⚙️ 카테고리 · 조건 수정") 삭제 — 머리 제목을 누르면 MY 관심 카테고리로 */}

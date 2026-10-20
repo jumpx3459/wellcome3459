@@ -28,6 +28,7 @@ import {
   PACKAGE_UNIT_EXAMPLES, SPEC_EXAMPLES, ORIGIN_EXAMPLES, type StorageType,
 } from "@/lib/dealFields";
 import { SuggestInput, StorageTypeButtons } from "@/components/DealFormInputs";
+import { UUID_RE } from "@/lib/buyExposure";
 import { isPriceMode, type PriceMode } from "@/lib/priceMode";
 import { DEAL_PRICE_UNITS, LUMP_SUM, isDealPriceUnit, isLumpSum, priceUnitSuffix, type DealPriceUnit } from "@/lib/priceUnit";
 import CategoryChips from "@/components/CategoryChips";
@@ -301,6 +302,30 @@ export default function SellPage() {
     }
     setDraftReady(true);
   }, [draftOwner]);
+  // 2026-10-20: /buy "찾습니다" 카드의 [공급 가능해요] → /sell?buyRef=<id> — 노출 중인 글이면 카테고리 선택 + 추가 설명 맨 앞에 참조 문구를 미리 채움
+  // (사용자가 고칠 수 있음). 이어쓰기 창이 떠 있으면 고른 뒤에 채움. uuid 형식·노출 조건(공개 API) 통과 건만 — 조회 실패·만료 건은 조용히 무시(일반 /sell).
+  const buyRefDone = useRef(false);
+  useEffect(() => {
+    if (buyRefDone.current || authState !== "member" || !draftReady || draftOffer) return;
+    buyRefDone.current = true;
+    const ref = new URLSearchParams(window.location.search).get("buyRef");
+    if (!ref || !UUID_RE.test(ref)) return;
+    fetch(`/api/buy-requests/public?id=${ref}`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        const it = d?.items?.[0];
+        if (!it || it.id !== ref) return;
+        if (typeof it.category === "string" && categoryIcons[it.category]) {
+          setCategory((prev) => prev || it.category);
+          setCategoryTouched(true);
+          setCategoryEditing(false);
+        }
+        const line = `[찾습니다 참조] ${typeof it.name === "string" && it.name ? it.name : "찾는 상품"} 공급 가능`;
+        setDescription((prev) => (prev.includes("[찾습니다 참조]") ? prev : prev ? `${line}
+${prev}` : line));
+      })
+      .catch(() => {});
+  }, [authState, draftReady, draftOffer]);
   const resumeDraft = () => {
     if (draftOffer) applyDraft(draftOffer.data);
     setDraftOffer(null);

@@ -15,6 +15,7 @@ import KakaoChannelButton from "@/components/KakaoChannelButton";
 import CategoryScroller from "@/components/CategoryScroller";
 import EcosystemGrid, { SECTION_TITLE_STYLE, SERVICES_ANCHOR_ID, scrollToServicesIfHash } from "@/components/EcosystemGrid";
 import AlertInboxHome from "@/components/AlertInboxHome";
+import BuyNoticeBoard from "@/components/BuyNoticeBoard";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 import { GUEST_PRICE_COLS, dealPriceFields, cardDiscountPct, MEMBER_PRICE_CTA } from "@/lib/dealPriceAccess";
@@ -465,24 +466,8 @@ export default function Home() {
           <span className="text-xl" style={{ color: "#FF6F0F" }}>→</span>
         </Link>
 
-        <Link
-          href="/buy"
-          className="flex items-center gap-3 rounded-2xl bg-white border border-gray200"
-          style={{ padding: "14px 20px" }}
-        >
-          <img
-            src="/images/manager.png"
-            alt="점핑매니저"
-            className="w-16 h-16 rounded-xl object-contain bg-gray100 flex-shrink-0"
-          />
-          <div>
-            <div className="text-base font-black text-navy">
-              <span className="inline-block" style={{ width: 24 }}>🔍</span>
-              이런 상품 찾습니다
-            </div>
-            <div className="text-xs text-gray500 mt-0.5" style={{ marginLeft: 24 }}>구매 희망 등록 →</div>
-          </div>
-        </Link>
+        {/* 2026-10-20: 옛 "이런 상품 찾습니다 · 구매 희망 등록" 카드 대신 "찾습니다" 띠(같은 부품·같은 요약 API) — 한 화면에 찾습니다 입구 1개. 등록은 /buy 목록 위 [찾는 상품 등록] */}
+        <BuyNoticeBoard />
 
         {/* 점핑 서비스 — 재고 알림(이 앱의 유일한 역할)과 무관한 별도
             서비스라, 메인 재고 흐름과 섞이지 않게 하단에 별도 구역으로 분리.
