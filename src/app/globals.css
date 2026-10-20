@@ -214,3 +214,16 @@ input[type="date"]::-webkit-datetime-edit {
     animation: none;
   }
 }
+
+/* 2026-10-20 관리자 "조치 필요" 클릭으로 이동한 카드 — 1.5초 주황 테두리(page.tsx가 data-flash를 켰다 끔).
+   안쪽 offset(-2px)이라 overflow-x:clip 카드에서도 잘리지 않음. 움직임 줄이기 설정이면 부드러운 전환 없이 테두리만. */
+[data-flash="1"] {
+  outline: 2px solid #F97316;
+  outline-offset: -2px;
+  border-radius: 16px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  [id][data-flash] {
+    transition: outline-color 0.4s ease;
+  }
+}

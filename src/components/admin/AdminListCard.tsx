@@ -20,7 +20,10 @@ export default function AdminListCard<T>({
   empty,
   listClassName,
   limit = 5,
+  flash = false,
 }: {
+  /** "조치 필요" 클릭으로 이동했을 때 테두리를 잠깐 강조(globals.css [data-flash]) */
+  flash?: boolean;
   id?: string;
   as?: "div" | "section";
   className: string;
@@ -74,7 +77,7 @@ export default function AdminListCard<T>({
   ) : null;
 
   return (
-    <Wrapper id={id} className={`${className} min-w-0 overflow-x-clip`}>
+    <Wrapper id={id} data-flash={flash ? "1" : undefined} className={`${className} min-w-0 overflow-x-clip`}>
       <div ref={headerRef} style={{ scrollMarginTop: 12 }}>
         {onToggle ? (
           <button type="button" onClick={onToggle} className="w-full flex items-center justify-between gap-2 text-left">

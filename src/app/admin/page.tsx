@@ -43,6 +43,14 @@ import BusinessCheckSection, { BusinessCheckBadge } from "@/components/admin/Bus
 import ConnectionBoard from "@/components/admin/ConnectionBoard";
 import { can, type AdminPerm } from "@/lib/adminPerms";
 import { CARD_TITLE_PROPS } from "@/components/admin/cardTitle";
+import { NeedsActionChip, ActionFilterChip, ActionFilterEmpty } from "@/components/admin/NeedsAction";
+import {
+  leadNeedsAction,
+  buyRequestNeedsAction,
+  sellerRequestNeedsAction,
+  partnerRequestNeedsAction,
+  NEEDS_ACTION_ROW_STYLE,
+} from "@/lib/admin/needsAction";
 import { isPassingCheck, NOT_CHECKED_MESSAGE, type BusinessCheck } from "@/lib/businessCheck";
 import { formatConsentDate } from "@/lib/consent";
 
@@ -547,6 +555,17 @@ function AdminDashboard({
   const [sellerReqOpen, setSellerReqOpen] = useState(true);
   const [partnerReqOpen, setPartnerReqOpen] = useState(true);
   const [buyReqOpen, setBuyReqOpen] = useState(true);
+  // 2026-10-20: 카드별 "미연락만/대기만/심사중만" 필터(관심·연결은 leadFilter === "uncontacted"가 같은 역할) + 이동 직후 테두리 강조
+  const [buyOnly, setBuyOnly] = useState(false);
+  const [sellerOnly, setSellerOnly] = useState(false);
+  const [partnerOnly, setPartnerOnly] = useState(false);
+  const [flash, setFlash] = useState<{ id: string; n: number } | null>(null); // n: 같은 카드를 또 눌러도 1.5초를 다시 셈
+  const flashId = flash?.id ?? null;
+  useEffect(() => {
+    if (!flash) return;
+    const t = setTimeout(() => setFlash(null), 1500);
+    return () => clearTimeout(t);
+  }, [flash]);
   const [adminsOpen, setAdminsOpen] = useState(false);
   const [memberShowCount, setMemberShowCount] = useState(20);
 
@@ -669,7 +688,7 @@ function AdminDashboard({
   });
 
   const filteredInterests = interests.filter((i) => {
-    if (leadFilter === "uncontacted" && i.contacted) return false;
+    if (leadFilter === "uncontacted" && !leadNeedsAction(i)) return false;
     if (leadFilter === "pending" && i.outcome !== "pending") return false;
     if (leadFilter === "completed" && i.outcome !== "completed") return false;
     if (leadFilter === "no_deal" && i.outcome !== "no_deal") return false;
@@ -685,15 +704,15 @@ function AdminDashboard({
   // 관심 표시: 카드의 "미연락" 배지 기준(미연락 + 결과 진행중). 구매 요청: 미연락 → 연락했지만 매칭 결과 대기 → 끝난 건.
   // 파트너 신청: 심사중 먼저. 판매자 신청은 API가 대기(pending)만 주고, 진행 중 매물은 API가 마감 임박 순이라 그대로.
   // 카드 제목 "n건 미연락"도 같은 기준으로 셈(배지·정렬과 숫자가 어긋나지 않게)
-  const leadNeedsAction = (i: Interest) => !i.contacted && i.outcome === "pending";
   const sortedInterests = [...filteredInterests].sort(
     (a, b) => Number(!leadNeedsAction(a)) - Number(!leadNeedsAction(b))
   );
   const buyRank = (b: BuyRequest) => (!b.contacted ? 0 : b.outcome === "pending" ? 1 : 2);
-  const sortedBuyRequests = [...buyRequests].sort((a, b) => buyRank(a) - buyRank(b));
-  const sortedPartnerRequests = [...partnerRequests].sort(
-    (a, b) => Number(a.status !== "pending") - Number(b.status !== "pending")
-  );
+  const sortedBuyRequests = buyRequests.filter((b) => !buyOnly || buyRequestNeedsAction(b)).sort((a, b) => buyRank(a) - buyRank(b));
+  const sortedPartnerRequests = partnerRequests
+    .filter((r) => !partnerOnly || partnerRequestNeedsAction(r))
+    .sort((a, b) => Number(!partnerRequestNeedsAction(a)) - Number(!partnerRequestNeedsAction(b)));
+  const shownSellerRequests = requests.filter((r) => !sellerOnly || sellerRequestNeedsAction(r));
 
   // 2026-10-06: 데이터 내보내기는 최고관리자만 — CSV 버튼도 최고관리자에게만 보이고, 내용은 서버(/api/admin/export, 역할 검사)
   // 응답으로 만든다(화면 목록 데이터를 그대로 쓰지 않음). 지금 화면의 필터·검색 결과에 있는 행만 담음.
@@ -944,6 +963,15 @@ function AdminDashboard({
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  // 2026-10-20: "조치 필요" 타일 → 해당 카드 펼침 + 필터 ON + 스크롤 + 테두리 1.5초 강조.
+  // 필터가 줄어든 뒤의 위치로 가도록 스크롤은 다음 프레임에(상태 반영 뒤).
+  const jumpToAction = (id: string, openSection: () => void, applyFilter: () => void) => {
+    applyFilter();
+    openSection();
+    requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    setFlash((f) => ({ id, n: (f?.n ?? 0) + 1 }));
+  };
+
   // 2026-10-04: 매물 등록 폼·수정 카드의 "사업자 조회 바로가기" — 사업자 조회 섹션의 판매 신청을 "선택 안 함(직접 등록)"으로 되돌리고
   // (예전에 어떤 신청 카드에서 골라 둔 게 남아 있으면 직접 등록용 조회가 그 신청에 붙어 버림) 그 위치로 스크롤 + 잠깐 강조
   const goToBizCheck = () => {
@@ -1133,6 +1161,8 @@ function AdminDashboard({
     <>
       <AdminListCard
         id="leads"
+        flash={flashId === "leads"}
+        limit={leadFilter === "uncontacted" ? null : 5}
         className={
           isDesktop
             ? "col-span-2 bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
@@ -1147,6 +1177,7 @@ function AdminDashboard({
         onToggle={() => setLeadsOpen((v) => !v)}
         toolbar={
         <>
+        {leadFilter === "uncontacted" && <ActionFilterChip label="미연락만" on onToggle={() => setLeadFilter("all")} />}
         <input
           value={leadSearch}
           onChange={(e) => setLeadSearch(e.target.value)}
@@ -1209,9 +1240,13 @@ function AdminDashboard({
         }
         empty={
           !loading && (
-            <div className="text-center text-gray500 py-6 text-sm">
-              {interests.length === 0 ? "아직 관심 표시가 없어요." : "검색/필터 결과가 없어요."}
-            </div>
+            leadFilter === "uncontacted" ? (
+              <ActionFilterEmpty text="미연락 건이 없어요" onShowAll={() => setLeadFilter("all")} />
+            ) : (
+              <div className="text-center text-gray500 py-6 text-sm">
+                {interests.length === 0 ? "아직 관심 표시가 없어요." : "검색/필터 결과가 없어요."}
+              </div>
+            )
           )
         }
         items={sortedInterests}
@@ -1228,6 +1263,7 @@ function AdminDashboard({
                   : i.contacted
                   ? "#E4E7EB"
                   : "#FF6F0F",
+              ...(leadNeedsAction(i) ? NEEDS_ACTION_ROW_STYLE : {}),
             }}
           >
             {/* 2026-09-29: 매물명(17/800) → 회원 정보 한 줄 → 상태 배지 → 연락·성사/불발 버튼 한 줄 */}
@@ -1280,11 +1316,7 @@ function AdminDashboard({
                       연결 동의 ✓ {formatConsentDate(i.connection_consent_at)}
                     </span>
                   )}
-                  {!i.contacted && i.outcome === "pending" && (
-                    <span className="font-bold px-2 py-0.5 rounded-full" style={{ fontSize: rem(14), background: "#FDECEC", color: "#B91C1C" }}>
-                      미연락
-                    </span>
-                  )}
+                  {leadNeedsAction(i) && <NeedsActionChip>미연락</NeedsActionChip>}
                 </div>
                 <div className="mt-1" style={{ ...LABEL, fontVariantNumeric: "tabular-nums" }}>
                   {new Date(i.created_at).toLocaleString("ko-KR", {
@@ -1505,22 +1537,43 @@ function AdminDashboard({
     <>
       <AdminListCard
         id="pending-sellers"
+        flash={flashId === "pending-sellers"}
+        limit={sellerOnly ? null : 5}
         className={
           isDesktop
             ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
             : "px-5 pb-8 flex flex-col gap-3"
         }
-        title={<span {...CARD_TITLE_PROPS}>대기 중인 판매자 신청 <span style={{ ...LABEL, fontWeight: 400 }}>({requests.length}건)</span></span>}
+        title={<span {...CARD_TITLE_PROPS}>대기 중인 판매자 신청 <span style={{ ...LABEL, fontWeight: 400 }}>({requests.filter(sellerRequestNeedsAction).length}건)</span></span>}
         open={sellerReqOpen}
         onToggle={() => setSellerReqOpen((v) => !v)}
-        toolbar={loading && <div className="text-center text-gray500 py-8">불러오는 중...</div>}
-        empty={!loading && <div className="text-center text-gray500 py-8 text-sm">대기 중인 신청이 없어요.</div>}
-        items={requests}
+        toolbar={
+          <>
+            {loading && <div className="text-center text-gray500 py-8">불러오는 중...</div>}
+            {sellerOnly && <ActionFilterChip label="대기만" on onToggle={() => setSellerOnly(false)} />}
+          </>
+        }
+        empty={
+          !loading &&
+          (sellerOnly ? (
+            <ActionFilterEmpty text="대기 건이 없어요" onShowAll={() => setSellerOnly(false)} />
+          ) : (
+            <div className="text-center text-gray500 py-8 text-sm">대기 중인 신청이 없어요.</div>
+          ))
+        }
+        items={shownSellerRequests}
         renderItem={(r) => (
-          <div key={r.id} className="bg-white border border-gray200 rounded-2xl px-4 py-4">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-gray500">
-              <span>{categoryIcons[r.categories?.name ?? ""] ?? "🗂️"}</span>
-              {[r.categories?.name, r.regions?.name].filter(Boolean).join(" · ") || "카테고리/지역 미입력"}
+          <div
+            key={r.id}
+            className="bg-white border border-gray200 rounded-2xl px-4 py-4"
+            style={sellerRequestNeedsAction(r) ? NEEDS_ACTION_ROW_STYLE : undefined}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-gray500 min-w-0">
+                <span className="flex-shrink-0">{categoryIcons[r.categories?.name ?? ""] ?? "🗂️"}</span>
+                <span className="truncate">{[r.categories?.name, r.regions?.name].filter(Boolean).join(" · ") || "카테고리/지역 미입력"}</span>
+              </div>
+              {sellerRequestNeedsAction(r) && <NeedsActionChip>대기</NeedsActionChip>}
             </div>
             <div className="text-base font-bold text-gray900 mt-1.5">{r.product_name}</div>
             {/* 2026-09-29: 재고 유형 배지 (일반 재고는 없음) */}
@@ -1647,6 +1700,9 @@ function AdminDashboard({
     <>
       <AdminListCard
         as="section"
+        id="partner-requests"
+        flash={flashId === "partner-requests"}
+        limit={partnerOnly ? null : 5}
         className={
           isDesktop
             ? "bg-white border border-gray200 rounded-2xl p-4"
@@ -1654,29 +1710,37 @@ function AdminDashboard({
         }
         title={
           <h2 {...CARD_TITLE_PROPS}>
-            🏅 공식 점핑파트너 신청 <span style={{ ...LABEL, fontWeight: 400 }}>({partnerRequests.filter((r) => r.status === "pending").length}건 대기)</span>
+            🏅 공식 점핑파트너 신청 <span style={{ ...LABEL, fontWeight: 400 }}>({partnerRequests.filter(partnerRequestNeedsAction).length}건 심사중)</span>
           </h2>
         }
         open={partnerReqOpen}
         onToggle={() => setPartnerReqOpen((v) => !v)}
+        toolbar={
+          <div className="mt-3 flex flex-col">
+            <ActionFilterChip label="심사중만" on={partnerOnly} onToggle={() => setPartnerOnly((v) => !v)} />
+          </div>
+        }
+        empty={partnerOnly ? <ActionFilterEmpty text="심사중 건이 없어요" onShowAll={() => setPartnerOnly(false)} /> : undefined}
         listClassName="mt-3 flex flex-col gap-2"
         items={sortedPartnerRequests}
         renderItem={(r) => (
-            <div key={r.id} className="bg-white border border-gray200 rounded-2xl px-4 py-4 text-sm">
+            <div
+              key={r.id}
+              className="bg-white border border-gray200 rounded-2xl px-4 py-4 text-sm"
+              style={partnerRequestNeedsAction(r) ? NEEDS_ACTION_ROW_STYLE : undefined}
+            >
               <div className="flex items-center justify-between gap-2">
                 <span className="font-bold text-gray900">{r.members?.company_name ?? r.members?.phone ?? r.member_id}</span>
-                <span
-                  className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
-                  style={
-                    r.status === "pending"
-                      ? { background: "#FFF4E0", color: "#966B00" }
-                      : r.status === "approved"
-                      ? { background: "#E8F8EC", color: "#1D8A44" }
-                      : { background: "#F1F1EF", color: "#6B7480" }
-                  }
-                >
-                  {r.status === "pending" ? "심사중" : r.status === "approved" ? "승인됨" : "거절됨"}
-                </span>
+                {partnerRequestNeedsAction(r) ? (
+                  <NeedsActionChip>심사중</NeedsActionChip>
+                ) : (
+                  <span
+                    className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+                    style={r.status === "approved" ? { background: "#E8F8EC", color: "#1D8A44" } : { background: "#F1F1EF", color: "#6B7480" }}
+                  >
+                    {r.status === "approved" ? "승인됨" : "거절됨"}
+                  </span>
+                )}
               </div>
               <p className="mt-1.5 text-gray500">업종: {r.business_type}</p>
               <p className="text-gray500">채널: {r.channel_info}</p>
@@ -1765,6 +1829,8 @@ function AdminDashboard({
     <>
       <AdminListCard
         id="buy-requests"
+        flash={flashId === "buy-requests"}
+        limit={buyOnly ? null : 5}
         className={
           isDesktop
             ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
@@ -1772,30 +1838,49 @@ function AdminDashboard({
         }
         title={
           <span {...CARD_TITLE_PROPS}>
-            🔍 이런 재고 찾습니다 <span style={{ ...LABEL, fontWeight: 400 }}>({buyRequests.filter((b) => !b.contacted).length}건 미연락)</span>
+            🔍 이런 재고 찾습니다 <span style={{ ...LABEL, fontWeight: 400 }}>({buyRequests.filter(buyRequestNeedsAction).length}건 미연락)</span>
           </span>
         }
         open={buyReqOpen}
         onToggle={() => setBuyReqOpen((v) => !v)}
-        empty={!loading && <div className="text-center text-gray500 py-6 text-sm">등록된 구매 희망이 없어요.</div>}
+        toolbar={
+          <div className="flex flex-col">
+            <ActionFilterChip label="미연락만" on={buyOnly} onToggle={() => setBuyOnly((v) => !v)} />
+          </div>
+        }
+        empty={
+          !loading &&
+          (buyOnly ? (
+            <ActionFilterEmpty text="미연락 건이 없어요" onShowAll={() => setBuyOnly(false)} />
+          ) : (
+            <div className="text-center text-gray500 py-6 text-sm">등록된 구매 희망이 없어요.</div>
+          ))
+        }
         items={sortedBuyRequests}
         renderItem={(b) => (
-          <div key={b.id} className="bg-white border border-gray200 rounded-2xl px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-gray500">
-                <span>{categoryIcons[b.categories?.name ?? ""] ?? "🗂️"}</span>
-                {b.categories?.name ?? "카테고리 미지정"} · {b.regions?.name ?? "전국 가능"}
+          <div
+            key={b.id}
+            className="bg-white border border-gray200 rounded-2xl px-4 py-4"
+            style={buyRequestNeedsAction(b) ? NEEDS_ACTION_ROW_STYLE : undefined}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-gray500 min-w-0">
+                <span className="flex-shrink-0">{categoryIcons[b.categories?.name ?? ""] ?? "🗂️"}</span>
+                <span className="truncate">{b.categories?.name ?? "카테고리 미지정"} · {b.regions?.name ?? "전국 가능"}</span>
               </div>
-              {b.outcome === "matched" && (
-                <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#E8F8EC", color: "#1D8A44" }}>
-                  매칭 완료
-                </span>
-              )}
-              {b.outcome === "no_match" && (
-                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-gray100 text-gray500">
-                  매칭 불발
-                </span>
-              )}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {buyRequestNeedsAction(b) && <NeedsActionChip>미연락</NeedsActionChip>}
+                {b.outcome === "matched" && (
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: "#E8F8EC", color: "#1D8A44" }}>
+                    매칭 완료
+                  </span>
+                )}
+                {b.outcome === "no_match" && (
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-gray100 text-gray500 whitespace-nowrap">
+                    매칭 불발
+                  </span>
+                )}
+              </div>
             </div>
             <div className="text-base font-bold text-gray900 mt-1.5">{b.product_name}</div>
             <div className="text-sm text-gray500 mt-1">
@@ -1983,9 +2068,9 @@ function AdminDashboard({
               )}
             </div>
           )}
-          {interests.filter((i) => !i.contacted).length > 0 && (
+          {interests.filter(leadNeedsAction).length > 0 && (
             <div className="text-xs font-bold mt-1" style={{ color: "var(--color-brandOrangeAccent)" }}>
-              🔔 미연락 리드 {interests.filter((i) => !i.contacted).length}건
+              🔔 미연락 리드 {interests.filter(leadNeedsAction).length}건
             </div>
           )}
         </div>
@@ -2050,12 +2135,12 @@ function AdminDashboard({
             return remainMs > 0 && remainMs <= 6 * 60 * 60 * 1000;
           }).length;
           const actions = [
-            { label: "미연락 리드", value: metrics?.counts?.uncontactedLeads ?? interests.filter((i) => !i.contacted).length, urgent: true, go: () => { setLeadFilter("uncontacted"); jumpToSection("leads", () => setLeadsOpen(true)); } },
+            { label: "미연락 리드", value: interests.filter(leadNeedsAction).length, urgent: true, go: () => jumpToAction("leads", () => setLeadsOpen(true), () => setLeadFilter("uncontacted")) },
             // 2026-10-04 F-4: 24시간 단계 변화 없는 거래 연결 (거래 연결 카드가 불러온 값)
             { label: "멈춘 연결", value: connCounts.stuck, urgent: true, go: () => jumpToSection("connections", () => setConnectionsOpen(true)) },
             { label: "마감임박(6h)", value: soonDeals, urgent: true, go: () => jumpToSection("active-deals") },
-            { label: "대기 판매신청", value: metrics?.counts?.pendingSellerRequests ?? requests.length, urgent: false, go: () => jumpToSection("pending-sellers", () => setSellerReqOpen(true)) },
-            { label: "재고문의 미연락", value: metrics?.counts?.uncontactedBuyRequests ?? buyRequests.filter((b) => !b.contacted).length, urgent: false, go: () => jumpToSection("buy-requests", () => setBuyReqOpen(true)) },
+            { label: "대기 판매신청", value: requests.filter(sellerRequestNeedsAction).length, urgent: false, go: () => jumpToAction("pending-sellers", () => setSellerReqOpen(true), () => setSellerOnly(true)) },
+            { label: "재고문의 미연락", value: buyRequests.filter(buyRequestNeedsAction).length, urgent: false, go: () => jumpToAction("buy-requests", () => setBuyReqOpen(true), () => setBuyOnly(true)) },
           ];
           // 2026-10-10: 권한 없는 타일은 뺌(점핑매니저: 미연락 리드·재고문의 미연락 없음)
           const tilePerm: Record<string, AdminPerm> = { "미연락 리드": "leads", "재고문의 미연락": "buyRequests" };
