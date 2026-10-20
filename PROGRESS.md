@@ -50,6 +50,15 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
+## 최근 작업 (2026-10-20) — 찾습니다 목록 화면 + [공급 가능해요] 연결 (브랜치 `feat/buy-request-list`)
+
+- **경로**: `/buy` = 찾습니다 목록(새 화면), 등록 폼은 `/buy/new`(파일 이동). 링크: 홈 카드 "이런 상품 찾습니다 · 구매 희망 등록"·MY 구매 요청 빈 화면 [구매 요청하기] = 등록 의도 → `/buy/new` / 하단 탭·`/deals` 띠(`BuyNoticeBoard`) = 보기 → `/buy`. 목록 맨 위 [찾는 상품 등록] → `/buy/new`. `/buy/new` "추가 요청" 칸 → "추가 조건" + 안내 문구.
+- **노출 판정 한 곳** `src/lib/buyExposure.ts`(띠 `/api/buy-requests/summary`와 목록 `/api/buy-requests/public`이 같이 씀, 서버 읽기는 `src/lib/buyPublic.ts`): 연락함(contacted=true) · 결과 진행중 · 최근 30일. **띠 건수도 이제 연락한 글만 셈**(예전엔 대기 글 전부). 시험 제외: 시험 회원(is_test)·제외 번호 표 계속 제외 / 관리자 번호·관리자 회원 글은 `2026-10-19 00:00 KST` 이후면 노출(대리 등록) / 예외 허용 id `5c33d493-f77a-476e-a559-38018c795f5f`(오픈 전 10/12 실제 의뢰, 대표 확인) 상수로 노출. 연락처·링크 섞인 상품명은 이름 숨김("찾는 상품").
+- **`GET /api/buy-requests/public`**(service_role, no-store): 응답 칸 = id·name·category·quantity·region·created_at 뿐 — 연락처·희망가·설명·회원 id·이름·상호 없음. `?id=<uuid>`로 한 건 조회(노출 조건 통과 건만, `/sell` 미리 채움용).
+- **`/sell?buyRef=<id>`**: uuid 검사 → 공개 API 조회 → 카테고리 선택 + 추가 설명 맨 앞에 "[찾습니다 참조] {품목명} 공급 가능"(수정 가능, 이어쓰기 창은 고른 뒤에 채움). 실패·만료·형식 오류는 조용히 무시. 비회원은 기존 회원 전용 안내 → [로그인·가입]이 `returnTo=/sell?buyRef=<id>`로 이어져 로그인·가입 뒤 같은 주소로 복귀(`SellGuestNotice`).
+- **알아둘 점**: ① 대표 계정이 `is_test`로 표시돼 있으면(schema.sql 주석: 설립자 계정은 is_test 처리) 관리자 날짜 규칙보다 시험 회원 제외가 먼저라 그 계정 글은 계속 숨음 — 운영에서 대표 글이 안 보이면 이 점부터 확인. ② 예외 id 글이 이미 매칭 끝났거나 연락 전이면 숨음(조건은 그대로). ③ DB 변경 없음.
+- 시험: tsc 0 · lint 2 errors(기존)·57 warnings(`/buy` 목록 `<img>` 1개 추가) · 가짜 env `next build` 성공 · `scripts/buy-exposure-test.mts` 전부 통과(요청서 ①~⑥ + 경계) · 가짜 Supabase로 public·summary 응답 시험(허용 6칸·금지 칸 15종 미포함·노출 4/숨김 5) · Playwright 360·1280 (띠→/buy · [공급 가능해요]→/sell 채움 · 비회원 returnTo·가입 링크 · [찾는 상품 등록]→/buy/new 등록(가짜 DB) · 0건 빈 상태). 운영 호출 0.
+
 ## 최근 작업 (2026-10-20) — 관리자 대시보드 미연락 표시 (브랜치 `feat/admin-uncontacted-highlight`)
 
 - **#103 병합 기록**(관리자 미연락 표시): squash 병합 `3a56d07`(10/20) · PR CI(run 39387045967) 성공 · Deploy to Vercel(run 39387264117) 성공 · 운영 `/admin` 200(로그인 화면). 보완 포함: `미연락만` 등 필터 ON이면 5건 제한 없이 해당 건 전부 표시(OFF일 때만 5건 + [전체 보기]).

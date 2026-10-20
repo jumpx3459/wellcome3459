@@ -5,7 +5,7 @@ import NoticeBoard from "@/components/NoticeBoard";
 import { buyNoticePieces, type BuySummary } from "@/lib/buyNotice";
 
 // /deals "찾습니다" 알림판 (2026-10-13) — 항상 표시. 요약(/api/buy-requests/summary)을 받기 전·실패하면 0건 문구.
-// 누르면 /buy(찾습니다 등록 화면). 회원·비회원 같은 화면.
+// 누르면 /buy(찾습니다 목록 — 등록 폼은 /buy/new). 회원·비회원 같은 화면.
 const EMPTY: BuySummary = { count: 0, names: [] };
 
 export default function BuyNoticeBoard() {

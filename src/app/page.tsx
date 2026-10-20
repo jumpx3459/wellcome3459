@@ -466,7 +466,7 @@ export default function Home() {
         </Link>
 
         <Link
-          href="/buy"
+          href="/buy/new"
           className="flex items-center gap-3 rounded-2xl bg-white border border-gray200"
           style={{ padding: "14px 20px" }}
         >

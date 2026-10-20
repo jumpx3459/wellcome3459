@@ -56,7 +56,7 @@ export default function MyBuyRequests({ inMenu = false }: { inMenu?: boolean }) 
         <div className="text-center rounded-2xl" style={{ padding: "22px 16px", background: inMenu ? "#fff" : "#F9FAFB" }}>
           <p style={MY_DESC}>찾는 상품을 올려두면 점핑매니저가 매물을 찾아 연결해드려요.</p>
           <Link
-            href="/buy"
+            href="/buy/new"
             className={`mt-3 w-full ${BTN_CLASS}`}
             style={myBtnStyle("primary")}
           >
