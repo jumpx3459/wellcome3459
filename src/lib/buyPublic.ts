@@ -42,14 +42,17 @@ export async function loadVisibleBuyRequests(db: SupabaseClient, opts: { id?: st
     db.from("kpi_excluded_phones").select("phone"),
   ]);
   const norm = (v: unknown) => normalizePhone(typeof v === "string" ? v : null);
+  // 관리자 번호 = admin_users 표 + 설립자 번호(환경변수 FOUNDER_ADMIN_PHONE — 설립자는 admin_users에 없을 수 있음, admins/route.ts와 같은 값)
   const adminPhones = new Set((admins.data ?? []).map((a) => norm((a as { phone: string | null }).phone)).filter(Boolean));
+  const founder = norm(process.env.FOUNDER_ADMIN_PHONE ?? null);
+  if (founder) adminPhones.add(founder);
   const excludedPhones = new Set((excluded.data ?? []).map((a) => norm((a as { phone: string | null }).phone)).filter(Boolean));
   const testMemberIds = new Set<string>();
   const adminMemberIds = new Set<string>();
   for (const m of (members.data ?? []) as { id: string; phone: string | null; is_test: boolean | null }[]) {
     const p = norm(m.phone);
     if (m.is_test || (p && excludedPhones.has(p))) testMemberIds.add(m.id);
-    if (p && adminPhones.has(p)) adminMemberIds.add(m.id);
+    if (p && adminPhones.has(p)) adminMemberIds.add(m.id); // 관리자 회원이면 is_test여도 buyExposure가 관리자 규칙을 먼저 적용
   }
 
   const ctx = { now: Date.now(), testMemberIds, excludedPhones, adminMemberIds, adminPhones };

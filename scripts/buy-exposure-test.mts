@@ -51,6 +51,17 @@ eq(vis({ phone: ADMIN_PHONE, created_at: "2026-10-18T15:00:00Z" }), true, "관�
 eq(vis({ member_id: "m-admin", phone: "", created_at: "2026-10-20T01:00:00Z" }), true, "관리자 회원 id(번호 없음) 10/20 노출");
 eq(vis({ member_id: "m-admin", phone: "", created_at: "2026-10-15T01:00:00Z" }), false, "관리자 회원 id 10/15 숨김");
 eq(vis({ phone: "01099990000" }), false, "제외 번호 표 숨김");
+
+// 판정 순서(관리자 글 먼저): 관리자 회원이 is_test=true여도 관리자 규칙 적용
+const ctxT = { ...ctx, testMemberIds: new Set(["m-test", "m-admin"]) }; // m-admin = is_test=true인 관리자(대표) 회원
+const visT = (o: Record<string, unknown>) => L.isBuyVisible(row(o), ctxT);
+eq(visT({ member_id: "m-admin", phone: "", created_at: "2026-10-20T01:00:00Z" }), true, "⑦ is_test 관리자 회원 + 10/20 글 → 노출");
+eq(visT({ id: "5c33d493-f77a-476e-a559-38018c795f5f", member_id: "m-admin", phone: "", created_at: "2026-10-12T01:00:00Z" }), true, "⑧ is_test 관리자 회원 + 예외 id(10/12) → 노출");
+eq(visT({ member_id: "m-test", phone: "", created_at: "2026-10-20T01:00:00Z" }), false, "⑨ is_test 일반 회원 + 10/20 글 → 숨김");
+eq(visT({ id: "other", member_id: "m-admin", phone: "", created_at: "2026-10-18T10:00:00Z" }), false, "⑩ is_test 관리자 회원 + 10/18 글(예외 아님) → 숨김");
+eq(visT({ member_id: "m-admin", phone: ADMIN_PHONE, created_at: "2026-10-20T01:00:00Z" }), true, "관리자 회원 + 관리자 번호 + is_test → 노출");
+eq(L.isBuyVisible(row({ phone: "01099990000", member_id: "m-admin", created_at: "2026-10-20T01:00:00Z" }), { ...ctx, adminPhones: new Set(["01099990000"]) }), true, "번호가 제외 번호 표에도 있는 관리자 글 → 관리자 규칙 우선 노출");
+eq(visT({ member_id: "m-admin", phone: "", contacted: false, created_at: "2026-10-20T01:00:00Z" }), false, "is_test 관리자도 연락 전이면 숨김(공통 조건)");
 eq(vis({}), true, "일반 글(연락함·진행중·최근) 노출");
 eq(vis({ created_at: "2026-09-20T01:00:00Z" }), false, "30일 지난 글 숨김");
 eq(vis({ created_at: "2026-09-21T03:00:00Z" }), true, "딱 29일 23시간 글 노출");
