@@ -34,7 +34,7 @@ export function canReuseRoot(role: string, rootIsException: boolean): boolean {
 export const normCompanyForReuse = (v: string | null | undefined) =>
   (v ?? "").replace(/\s+/g, "").replace(/\(주\)|（주）|주식회사/g, "").toLowerCase();
 
-export type ReuseWarningCode = "status_closed" | "status_failed" | "company_differs" | "phone_differs" | "over_year" | "root_exception";
+export type ReuseWarningCode = "status_closed" | "status_unregistered" | "status_failed" | "company_differs" | "phone_differs" | "over_year" | "root_exception";
 export type ReuseWarning = { code: ReuseWarningCode; text: string };
 
 /** 이번 상태 조회 결과 — ok면 b_stt_cd("01" 계속 / "02" 휴업 / "03" 폐업 / "" 미등록), failed면 국세청 호출 실패 */
@@ -61,6 +61,9 @@ export function buildReuseWarnings(i: ReuseWarningInput): ReuseWarning[] {
   if (i.status.kind === "failed") w.push({ code: "status_failed", text: "상태 조회 실패 · 다시 조회 권장" });
   else if (i.status.code === "02" || i.status.code === "03") {
     w.push({ code: "status_closed", text: `이번 상태 조회 결과 ${i.status.code === "02" ? "휴업" : "폐업"}이에요 · 등록은 할 수 있어요` });
+  } else if (i.status.code === "") {
+    // b_stt_cd "" = 국세청에 등록되지 않은 번호(미등록·삭제) — 휴업·폐업과 같은 노란 경고, 막지 않음
+    w.push({ code: "status_unregistered", text: "국세청에 등록되지 않은 번호로 조회돼요 · 다시 조회를 권해요" });
   }
   const a = normCompanyForReuse(i.rootCompany);
   const b = normCompanyForReuse(i.currentCompany);

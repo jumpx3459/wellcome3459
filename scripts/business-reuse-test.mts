@@ -82,7 +82,14 @@ eq(
   ["status_closed", "company_differs", "phone_differs", "over_year", "root_exception"],
   "경고 5개 모두 — 순서 고정(상태·상호·연락처·1년·예외)"
 );
-eq(codes({ status: { kind: "ok", code: "" } }), [], "미등록('') 상태는 이번 요청 범위 밖(경고 없음)");
+eq(codes({ status: { kind: "ok", code: "" } }), ["status_unregistered"], "① 미등록('') 상태 → 노란 경고");
+eq(R.buildReuseWarnings({ ...base, status: { kind: "ok", code: "" } })[0].text, "국세청에 등록되지 않은 번호로 조회돼요 · 다시 조회를 권해요", "① 미등록 문구");
+eq(
+  codes({ status: { kind: "ok", code: "" }, currentCompany: "다른상사", currentPhone: "01000000000", rootCheckedAt: ago(400), rootException: true }),
+  ["status_unregistered", "company_differs", "phone_differs", "over_year", "root_exception"],
+  "경고 5개 모두(미등록 포함) — 순서 고정(상태·상호·연락처·1년·예외)"
+);
+eq(codes({ status: { kind: "ok", code: "01" } }), [], "계속사업자('01')는 상태 경고 없음");
 
 // ── 권한: 예외 root는 최고관리자·관리자만
 eq(R.canReuseRoot("점핑매니저", true), false, "예외 root를 점핑매니저가 재사용 → 불가(403)");

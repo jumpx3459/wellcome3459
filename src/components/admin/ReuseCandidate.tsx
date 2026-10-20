@@ -173,7 +173,7 @@ export default function ReuseCandidate({
       {candidate && (
         <div className="rounded-xl min-w-0" style={{ border: "2px solid #BFE6CB", background: "#F3FBF6", padding: "10px 12px" }} data-reuse-card>
           <div className="font-bold" style={{ fontSize: rem(14), color: "#1D8A44" }}>
-            ✓ 확인된 판매자 · {dotDate(candidate.checked_at)} 조회{candidate.checked_by_name ? `(${candidate.checked_by_name})` : ""}
+            ✓ 확인된 판매자 · 조회일 {dotDate(candidate.checked_at)}{candidate.checked_by_name ? ` (${candidate.checked_by_name})` : ""}
           </div>
           <div className="mt-0.5 break-words" style={{ fontSize: rem(14), color: "#374151" }}>
             {candidate.input_company_name || "상호 미입력"} · {candidate.b_no_masked ?? ""}
