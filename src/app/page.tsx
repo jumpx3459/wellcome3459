@@ -332,6 +332,12 @@ export default function Home() {
         </div>
       )}
 
+      {/* 2026-10-21: "찾습니다" 띠(같은 부품·같은 요약 API) — 판매 카드 아래에서 "최근 올라온 매물" 제목 바로 위로. 한 화면에 찾습니다 입구 1개(옛 구매 희망 카드는 10/20 삭제).
+          위 간격은 아래 매물 섹션과 같은 값(카테고리 줄 pb-1을 뺀 24px)이라 칩 아래→띠, 띠→제목 간격이 같음. 등록은 /buy 목록 위 [찾는 상품 등록] */}
+      <div className="px-5" style={{ paddingTop: "calc(24px - 0.25rem)" }}>
+        <BuyNoticeBoard />
+      </div>
+
       {/* 매물 예시 — 실제 매물이 있으면 실제로, 없으면 예시로 "이런 특가가 온다"는 감을 줌 */}
       {(preview.length > 0 || previewStatus !== "ok") && (
         <div className="px-5" style={{ paddingTop: "calc(24px - 0.25rem)" /* 카테고리 줄 아래 pb-1(0.25rem)이 이미 있어 그만큼 빼서 칩 아래 끝→제목 24px */ }}>
@@ -465,9 +471,6 @@ export default function Home() {
           </div>
           <span className="text-xl" style={{ color: "#FF6F0F" }}>→</span>
         </Link>
-
-        {/* 2026-10-20: 옛 "이런 상품 찾습니다 · 구매 희망 등록" 카드 대신 "찾습니다" 띠(같은 부품·같은 요약 API) — 한 화면에 찾습니다 입구 1개. 등록은 /buy 목록 위 [찾는 상품 등록] */}
-        <BuyNoticeBoard />
 
         {/* 점핑 서비스 — 재고 알림(이 앱의 유일한 역할)과 무관한 별도
             서비스라, 메인 재고 흐름과 섞이지 않게 하단에 별도 구역으로 분리.
