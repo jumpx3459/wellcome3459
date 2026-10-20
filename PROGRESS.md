@@ -50,6 +50,12 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
+## 최근 작업 (2026-10-20) — 관리자 대시보드 미연락 표시 (브랜치 `feat/admin-uncontacted-highlight`)
+
+- **#101 병합 기록**(처리방침 솔라피 수탁자): 병합 커밋 `6138c82` · Deploy to Vercel(run 38992931760) 성공. (상세는 아래 10/18 기록)
+- **#102 병합 기록**(판매 입구 문구 '팔기'): 병합 커밋 `48f2b3f` · Deploy to Vercel(run 39087402599) 성공 · 운영 실기기 4곳 확인(10/18).
+- `docs/ops/solapi-cutover.md` 처리방침 솔라피 수탁자 항목은 #101에서 이미 완료 처리돼 있어 변경 없음.
+
 ## 최근 작업 (2026-10-18) — 판매 입구 문구 변경 (브랜치 `fix/sell-cta-wording`)
 
 - **#100 병합 기록**(알림톡 심사용 확인 페이지 `/c/[code]`): 병합 커밋 `30ec541`(10/16, merge commit) · Deploy to Vercel(run 38876241443) 성공 · PR CI(run 38876082278) 성공 · 운영 `/c/test` 200·링크 3개·noindex 확인.
