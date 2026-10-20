@@ -6,6 +6,7 @@ import { UI_META, BTN_CLASS, btnStyle } from "@/lib/uiText";
 import { CARD_TITLE_PROPS } from "@/components/admin/cardTitle";
 import { DEAL_LABEL_STYLE, DEAL_INPUT_FONT_SIZE } from "@/components/FormField";
 import { checkBadge, isPassingCheck, statusLabel, type BusinessCheck, type CheckTone } from "@/lib/businessCheck";
+import ReuseCandidate from "@/components/admin/ReuseCandidate";
 
 // 2026-10-04 판매자 신원 확인 — 관리자 "사업자 조회" 섹션(판매자 신청 목록 바로 위).
 // 점핑매니저가 통화로 받은 사업자번호·대표자명·개업일자로 국세청 진위확인·상태조회 → 결과 배지·이력.
@@ -27,6 +28,15 @@ export function BusinessCheckBadge({ check }: { check: BusinessCheck | null | un
   return (
     <span className="inline-block rounded-full font-bold" style={{ ...TONE[b.tone], fontSize: rem(13), padding: "2px 10px" }}>
       {b.label}
+    </span>
+  );
+}
+
+/** 2026-10-21: 재사용 행 표시 */
+function ReusedChip() {
+  return (
+    <span className="inline-block rounded-full font-bold" style={{ background: "#E8F0FA", color: "#1B3A5C", fontSize: rem(13), padding: "2px 10px" }} data-reused-chip>
+      재사용
     </span>
   );
 }
@@ -194,6 +204,19 @@ export default function BusinessCheckSection({
           ))}
         </select>
       </label>
+      {/* 2026-10-21 확인된 판매자 재사용 — 신청을 고르면 같은 회원의 이전 신청에서 확인된 기록을 찾아 보여줌(국세청 호출 없음) */}
+      {requestId && (
+        <ReuseCandidate
+          adminKey={adminKey}
+          adminRole={adminRole}
+          sellerRequestId={requestId}
+          onReused={async (item) => {
+            setLast(item);
+            await loadHistory();
+            onChanged();
+          }}
+        />
+      )}
       <div className="grid grid-cols-2 gap-2">
         <label className="flex flex-col gap-1">
           <span style={DEAL_LABEL_STYLE}>사업자등록번호</span>
@@ -229,7 +252,10 @@ export default function BusinessCheckSection({
       {last && (
         <div className="flex items-center justify-between gap-2 rounded-xl" style={{ background: "#F6F7F9", padding: "10px 12px" }}>
           <div className="flex flex-col gap-1 min-w-0">
-            <BusinessCheckBadge check={last} />
+            <span className="flex items-center gap-1.5">
+              <BusinessCheckBadge check={last} />
+              {last.reused_from_check_id && <ReusedChip />}
+            </span>
             <span style={UI_META}>
               {last.b_no_masked} · {requestName(last.seller_request_id)}
             </span>
@@ -261,6 +287,7 @@ export default function BusinessCheckSection({
               <>
                 <div className="flex flex-wrap items-center gap-2">
                   <BusinessCheckBadge check={c} />
+                  {c.reused_from_check_id && <ReusedChip />}
                   <span style={UI_META}>{fmtDate(c.checked_at)}{c.checked_by_name ? ` · ${c.checked_by_name}` : ""}</span>
                 </div>
                 <div style={UI_META}>

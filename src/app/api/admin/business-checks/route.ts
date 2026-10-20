@@ -1,36 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { checkAdminAuth, requirePerm } from "@/lib/adminAuth";
 import { writeAudit } from "@/lib/adminAudit";
 import { maskBizNo, normalizeBizNo, normalizeOpenDate, ntsValidate } from "@/lib/nts";
 import { normalizePhone } from "@/lib/phone";
-import type { BusinessCheck } from "@/lib/businessCheck";
 import { PASSING_OR } from "@/lib/sellerPrivate";
+import { COLUMNS, toClient, type Row } from "@/lib/businessChecksServer";
 
 // 2026-10-04 판매자 신원 확인 — 사업자 조회(국세청 진위확인·상태조회) 기록. 3역할 모두 조회 가능, 예외 확인은 [id]/exception.
 // 응답·감사 로그에는 사업자번호 전체를 넣지 않음(maskBizNo "123-45-*****"). [다시 조회]는 recheckOf(조회 id)로 서버가 저장된 값을 씀.
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const COLUMNS =
-  "id, seller_request_id, deal_id, kind, b_no, rep_name, open_date, input_company_name, validate_result, status_code, status_text, tax_type, error_kind, checked_at, checked_by_admin_id, exception_ok, exception_reason, exception_by_admin_name, exception_at";
-
-type Row = Omit<BusinessCheck, "b_no_masked" | "checked_by_name"> & { b_no: string; checked_by_admin_id: string | null };
-
-/** 응답용 — 전체 사업자번호 대신 마스킹, 조회한 관리자 이름 */
-async function toClient(db: SupabaseClient, rows: Row[]): Promise<BusinessCheck[]> {
-  const ids = [...new Set(rows.map((r) => r.checked_by_admin_id).filter((v): v is string => !!v))];
-  const names = new Map<string, string>();
-  if (ids.length) {
-    const { data } = await db.from("admin_users").select("id, name").in("id", ids);
-    for (const a of data ?? []) names.set(a.id as string, a.name as string);
-  }
-  return rows.map(({ b_no, checked_by_admin_id, ...r }) => ({
-    ...r,
-    b_no_masked: maskBizNo(b_no),
-    checked_by_name: checked_by_admin_id ? names.get(checked_by_admin_id) ?? null : null,
-  }));
-}
-
 export async function GET(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });

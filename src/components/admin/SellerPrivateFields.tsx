@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { rem } from "@/lib/rem";
 import { DEAL_LABEL_STYLE, DEAL_HINT_STYLE } from "@/components/FormField";
 import { NOT_CHECKED_MESSAGE, normCompany, type BusinessCheck } from "@/lib/businessCheck";
+import ReuseCandidate from "@/components/admin/ReuseCandidate";
 
 // 2026-10-04 feat/deal-seller-private — 관리자 매물 등록·수정의 "실제 판매자"(내부 전용) 칸 + "사업자 조회 기록" 선택.
 // 회사가 대신 올리는 매물도 실제 판매자(상호·연락처·담당자)를 deal_seller_private에 남기려는 칸 — 구매자에게는 보이지 않음.
@@ -38,6 +39,7 @@ export default function SellerPrivateFields({
   linkedCheck,
   onGoBizCheck,
   disabled,
+  adminRole,
 }: {
   adminKey: string;
   idPrefix: string;
@@ -50,6 +52,8 @@ export default function SellerPrivateFields({
   linkedCheck?: LinkedCheck | null;
   onGoBizCheck?: () => void;
   disabled?: boolean;
+  /** 2026-10-21: 예외 확인 건 재사용 버튼 미리 막기용(없으면 서버가 403으로 막음) */
+  adminRole?: string | null;
 }) {
   const [checks, setChecks] = useState<BusinessCheck[] | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -162,6 +166,21 @@ export default function SellerPrivateFields({
               {loading ? "불러오는 중…" : "새로고침"}
             </button>
           </div>
+          {/* 2026-10-21 확인된 판매자 재사용 — 사업자번호로 찾아 [이 기록 재사용]을 누르면 새 기록이 만들어져 아래 목록에서 선택됨(자동 선택 아님) */}
+          <div className="mb-2">
+            <ReuseCandidate
+              adminKey={adminKey}
+              adminRole={adminRole ?? null}
+              findByBizNo
+              company={value.company}
+              phone={value.phone}
+              disabled={disabled}
+              onReused={async (item) => {
+                await load();
+                onChange({ ...value, checkId: item.id });
+              }}
+            />
+          </div>
           {loadError ? (
             <p className="font-medium" style={{ fontSize: rem(14), color: "#DC2626" }}>조회 기록을 불러오지 못했어요. 새로고침을 눌러주세요.</p>
           ) : checks && checks.length === 0 ? (
@@ -191,6 +210,11 @@ export default function SellerPrivateFields({
                   />
                   <span className="min-w-0" style={{ fontSize: rem(14), lineHeight: 1.45 }}>
                     <span className="font-bold text-navy">{c.input_company_name || "상호 미입력"}</span>
+                    {c.reused_from_check_id && (
+                      <span className="ml-1 font-bold rounded-full" style={{ fontSize: rem(12), background: "#E8F0FA", color: "#1B3A5C", padding: "1px 7px" }} data-reused-chip>
+                        재사용
+                      </span>
+                    )}
                     <span className="text-gray500">
                       {" "}· {kst(c.checked_at)} · {c.b_no_masked ?? ""} · {resultLabel(c)}
                     </span>

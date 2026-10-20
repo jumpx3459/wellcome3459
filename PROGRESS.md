@@ -54,6 +54,12 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 
 - **운영 SQL 실행 2026-10-21(대표)**: `supabase/migrations/20261021_seller_check_reuse.sql` — `seller_business_checks.reused_from_check_id`(uuid, 자기 참조 `on delete set null`) + 인덱스 `seller_business_checks_bno_checked_idx (b_no, checked_at desc)`. 확인 조회: uuid/YES · n · 1 · rows 27 · reused 0 · rls true. (SQL 먼저 실행 → 코드 PR 순서)
 - **#105 병합 기록**(비회원 홈 찾습니다 띠 위치 이동): squash 병합 `d18794b`(10/21) · PR CI(run 39510262642) 성공 · Deploy to Vercel(run 39510835682) 성공 · 운영 `/`·`/buy` 200, 비회원 홈 HTML에서 띠가 "최근 올라온 매물" 앞 · 첫 매물 카드 64px 밀림(띠 44 + 위 간격 20).
+- **구현(같은 PR)**: 원본(root) = `kind='validate'` · `reused_from_check_id` null · 진위 일치 또는 예외 확인. 재사용 = root를 새 행으로 복사(처리자 = 지금 관리자 · `checked_at` = 지금 · `reused_from_check_id` = root id, 재사용 행을 다시 재사용해도 root를 따라감). 규칙·경고는 `src/lib/businessReuse.ts` 한 곳(단위 시험 `scripts/business-reuse-test.mts`), 서버 공용(`COLUMNS`·`toClient`·`findLatestRoot`)은 `src/lib/businessChecksServer.ts`로 옮김.
+  - `GET /api/admin/business-checks/reusable?b_no=` 또는 `?sellerRequestId=`(같은 회원 `seller_requests.seller_member_id`의 이전 신청에서) — 가장 최근 root 1건(마스킹 번호·상호·원본 조회일·원본 처리자·예외 여부·1년 경과). **국세청 호출 없음**, 원문 b_no·rep_name 응답 없음.
+  - `POST /api/admin/business-checks/reuse { sourceCheckId, sellerRequestId?, company?, phone? }` — 서버가 root 재검증 → `ntsStatus` **1회** → 복사 행 insert → 새 행 + 경고 목록. 판매 신청 재사용은 대기 중 신청 + 같은 회원의 이전 신청 root만(아니면 409). root가 예외 확인이면 최고관리자·관리자만(점핑매니저 403). 감사 로그 새 action `business_check_reuse`(source id·new id·마스킹 번호·경고 코드).
+  - 경고(노란색, 막지 않음) ① 이번 상태 조회 휴업·폐업 / 조회 실패 "상태 조회 실패 · 다시 조회 권장" ② 상호 상이(공백·(주)·주식회사 정규화 후) ③ 연락처 상이(원본은 root 신청 또는 root가 붙은 매물의 판매자 비공개 연락처) ④ root 조회 후 365일 이상 ⑤ root가 예외 확인. 대표자 상이 경고는 없음(입력 칸 없음).
+  - 화면: 관리자 등록 폼 `SellerPrivateFields`(사업자 번호로 확인된 판매자 찾기 → 후보 카드 → [이 기록 재사용] → 새 기록이 폼의 선택 기록으로 지정, 자동 선택 없음), 판매 신청 카드 `BusinessCheckSection`(신청을 고르면 후보 카드 → 재사용하면 [매물로 등록하기] 활성). 재사용 행에 "재사용" 칩. 기존 [국세청 조회]는 그대로.
+  - 시험(가짜 Supabase·가짜 NTS, 운영 호출 0): 단위 + API(401/403·응답 원문 없음·후보 조회 NTS 0회·재사용 1회) + Playwright 360·1280(대리 등록 "세계무역"·판매 신청 카드·휴업 경고·예외 root).
 
 ## 최근 작업 (2026-10-21) — 비회원 홈 찾습니다 띠 위치 이동 (브랜치 `fix/guest-home-buy-band`)
 

@@ -15,6 +15,7 @@ export type BusinessCheck = {
   status_text: string | null;
   tax_type: string | null;
   error_kind: string | null;
+  reused_from_check_id: string | null; // 2026-10-21: 재사용 행이면 원본(root) 조회 id
   checked_at: string;
   checked_by_name: string | null;
   exception_ok: boolean;
