@@ -1162,6 +1162,7 @@ function AdminDashboard({
       <AdminListCard
         id="leads"
         flash={flashId === "leads"}
+        limit={leadFilter === "uncontacted" ? null : 5}
         className={
           isDesktop
             ? "col-span-2 bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
@@ -1537,6 +1538,7 @@ function AdminDashboard({
       <AdminListCard
         id="pending-sellers"
         flash={flashId === "pending-sellers"}
+        limit={sellerOnly ? null : 5}
         className={
           isDesktop
             ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
@@ -1700,6 +1702,7 @@ function AdminDashboard({
         as="section"
         id="partner-requests"
         flash={flashId === "partner-requests"}
+        limit={partnerOnly ? null : 5}
         className={
           isDesktop
             ? "bg-white border border-gray200 rounded-2xl p-4"
@@ -1827,6 +1830,7 @@ function AdminDashboard({
       <AdminListCard
         id="buy-requests"
         flash={flashId === "buy-requests"}
+        limit={buyOnly ? null : 5}
         className={
           isDesktop
             ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
