@@ -17,10 +17,18 @@ export async function toClient(db: SupabaseClient, rows: Row[]): Promise<Busines
     const { data } = await db.from("admin_users").select("id, name").in("id", ids);
     for (const a of data ?? []) names.set(a.id as string, a.name as string);
   }
+  // 재사용 행은 원본(root)의 조회 시각도 같이 — 목록에 "원본 조회 YYYY.MM.DD"로 보여줌
+  const rootIds = [...new Set(rows.map((r) => r.reused_from_check_id).filter((v): v is string => !!v))];
+  const rootAt = new Map<string, string>();
+  if (rootIds.length) {
+    const { data } = await db.from("seller_business_checks").select("id, checked_at").in("id", rootIds);
+    for (const a of data ?? []) rootAt.set(a.id as string, a.checked_at as string);
+  }
   return rows.map(({ b_no, checked_by_admin_id, ...r }) => ({
     ...r,
     b_no_masked: maskBizNo(b_no),
     checked_by_name: checked_by_admin_id ? names.get(checked_by_admin_id) ?? null : null,
+    ...(r.reused_from_check_id ? { root_checked_at: rootAt.get(r.reused_from_check_id) ?? null } : {}),
   }));
 }
 

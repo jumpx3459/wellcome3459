@@ -16,6 +16,7 @@ export type BusinessCheck = {
   tax_type: string | null;
   error_kind: string | null;
   reused_from_check_id: string | null; // 2026-10-21: 재사용 행이면 원본(root) 조회 id
+  root_checked_at?: string | null; // 재사용 행이면 원본(root)의 조회 시각(목록 표시용 — 서버가 채움, 원본이 지워졌으면 null)
   checked_at: string;
   checked_by_name: string | null;
   exception_ok: boolean;

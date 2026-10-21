@@ -27,6 +27,13 @@ export const EMPTY_SELLER_PRIVATE: SellerPrivateDraft = { company: "", name: "",
 const kst = (iso: string) =>
   new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
 
+// 재사용 행 표시용 — 원본 조회 날짜 "2026.10.11"(한국 날짜, 시각 없음)
+const dotDate = (iso: string) => {
+  const p = new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(iso));
+  const g = (t: string) => p.find((x) => x.type === t)?.value ?? "";
+  return `${g("year")}.${g("month")}.${g("day")}`;
+};
+
 const resultLabel = (c: { validate_result: string | null; exception_ok: boolean }) => (c.validate_result === "01" ? "진위 일치" : c.exception_ok ? "예외 확인" : "");
 
 export default function SellerPrivateFields({
@@ -216,7 +223,7 @@ export default function SellerPrivateFields({
                       </span>
                     )}
                     <span className="text-gray500">
-                      {" "}· {kst(c.checked_at)} · {c.b_no_masked ?? ""} · {resultLabel(c)}
+                      {" "}· {c.reused_from_check_id && c.root_checked_at ? `원본 조회 ${dotDate(c.root_checked_at)}` : kst(c.checked_at)} · {c.b_no_masked ?? ""} · {resultLabel(c)}
                     </span>
                   </span>
                 </label>
