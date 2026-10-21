@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { rem } from "@/lib/rem";
-import { isInAppBrowser, isIOS as detectIOS, isStandalone as detectStandalone, getManualInstallBrowser, type ManualInstallBrowser } from "@/lib/browserEnv";
+import { isInAppBrowser, isIOS as detectIOS, isSamsungInternet, isStandalone as detectStandalone, getManualInstallBrowser, type ManualInstallBrowser } from "@/lib/browserEnv";
 import IosInstallSteps, { IOS_INSTALL_TITLE } from "@/components/IosInstallSteps";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 import { useBackToClose } from "@/lib/useBackToClose";
@@ -13,7 +13,7 @@ type InstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
-export type InstallResult = "accepted" | "ios-guide" | "manual-guide";
+export type InstallResult = "accepted" | "ios-guide" | "manual-guide" | "samsung-guide";
 
 // 수동 설치 안내 (2026-09-29, 삼성인터넷 실기기 확인). iOS·카카오 인앱은 별도 흐름(IosInstallSteps·InAppBanner).
 const MANUAL_STEPS: Record<ManualInstallBrowser, React.ReactNode[]> = {
@@ -54,6 +54,8 @@ const FIRST_VISIT_SESSION_KEY = "dj_first_visit_session";
 export function useInstallPrompt() {
   const [installEvent, setInstallEvent] = useState<InstallPromptEvent | null>(null);
   const [isIOS, setIsIOS] = useState(false);
+  // 2026-10-21: 삼성 인터넷의 설치 포장(WebAPK)이 Play 프로텍트 경고를 띄움 — prompt()를 부르지 않고 안내 시트만 연다
+  const [isSamsung, setIsSamsung] = useState(false);
   // 판별 전엔 배너를 띄우지 않음(인앱에서 잠깐 보였다 사라지는 깜빡임 방지)
   const [eligible, setEligible] = useState(false);
   const [installed, setInstalled] = useState(false); // 네이티브 설치를 수락했거나 appinstalled가 오면 카드 숨김
@@ -65,6 +67,7 @@ export function useInstallPrompt() {
     // 안 되므로 숨김(대신 InAppBanner가 크롬/사파리로 유도). 예전엔 인앱에서도 떴었음.
     setEligible(!detectStandalone() && !isInAppBrowser());
     setIsIOS(detectIOS());
+    setIsSamsung(isSamsungInternet());
     // 첫 방문 시각을 localStorage에, 그 방문 세션 표시를 sessionStorage에 남김 — 둘 다 있으면 같은 세션(아직 첫 방문),
     // localStorage만 있으면 이전 세션에 왔던 것(두 번째 방문부터). 저장소 접근이 막히면 첫 방문으로 보고 카드를 숨김.
     try {
@@ -96,10 +99,11 @@ export function useInstallPrompt() {
   // 안 쏘여도(브라우저 쿨다운 등) 최소한 수동 설치 경로는 열어둔다.
   const canInstall = eligible && !installed;
   // 2026-09-29: 네이티브 설치 창을 띄울 수 있으면 카드에 "지금 설치" CTA
-  const hasNativePrompt = !!installEvent;
+  const hasNativePrompt = !!installEvent && !isSamsung; // 삼성 인터넷은 [지금 설치] 칩도 숨김(누르면 안내 시트)
 
   // accepted → 카드 숨김 / dismissed → 수동 안내로 폴백 (prompt()는 이벤트당 한 번만 쓸 수 있어 버림)
   const promptInstall = async (): Promise<InstallResult> => {
+    if (isSamsung) return "samsung-guide";
     if (installEvent) {
       const ev = installEvent;
       setInstallEvent(null);
@@ -135,8 +139,10 @@ export default function InstallAppButton({
 }) {
   const [showIOSGuide, setShowIOSGuide] = useState(false);
   const [showManualGuide, setShowManualGuide] = useState(false);
+  const [showSamsungGuide, setShowSamsungGuide] = useState(false);
   // 2026-10-01 PR-C: 열려 있으면 안드로이드 뒤로가기 = 이것만 닫기 (src/lib/useBackToClose.ts)
-  useBackToClose(showIOSGuide || showManualGuide, () => {
+  useBackToClose(showIOSGuide || showManualGuide || showSamsungGuide, () => {
+    setShowSamsungGuide(false);
     setShowIOSGuide(false);
     setShowManualGuide(false);
   });
@@ -153,6 +159,7 @@ export default function InstallAppButton({
     const result = await promptInstall();
     if (result === "ios-guide") setShowIOSGuide(true);
     if (result === "manual-guide") setShowManualGuide(true);
+    if (result === "samsung-guide") setShowSamsungGuide(true);
   };
 
   return (
@@ -204,6 +211,42 @@ export default function InstallAppButton({
               className={`mt-6 w-full ${BTN_CLASS}`}
               style={btnStyle("secondary")}
             >
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 2026-10-21 삼성 인터넷: prompt() 없이 안내만 — 크롬이 없으면 [크롬으로 열기]는 아무 일도 안 일어나므로 ②를 항상 함께 보여줌 */}
+      {showSamsungGuide && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center"
+          style={{ background: "rgba(0,0,0,0.5)" }}
+          onClick={() => setShowSamsungGuide(false)}
+          data-samsung-guide
+        >
+          <div className="bg-white w-full max-w-md rounded-t-3xl p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="font-bold mb-4" style={{ fontSize: rem(16), color: "#0B2540" }}>갤럭시는 이렇게 추가해 주세요</div>
+            <div className="flex flex-col gap-4" style={{ fontSize: rem(14), color: "#1A1F26" }}>
+              <div className="flex items-center gap-2.5">
+                <span className="flex items-center justify-center rounded-full text-white font-bold flex-shrink-0" style={{ width: 26, height: 26, background: "#0B2540", fontSize: rem(13) }}>①</span>
+                <button
+                  type="button"
+                  onClick={() => { window.location.href = `intent://dumpingjumping.com${window.location.pathname}${window.location.search}#Intent;scheme=https;package=com.android.chrome;end`; }}
+                  className="font-bold rounded-full"
+                  style={{ border: "1.5px solid #0B2540", color: "#0B2540", padding: "8px 14px", background: "#fff", fontSize: rem(14) }}
+                  data-samsung-open-chrome
+                >
+                  크롬으로 열기
+                </button>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <span className="flex items-center justify-center rounded-full text-white font-bold flex-shrink-0" style={{ width: 26, height: 26, background: "#0B2540", fontSize: rem(13) }}>②</span>
+                <span>또는 오른쪽 아래 <b>메뉴(≡)</b> → <b>현재 페이지 추가</b> → <b>홈 화면</b></span>
+              </div>
+              <p style={{ fontSize: rem(12), color: "#6B7480" }}>③ 앱 설치 버튼에 경고가 뜨면 [확인]을 눌러 주세요</p>
+            </div>
+            <button onClick={() => setShowSamsungGuide(false)} className={`mt-6 w-full ${BTN_CLASS}`} style={btnStyle("secondary")}>
               닫기
             </button>
           </div>
