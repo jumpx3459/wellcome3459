@@ -50,6 +50,10 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
+## 최근 작업 (2026-10-21) — 삼성 인터넷 홈 화면 추가 안내 시트 (브랜치 `fix/samsung-install-guide`)
+
+- 삼성 인터넷(UA `SamsungBrowser`)에서 설치 배너를 누르면 `prompt()`를 부르지 않고 안내 시트("갤럭시는 이렇게 추가해 주세요": ① [크롬으로 열기] intent 링크 · ② 메뉴(≡) → 현재 페이지 추가 → 홈 화면 · ③ 경고 시 [확인] 안내)만 연다. 삼성 WebAPK가 Play 프로텍트 경고를 띄우는 문제 회피. 크롬·iOS·PC는 그대로. `[지금 설치]` 칩도 삼성에선 숨김. 변경: `src/components/InstallAppButton.tsx`.
+
 ## 최근 작업 (2026-10-21) — 확인된 판매자 재사용 B안 (브랜치 `feat/seller-check-reuse`)
 
 - **운영 SQL 실행 2026-10-21(대표)**: `supabase/migrations/20261021_seller_check_reuse.sql` — `seller_business_checks.reused_from_check_id`(uuid, 자기 참조 `on delete set null`) + 인덱스 `seller_business_checks_bno_checked_idx (b_no, checked_at desc)`. 확인 조회: uuid/YES · n · 1 · rows 27 · reused 0 · rls true. (SQL 먼저 실행 → 코드 PR 순서)
