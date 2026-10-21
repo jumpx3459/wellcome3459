@@ -1979,6 +1979,14 @@ create index if not exists seller_business_checks_request_idx on public.seller_b
 create index if not exists seller_business_checks_deal_idx on public.seller_business_checks (deal_id);
 create index if not exists seller_business_checks_checked_idx on public.seller_business_checks (checked_at desc);
 
+-- 2026-10-21 확인된 판매자 재사용(B안) — migrations/20261021_seller_check_reuse.sql
+-- 운영 실행 2026-10-21 대표, 확인 uuid/YES·n·1·rows 27·reused 0·rls true
+alter table public.seller_business_checks
+  add column if not exists reused_from_check_id uuid references public.seller_business_checks(id) on delete set null;
+comment on column public.seller_business_checks.reused_from_check_id is
+  '재사용 행이면 원본(root) 조회 id — null이면 관리자가 국세청에 직접 조회한 행(root 후보)';
+create index if not exists seller_business_checks_bno_checked_idx on public.seller_business_checks (b_no, checked_at desc);
+
 alter table public.seller_business_checks enable row level security;   -- 정책 없음 = service role만
 revoke all on public.seller_business_checks from anon, authenticated;
 
