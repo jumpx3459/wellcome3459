@@ -13,6 +13,23 @@ export const sellerRequestNeedsAction = (r: object) => ((r as { status?: string 
 /** 파트너 신청: 심사중 */
 export const partnerRequestNeedsAction = (r: { status: string }) => r.status === "pending";
 
+/** 진행 중인 매물 — 마감임박: 진행 중 AND now < 마감 ≤ now + 6시간. 타일 숫자·카드 제목 건수·표시 줄·필터가 모두 이 함수 (2026-10-22).
+ *  [테스트] 매물은 예전부터 타일에서 빠져 있어 그대로 제외(src/lib/categoryAvg.ts isTestTitle과 같은 기준). status가 있으면 active만 */
+export const DEADLINE_SOON_MS = 6 * 60 * 60 * 1000;
+export const isDeadlineSoon = (d: { closes_at: string; title?: string | null; status?: string | null }, now: number | Date): boolean => {
+  if (d.status != null && d.status !== "active") return false;
+  if (d.title?.includes("[테스트]")) return false;
+  const remain = new Date(d.closes_at).getTime() - (typeof now === "number" ? now : now.getTime());
+  return remain > 0 && remain <= DEADLINE_SOON_MS;
+};
+
+/** 칩 문구 — 1시간 미만이면 분("마감 45분"), 아니면 시간("마감 5시간", 내림) */
+export const deadlineChipLabel = (closesAt: string, now: number | Date): string => {
+  const remain = new Date(closesAt).getTime() - (typeof now === "number" ? now : now.getTime());
+  const min = Math.max(1, Math.floor(remain / 60000));
+  return min < 60 ? `마감 ${min}분` : `마감 ${Math.floor(min / 60)}시간`;
+};
+
 export const countNeedsAction = <T,>(items: T[], pred: (item: T) => boolean) => items.filter(pred).length;
 
 // 줄 강조 — 주황 계열만(빨강 금지). 왼쪽 4px 세로선 + 연한 주황 바탕(orange-50), 칩은 orange-100 바탕 / 진한 주황 글자(대비 7:1 이상).

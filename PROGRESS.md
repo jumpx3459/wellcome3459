@@ -55,6 +55,11 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
+## 최근 작업 (2026-10-22) — 관리자 마감임박(6h) 표시·필터 (브랜치 `feat/admin-deadline-soon-highlight`)
+
+- 조치 필요 "마감임박(6h)" 타일 [바로 처리] → 진행 중인 매물 카드로 이동 + `마감임박만` 필터 ON + 테두리 1.5초 강조(#103 패턴). 대상 매물은 주황 세로선+연한 주황 바탕+칩 "마감 N시간/N분", 카드 제목 "(17건 · 마감임박 2)"(0건이면 숨김). 필터 ON이면 5건 제한 없음, 0건이면 "마감 6시간 이내 매물이 없어요".
+- 판정은 `src/lib/admin/needsAction.ts` `isDeadlineSoon(deal, now)` 한 곳(진행 중 AND now < 마감 ≤ now+6h, [테스트] 매물 제외는 기존 타일 그대로) — 타일 숫자·제목 건수·표시 줄·필터 모두 이 함수. 시각은 1분마다 갱신. 단위 시험 `scripts/deadline-soon-test.mts`. DB·API 변경 없음.
+
 ## 최근 작업 (2026-10-22) — 솔라피 Hook 전환 시도·성공 판정 수정 (브랜치 `fix/solapi-success-check`)
 
 - **#109 병합 기록**(솔라피 성공 판정 수정 + 인증번호 발송 실패 문구): squash 병합 `55827a4`(10/22) · PR CI(run 39728272147) 성공 · Deploy to Vercel(run 39728379062) 성공 · 운영 `/` 200, 서명 없는 `POST /api/auth/sms-hook` 401.
