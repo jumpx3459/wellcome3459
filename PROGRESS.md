@@ -50,6 +50,11 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - GitHub Actions로 main push 시 Vercel 프로덕션 자동배포 (`.github/workflows/deploy.yml`)
 - 로컬 git 사용자 정보 설정 완료 (이 저장소 한정): `user.name = kimkeeyong33-sys`, `user.email = kimkeeyong33@gmail.com`
 
+## 최근 작업 (2026-10-22) — 사업자 조회 최근 이력 줄이기 (브랜치 `fix/business-check-history-compact`)
+
+- 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
+- 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
+
 ## 최근 작업 (2026-10-21) — 삼성 인터넷 홈 화면 추가 안내 시트 (브랜치 `fix/samsung-install-guide`)
 
 - **#107 병합 기록**: squash 병합 `ab82b16`(10/21) · PR CI(run 39557172794) 성공 · Deploy to Vercel(run 39557986138) 성공 · 운영 `/`·`/deals` 200, 번들에 SamsungBrowser 분기·intent 주소 포함 확인. 실기기(갤럭시) 확인은 대표 대기.

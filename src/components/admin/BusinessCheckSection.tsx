@@ -7,6 +7,8 @@ import { CARD_TITLE_PROPS } from "@/components/admin/cardTitle";
 import { DEAL_LABEL_STYLE, DEAL_INPUT_FONT_SIZE } from "@/components/FormField";
 import { checkBadge, isPassingCheck, statusLabel, type BusinessCheck, type CheckTone } from "@/lib/businessCheck";
 import ReuseCandidate from "@/components/admin/ReuseCandidate";
+import { can } from "@/lib/adminPerms";
+import { groupHistory, visibleCards } from "@/lib/businessCheckHistory";
 
 // 2026-10-04 판매자 신원 확인 — 관리자 "사업자 조회" 섹션(판매자 신청 목록 바로 위).
 // 점핑매니저가 통화로 받은 사업자번호·대표자명·개업일자로 국세청 진위확인·상태조회 → 결과 배지·이력.
@@ -80,6 +82,7 @@ export default function BusinessCheckSection({
   onChanged: () => void;
 }) {
   const canException = adminRole === "최고관리자" || adminRole === "관리자";
+  const canSeeHistory = can(adminRole, "businessCheckHistory"); // 점핑매니저는 이력 목록 없음(서버도 빈 목록)
   const [requestId, setRequestId] = useState("");
   const [bNo, setBNo] = useState("");
   const [repName, setRepName] = useState("");
@@ -89,6 +92,7 @@ export default function BusinessCheckSection({
   const [error, setError] = useState<string | null>(null);
   const [last, setLast] = useState<BusinessCheck | null>(null);
   const [history, setHistory] = useState<BusinessCheck[]>([]);
+  const [expanded, setExpanded] = useState(false);
   const [exceptionFor, setExceptionFor] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [exceptionError, setExceptionError] = useState<string | null>(null);
@@ -101,11 +105,12 @@ export default function BusinessCheckSection({
   }, [preselect]);
 
   const loadHistory = useCallback(async () => {
+    if (!canSeeHistory) return;
     const q = requestId ? `?seller_request_id=${requestId}` : "";
     const res = await fetch(`/api/admin/business-checks${q}`, { headers: { "x-admin-key": adminKey } }).catch(() => null);
     const data = res?.ok ? await res.json().catch(() => null) : null;
     setHistory(data?.items ?? []);
-  }, [adminKey, requestId]);
+  }, [adminKey, requestId, canSeeHistory]);
   useEffect(() => {
     void loadHistory();
   }, [loadHistory]);
@@ -171,6 +176,8 @@ export default function BusinessCheckSection({
     seen.add(k);
     latestPerRequest.add(c.id);
   }
+  const cards = groupHistory(history);
+  const { shown, canToggle } = visibleCards(cards, expanded);
   const requestName = (id: string | null) => {
     const r = id ? requests.find((x) => x.id === id) : null;
     return r ? r.product_name : id ? "처리된 신청" : "신청 없음(직접 등록)";
@@ -272,19 +279,20 @@ export default function BusinessCheckSection({
         </div>
       )}
 
-      <div className="flex flex-col gap-2">
-        <div className="font-bold" style={{ fontSize: rem(15), color: "#0B2540" }}>
-          {requestId ? "이 신청의 조회 이력" : "최근 조회 이력"} ({history.length})
-        </div>
-        {history.length === 0 && <div style={UI_META}>아직 조회 기록이 없어요.</div>}
-        {history.map((c) => (
-          <div key={c.id} className="border border-gray200 rounded-xl" style={{ padding: "8px 12px" }}>
-            {c.kind === "status_recheck" ? (
-              <div style={UI_META}>
-                승인 시 상태 재조회 · {statusLabel(c.status_code)} · {fmtDate(c.checked_at)}
-              </div>
-            ) : (
-              <>
+      {canSeeHistory && (
+        <div className="flex flex-col gap-2" data-biz-history>
+          <div className="font-bold" style={{ fontSize: rem(15), color: "#0B2540" }}>
+            {requestId ? "이 신청의 조회 이력" : "최근 조회 이력"} ({cards.length})
+          </div>
+          {cards.length === 0 && <div style={UI_META}>아직 조회 기록이 없어요.</div>}
+          {shown.map(({ check: c, rechecks }) => (
+            <div key={c.id} className="border border-gray200 rounded-xl" style={{ padding: "8px 12px" }} data-biz-card>
+              {c.kind === "status_recheck" ? (
+                <div style={UI_META}>
+                  승인 시 상태 재조회 · {statusLabel(c.status_code)} · {fmtDate(c.checked_at)}
+                </div>
+              ) : (
+                <>
                 <div className="flex flex-wrap items-center gap-2">
                   <BusinessCheckBadge check={c} />
                   {c.reused_from_check_id && <ReusedChip />}
@@ -345,11 +353,28 @@ export default function BusinessCheckSection({
                     </button>
                   )
                 )}
-              </>
-            )}
-          </div>
-        ))}
-      </div>
+                  {rechecks.map((r) => (
+                    <div key={r.id} style={UI_META} data-biz-recheck>
+                      · 승인 시 재조회 {statusLabel(r.status_code)} {fmtDate(r.checked_at)}
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          ))}
+          {canToggle && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className={`w-full ${BTN_CLASS}`}
+              style={{ ...btnStyle("secondary"), minHeight: 44, fontSize: rem(15) }}
+              data-biz-toggle
+            >
+              {expanded ? "접기" : `전체 보기 (${cards.length})`}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
