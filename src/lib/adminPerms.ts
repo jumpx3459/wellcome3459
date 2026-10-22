@@ -19,6 +19,7 @@ export const ADMIN_PERMS = {
   dealDelete: SUPER, //           매물 영구 삭제
   sellerPrivate: OWN, //          비공개 판매자 실제 업체명 — 매물 화면(deals/manage/seller) = 담당 매물, 연결 화면(connections/[id]/seller) = 배정 건
   sellerRequests: ALL, //         판매 신청 처리 (seller-requests, 승인 = deals POST, 사업자 조회)
+  businessCheckHistory: STAFF, // 사업자 조회 "최근 조회 이력" 목록(business-checks GET 이력·신청별 이력) — 점핑매니저는 [국세청 조회]와 방금 조회한 결과만
   connections: OWN, //            거래 연결 목록·단계·번호 보기
   connectionAssign: STAFF, //     연결 배정 (connections/[id]/assign)
   members: STAFF, //              회원 목록 — 최고관리자 전체 번호, 관리자 가린 번호 + [번호 보기](감사 기록)

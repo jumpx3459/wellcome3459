@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkAdminAuth, requirePerm } from "@/lib/adminAuth";
+import { can } from "@/lib/adminPerms";
 import { writeAudit } from "@/lib/adminAudit";
 import { maskBizNo, normalizeBizNo, normalizeOpenDate, ntsValidate } from "@/lib/nts";
 import { normalizePhone } from "@/lib/phone";
@@ -17,10 +18,14 @@ export async function GET(req: NextRequest) {
   if (denied) return denied;
   const db = auth.db;
   const sp = req.nextUrl.searchParams;
+  // 2026-10-22: 이력 목록(신청별·최근 50건)은 최고관리자·관리자만 — 점핑매니저는 빈 목록(화면 숨김만으로 끝내지 않음).
+  // 신청 카드 배지(seller_request_ids)·매물 폼 선택 목록(unlinked)은 매니저도 계속 씀
+  const historyAllowed = can(auth.admin.role, "businessCheckHistory");
 
   // 판매 신청 하나의 이력
   const one = sp.get("seller_request_id");
   if (one) {
+    if (!historyAllowed) return NextResponse.json({ items: [], historyHidden: true });
     if (!UUID_RE.test(one)) return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });
     const { data, error } = await db
       .from("seller_business_checks")
@@ -74,6 +79,7 @@ export async function GET(req: NextRequest) {
   }
 
   // 최근 50건
+  if (!historyAllowed) return NextResponse.json({ items: [], historyHidden: true });
   const { data, error } = await db.from("seller_business_checks").select(COLUMNS).order("checked_at", { ascending: false }).limit(50);
   if (error) return NextResponse.json({ error: "조회 기록을 불러오지 못했어요." }, { status: 500 });
   return NextResponse.json({ items: await toClient(db, (data ?? []) as Row[]) });

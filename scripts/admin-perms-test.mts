@@ -23,6 +23,7 @@ const TABLE: Record<string, string> = {
   dealDelete: "O X X",
   sellerPrivate: "O O own",
   sellerRequests: "O O O",
+  businessCheckHistory: "O O X",
   connections: "O O own",
   connectionAssign: "O O X",
   members: "O O X",
