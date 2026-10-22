@@ -136,7 +136,8 @@ export async function sendOtp(phoneInput: string): Promise<SendOtpResult> {
   const { error } = await supabase.auth.signInWithOtp({ phone: phoneE164 });
   if (error) {
     debugLog(`[sendOtp] signInWithOtp error status=${error.status} code=${error.code} name=${error.name} message=${error.message}`);
-    return { ok: false, error: error.message };
+    // 2026-10-22: Send SMS Hook 실패 시 error.message가 "{}"로 와서 그대로 보이던 문제 — 사용자에겐 고정 문구, 원문은 위 개발 로그에만
+    return { ok: false, error: "인증번호를 보내지 못했어요. 잠시 후 다시 시도해 주세요." };
   }
   return { ok: true, data: null };
 }

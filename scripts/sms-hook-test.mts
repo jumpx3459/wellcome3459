@@ -76,7 +76,12 @@ const json = (status: number, obj: unknown) => new Response(JSON.stringify(obj),
 const SOLAPI_OK = { groupInfo: { status: "SENDING" }, messageList: [{ statusCode: "2000", messageId: "M1" }], failedMessageList: [] };
 const SOLAPI_FAIL = { messageList: [], failedMessageList: [{ statusCode: "3040", statusMessage: "등록되지 않은 발신번호입니다." }] };
 
-function fakeFetch(solapi: "ok" | "fail" | "http500" | "hang", twilio: "ok" | "fail") {
+// 2026-10-22 Hook 500 원인: 실제 응답엔 statusCode "2000"이 없었음 → 성공 = HTTP 2xx + failedMessageList 비어 있음
+const SOLAPI_NO_STATUS = { groupInfo: { status: "SENDING", groupId: "G-SECRET-1" }, messageList: [], failedMessageList: [] };
+const SOLAPI_OBJ = { groupInfo: { status: "SENDING" }, messageList: { M1: { to: "01012345678", type: "SMS", statusCode: "2000" } }, failedMessageList: [] };
+const SOLAPI_OBJ_NO_CODE = { groupInfo: { groupId: "G-SECRET-2" }, messageList: { M1: { to: "01012345678", type: "SMS" } } }; // failedMessageList 키 자체가 없음
+
+function fakeFetch(solapi: "ok" | "fail" | "http500" | "hang" | "noStatus" | "obj" | "objNoCode" | "http401", twilio: "ok" | "fail") {
   const calls: { url: string; body: string }[] = [];
   const f = (async (url: string, init: RequestInit) => {
     calls.push({ url, body: String(init.body) });
@@ -84,6 +89,10 @@ function fakeFetch(solapi: "ok" | "fail" | "http500" | "hang", twilio: "ok" | "f
       if (solapi === "hang")
         return new Promise((_, reject) => init.signal?.addEventListener("abort", () => reject(init.signal?.reason)));
       if (solapi === "http500") return json(500, { errorCode: "InternalError" });
+      if (solapi === "http401") return json(401, { errorCode: "InvalidApiKey", errorMessage: "invalid" });
+      if (solapi === "noStatus") return json(200, SOLAPI_NO_STATUS);
+      if (solapi === "obj") return json(200, SOLAPI_OBJ);
+      if (solapi === "objNoCode") return json(200, SOLAPI_OBJ_NO_CODE);
       return json(200, solapi === "ok" ? SOLAPI_OK : SOLAPI_FAIL);
     }
     return twilio === "ok" ? json(201, { sid: "SM1", status: "queued" }) : json(400, { code: 21211, message: "invalid" });
@@ -132,6 +141,46 @@ const otpText = t.buildOtpText(OTP);
   const noTw = s.readSmsEnv(baseEnv).env;
   const r = await s.sendOtpSms("01012345678", otpText, noTw, { fetch: ff.f, log });
   eq([r.ok, ff.twilioCalls(), r.attempts.length], [false, 0, 1], "Twilio env 없음 → 대체 건너뜀");
+}
+// ① HTTP 200 + failedMessageList 빈 배열 + statusCode 없음 → 성공(경로는 200 {}), Twilio 미호출
+{
+  const ff = fakeFetch("noStatus", "ok");
+  const r = await s.sendOtpSms("01012345678", otpText, env, { fetch: ff.f, log });
+  eq([r.ok, ff.twilioCalls(), r.attempts.length, r.attempts[0].code], [true, 0, 1, "accepted"], "① 200·실패목록 빈 배열·statusCode 없음 → 성공·Twilio 0회");
+}
+// ② messageList가 객체 형태 → 성공
+{
+  const ff = fakeFetch("obj", "ok");
+  const r = await s.sendOtpSms("01012345678", otpText, env, { fetch: ff.f, log });
+  eq([r.ok, ff.twilioCalls(), r.attempts[0].code], [true, 0, "2000"], "② messageList 객체 → 성공·Twilio 0회(statusCode는 로그 code로만)");
+  const ff2 = fakeFetch("objNoCode", "ok");
+  const r2 = await s.sendOtpSms("01012345678", otpText, env, { fetch: ff2.f, log });
+  eq([r2.ok, ff2.twilioCalls(), r2.attempts[0].code], [true, 0, "accepted"], "②' 객체·failedMessageList 키 없음 → 빈 배열로 보고 성공");
+}
+// ③ failedMessageList [{3040}] → Twilio 호출 → Twilio도 실패하면 ok false(경로는 500)
+{
+  const ff = fakeFetch("fail", "fail");
+  const r = await s.sendOtpSms("01012345678", otpText, env, { fetch: ff.f, log });
+  eq([r.ok, ff.twilioCalls(), r.attempts.map((a: { code: string }) => a.code)], [false, 1, ["3040", "21211"]], "③ 솔라피 3040 → Twilio 호출 → Twilio 실패 → ok false(500)");
+}
+// ④ HTTP 4xx → Twilio 경로
+{
+  const ff = fakeFetch("http401", "ok");
+  const r = await s.sendOtpSms("01012345678", otpText, env, { fetch: ff.f, log });
+  eq([r.ok, ff.twilioCalls(), r.attempts[0].ok, r.attempts[0].code], [true, 1, false, "InvalidApiKey"], "④ HTTP 401 → 솔라피 실패 → Twilio 1회");
+}
+// 진단 로그: 응답 키 이름·messageList 타입만, 값(groupId 등) 없음
+{
+  const local: string[] = [];
+  const ff = fakeFetch("noStatus", "ok");
+  await s.sendOtpSms("01012345678", otpText, env, { fetch: ff.f, log: (l: Record<string, unknown>) => local.push(JSON.stringify(l)) });
+  const line = JSON.parse(local[0]);
+  eq([line.resp_keys, line.message_list], ["groupInfo,messageList,failedMessageList", "array"], "진단 로그: 최상위 키 이름 + messageList 타입");
+  const ffo = fakeFetch("obj", "ok");
+  await s.sendOtpSms("01012345678", otpText, env, { fetch: ffo.f, log: (l: Record<string, unknown>) => local.push(JSON.stringify(l)) });
+  eq(JSON.parse(local[1]).message_list, "object", "진단 로그: messageList 객체 형태");
+  const joined = local.join(" ");
+  eq(joined.includes("G-SECRET") || joined.includes(otpText) || joined.includes("01012345678"), false, "진단 로그에 groupId·문구·번호 없음");
 }
 eq(s.SOLAPI_TIMEOUT_MS + s.TWILIO_TIMEOUT_MS < 5000, true, `제한 시간 합 ${s.SOLAPI_TIMEOUT_MS + s.TWILIO_TIMEOUT_MS}ms < Hook 5초`);
 
