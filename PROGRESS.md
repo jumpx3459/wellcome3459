@@ -55,8 +55,15 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
+## 최근 작업 (2026-10-22) — 관리자 마감임박(6h) 표시·필터 (브랜치 `feat/admin-deadline-soon-highlight`)
+
+- 조치 필요 "마감임박(6h)" 타일 [바로 처리] → 진행 중인 매물 카드로 이동 + `마감임박만` 필터 ON + 테두리 1.5초 강조(#103 패턴). 대상 매물은 주황 세로선+연한 주황 바탕+칩 "마감 N시간/N분", 카드 제목 "(17건 · 마감임박 2)"(0건이면 숨김). 필터 ON이면 5건 제한 없음, 0건이면 "마감 6시간 이내 매물이 없어요".
+- 판정은 `src/lib/admin/needsAction.ts` `isDeadlineSoon(deal, now)` 한 곳(진행 중 AND now < 마감 ≤ now+6h, [테스트] 매물 제외는 기존 타일 그대로) — 타일 숫자·제목 건수·표시 줄·필터 모두 이 함수. 시각은 1분마다 갱신. 단위 시험 `scripts/deadline-soon-test.mts`. DB·API 변경 없음.
+
 ## 최근 작업 (2026-10-22) — 솔라피 Hook 전환 시도·성공 판정 수정 (브랜치 `fix/solapi-success-check`)
 
+- **#109 병합 기록**(솔라피 성공 판정 수정 + 인증번호 발송 실패 문구): squash 병합 `55827a4`(10/22) · PR CI(run 39728272147) 성공 · Deploy to Vercel(run 39728379062) 성공 · 운영 `/` 200, 서명 없는 `POST /api/auth/sms-hook` 401.
+- **10/22 14:33 KST(05:33 UTC) Hook 전환 성공**: Hook ON 1건 시험 → 응답 200 · 솔라피 `ok:true`(`code:"accepted"`, 227ms) · Twilio 미호출. 솔라피 응답 최상위 키는 `groupInfo,failedMessageList`(`messageList` 없음 — 11:06·11:09 실패 원인 확인). Twilio SID/Token은 대표가 10/22 CLI로 Supabase 값과 같게 재입력(대체 경로 실제 발송은 아직 미확인).
 - **#108 병합 기록**: squash 병합 `ab42439`(10/22) · PR CI(run 39700215595) 성공 · Deploy to Vercel(run 39700369855) 성공 · 운영 `/admin` 200, 토큰 없는 `GET /api/admin/business-checks` 401. 관리자·점핑매니저 계정 실화면 확인은 대표 대기.
 - **10/22 Send SMS Hook 전환 시도(실패 → 롤백)**: Vercel Production env 7개 등록(`SEND_SMS_HOOK_SECRET`·`SOLAPI_API_KEY`·`SOLAPI_API_SECRET`·`SOLAPI_SENDER`·`TWILIO_ACCOUNT_SID`·`TWILIO_AUTH_TOKEN`·`TWILIO_FROM`, 전부 Production 전용 Secret, `TWILIO_MESSAGING_SERVICE_SID`는 없음) → GitHub Actions #312 re-run으로 반영 → Supabase Hook ON 후 11:06·11:09 KST(02:06·02:09 UTC) 두 번 `/api/auth/sms-hook` **500**(문자는 솔라피로 1건씩 정상 수신) → 11:12 Hook OFF 롤백(Twilio 직접 발송으로 복귀).
 - **원인(운영 로그 확인)**: ① 솔라피 성공 판정이 `messageList[0].statusCode === "2000"`을 요구했는데 실제 응답엔 없어 발송 성공을 실패(`http_200`)로 판정 → ② Twilio 대체 호출이 **20003(인증 실패 — SID/Token 불일치)** → 500. 수정: 성공 = HTTP 2xx + `failedMessageList` 비어 있음(statusCode는 로그용), 응답 모양 진단 로그 추가. **Hook 재전환 전 Twilio SID/Token 대조(대표) 필요** — 지금 대체 발송은 작동하지 않음.

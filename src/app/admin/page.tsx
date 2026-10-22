@@ -13,7 +13,6 @@ import { NEGOTIABLE_LABEL, NEGOTIABLE_TEXT, isNegotiable, type PriceMode } from 
 import SellerPrivateFields, { EMPTY_SELLER_PRIVATE, type SellerPrivateDraft } from "@/components/admin/SellerPrivateFields";
 import DealSellerPrivateEditor from "@/components/admin/DealSellerPrivateEditor";
 import { publicSellerName } from "@/lib/sellerDisplay";
-import { isTestTitle } from "@/lib/categoryAvg";
 import { formatPhoneTyping } from "@/lib/auth";
 import { formatPhone, normalizePhone } from "@/lib/phone";
 import { normalizeTitle, checkTitle, checkDescription } from "@/lib/titleGuard";
@@ -50,6 +49,8 @@ import {
   sellerRequestNeedsAction,
   partnerRequestNeedsAction,
   NEEDS_ACTION_ROW_STYLE,
+  isDeadlineSoon,
+  deadlineChipLabel,
 } from "@/lib/admin/needsAction";
 import { isPassingCheck, NOT_CHECKED_MESSAGE, type BusinessCheck } from "@/lib/businessCheck";
 import { formatConsentDate } from "@/lib/consent";
@@ -559,6 +560,12 @@ function AdminDashboard({
   const [buyOnly, setBuyOnly] = useState(false);
   const [sellerOnly, setSellerOnly] = useState(false);
   const [partnerOnly, setPartnerOnly] = useState(false);
+  const [soonOnly, setSoonOnly] = useState(false); // 진행 중인 매물: 마감임박(6h)만
+  const [nowMs, setNowMs] = useState(() => Date.now()); // 마감임박 판정·칩 시각 — 1분마다 갱신
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
   const [flash, setFlash] = useState<{ id: string; n: number } | null>(null); // n: 같은 카드를 또 눌러도 1.5초를 다시 셈
   const flashId = flash?.id ?? null;
   useEffect(() => {
@@ -1506,23 +1513,36 @@ function AdminDashboard({
       </div>
     </>
   );
+  const soonDealCount = activeDeals.filter((d) => isDeadlineSoon(d, nowMs)).length;
+  const shownActiveDeals = soonOnly ? activeDeals.filter((d) => isDeadlineSoon(d, nowMs)) : activeDeals;
   const activeDealsBlock = (
     <>
       <AdminListCard
         id="active-deals"
+        flash={flashId === "active-deals"}
         className={
           isDesktop
             ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
             : "px-5 pb-6 flex flex-col gap-3"
         }
-        title={<span {...CARD_TITLE_PROPS}>진행 중인 매물 <span style={{ ...LABEL, fontWeight: 400 }}>({activeDeals.length}건)</span></span>}
-        empty={!loading && <div className="text-center text-gray500 py-6 text-sm">진행 중인 매물이 없어요.</div>}
+        title={<span {...CARD_TITLE_PROPS}>진행 중인 매물 <span style={{ ...LABEL, fontWeight: 400 }}>({activeDeals.length}건{soonDealCount > 0 ? ` · 마감임박 ${soonDealCount}` : ""})</span></span>}
+        toolbar={soonOnly ? <ActionFilterChip label="마감임박만" on onToggle={() => setSoonOnly(false)} /> : undefined}
+        limit={soonOnly ? null : 5}
+        empty={
+          !loading &&
+          (soonOnly ? (
+            <ActionFilterEmpty text="마감 6시간 이내 매물이 없어요" onShowAll={() => setSoonOnly(false)} />
+          ) : (
+            <div className="text-center text-gray500 py-6 text-sm">진행 중인 매물이 없어요.</div>
+          ))
+        }
         listClassName="flex flex-col gap-3"
-        items={activeDeals}
+        items={shownActiveDeals}
         renderItem={(d) => (
           <ActiveDealCard
             key={d.id}
             deal={d}
+            soonLabel={isDeadlineSoon(d, nowMs) ? deadlineChipLabel(d.closes_at, nowMs) : null}
             adminKey={adminKey}
             onChanged={load}
             canDelete={role === "최고관리자"}
@@ -2129,16 +2149,12 @@ function AdminDashboard({
           색은 의미 있을 때만(조치 1건↑ 주황/빨강, 0건 회색, 일반 지표 남색 1색). 막대는 CSS만(DashboardViz). */}
       <div className={isDesktop ? "px-8 pt-5 max-w-[1200px] mx-auto w-full flex flex-col gap-6" : "px-5 pt-5 flex flex-col gap-6"}>
         {(() => {
-          const soonDeals = activeDeals.filter((d) => {
-            if (isTestTitle(d.title)) return false; // [테스트] 매물 제외 (커밋 K)
-            const remainMs = new Date(d.closes_at).getTime() - new Date().getTime();
-            return remainMs > 0 && remainMs <= 6 * 60 * 60 * 1000;
-          }).length;
+          const soonDeals = soonDealCount;
           const actions = [
             { label: "미연락 리드", value: interests.filter(leadNeedsAction).length, urgent: true, go: () => jumpToAction("leads", () => setLeadsOpen(true), () => setLeadFilter("uncontacted")) },
             // 2026-10-04 F-4: 24시간 단계 변화 없는 거래 연결 (거래 연결 카드가 불러온 값)
             { label: "멈춘 연결", value: connCounts.stuck, urgent: true, go: () => jumpToSection("connections", () => setConnectionsOpen(true)) },
-            { label: "마감임박(6h)", value: soonDeals, urgent: true, go: () => jumpToSection("active-deals") },
+            { label: "마감임박(6h)", value: soonDeals, urgent: true, go: () => jumpToAction("active-deals", () => {}, () => setSoonOnly(true)) },
             { label: "대기 판매신청", value: requests.filter(sellerRequestNeedsAction).length, urgent: false, go: () => jumpToAction("pending-sellers", () => setSellerReqOpen(true), () => setSellerOnly(true)) },
             { label: "재고문의 미연락", value: buyRequests.filter(buyRequestNeedsAction).length, urgent: false, go: () => jumpToAction("buy-requests", () => setBuyReqOpen(true), () => setBuyOnly(true)) },
           ];
@@ -2583,7 +2599,9 @@ function ActiveDealCard({
   canDelete,
   onGoBizCheck,
   onClosed,
+  soonLabel = null,
 }: {
+  soonLabel?: string | null; // 마감임박(6h)이면 칩 문구("마감 3시간") — 판정은 needsAction.ts isDeadlineSoon 한 곳
   deal: ActiveDeal;
   adminKey: string;
   onChanged: () => void;
@@ -2833,12 +2851,13 @@ function ActiveDealCard({
   const expiryForLimit = form.expiryDate || null;
 
   return (
-    <div className="bg-white border border-gray200 rounded-2xl px-4 py-4">
+    <div className="bg-white border border-gray200 rounded-2xl px-4 py-4" style={soonLabel ? NEEDS_ACTION_ROW_STYLE : undefined} data-deadline-soon={soonLabel ? "" : undefined}>
       <div className="flex items-center justify-between gap-1.5">
-        <div className="flex items-center gap-1.5 text-xs font-bold text-gray500">
+        <div className="flex items-center gap-1.5 text-xs font-bold text-gray500 min-w-0">
           <span>{categoryIcons[deal.categories?.name ?? ""] ?? "🗂️"}</span>
-          {deal.categories?.name} · {deal.regions?.name}
+          <span className="truncate">{deal.categories?.name} · {deal.regions?.name}</span>
         </div>
+        {soonLabel && <NeedsActionChip>{soonLabel}</NeedsActionChip>}
         {/* 2026-09-27: "관심 표시한 회원" 섹션이 전역 리스트라 어떤 매물이 뜨거운지
             한눈에 안 보였음 — deals.interest_count(이미 트리거로 실시간 유지되는
             비정규화 카운터, 별도 조회 불필요)를 매물 관리 행에도 바로 노출.

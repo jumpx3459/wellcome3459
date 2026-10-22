@@ -1,6 +1,6 @@
 # 인증 문자 솔라피 전환 (Send SMS Hook)
 
-2026-10-12 작성 · 코드: `src/app/api/auth/sms-hook/route.ts`, `src/lib/sms/` · 시험: `node --experimental-strip-types scripts/sms-hook-test.mts`
+2026-10-12 작성 · **2026-10-22 14:33 KST 전환 완료**(첫 시도 11:06·11:09는 성공 판정 버그로 롤백 → #109 수정 후 재시도 성공) · 코드: `src/app/api/auth/sms-hook/route.ts`, `src/lib/sms/` · 시험: `node --experimental-strip-types scripts/sms-hook-test.mts`
 
 ## 왜
 
@@ -38,7 +38,7 @@
 3. **재배포** — env는 새 배포부터 읽힘. GitHub Actions "Deploy to Vercel"을 다시 돌리거나(Actions > 최근 main run > Re-run) 다음 merge 때.
 4. **Firewall 확인**(아래) — 막히면 예외 규칙부터.
 5. Supabase Hooks에서 Send SMS hook **켜기(Enable)**.
-6. **내부 번호 시험**: 대표·직원 폰으로 로그인 인증번호 요청 → ① 발신 070-4006-0890, "[국제발신]" 없음 ② 인증번호로 로그인 성공 ③ Vercel 로그 `sms-hook {"provider":"solapi",…,"ok":true,"code":"2000",…}` ④ 솔라피 콘솔 발송 내역 성공.
+6. **내부 번호 시험**: 대표·직원 폰으로 로그인 인증번호 요청 → ① 발신 070-4006-0890, "[국제발신]" 없음 ② 인증번호로 로그인 성공 ③ Vercel 로그 `sms-hook {"provider":"solapi",…,"ok":true,"code":"accepted",…}`(statusCode는 응답에 없음 — 성공 = HTTP 2xx + `failedMessageList` 비어 있음) ④ 솔라피 콘솔 발송 내역 성공.
 7. 하루 정도 Vercel 로그에서 `"provider":"twilio"`(대체 발송)·`"ok":false` 줄이 있는지 확인.
 
 ## 되돌리기
