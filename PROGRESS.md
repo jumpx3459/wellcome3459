@@ -52,6 +52,7 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 
 ## 최근 작업 (2026-10-21) — 삼성 인터넷 홈 화면 추가 안내 시트 (브랜치 `fix/samsung-install-guide`)
 
+- **#107 병합 기록**: squash 병합 `ab82b16`(10/21) · PR CI(run 39557172794) 성공 · Deploy to Vercel(run 39557986138) 성공 · 운영 `/`·`/deals` 200, 번들에 SamsungBrowser 분기·intent 주소 포함 확인. 실기기(갤럭시) 확인은 대표 대기.
 - 삼성 인터넷(UA `SamsungBrowser`)에서 설치 배너를 누르면 `prompt()`를 부르지 않고 안내 시트("갤럭시는 이렇게 추가해 주세요": ① [크롬으로 열기] intent 링크 · ② 메뉴(≡) → 현재 페이지 추가 → 홈 화면 · ③ 경고 시 [확인] 안내)만 연다. 삼성 WebAPK가 Play 프로텍트 경고를 띄우는 문제 회피. 크롬·iOS·PC는 그대로. `[지금 설치]` 칩도 삼성에선 숨김. 변경: `src/components/InstallAppButton.tsx`.
 
 ## 최근 작업 (2026-10-21) — 확인된 판매자 재사용 B안 (브랜치 `feat/seller-check-reuse`)
