@@ -53,6 +53,8 @@ export type SendDeps = {
   isoNow?: () => string;
   salt?: () => string;
   solapiTimeoutMs?: number;
+  /** 솔라피 응답 모양 진단 로그(값 없음) — sendOtpSms가 로그 한 줄로 남김 */
+  shape?: (s: { keys: string; messageList: string }) => void;
   twilioTimeoutMs?: number;
 };
 
@@ -61,7 +63,10 @@ function errCode(e: unknown): string {
   return name === "TimeoutError" || name === "AbortError" ? "timeout" : "network_error";
 }
 
-/** 솔라피 단문 1건. 성공 = HTTP 2xx + 실패 목록 비어 있음 + 메시지 statusCode "2000"(접수). */
+/** 솔라피 단문 1건. 성공 = HTTP 2xx + 실패 목록(failedMessageList, 없으면 빈 배열로 봄)이 비어 있음.
+ *  2026-10-22: 예전엔 messageList[0].statusCode === "2000"도 요구했는데, 실제 응답엔 그 값이 없어 발송이 됐는데도 실패로 판정돼
+ *  Twilio 대체 → 500이 났음(Hook 500). statusCode는 있으면 로그용 code로만 남기고 판정에는 쓰지 않는다.
+ *  접수 단계 거절(예: 3040 미등록 발신번호)은 솔라피가 failedMessageList에 담아 준다. */
 export async function sendSolapi(to: string, text: string, cfg: SolapiConfig, deps: SendDeps = {}): Promise<SendResult> {
   const f = deps.fetch ?? fetch;
   const now = deps.now ?? Date.now;
@@ -77,15 +82,20 @@ export async function sendSolapi(to: string, text: string, cfg: SolapiConfig, de
       signal: AbortSignal.timeout(deps.solapiTimeoutMs ?? SOLAPI_TIMEOUT_MS),
     });
     const json = (await res.json().catch(() => null)) as {
-      failedMessageList?: { statusCode?: string }[];
-      messageList?: { statusCode?: string }[] | Record<string, { statusCode?: string }>;
+      failedMessageList?: { statusCode?: string }[] | null;
+      messageList?: { statusCode?: string }[] | Record<string, { statusCode?: string }> | null;
       errorCode?: string;
     } | null;
-    const failed = json?.failedMessageList ?? [];
-    const list = json?.messageList ? Object.values(json.messageList) : [];
+    const failed = Array.isArray(json?.failedMessageList) ? json.failedMessageList : [];
+    const list = json?.messageList && typeof json.messageList === "object" ? Object.values(json.messageList) : [];
     const msgCode = failed[0]?.statusCode ?? list[0]?.statusCode;
-    const ok = res.ok && failed.length === 0 && msgCode === "2000";
-    return { ok, provider: "solapi", code: msgCode ?? json?.errorCode ?? `http_${res.status}`, ms: now() - t0 };
+    const ok = res.ok && failed.length === 0;
+    // 진단용 — 응답 모양만(최상위 키 이름 + messageList 타입). 번호·문구·인증번호·groupId 같은 값은 남기지 않음
+    deps.shape?.({
+      keys: json && typeof json === "object" ? Object.keys(json).join(",") : "none",
+      messageList: Array.isArray(json?.messageList) ? "array" : json?.messageList && typeof json.messageList === "object" ? "object" : "none",
+    });
+    return { ok, provider: "solapi", code: msgCode ?? json?.errorCode ?? (ok ? "accepted" : `http_${res.status}`), ms: now() - t0 };
   } catch (e) {
     return { ok: false, provider: "solapi", code: errCode(e), ms: now() - t0 };
   }
@@ -129,9 +139,10 @@ export async function sendOtpSms(
   const masked = maskPhone(to);
   const attempts: SendResult[] = [];
 
-  const s = await sendSolapi(to, text, env.solapi, deps);
+  let shape: { keys: string; messageList: string } | null = null;
+  const s = await sendSolapi(to, text, env.solapi, { ...deps, shape: (v) => (shape = v) });
   attempts.push(s);
-  log({ provider: s.provider, to: masked, ok: s.ok, code: s.code, ms: s.ms });
+  log({ provider: s.provider, to: masked, ok: s.ok, code: s.code, ms: s.ms, ...(shape ? { resp_keys: (shape as { keys: string }).keys, message_list: (shape as { messageList: string }).messageList } : {}) });
   if (s.ok) return { ok: true, attempts };
 
   if (!env.twilio) {
