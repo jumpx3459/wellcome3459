@@ -57,6 +57,8 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 
 ## 최근 작업 (2026-10-22) — 솔라피 Hook 전환 시도·성공 판정 수정 (브랜치 `fix/solapi-success-check`)
 
+- **#109 병합 기록**(솔라피 성공 판정 수정 + 인증번호 발송 실패 문구): squash 병합 `55827a4`(10/22) · PR CI(run 39728272147) 성공 · Deploy to Vercel(run 39728379062) 성공 · 운영 `/` 200, 서명 없는 `POST /api/auth/sms-hook` 401.
+- **10/22 14:33 KST(05:33 UTC) Hook 전환 성공**: Hook ON 1건 시험 → 응답 200 · 솔라피 `ok:true`(`code:"accepted"`, 227ms) · Twilio 미호출. 솔라피 응답 최상위 키는 `groupInfo,failedMessageList`(`messageList` 없음 — 11:06·11:09 실패 원인 확인). Twilio SID/Token은 대표가 10/22 CLI로 Supabase 값과 같게 재입력(대체 경로 실제 발송은 아직 미확인).
 - **#108 병합 기록**: squash 병합 `ab42439`(10/22) · PR CI(run 39700215595) 성공 · Deploy to Vercel(run 39700369855) 성공 · 운영 `/admin` 200, 토큰 없는 `GET /api/admin/business-checks` 401. 관리자·점핑매니저 계정 실화면 확인은 대표 대기.
 - **10/22 Send SMS Hook 전환 시도(실패 → 롤백)**: Vercel Production env 7개 등록(`SEND_SMS_HOOK_SECRET`·`SOLAPI_API_KEY`·`SOLAPI_API_SECRET`·`SOLAPI_SENDER`·`TWILIO_ACCOUNT_SID`·`TWILIO_AUTH_TOKEN`·`TWILIO_FROM`, 전부 Production 전용 Secret, `TWILIO_MESSAGING_SERVICE_SID`는 없음) → GitHub Actions #312 re-run으로 반영 → Supabase Hook ON 후 11:06·11:09 KST(02:06·02:09 UTC) 두 번 `/api/auth/sms-hook` **500**(문자는 솔라피로 1건씩 정상 수신) → 11:12 Hook OFF 롤백(Twilio 직접 발송으로 복귀).
 - **원인(운영 로그 확인)**: ① 솔라피 성공 판정이 `messageList[0].statusCode === "2000"`을 요구했는데 실제 응답엔 없어 발송 성공을 실패(`http_200`)로 판정 → ② Twilio 대체 호출이 **20003(인증 실패 — SID/Token 불일치)** → 500. 수정: 성공 = HTTP 2xx + `failedMessageList` 비어 있음(statusCode는 로그용), 응답 모양 진단 로그 추가. **Hook 재전환 전 Twilio SID/Token 대조(대표) 필요** — 지금 대체 발송은 작동하지 않음.
