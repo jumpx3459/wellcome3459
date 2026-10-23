@@ -1824,19 +1824,36 @@ function AdminDashboard({
   );
   // 2026-10-04 판매자 신원 확인: "사업자 조회" — 판매자 신청 목록 바로 위(📱 세로 순서·💻 3단 모두)
   const bizCheckBlock = (
-    <BusinessCheckSection
-      adminKey={adminKey}
-      adminRole={adminRole}
-      requests={requests}
-      phoneMatch={bizPhoneMatch}
-      preselect={bizPreselect}
-      className={
-        isDesktop
-          ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
-          : "px-5 pb-6 flex flex-col gap-3"
-      }
-      onChanged={() => loadBizChecks(requests.map((r) => r.id))}
-    />
+    <>
+      {/* 2026-10-23: 사업자 조회 위 [+ 찾습니다 대신 등록] — 회원 화면 /buy/new를 새 탭으로 열기만(다른 동작 없음). members 권한(최고관리자·관리자)만 */}
+      {perm("members") && (
+        <div className={isDesktop ? "mb-3" : "px-5 pb-3"}>
+          <a
+            href="/buy/new"
+            target="_blank"
+            rel="noopener"
+            className={`flex items-center justify-center w-full ${BTN_CLASS}`}
+            style={btnStyle("secondary")}
+            data-buy-proxy-link
+          >
+            + 찾습니다 대신 등록
+          </a>
+        </div>
+      )}
+      <BusinessCheckSection
+        adminKey={adminKey}
+        adminRole={adminRole}
+        requests={requests}
+        phoneMatch={bizPhoneMatch}
+        preselect={bizPreselect}
+        className={
+          isDesktop
+            ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
+            : "px-5 pb-6 flex flex-col gap-3"
+        }
+        onChanged={() => loadBizChecks(requests.map((r) => r.id))}
+      />
+    </>
   );
   const partnerReqBlock = !perm("partnerView") ? null : (
     <>
