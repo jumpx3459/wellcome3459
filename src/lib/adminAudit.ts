@@ -36,6 +36,7 @@ export type AuditAction =
   | "notice_close" // 2026-10-10: 긴급 공지 마감 (detail: status)
   | "connection_assign" // 2026-10-10: 거래 연결 담당 지정·변경 (detail: 이전·새 담당 id·이름)
   | "member_phone_view" // 2026-10-10: 회원 전체 번호 보기 (detail: phoneTail만)
+  | "member_detail_view" // 2026-10-23: 회원 상세(보기 전용) 열람 (detail: phoneTail만 — 대상 회원은 target_id)
   | "seller_private_save"; // 2026-10-04 F-4: 판매자 비공개 정보 저장 (detail: via[deal_create|deal_edit|seller_request_approve|connection_board], 바뀐 칸 이름, 연락처는 phoneTail, 조회 행 연결 시 linked_check_id)
 
 export const phoneTail = (p: string | null | undefined) => {
