@@ -57,6 +57,7 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 
 ## 최근 작업 (2026-10-22) — 관리자 마감임박(6h) 표시·필터 (브랜치 `feat/admin-deadline-soon-highlight`)
 
+- **#110 병합 기록**: squash 병합 `d536fd3`(10/23) · PR CI(run 39729939139) 성공 · Deploy to Vercel(run 39874240513) 성공 · 운영 `/admin` 200. 6h 이내 매물이 생겼을 때 타일 → `마감임박만` 필터 운영 확인은 대표 대기.
 - 조치 필요 "마감임박(6h)" 타일 [바로 처리] → 진행 중인 매물 카드로 이동 + `마감임박만` 필터 ON + 테두리 1.5초 강조(#103 패턴). 대상 매물은 주황 세로선+연한 주황 바탕+칩 "마감 N시간/N분", 카드 제목 "(17건 · 마감임박 2)"(0건이면 숨김). 필터 ON이면 5건 제한 없음, 0건이면 "마감 6시간 이내 매물이 없어요".
 - 판정은 `src/lib/admin/needsAction.ts` `isDeadlineSoon(deal, now)` 한 곳(진행 중 AND now < 마감 ≤ now+6h, [테스트] 매물 제외는 기존 타일 그대로) — 타일 숫자·제목 건수·표시 줄·필터 모두 이 함수. 시각은 1분마다 갱신. 단위 시험 `scripts/deadline-soon-test.mts`. DB·API 변경 없음.
 
