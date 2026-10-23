@@ -1,11 +1,14 @@
 import { normalizeTitle, checkTitle, checkDescription } from "@/lib/titleGuard";
-import { isValidExpiryDate, priceWarnings, EXPIRY_REQUIRED_MESSAGE } from "@/lib/dealFields";
-import { isLumpSum } from "@/lib/priceUnit";
+import { isValidExpiryDate, isStorageType, priceWarnings, EXPIRY_REQUIRED_MESSAGE } from "@/lib/dealFields";
+import { isLumpSum, isDealPriceUnit } from "@/lib/priceUnit";
+import { isStockType } from "@/lib/stockType";
 import { isPriceMode, type PriceMode } from "@/lib/priceMode";
 
 // 진행 중 매물 수정 (2026-10-03 feat/admin-deal-edit) — 관리자 카드(ActiveDealCard)와 서버(/api/admin/deals/manage PATCH)가 같이 쓰는 검증.
 // 규칙·문구는 등록(/api/admin/deals POST·DealForm)과 같음. 보낸 칸만 검사하고, 다른 칸이 필요한 규칙(MOQ ≤ 총수량, 마감 ≤ 소비기한)은
 // 지금 저장된 값과 합쳐서 본다. 수정·연장은 알림을 다시 보내지 않음.
+// 2026-10-23: 매물 수정 = 등록 폼 재사용(DealForm mode="edit") — 카테고리·지역·재고 위치·재고 유형·총수량·수량/단가 단위·포장·원산지·규격·보관·제품 ID·구성품을
+// 수정에서도 받음(검증·문구는 등록 API와 같음). 재고 수량(remainingQty)은 총수량 이하여야 함.
 
 export type DealEditInput = {
   title?: string;
@@ -16,6 +19,20 @@ export type DealEditInput = {
   expiryDate?: string | null; // "YYYY-MM-DD"
   description?: string | null;
   closesAt?: string; // ISO
+  remainingQty?: number; // 재고 수량(잔량) — 총수량 이하
+  totalQty?: number;
+  category?: string; // 이름(서버가 id로 바꿈, 없는 이름이면 400)
+  region?: string;
+  location?: string | null;
+  quantityUnit?: string;
+  priceUnit?: string | null;
+  stockType?: string;
+  storageType?: string | null;
+  packageUnit?: string | null;
+  origin?: string | null;
+  spec?: string | null;
+  pid?: string | null;
+  manifestItems?: unknown;
 };
 
 export type DealEditCurrent = {
@@ -27,11 +44,19 @@ export type DealEditCurrent = {
   stock_type?: string | null;
   expiry_date?: string | null;
   closes_at: string;
+  min_order_qty?: number | null;
 };
 
-export type DealEditField = "priceMode" | "title" | "dealPrice" | "originalPrice" | "minOrderQty" | "expiryDate" | "description" | "closesAt";
+export type DealEditField =
+  | "priceMode" | "title" | "dealPrice" | "originalPrice" | "minOrderQty" | "expiryDate" | "description" | "closesAt"
+  | "remainingQty" | "totalQty" | "category" | "region" | "location" | "quantityUnit" | "priceUnit" | "stockType" | "storageType"
+  | "packageUnit" | "origin" | "spec" | "pid" | "manifestItems";
 
-export const DEAL_EDIT_KEYS = ["priceMode", "title", "dealPrice", "originalPrice", "minOrderQty", "expiryDate", "description", "closesAt"] as const;
+export const DEAL_EDIT_KEYS = [
+  "priceMode", "title", "dealPrice", "originalPrice", "minOrderQty", "expiryDate", "description", "closesAt",
+  "remainingQty", "totalQty", "category", "region", "location", "quantityUnit", "priceUnit", "stockType", "storageType",
+  "packageUnit", "origin", "spec", "pid", "manifestItems",
+] as const;
 
 const isPositive = (v: unknown) => typeof v === "number" && Number.isFinite(v) && v > 0;
 
@@ -76,15 +101,40 @@ export function validateDealEdit(
       return bad("정상가는 0보다 커야 해요.", "originalPrice");
     }
   }
-  if (input.minOrderQty !== undefined && input.minOrderQty != null && !isLumpSum(current.price_unit)) {
-    if (!isPositive(input.minOrderQty)) return bad("최소 주문량은 0보다 커야 해요.", "minOrderQty");
-    if (input.minOrderQty > current.total_qty) return bad("최소주문량은 재고 총수량보다 클 수 없어요.", "minOrderQty");
+  // 2026-10-23 총수량·단위·재고 유형·보관 조건 — 등록(/api/admin/deals POST)과 같은 규칙·문구
+  if (input.category !== undefined && (typeof input.category !== "string" || !input.category.trim())) return bad("카테고리를 선택해주세요.", "category");
+  if (input.region !== undefined && (typeof input.region !== "string" || !input.region.trim())) return bad("지역을 선택해주세요.", "region");
+  if (input.totalQty !== undefined && !isPositive(input.totalQty)) return bad("재고 총수량은 0보다 커야 해요.", "totalQty");
+  if (input.priceUnit !== undefined && input.priceUnit != null && !isDealPriceUnit(input.priceUnit)) return bad("단가 단위가 올바르지 않아요.", "priceUnit");
+  if (input.stockType !== undefined && !isStockType(input.stockType)) return bad("재고 유형이 올바르지 않아요.", "stockType");
+  if (input.storageType !== undefined && input.storageType != null && input.storageType !== "" && !isStorageType(input.storageType)) {
+    return bad("보관 조건이 올바르지 않아요.", "storageType");
   }
-  if (input.expiryDate !== undefined) {
-    if (input.expiryDate != null && input.expiryDate !== "" && !isValidExpiryDate(input.expiryDate)) {
-      return bad("소비기한 날짜가 올바르지 않아요.", "expiryDate");
+  const totalQty = input.totalQty ?? current.total_qty;
+  const lumpSum = isLumpSum(input.priceUnit !== undefined ? input.priceUnit : current.price_unit);
+  if (!lumpSum) {
+    if (input.minOrderQty !== undefined && input.minOrderQty != null) {
+      if (!isPositive(input.minOrderQty)) return bad("최소 주문량은 0보다 커야 해요.", "minOrderQty");
     }
-    if (current.stock_type === "near_expiry" && !input.expiryDate) return bad(EXPIRY_REQUIRED_MESSAGE, "expiryDate");
+    // 총수량을 줄이거나 단가 단위를 바꾸는 수정에서도 지금 저장된 최소 주문량과 맞춰 본다
+    const moq = input.minOrderQty !== undefined ? input.minOrderQty : current.min_order_qty;
+    const moqRelevant = input.minOrderQty !== undefined || input.totalQty !== undefined || input.priceUnit !== undefined;
+    if (moqRelevant && moq != null && moq > totalQty) return bad("최소주문량은 재고 총수량보다 클 수 없어요.", "minOrderQty");
+  }
+  if (input.remainingQty !== undefined) {
+    if (typeof input.remainingQty !== "number" || !Number.isFinite(input.remainingQty) || input.remainingQty < 0 || !Number.isInteger(input.remainingQty)) {
+      return bad("재고 수량은 0 이상의 정수로 입력해주세요.", "remainingQty");
+    }
+    if (input.remainingQty > totalQty) return bad(`재고 수량은 재고 총수량(${totalQty})보다 클 수 없어요.`, "remainingQty");
+  }
+  if (input.expiryDate !== undefined && input.expiryDate != null && input.expiryDate !== "" && !isValidExpiryDate(input.expiryDate)) {
+    return bad("소비기한 날짜가 올바르지 않아요.", "expiryDate");
+  }
+  // 재고 유형 "소비기한 임박"이면 소비기한 필수 — 재고 유형이나 소비기한을 바꿀 때 합쳐서 봄
+  if (input.stockType !== undefined || input.expiryDate !== undefined) {
+    const stock = input.stockType ?? current.stock_type;
+    const expiry = input.expiryDate !== undefined ? input.expiryDate : current.expiry_date;
+    if (stock === "near_expiry" && !expiry) return bad(EXPIRY_REQUIRED_MESSAGE, "expiryDate");
   }
   if (input.description !== undefined && input.description != null && typeof input.description !== "string") {
     return bad("추가 설명이 올바르지 않아요.", "description");
