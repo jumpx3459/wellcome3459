@@ -55,8 +55,16 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
+## 최근 작업 (2026-10-23) — 관리자 매물 패널 사진 확대·영상 재생·1열 간격 (브랜치 `feat/admin-media-viewer`)
+
+- 사진 확대(라이트박스 `src/components/admin/AdminMediaLightbox.tsx`): 썸네일 클릭 → 패널 위(z 70) 오버레이, ←/→·버튼·"3 / 9"·대표 사진 표시, 영상은 사진 다음 항목. Esc는 window 캡처 단계에서 가로채 확대만 닫힘(패널 Esc·dirty 유지), 바깥 클릭·✕·안드로이드 뒤로가기도 확대만. 드래그(5px+)·✕ 삭제는 확대 안 열림. 등록·수정·모바일 인라인 동일(DealForm 한 곳).
+- 영상: 패널에서 `<video controls playsInline preload="metadata">`(최대 150px) + [크게 보기], 재생 실패 시 "이 브라우저에서 재생할 수 없는 형식이에요" + 파일 다운로드 링크. `ImageUploader`·`VideoUploader`는 선택 prop(`onPreview`·`inlinePlayer`)만 추가 — 기본 동작(회원 /sell) 그대로.
+- 1열 간격: 1920×950에서 [조기 마감]까지 스크롤 없음(칸 간격·라벨 여백·마감 연장 한 줄·안내 문구 숨김, 글자 크기 그대로). 운영 영상 현황(읽기): 익명 공개 조회 1건 webm/VP9 5.4MB — faststart 없는 MP4 없음. DB·API 변경 없음.
+- **MOQ 단위**: `src/lib/moq.ts` `formatMoq`("최소 {MOQ}{매물 단위} 이상" + 포장 단위 있으면 " · 포장 {package_unit}", 단위 null·빈 값 = 개) 한 곳 — 회원 상세 3곳·관리자 신청 카드. 관리자 폼 라벨은 총수량 단위를 따라 즉시 바뀜. 등록·수정 API: MOQ 1 이상 정수 + ≤ 총수량. 시험 `scripts/moq-test.mts`. DB 변경 없음. ("개 이상" 고정 위치는 없었음 — 폼은 이미 단위 연동, 상세의 "|| 개" 3곳이 유일)
+
 ## 최근 작업 (2026-10-23) — 관리자 PC 전체 화면 수정 패널 + 매물 수정 = 등록 폼 재사용 (브랜치 `feat/admin-fullscreen-panel`, PR 1)
 
+- **#111 병합 기록**: squash 병합 `4107428`(10/23) · PR CI(run 39892389766) 성공 · Deploy to Vercel(run 39902183125) 성공. 운영 시험 없음(운영에 `[테스트]` 매물 없음) — 대표가 실매물로 수정(카테고리·수량 단위·원산지·보관 조건) → 상세 반영·알림 미발송 확인 대기.
 - PC(isDesktop)에서 진행 중 매물 [수정]·새 매물 등록·판매 신청 [매물로 등록하기]를 3열 인라인 대신 **전체 화면 패널**(`src/components/admin/AdminFullscreenPanel.tsx`)로 연다. Esc·✕·dirty 확인 바(window.confirm 아님)·본문 스크롤 잠금/복원. 모바일·viewMode 📱는 같은 폼을 인라인으로. 관리자 최대 폭 1200 → 1600px(`ADMIN_MAX_W` 한 곳).
 - **매물 수정 = 등록 폼 재사용**: `DealForm mode="edit"`(initialDeal로 채움, 저장은 PATCH `/api/admin/deals/manage` — 등록 API·알림 발송 호출 없음). edit 전용 구역(재고 수량·마감 일시+연장·[조기 마감]), 판매자는 SellerDisplayPicker + DealSellerPrivateEditor(자체 저장). ActiveDealCard의 전용 입력 코드는 제거.
 - **수정 API 허용 칸 추가**(`src/lib/dealEdit.ts` + `manage/route.ts`, 검증·문구는 등록과 같음): 카테고리·지역·재고 위치·재고 유형·총수량·수량 단위·단가 단위·포장·원산지·규격·보관 조건·제품 ID·구성품 + **재고 수량 ≤ 총수량 검증**. 시험 `scripts/deal-edit-test.mts`. DB 스키마 변경 없음.

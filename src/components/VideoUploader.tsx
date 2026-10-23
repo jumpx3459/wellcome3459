@@ -53,6 +53,8 @@ export default function VideoUploader({
   initialUrl,
   adminKey,
   onStatusChange,
+  inlinePlayer = false,
+  onPreview,
   ref,
 }: {
   onChange: (url: string | null) => void;
@@ -61,12 +63,16 @@ export default function VideoUploader({
   initialUrl?: string | null;
   adminKey?: string; // 관리자 화면에서만 — 있으면 x-admin-key로, 없으면 회원 토큰(authFetch)으로 업로드
   onStatusChange?: (status: VideoUploadStatus) => void;
+  // 2026-10-23 관리자 패널: 올린 영상을 그 자리에서 재생(컨트롤·재생 실패 안내) + [크게 보기]. 안 넘기면(기본) 예전 96px 썸네일 그대로 — /sell 영향 없음
+  inlinePlayer?: boolean;
+  onPreview?: () => void;
   ref?: Ref<VideoUploaderHandle>;
 }) {
   const [phase, setPhase] = useState<Phase>(initialUrl ? "done" : "idle");
   const pointerFine = usePointerFine();
   const [srcUrl, setSrcUrl] = useState<string | null>(null); // 원본(트림 대상) 미리보기
   const [resultUrl, setResultUrl] = useState<string | null>(initialUrl ?? null); // 업로드 완료된 최종 영상
+  const [playFailed, setPlayFailed] = useState(false); // inlinePlayer: 이 브라우저가 못 여는 형식(코덱)
   const [duration, setDuration] = useState(0);
   const [trimStart, setTrimStart] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +89,7 @@ export default function VideoUploader({
     setPhase("idle");
     setSrcUrl(null);
     setResultUrl(null);
+    setPlayFailed(false);
     setDuration(0);
     setTrimStart(0);
     setError(null);
@@ -368,7 +375,49 @@ export default function VideoUploader({
         </div>
       )}
 
-      {phase === "done" && resultUrl && (
+      {phase === "done" && resultUrl && inlinePlayer && (
+        <div className="flex flex-col gap-1.5 border-2 border-gray200 rounded-xl p-2.5" data-video-player>
+          {playFailed ? (
+            <div className="rounded-lg text-center" style={{ background: "#F5F6F8", padding: "14px 12px" }} data-video-error>
+              <p className="font-bold text-navy" style={{ fontSize: rem(14) }}>이 브라우저에서 재생할 수 없는 형식이에요</p>
+              <a href={resultUrl} download target="_blank" rel="noreferrer" className="inline-block mt-1.5 font-bold underline text-navy" style={{ fontSize: rem(14) }}>
+                파일 다운로드
+              </a>
+            </div>
+          ) : (
+            <video
+              key={resultUrl}
+              src={resultUrl}
+              controls
+              playsInline
+              preload="metadata"
+              className="w-full rounded-lg bg-black"
+              style={{ maxHeight: 150 }}
+              onError={() => setPlayFailed(true)}
+            />
+          )}
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-bold text-navy">영상 첨부 완료</span>
+            <span className="flex items-center gap-2">
+              {onPreview && !playFailed && (
+                <button type="button" onClick={onPreview} className="text-xs font-bold text-navy underline" data-video-enlarge>
+                  크게 보기
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={reset}
+                aria-label="영상 삭제"
+                className="w-7 h-7 rounded-full bg-gray900 text-white text-sm flex items-center justify-center flex-shrink-0"
+              >
+                ×
+              </button>
+            </span>
+          </div>
+        </div>
+      )}
+
+      {phase === "done" && resultUrl && !inlinePlayer && (
         <div className="flex items-center gap-3 border-2 border-gray200 rounded-xl p-3">
           <video src={resultUrl} className="w-24 h-24 rounded-lg object-cover bg-black" muted />
           <div className="flex-1">

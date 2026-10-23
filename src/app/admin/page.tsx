@@ -14,6 +14,8 @@ import { NEGOTIABLE_LABEL, NEGOTIABLE_TEXT, isNegotiable, type PriceMode } from 
 import SellerPrivateFields, { EMPTY_SELLER_PRIVATE, type SellerPrivateDraft } from "@/components/admin/SellerPrivateFields";
 import DealSellerPrivateEditor from "@/components/admin/DealSellerPrivateEditor";
 import AdminFullscreenPanel from "@/components/admin/AdminFullscreenPanel";
+import { formatMoq, moqUnit } from "@/lib/moq";
+import AdminMediaLightbox, { type LightboxItem } from "@/components/admin/AdminMediaLightbox";
 import { publicSellerName } from "@/lib/sellerDisplay";
 import { formatPhoneTyping } from "@/lib/auth";
 import { formatPhone, normalizePhone } from "@/lib/phone";
@@ -1671,7 +1673,7 @@ function AdminDashboard({
             </div>
             <div className="text-sm text-gray500 mt-1">
               수량 {r.quantity}{r.quantity_unit || "개"}
-              {r.min_order_qty ? ` (MOQ ${r.min_order_qty}${r.quantity_unit || "개"})` : ""}
+              {r.min_order_qty ? ` (${formatMoq(r.min_order_qty, r.quantity_unit)})` : ""}
               {isNegotiable(r) ? ` · ${NEGOTIABLE_LABEL}` : r.hope_price ? ` · 희망단가 ${formatDealPrice(r.hope_price, r.quantity_unit, r.price_unit, { exact: true })}` : ""}
               {r.hope_duration_hours
                 ? ` · 희망 마감 ${
@@ -3031,6 +3033,13 @@ function DealForm({
   const [photoStatus, setPhotoStatus] = useState<ImageUploadStatus>({ uploading: 0, failed: 0 });
   const [photoSheet, setPhotoSheet] = useState<{ confirmWarnings: boolean } | null>(null);
   const imageUploaderRef = useRef<ImageUploaderHandle>(null);
+  // 2026-10-23 사진 확대·영상 재생(라이트박스) — 등록·수정·모바일 인라인 모두 같은 폼이라 동작 동일
+  const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
+  const openPhotoPreview = (urls: string[], index: number) =>
+    setLightbox({ items: [...urls.map((src) => ({ type: "image" as const, src })), ...(videoUrl ? [{ type: "video" as const, src: videoUrl }] : [])], index });
+  const openVideoPreview = () => {
+    if (videoUrl) setLightbox({ items: [...images.map((src) => ({ type: "image" as const, src })), { type: "video" as const, src: videoUrl }], index: images.length });
+  };
   const busyLabel = uploadingLabel(photoStatus.uploading > 0, videoStatus === "uploading");
   const [description, setDescription] = useState(prefill?.description ?? "");
   const [packageUnit, setPackageUnit] = useState(prefill?.packageUnit ?? "");
@@ -3111,7 +3120,7 @@ function DealForm({
     }
     if (!totalQty.trim()) errs.totalQty = "재고 총수량을 입력해주세요.";
     else if (!Number.isFinite(qty) || qty <= 0) errs.totalQty = "재고 총수량은 0보다 커야 해요.";
-    if (!lumpSum && minOrderQty.trim() && !(Number(minOrderQty) > 0)) errs.minOrderQty = "최소 주문량은 0보다 커야 해요.";
+    if (!lumpSum && minOrderQty.trim() && !(Number(minOrderQty) > 0 && Number.isInteger(Number(minOrderQty)))) errs.minOrderQty = "최소 주문량은 1 이상의 정수로 입력해주세요.";
     else if (!lumpSum && minOrderQty.trim() && qty > 0 && Number(minOrderQty) > qty) errs.minOrderQty = "최소주문량은 재고 총수량보다 클 수 없어요.";
     if (stockType === "near_expiry" && !expiryDate) errs.expiryDate = EXPIRY_REQUIRED_MESSAGE;
     if (edit) {
@@ -3448,13 +3457,13 @@ function DealForm({
       className={
         wide
           ? editWide
-            ? "bg-gray100 rounded-xl p-3.5 w-full h-full grid grid-cols-3 grid-rows-[minmax(0,1fr)] gap-x-6 items-stretch"
+            ? "bg-gray100 rounded-xl p-2.5 w-full h-full grid grid-cols-3 grid-rows-[minmax(0,1fr)] gap-x-6 items-stretch"
             : "mt-3 bg-gray100 rounded-xl p-3.5 w-full grid grid-cols-[minmax(0,1fr)_clamp(360px,38%,420px)] gap-x-8 items-start"
           : "@container mt-3 bg-gray100 rounded-xl p-3.5 flex flex-col gap-3 w-full max-w-[720px] mx-auto"
       }
     >
       <div className={wide && !editWide ? "@container flex flex-col gap-3 min-w-0" : "contents"}>
-        <div className={editWide ? "@container flex flex-col gap-3 min-w-0 min-h-0 overflow-y-auto" : "contents"} data-col={editWide ? "1" : undefined}>
+        <div className={editWide ? "@container flex flex-col gap-2 min-w-0 min-h-0 overflow-y-auto [&_label]:mb-0.5 [&_input]:py-2 [&_select]:py-2 [&_div.mb-3]:mb-1.5" : "contents"} data-col={editWide ? "1" : undefined}>
         {!edit && (
         <p className="text-[0.7778rem] text-gray500">
           <span className="text-orange font-bold">*</span> 필수 항목
@@ -3476,7 +3485,7 @@ function DealForm({
             칸 수는 폼 폭 기준(@container) — 관리자 "모바일 보기"에서도 맞게. 접힌 묶음 칸에서 오류 나면 펼치고 그 칸으로 스크롤 */}
         <section className="order-1">
           <FormSectionTitle>필수 정보</FormSectionTitle>
-          <div className="flex flex-col gap-3">
+          <div className={edit ? "flex flex-col gap-2" : "flex flex-col gap-3"}>
             <DealFormField label="매물명" required error={fieldErrors.title} htmlFor="deal-title">
               <input
                 id="deal-title"
@@ -3665,7 +3674,7 @@ function DealForm({
         {edit && (
           <section className="order-1" data-edit-only>
             <FormSectionTitle>재고 · 마감</FormSectionTitle>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               <DealFormField label="재고 수량(남은 수량)" error={fieldErrors.remainingQty} htmlFor="deal-remainingQty">
                 <div className={groupCls("remainingQty")}>
                   <input
@@ -3687,31 +3696,31 @@ function DealForm({
                 </div>
               </DealFormField>
               <DealFormField label="마감 일시" error={fieldErrors.closesAt} htmlFor="deal-closesAt">
-                <div className="flex gap-1.5 mb-1.5">
+                <div className="flex gap-1.5 items-center">
                   {[1, 7, 30].map((n) => (
                     <button
                       key={n}
                       type="button"
                       onClick={() => addDays(n)}
-                      className="flex-1 font-bold text-navy border-2 border-gray200 rounded-lg py-2 bg-white"
-                      style={{ fontSize: rem(14) }}
+                      className="flex-shrink-0 font-bold text-navy border-2 border-gray200 rounded-lg px-3 bg-white"
+                      style={{ fontSize: rem(14), height: 42 }}
                     >
                       +{n}일
                     </button>
                   ))}
+                  <input
+                    id="deal-closesAt"
+                    type="datetime-local"
+                    className={`${inputCls("closesAt")} flex-1`}
+                    value={closesAtLocal}
+                    min={minClosesLocal}
+                    max={expiryDate ? `${expiryDate}T23:59` : undefined}
+                    onChange={(e) => {
+                      setClosesAtLocal(e.target.value);
+                      clearErr("closesAt");
+                    }}
+                  />
                 </div>
-                <input
-                  id="deal-closesAt"
-                  type="datetime-local"
-                  className={inputCls("closesAt")}
-                  value={closesAtLocal}
-                  min={minClosesLocal}
-                  max={expiryDate ? `${expiryDate}T23:59` : undefined}
-                  onChange={(e) => {
-                    setClosesAtLocal(e.target.value);
-                    clearErr("closesAt");
-                  }}
-                />
                 <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }}>
                   {expiryDate ? `소비기한(${expiryDate.replace(/-/g, ".")}) 23:59까지 정할 수 있어요 · ` : ""}저장해야 반영돼요 · 알림은 다시 보내지 않아요
                 </p>
@@ -3755,7 +3764,7 @@ function DealForm({
                         clearErr("minOrderQty");
                       }}
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 font-bold whitespace-nowrap" style={{ fontSize: rem(15), color: "#0B2540" }}>{quantityUnit} 이상</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 font-bold whitespace-nowrap" style={{ fontSize: rem(15), color: "#0B2540" }}>{moqUnit(quantityUnit)} 이상</span>
                   </div>
                 </DealFormField>
                 )}
@@ -3851,8 +3860,9 @@ function DealForm({
               label="매물 사진"
               // 2026-10-12: 관리자 한도 25장(판매신청은 12장까지 오고 관리자가 더 붙일 수 있음) — src/lib/photoLimit.ts
               max={ADMIN_PHOTO_LIMIT}
-              hint={`최대 ${ADMIN_PHOTO_LIMIT}장 (신청서에 첨부된 사진 포함)`}
+              hint={edit ? "" : `최대 ${ADMIN_PHOTO_LIMIT}장 (신청서에 첨부된 사진 포함)`}
               initialUrls={prefill?.images ?? []}
+              onPreview={openPhotoPreview}
             />
             </div>
             <div id="deal-video">
@@ -3862,12 +3872,16 @@ function DealForm({
                 onChange={setVideoUrl}
                 initialUrl={prefill?.videoUrl}
                 onStatusChange={setVideoStatus}
+                inlinePlayer
+                hint={edit ? "" : undefined}
+                onPreview={openVideoPreview}
               />
             </div>
           </div>
         </section>
 
-        {editWide && <div>{dealAccordionEl}</div>}
+        {editWide && <div className="order-3">{dealAccordionEl}</div>}
+        {!edit && (
         <div className="order-4 flex flex-col gap-3">
           <p className="text-[0.7778rem] text-gray500">
             <span className="text-orange font-bold">*</span> 매물명·카테고리·지역·판매 단가·재고 총수량은 필수예요{stockType === "near_expiry" ? " (소비기한 임박이면 소비기한도)" : ""}.
@@ -3876,6 +3890,7 @@ function DealForm({
             {edit ? "수정·연장은 알림을 다시 보내지 않아요." : "🌙 밤 9시~아침 8시 등록 매물은 아침 8시에 발송돼요."}
           </p>
         </div>
+        )}
 
         {footerSlot !== undefined ? (
           footerSlot &&
@@ -3909,6 +3924,7 @@ function DealForm({
           </div>
         )}
       </div>
+      {lightbox && <AdminMediaLightbox items={lightbox.items} startIndex={lightbox.index} onClose={() => setLightbox(null)} />}
       <VideoNotUploadedSheet
         open={photoSheet !== null}
         title={`사진 ${photoStatus.failed}장이 올라가지 않았어요`}
