@@ -57,6 +57,7 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 
 ## 최근 작업 (2026-10-23) — 관리자 PC 전체 화면 수정 패널 + 매물 수정 = 등록 폼 재사용 (브랜치 `feat/admin-fullscreen-panel`, PR 1)
 
+- **#111 병합 기록**: squash 병합 `4107428`(10/23) · PR CI(run 39892389766) 성공 · Deploy to Vercel(run 39902183125) 성공. 운영 시험 없음(운영에 `[테스트]` 매물 없음) — 대표가 실매물로 수정(카테고리·수량 단위·원산지·보관 조건) → 상세 반영·알림 미발송 확인 대기.
 - PC(isDesktop)에서 진행 중 매물 [수정]·새 매물 등록·판매 신청 [매물로 등록하기]를 3열 인라인 대신 **전체 화면 패널**(`src/components/admin/AdminFullscreenPanel.tsx`)로 연다. Esc·✕·dirty 확인 바(window.confirm 아님)·본문 스크롤 잠금/복원. 모바일·viewMode 📱는 같은 폼을 인라인으로. 관리자 최대 폭 1200 → 1600px(`ADMIN_MAX_W` 한 곳).
 - **매물 수정 = 등록 폼 재사용**: `DealForm mode="edit"`(initialDeal로 채움, 저장은 PATCH `/api/admin/deals/manage` — 등록 API·알림 발송 호출 없음). edit 전용 구역(재고 수량·마감 일시+연장·[조기 마감]), 판매자는 SellerDisplayPicker + DealSellerPrivateEditor(자체 저장). ActiveDealCard의 전용 입력 코드는 제거.
 - **수정 API 허용 칸 추가**(`src/lib/dealEdit.ts` + `manage/route.ts`, 검증·문구는 등록과 같음): 카테고리·지역·재고 위치·재고 유형·총수량·수량 단위·단가 단위·포장·원산지·규격·보관 조건·제품 ID·구성품 + **재고 수량 ≤ 총수량 검증**. 시험 `scripts/deal-edit-test.mts`. DB 스키마 변경 없음.
