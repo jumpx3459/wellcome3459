@@ -109,7 +109,7 @@ export default function AdminFullscreenPanel({
       className={`fixed inset-0 z-50 bg-white flex flex-col outline-none${minimized ? " hidden" : ""}`}
       data-admin-panel
     >
-      <div className="flex items-center justify-between gap-4 border-b border-gray200 px-8 flex-shrink-0" style={{ minHeight: 56 }}>
+      <div className="flex items-center justify-between gap-4 border-b border-gray200 px-8 flex-shrink-0" style={{ minHeight: 52 }}>
         <div className="min-w-0 font-bold truncate" style={{ fontSize: rem(18), color: "#0B2540" }}>
           {title}
         </div>

@@ -54,6 +54,7 @@ export default function ImageUploader({
   adminKey,
   globalPaste = false,
   cameraButtons = false,
+  onPreview,
   ref,
 }: {
   onChange: (urls: string[]) => void;
@@ -70,6 +71,8 @@ export default function ImageUploader({
   // 2026-10-07 PR 3: 터치 기기에서 고르기 칸 대신 [카메라로 찍기]·[앨범에서 고르기] 두 버튼(/sell만). PC(마우스)는 기존 칸 그대로.
   // 끄면(기본) 예전과 똑같음 — 관리자·MY 화면 영향 없음
   cameraButtons?: boolean;
+  // 2026-10-23 관리자 패널: 썸네일을 누르면 크게 보기 — (올라간·올라가는 중 사진 주소 목록, 그중 누른 순서). 안 넘기면(기본) 예전과 똑같음 — /sell·MY 화면 영향 없음
+  onPreview?: (urls: string[], index: number) => void;
   ref?: Ref<ImageUploaderHandle>;
 }) {
   const [items, setItems] = useState<Item[]>(() =>
@@ -79,6 +82,7 @@ export default function ImageUploader({
   const [batchIds, setBatchIds] = useState<number[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [draggingId, setDraggingId] = useState<number | null>(null);
+  const downPos = useRef<{ x: number; y: number } | null>(null); // 눌린 자리 — 5px 이상 움직였으면 끌기(순서 바꾸기)지 크게 보기 클릭이 아님
   const dragDepth = useRef(0);
   const rootRef = useRef<HTMLDivElement>(null);
   const pointerFine = usePointerFine();
@@ -388,9 +392,22 @@ export default function ImageUploader({
                   src={it.preview}
                   alt={`첨부 사진 ${i + 1}`}
                   draggable={false}
+                  onPointerDown={onPreview ? (e) => (downPos.current = { x: e.clientX, y: e.clientY }) : undefined}
+                  onClick={
+                    onPreview && !failed
+                      ? (e) => {
+                          const d = downPos.current;
+                          if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) >= 5) return;
+                          const shown = items.filter((x) => x.uploading || x.url);
+                          onPreview(shown.map((x) => x.url || x.preview), shown.indexOf(it));
+                        }
+                      : undefined
+                  }
+                  data-photo-thumb={onPreview ? "" : undefined}
                   className="w-16 h-16 rounded-lg object-cover"
                   style={{
                     opacity: it.uploading ? 0.5 : 1,
+                    cursor: onPreview && !failed ? "zoom-in" : undefined,
                     border: failed ? "1.5px solid #E5484D" : "1px solid #E4E7EB",
                   }}
                 />
