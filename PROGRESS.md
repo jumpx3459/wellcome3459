@@ -57,6 +57,7 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 
 ## 최근 작업 (2026-10-23) — 관리자 매물 패널 사진 확대·영상 재생·1열 간격 (브랜치 `feat/admin-media-viewer`)
 
+- **#112 병합 기록**: squash 병합 `cadc05f`(10/23) · PR CI(run 39906534146) 성공 · Deploy to Vercel(run 39907054110) 성공 · 운영 `/admin`·`/deals` 200. 운영 MOQ 단위≠개 3건(kg·박스·세트) 상세 화면 문구 정상("최소 5kg 이상 · 포장 1kg*20/박스" 등). /sell 회귀는 대표 확인 대기.
 - 사진 확대(라이트박스 `src/components/admin/AdminMediaLightbox.tsx`): 썸네일 클릭 → 패널 위(z 70) 오버레이, ←/→·버튼·"3 / 9"·대표 사진 표시, 영상은 사진 다음 항목. Esc는 window 캡처 단계에서 가로채 확대만 닫힘(패널 Esc·dirty 유지), 바깥 클릭·✕·안드로이드 뒤로가기도 확대만. 드래그(5px+)·✕ 삭제는 확대 안 열림. 등록·수정·모바일 인라인 동일(DealForm 한 곳).
 - 영상: 패널에서 `<video controls playsInline preload="metadata">`(최대 150px) + [크게 보기], 재생 실패 시 "이 브라우저에서 재생할 수 없는 형식이에요" + 파일 다운로드 링크. `ImageUploader`·`VideoUploader`는 선택 prop(`onPreview`·`inlinePlayer`)만 추가 — 기본 동작(회원 /sell) 그대로.
 - 1열 간격: 1920×950에서 [조기 마감]까지 스크롤 없음(칸 간격·라벨 여백·마감 연장 한 줄·안내 문구 숨김, 글자 크기 그대로). 운영 영상 현황(읽기): 익명 공개 조회 1건 webm/VP9 5.4MB — faststart 없는 MP4 없음. DB·API 변경 없음.
