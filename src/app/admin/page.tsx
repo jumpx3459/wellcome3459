@@ -13,7 +13,7 @@ import { scrollToBizCheck } from "@/lib/bizCheckJump";
 import { NEGOTIABLE_LABEL, NEGOTIABLE_TEXT, isNegotiable, type PriceMode } from "@/lib/priceMode";
 import SellerPrivateFields, { EMPTY_SELLER_PRIVATE, type SellerPrivateDraft } from "@/components/admin/SellerPrivateFields";
 import DealSellerPrivateEditor from "@/components/admin/DealSellerPrivateEditor";
-import AdminFullscreenPanel, { PanelColumn } from "@/components/admin/AdminFullscreenPanel";
+import AdminFullscreenPanel from "@/components/admin/AdminFullscreenPanel";
 import { publicSellerName } from "@/lib/sellerDisplay";
 import { formatPhoneTyping } from "@/lib/auth";
 import { formatPhone, normalizePhone } from "@/lib/phone";
@@ -34,7 +34,6 @@ import { isStockType, STOCK_TYPES, type StockType } from "@/lib/stockType";
 import FormAccordion, { FormSectionTitle, FORM_ROW2, FORM_ROW3 } from "@/components/FormAccordion";
 import StockTypeBadge from "@/components/StockTypeBadge";
 import { ADMIN_PHOTO_LIMIT } from "@/lib/photoLimit";
-import { validateDealEdit, dealEditWarnings, type DealEditField, type DealEditInput } from "@/lib/dealEdit";
 import { DEAL_PRICE_UNITS, LUMP_SUM, isDealPriceUnit, isLumpSum, priceUnitSuffix } from "@/lib/priceUnit";
 import { UI_SECTION, UI_CARD_TITLE, UI_LINK, BTN_CLASS, btnStyle } from "@/lib/uiText";
 import { FieldLabel, FORM_INPUT_FONT_SIZE } from "@/components/FormField";
@@ -151,6 +150,15 @@ type ActiveDeal = {
   stock_type?: string | null;
   expiry_date?: string | null;
   description?: string | null;
+  // 2026-10-23 매물 수정 = 등록 폼 재사용(DealForm mode="edit") — 폼이 채우는 나머지 칸(목록 API가 select * 로 이미 줌)
+  location?: string | null;
+  package_unit?: string | null;
+  origin?: string | null;
+  spec?: string | null;
+  storage_type?: string | null;
+  storage_condition?: string | null;
+  pid?: string | null;
+  manifest_items?: ManifestRow[] | null;
 };
 
 // 2026-09-28 (2): 목록/마감 UI 추가하며 함께 정의 — ActiveDeal과 달리 수량/가격
@@ -2618,10 +2626,7 @@ function AdminDashboard({
   );
 }
 
-// 2026-10-03 feat/admin-deal-edit: 진행 중 매물 수정 칸 공용
-type EditWarnings = { title: string[]; description: string[]; price: string[] };
-const NO_EDIT_WARNINGS: EditWarnings = { title: [], description: [], price: [] };
-const EDIT_FIELDS: DealEditField[] = ["priceMode", "title", "dealPrice", "originalPrice", "minOrderQty", "expiryDate", "description", "closesAt"];
+// 2026-10-23: 진행 중 매물 수정 = 등록 폼 재사용 — 수정 칸은 DealForm(mode="edit")이 그림. 이 카드는 요약 행 + [수정]/[마감]/[삭제] + 패널·인라인 자리만 맡음.
 const DAY_MS = 24 * 3600 * 1000;
 const nowMs = () => Date.now(); // 클릭 처리에서만 부름(렌더 중 호출 아님)
 
@@ -2633,23 +2638,36 @@ function toLocalInput(v: string | number): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-const editInputCls = (error?: boolean) =>
-  `w-full min-w-0 border-2 rounded-lg px-2.5 py-1.5 text-sm outline-none focus:border-orange bg-white ${error ? "border-[#DC2626]" : "border-gray200"}`;
-
-function EditField({ label, htmlFor, error, children }: { label: string; htmlFor: string; error?: string; children: React.ReactNode }) {
-  return (
-    <div className="min-w-0">
-      <label htmlFor={htmlFor} className="text-xs font-bold text-gray500 block mb-1">
-        {label}
-      </label>
-      {children}
-      {error && (
-        <p className="text-xs font-medium mt-1" style={{ color: BLOCK_COLOR }}>
-          {error}
-        </p>
-      )}
-    </div>
-  );
+/** deals 행 → DealForm이 채우는 모양(prefill) */
+function dealToPrefill(d: ActiveDeal) {
+  const sellerName = publicSellerName(d);
+  return {
+    title: d.title,
+    category: d.categories?.name ?? "",
+    region: d.regions?.name ?? "",
+    dealPrice: d.deal_price ?? undefined,
+    priceMode: (d.price_mode === "negotiable" ? "negotiable" : "fixed") as PriceMode,
+    totalQty: d.total_qty,
+    quantityUnit: d.quantity_unit ?? undefined,
+    priceUnit: d.price_unit ?? undefined,
+    minOrderQty: d.min_order_qty ?? undefined,
+    images: d.images ?? [],
+    videoUrl: d.video_url ?? undefined,
+    description: d.description ?? undefined,
+    packageUnit: d.package_unit ?? undefined,
+    origin: d.origin ?? undefined,
+    spec: d.spec ?? undefined,
+    storageType: d.storage_type ?? undefined,
+    storageCondition: d.storage_condition ?? undefined,
+    expiryDate: d.expiry_date ?? undefined,
+    // 정상가 없이 등록하면 original_price = 판매가로 저장됨 → 칸은 비워서 보여줌
+    originalPrice: d.original_price && d.original_price !== d.deal_price ? d.original_price : undefined,
+    pid: d.pid ?? undefined,
+    manifestItems: d.manifest_items ?? undefined,
+    stockType: d.stock_type ?? undefined,
+    sellerPublic: sellerName !== null,
+    sellerCompanyName: sellerName ?? "",
+  };
 }
 
 function ActiveDealCard({
@@ -2663,7 +2681,7 @@ function ActiveDealCard({
   panel = false,
 }: {
   soonLabel?: string | null; // 마감임박(6h)이면 칩 문구("마감 3시간") — 판정은 needsAction.ts isDeadlineSoon 한 곳
-  /** PC 보기(isDesktop): 수정을 인라인 대신 전체 화면 패널로 연다 — 모바일·📱는 지금 인라인 그대로 */
+  /** PC 보기(isDesktop): 수정을 인라인 대신 전체 화면 패널로 연다 — 모바일·📱는 같은 폼을 인라인으로 */
   panel?: boolean;
   deal: ActiveDeal;
   adminKey: string;
@@ -2673,213 +2691,38 @@ function ActiveDealCard({
   onClosed: (title: string) => void; // 마감 성공 안내는 대시보드에서(카드는 목록에서 빠짐)
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [remainingQty, setRemainingQty] = useState(String(deal.remaining_qty));
   const [saving, setSaving] = useState(false);
-  const [editingPhotos, setEditingPhotos] = useState(false);
-  const [images, setImages] = useState<string[]>(deal.images ?? []);
-  const [editingVideo, setEditingVideo] = useState(false);
-  const [videoUrl, setVideoUrl] = useState<string | null>(deal.video_url ?? null);
-  // 2026-10-02 PR-A2: 영상 올리는 중엔 저장 막고, 안 올라간 채 저장하면 시트로 확인
-  const [videoStatus, setVideoStatus] = useState<VideoUploadStatus>(deal.video_url ? "done" : "idle");
-  const [videoSheet, setVideoSheet] = useState(false);
-  const videoUploaderRef = useRef<VideoUploaderHandle>(null);
-  // 2026-10-02 PR-B: 새 사진 올리는 중엔 저장 막고, 실패한 새 사진이 있으면 시트로 확인. [빼고 저장]은 실패한 새 사진만 빼고 기존 사진(deal.images)은 그대로
-  const [photoStatus, setPhotoStatus] = useState<ImageUploadStatus>({ uploading: 0, failed: 0 });
-  const [photoSheet, setPhotoSheet] = useState(false);
-  const imageUploaderRef = useRef<ImageUploaderHandle>(null);
-  const busyLabel = uploadingLabel(photoStatus.uploading > 0, videoStatus === "uploading");
-  // 2026-09-30: 판매자 표시 수정 — 지금 값에서 시작 (예전 임의 이름·"비공개 판매자"는 비공개)
-  const initialSellerName = publicSellerName(deal);
-  const [seller, setSeller] = useState({ isPublic: initialSellerName !== null, companyName: initialSellerName ?? "" });
-  const sellerChanged =
-    seller.isPublic !== (initialSellerName !== null) || (seller.isPublic && seller.companyName.trim() !== (initialSellerName ?? ""));
   const [deleting, setDeleting] = useState(false);
+  const [formDirty, setFormDirty] = useState(false); // DealForm(edit)이 알려 줌 — 패널 닫기 확인 바용. 판매자 비공개 편집기는 폼 밖이라 제외
+  const [panelFooterEl, setPanelFooterEl] = useState<HTMLDivElement | null>(null);
   const { message: toastMessage, showToast } = useToast();
+  // 저장 성공 → 패널 닫고(모바일은 접고) 이 카드를 1.5초 강조(globals.css [data-flash])
+  const [selfFlash, setSelfFlash] = useState(false);
+  useEffect(() => {
+    if (!selfFlash) return;
+    const t = setTimeout(() => setSelfFlash(false), 1500);
+    return () => clearTimeout(t);
+  }, [selfFlash]);
 
-  // 2026-10-03 feat/admin-deal-edit: 매물 내용·마감 일시 수정 — 바꾼 칸만 보내고, 검증은 서버와 같은 src/lib/dealEdit.ts.
-  // 저장은 기존 "변경사항 저장" 한 번으로. 수정·연장은 알림을 다시 보내지 않음.
-  const editCurrent = {
-    title: deal.title,
-    deal_price: deal.deal_price,
-    price_mode: deal.price_mode ?? "fixed",
-    original_price: deal.original_price ?? null,
-    total_qty: deal.total_qty,
-    price_unit: deal.price_unit ?? null,
-    stock_type: deal.stock_type ?? null,
-    expiry_date: deal.expiry_date ?? null,
-    description: deal.description ?? null,
-    closes_at: deal.closes_at,
-  };
-  // 정상가 없이 등록하면 original_price = 판매가로 저장됨 → 칸은 비워서 보여줌
-  const initialOrig = deal.original_price && deal.original_price !== deal.deal_price ? String(deal.original_price) : "";
-  const initialMoq = deal.min_order_qty ? String(deal.min_order_qty) : "";
-  const initialPriceMode: PriceMode = deal.price_mode === "negotiable" ? "negotiable" : "fixed";
-  const [priceMode, setPriceModeRaw] = useState<PriceMode>(initialPriceMode); // 2026-10-04 가격 방식 전환(가격 입력 ↔ 가격 협의)
-  const initialExpiry = deal.expiry_date?.slice(0, 10) ?? "";
-  const makeForm = () => ({
-    title: deal.title,
-    dealPrice: deal.deal_price != null ? String(deal.deal_price) : "",
-    originalPrice: initialOrig,
-    minOrderQty: initialMoq,
-    expiryDate: initialExpiry,
-    description: deal.description ?? "",
-    closesAt: toLocalInput(deal.closes_at),
-  });
-  const [form, setForm] = useState(makeForm);
-  const [editError, setEditError] = useState<{ field: DealEditField; error: string } | null>(null);
-  const [editWarns, setEditWarns] = useState<EditWarnings>(NO_EDIT_WARNINGS);
-  const confirmedRef = useRef(false); // 주황 경고를 "그대로 저장"으로 확인함 — 칸을 다시 고치면 풀림
-  const lumpSum = isLumpSum(deal.price_unit);
-  const setField = (key: keyof typeof form, value: string) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-    setEditError(null);
-    setEditWarns(NO_EDIT_WARNINGS);
-    confirmedRef.current = false;
-  };
-  const setPriceMode = (m: PriceMode) => {
-    setPriceModeRaw(m);
-    setEditError(null);
-    setEditWarns(NO_EDIT_WARNINGS);
-    confirmedRef.current = false;
-  };
-  const fieldError = (f: DealEditField) => (editError?.field === f ? editError.error : undefined);
-  const buildEdit = (): DealEditInput => {
-    const e: DealEditInput = {};
-    if (normalizeTitle(form.title, { admin: true }) !== deal.title) e.title = form.title;
-    if (priceMode !== initialPriceMode) e.priceMode = priceMode;
-    if (priceMode === "fixed") {
-      // 가격 협의 → 가격 입력으로 바꾸면 가격이 없던 매물이라 판매가를 꼭 보냄(서버·validateDealEdit도 같은 규칙)
-      const dealPrice = parsePriceInput(form.dealPrice) ?? null;
-      if (initialPriceMode === "negotiable" || dealPrice !== deal.deal_price || form.originalPrice !== initialOrig) {
-        e.dealPrice = dealPrice;
-        e.originalPrice = parsePriceInput(form.originalPrice) ?? null;
-      }
-    }
-    if (!lumpSum && form.minOrderQty !== initialMoq) e.minOrderQty = form.minOrderQty.trim() ? Number(form.minOrderQty) : null;
-    if (form.expiryDate !== initialExpiry) e.expiryDate = form.expiryDate || null;
-    if (form.description !== (deal.description ?? "")) e.description = form.description || null;
-    if (form.closesAt !== toLocalInput(deal.closes_at)) {
-      const t = Date.parse(form.closesAt);
-      e.closesAt = Number.isNaN(t) ? "" : new Date(t).toISOString();
-    }
-    return e;
-  };
-  // 마감 빠른 버튼 — 지금 칸 값(비었거나 지난 시각이면 지금)에서 n일 뒤. 저장해야 반영
-  const addDays = (n: number) => {
-    const t = Date.parse(form.closesAt);
-    const base = Math.max(Number.isNaN(t) ? Date.parse(deal.closes_at) : t, nowMs());
-    setField("closesAt", toLocalInput(base + n * DAY_MS));
-  };
-
-  // 2026-09-26: 재고 저장 / 사진 저장 버튼이 따로 있어서 "이걸 왜 두 번 눌러야
-  // 하냐"는 피드백 — 재고·사진·영상을 한 번에 PATCH하는 단일 저장 버튼으로
-  // 통합. 저장 성공 시 토스트로 알리고, 열려 있던 사진/영상 관리 패널은
-  // 접어서 리스트 카드 형태로 되돌아가게 함.
-  // 2026-09-26 (2): "진행 중인 매물"이 항상 펼쳐진 카드라 목록이 길고 눈에
-  // 잘 안 들어온다는 피드백 — 기본은 요약 한 줄 + [수정]/[삭제] 리스트 행,
-  // [수정] 클릭 시에만 아래 편집 UI가 펼쳐지는 아코디언으로 전환. 저장
-  // 성공 시 리스트 행으로 자동 접힘.
-  // 성공 여부를 반환 — 토스트가 실패(세션 만료 401, 서버 500, 네트워크 오류)를
-  // "저장했어요"로 잘못 안내하지 않도록 응답 상태를 확인함.
-  // 2026-10-02 PR-A: 실패하면 서버가 준 이유(error·field)도 돌려줌 — 영상 주소 검사 실패(field "video")는 그 이유를 토스트로
-  const patch = async (
-    body: Record<string, unknown>
-  ): Promise<{ ok: boolean; error?: string; field?: string; warnings?: EditWarnings }> => {
+  // 마감 — 상태만 PATCH(마감 처리). 서버가 감사 로그(deal_close) 기록
+  const closeDeal = async () => {
+    if (!confirm(`"${deal.title}" 매물을 지금 마감할까요? 진행 중 목록에서 빠지고 매물 상세에는 "마감됨"으로 보여요.`)) return;
     setSaving(true);
     try {
       const res = await fetch("/api/admin/deals/manage", {
         method: "PATCH",
         headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
-        body: JSON.stringify({ id: deal.id, ...body }),
+        body: JSON.stringify({ id: deal.id, status: "closed" }),
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        return {
-          ok: false,
-          error: typeof data.error === "string" ? data.error : undefined,
-          field: data.field,
-          warnings: res.status === 422 && data.needsConfirm ? { ...NO_EDIT_WARNINGS, ...data.warnings } : undefined,
-        };
-      }
-      onChanged();
-      return { ok: true };
+      if (res.ok) {
+        onChanged();
+        onClosed(deal.title);
+      } else showToast("마감하지 못했어요. 다시 시도해주세요");
     } catch {
-      return { ok: false };
+      showToast("마감하지 못했어요. 다시 시도해주세요");
     } finally {
       setSaving(false);
     }
-  };
-
-  // skipVideo: 새 영상이 안 올라간 채 저장 — skipVideoUrl(기존 영상 유지면 그 URL, 아니면 null)로 저장
-  const saveAll = async (skipVideo = false, skipVideoUrl: string | null = null, skipPhotos = false, confirmWarnings = confirmedRef.current) => {
-    if (busyLabel) return;
-    const edit = buildEdit();
-    const invalid = validateDealEdit(edit, editCurrent);
-    if (invalid) {
-      setEditError(invalid);
-      showToast("빨간 안내가 있는 칸을 확인해주세요");
-      return;
-    }
-    if (!confirmWarnings) {
-      const w = dealEditWarnings(edit, editCurrent);
-      if (w.title.length || w.description.length || w.price.length) {
-        setEditWarns(w);
-        return;
-      }
-    }
-    if (
-      priceMode === "fixed" &&
-      edit.dealPrice != null &&
-      edit.originalPrice &&
-      edit.dealPrice >= edit.originalPrice &&
-      !window.confirm("판매가가 정상가보다 높거나 같아요. 할인율이 표시되지 않아요. 그대로 저장할까요?")
-    ) {
-      return;
-    }
-    if (!skipPhotos && photoStatus.failed > 0) {
-      setPhotoSheet(true);
-      return;
-    }
-    if (!skipVideo && videoNotUploaded(videoStatus)) {
-      setVideoSheet(true);
-      return;
-    }
-    const sellerPatch = sellerChanged ? { sellerPublic: seller.isPublic, sellerCompanyName: seller.companyName } : {};
-    const result = await patch({
-      ...edit,
-      confirmWarnings: confirmWarnings || undefined,
-      remainingQty: Number(remainingQty),
-      images,
-      videoUrl: skipVideo ? skipVideoUrl : videoUrl,
-      ...sellerPatch,
-    });
-    if (!result.ok) {
-      if (result.warnings) {
-        setEditWarns(result.warnings); // 서버만 아는 경고(같은 이름 진행 중 매물)
-        return;
-      }
-      if (result.field && EDIT_FIELDS.includes(result.field as DealEditField) && result.error) {
-        setEditError({ field: result.field as DealEditField, error: result.error });
-        showToast(result.error);
-        return;
-      }
-      showToast(result.field === "video" && result.error ? result.error : "저장하지 못했어요. 다시 시도해주세요");
-      return;
-    }
-    confirmedRef.current = false;
-    setEditWarns(NO_EDIT_WARNINGS);
-    setEditingPhotos(false);
-    setEditingVideo(false);
-    setExpanded(false);
-    if (panel) setSelfFlash(true);
-    showToast("저장했어요");
-  };
-
-  // 2026-10-01: 마감 — 확인 후 status closed(manage PATCH 허용값). 서버가 감사 로그(deal_close) 기록
-  const closeDeal = async () => {
-    if (!confirm(`"${deal.title}" 매물을 지금 마감할까요? 진행 중 목록에서 빠지고 매물 상세에는 "마감됨"으로 보여요.`)) return;
-    if ((await patch({ status: "closed" })).ok) onClosed(deal.title);
-    else showToast("마감하지 못했어요. 다시 시도해주세요");
   };
 
   const deleteDeal = async () => {
@@ -2907,353 +2750,34 @@ function ActiveDealCard({
     }
   };
 
-  const confirmAndSave = () => {
-    confirmedRef.current = true;
-    saveAll(false, null, false, true);
-  };
-  const [minClosesLocal] = useState(() => toLocalInput(Date.now())); // 달력에서 지난 시각 흐리게(서버도 지금 이후만 허용)
-  // ---- PC 전체 화면 패널(2026-10-23) ----
-  // 저장 성공 → 패널 닫고 이 카드를 1.5초 강조(globals.css [data-flash])
-  const [selfFlash, setSelfFlash] = useState(false);
-  useEffect(() => {
-    if (!selfFlash) return;
-    const t = setTimeout(() => setSelfFlash(false), 1500);
-    return () => clearTimeout(t);
-  }, [selfFlash]);
-  // 열 때 값과 달라졌는지 — 판매자 비공개 편집기(자체 저장)는 제외. 올리는 중인 사진·영상이 있어도 변경으로 봄
-  const panelDirty =
-    JSON.stringify(form) !== JSON.stringify(makeForm()) ||
-    priceMode !== initialPriceMode ||
-    remainingQty !== String(deal.remaining_qty) ||
-    images.join("|") !== (deal.images ?? []).join("|") ||
-    videoUrl !== (deal.video_url ?? null) ||
-    sellerChanged ||
-    busyLabel !== null;
-  // [저장 안 하고 닫기] — 입력값을 처음 값으로 되돌리고 닫음(업로더는 다시 열 때 처음 값으로 새로 그려짐)
-  const discardAndClose = () => {
-    setForm(makeForm());
-    setPriceModeRaw(initialPriceMode);
-    setRemainingQty(String(deal.remaining_qty));
-    setImages(deal.images ?? []);
-    setVideoUrl(deal.video_url ?? null);
-    setVideoStatus(deal.video_url ? "done" : "idle");
-    setPhotoStatus({ uploading: 0, failed: 0 });
-    setSeller({ isPublic: initialSellerName !== null, companyName: initialSellerName ?? "" });
-    setEditError(null);
-    setEditWarns(NO_EDIT_WARNINGS);
-    confirmedRef.current = false;
-    setEditingPhotos(false);
-    setEditingVideo(false);
+  // 폼 저장 성공 — 닫기/접기 + 카드 강조 + 목록 값 다시 읽기(onChanged = load)
+  const onSaved = () => {
     setExpanded(false);
+    setSelfFlash(true);
+    showToast("저장했어요");
+    onChanged();
   };
-  // 사업자 조회 바로가기 — 패널을 먼저 닫은 뒤(입력값은 그대로 두고 가림) 섹션으로 스크롤
   const goBizFromPanel = () => {
-    setExpanded(false);
+    setExpanded(false); // 패널을 먼저 닫은 뒤 사업자 조회 섹션으로
     requestAnimationFrame(() => onGoBizCheck());
   };
-  const idp = `deal-edit-${deal.id}`;
-  const expiryForLimit = form.expiryDate || null;
 
-  // 수정 UI 조각 — 인라인(모바일·📱)과 PC 전체 화면 패널이 같은 조각을 다른 배치로 쓴다(입력 상태·업로더는 한 벌)
-  const fieldsEl = (
-    <>
-          {/* 2026-10-03 feat/admin-deal-edit: 매물 내용 수정 — 카테고리·사진 순서·판매자 정보(아래 따로)는 여기서 안 바꿈 */}
-          <div className="flex flex-col gap-2.5 mt-3">
-            <EditField label="매물명" htmlFor={`${idp}-title`} error={fieldError("title")}>
-              <input
-                id={`${idp}-title`}
-                type="text"
-                className={editInputCls(!!fieldError("title"))}
-                value={form.title}
-                onChange={(e) => setField("title", e.target.value)}
-              />
-              <ConfirmWarnings warnings={editWarns.title} onConfirm={confirmAndSave} busy={saving} />
-            </EditField>
-            <div className="flex gap-2" role="radiogroup" aria-label="가격 방식">
-              {(["fixed", "negotiable"] as const).map((m) => (
-                <label
-                  key={m}
-                  className="flex-1 flex items-center gap-2 rounded-lg cursor-pointer"
-                  style={{ border: `2px solid ${priceMode === m ? "#0B2540" : "#E4E7EB"}`, padding: "6px 10px", background: "#fff" }}
-                >
-                  <input type="radio" name={`${idp}-priceMode`} className="w-4 h-4 accent-navy flex-shrink-0" checked={priceMode === m} onChange={() => setPriceMode(m)} />
-                  <span className="text-sm font-bold text-navy">{m === "fixed" ? "가격 입력" : "가격 협의"}</span>
-                </label>
-              ))}
-            </div>
-            {fieldError("priceMode") && <p className="text-xs font-medium" style={{ color: BLOCK_COLOR }}>{fieldError("priceMode")}</p>}
-            <div className="grid grid-cols-2 gap-2">
-              <EditField label="판매가(원)" htmlFor={`${idp}-dealPrice`} error={fieldError("dealPrice")}>
-                <input
-                  id={`${idp}-dealPrice`}
-                  type="text"
-                  inputMode="numeric"
-                  className={editInputCls(!!fieldError("dealPrice"))}
-                  disabled={priceMode === "negotiable"}
-                  placeholder={priceMode === "negotiable" ? "가격 협의" : undefined}
-                  value={priceMode === "negotiable" ? "" : formatPriceInput(form.dealPrice)}
-                  onChange={(e) => setField("dealPrice", e.target.value)}
-                />
-              </EditField>
-              <EditField label="정상가(원, 선택)" htmlFor={`${idp}-originalPrice`} error={fieldError("originalPrice")}>
-                <input
-                  id={`${idp}-originalPrice`}
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="없음"
-                  className={editInputCls(!!fieldError("originalPrice"))}
-                  disabled={priceMode === "negotiable"}
-                  value={priceMode === "negotiable" ? "" : formatPriceInput(form.originalPrice)}
-                  onChange={(e) => setField("originalPrice", e.target.value)}
-                />
-              </EditField>
-            </div>
-            <ConfirmWarnings warnings={editWarns.price} onConfirm={editWarns.title.length ? undefined : confirmAndSave} busy={saving} />
-            <div className="grid grid-cols-2 gap-2">
-              {/* 일괄(전체 가격) 매물은 최소주문 없음 */}
-              {!lumpSum && (
-                <EditField label={`최소 주문량(MOQ, ${deal.quantity_unit || "개"})`} htmlFor={`${idp}-minOrderQty`} error={fieldError("minOrderQty")}>
-                  <input
-                    id={`${idp}-minOrderQty`}
-                    type="number"
-                    inputMode="numeric"
-                    min={1}
-                    placeholder="없음"
-                    onWheel={(e) => e.currentTarget.blur()} // 휠로 값 바뀜 방지 (재고 칸과 같음)
-                    className={editInputCls(!!fieldError("minOrderQty"))}
-                    value={form.minOrderQty}
-                    onChange={(e) => setField("minOrderQty", e.target.value)}
-                  />
-                </EditField>
-              )}
-              <EditField label={deal.stock_type === "near_expiry" ? "소비기한(필수)" : "소비기한"} htmlFor={`${idp}-expiryDate`} error={fieldError("expiryDate")}>
-                <input
-                  id={`${idp}-expiryDate`}
-                  type="date"
-                  className={editInputCls(!!fieldError("expiryDate"))}
-                  value={form.expiryDate}
-                  onChange={(e) => setField("expiryDate", e.target.value)}
-                />
-              </EditField>
-            </div>
-            <EditField label="추가 설명" htmlFor={`${idp}-description`} error={fieldError("description")}>
-              <textarea
-                id={`${idp}-description`}
-                rows={3}
-                className={editInputCls(!!fieldError("description"))}
-                value={form.description}
-                onChange={(e) => setField("description", e.target.value)}
-              />
-              <ConfirmWarnings
-                warnings={editWarns.description}
-                onConfirm={editWarns.title.length || editWarns.price.length ? undefined : confirmAndSave}
-                busy={saving}
-              />
-            </EditField>
-          </div>
-
-    </>
+  const dealForm = (
+    <DealForm
+      key={deal.id}
+      adminKey={adminKey}
+      mode="edit"
+      initialDeal={deal}
+      prefill={dealToPrefill(deal)}
+      wide={panel}
+      footerSlot={panel ? panelFooterEl : undefined}
+      onDirtyChange={setFormDirty}
+      onGoBizCheck={panel ? goBizFromPanel : onGoBizCheck}
+      onCloseDeal={closeDeal}
+      onToast={showToast}
+      onDone={onSaved}
+    />
   );
-  const stockEl = (
-    <>
-          <div className="flex items-center gap-2 mt-3">
-            <label className="text-xs font-bold text-gray500">재고</label>
-            <input
-              type="number"
-              inputMode="numeric"
-              className="w-20 border-2 border-gray200 rounded-lg px-2 py-1.5 text-sm"
-              // 2026-10-02 (PR-C1): 포커스된 number 칸 위에서 휠을 굴리면 값이 바뀜 → 휠 시 포커스 해제
-              onWheel={(e) => e.currentTarget.blur()}
-              value={remainingQty}
-              onChange={(e) => setRemainingQty(e.target.value)}
-            />
-            <span className="text-xs text-gray500">/ {deal.total_qty}{deal.quantity_unit || "개"}</span>
-          </div>
-
-    </>
-  );
-  const closesEl = (
-    <>
-          {/* 2026-10-03 feat/admin-deal-edit: [+24시간 연장](바로 저장) → [+1일][+7일][+30일] + 날짜·시간 직접 지정, "변경사항 저장"으로 반영.
-              소비기한이 있으면 그날 23:59까지만(서버도 같은 검사) */}
-          <div className="mt-2.5">
-            <EditField label="마감 일시" htmlFor={`${idp}-closesAt`} error={fieldError("closesAt")}>
-              <div className="flex gap-1.5">
-                {[1, 7, 30].map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => addDays(n)}
-                    className="flex-1 text-xs font-bold text-navy border-2 border-gray200 rounded-lg py-2"
-                  >
-                    +{n}일
-                  </button>
-                ))}
-              </div>
-              <input
-                id={`${idp}-closesAt`}
-                type="datetime-local"
-                className={`${editInputCls(!!fieldError("closesAt"))} mt-1.5`}
-                value={form.closesAt}
-                min={minClosesLocal}
-                max={expiryForLimit ? `${expiryForLimit}T23:59` : undefined}
-                onChange={(e) => setField("closesAt", e.target.value)}
-              />
-            </EditField>
-            <p className="text-xs text-gray500 mt-1">
-              {expiryForLimit ? `소비기한(${expiryForLimit.replace(/-/g, ".")}) 23:59까지 정할 수 있어요 · ` : ""}
-              &quot;변경사항 저장&quot;을 눌러야 반영돼요 · 알림은 다시 보내지 않아요
-            </p>
-          </div>
-
-          <div className="flex gap-2 mt-2.5">
-            <button
-              onClick={closeDeal}
-              disabled={saving}
-              className="flex-1 text-xs font-bold text-orange border-2 border-orange rounded-lg py-2"
-            >
-              조기 마감
-            </button>
-          </div>
-
-    </>
-  );
-  const photoEl = (
-    <>
-          {!panel && (<button
-            type="button"
-            onClick={() => setEditingPhotos((v) => !v)}
-            className="w-full text-xs font-bold text-navy border-2 border-gray200 rounded-lg py-2 mt-2"
-          >
-            {editingPhotos ? "사진 관리 닫기" : `📷 사진 관리 (${images.length}장)`}
-          </button>)}
-
-          {/* 2026-10-02 PR-B: 닫아도 업로드·실패 상태가 이어지게 숨기기만(예전엔 닫으면 업로더가 사라져 올리던 사진이 조용히 빠짐) — 영상 관리와 같은 방식 */}
-          <div className="mt-2.5" hidden={!panel && !editingPhotos}>
-              <ImageUploader
-                ref={imageUploaderRef}
-                adminKey={adminKey}
-                initialUrls={images}
-                onChange={setImages}
-                onStatusChange={setPhotoStatus}
-                max={ADMIN_PHOTO_LIMIT}
-                label="매물 사진"
-                hint={`최대 ${ADMIN_PHOTO_LIMIT}장 · 탭해서 사진 추가 · × 로 삭제 후 아래 '변경사항 저장'으로 반영`}
-              />
-          </div>
-
-    </>
-  );
-  const videoEl = (
-    <>
-          {/* 2026-09-26: 영상은 등록 시(DealForm)에만 넣을 수 있고 이후엔 있는지
-              없는지조차 알 방법이 없었음 — 사진 관리와 동일한 토글 패턴으로 추가,
-              버튼 라벨 자체가 "있음/없음"을 보여줘서 펼치지 않아도 첨부 여부를
-              알 수 있게 함. */}
-          {!panel && (<button
-            type="button"
-            onClick={() => setEditingVideo((v) => !v)}
-            className="w-full text-xs font-bold text-navy border-2 border-gray200 rounded-lg py-2 mt-2"
-          >
-            {editingVideo ? "영상 관리 닫기" : `🎥 영상 관리 (${videoUrl ? "있음" : "없음"})`}
-          </button>)}
-
-          {/* 2026-10-02 PR-A2: 닫아도 업로드 상태가 이어지게 숨기기만(예전엔 닫으면 업로더가 사라짐) */}
-          <div className="mt-2.5" hidden={!panel && !editingVideo}>
-            <VideoUploader
-              ref={videoUploaderRef}
-              adminKey={adminKey}
-              initialUrl={videoUrl}
-              onChange={setVideoUrl}
-              onStatusChange={setVideoStatus}
-              label="매물 영상"
-              hint="최대 30초 · 탭해서 교체, 아래 '변경사항 저장'으로 반영"
-            />
-          </div>
-
-    </>
-  );
-  const pickerEl = (
-    <>
-          <div className="mt-3">
-            <SellerDisplayPicker idPrefix={`deal-${deal.id}`} isPublic={seller.isPublic} companyName={seller.companyName} onChange={setSeller} />
-          </div>
-
-    </>
-  );
-  const editorInlineEl = (
-    <>
-          {/* 2026-10-04: 실제 판매자(내부 전용) — 구매자에게 보이지 않음. 매물 내용 저장과 별개로 저장(알림 재발송 없음) */}
-          <DealSellerPrivateEditor adminKey={adminKey} dealId={deal.id} onToast={showToast} onGoBizCheck={onGoBizCheck} />
-
-    </>
-  );
-  const editorPanelEl = (
-    <>
-          {/* 2026-10-04: 실제 판매자(내부 전용) — 구매자에게 보이지 않음. 매물 내용 저장과 별개로 저장(알림 재발송 없음) */}
-          <DealSellerPrivateEditor adminKey={adminKey} dealId={deal.id} onToast={showToast} onGoBizCheck={goBizFromPanel} />
-
-    </>
-  );
-  const sheetsEl = (
-    <>
-          <VideoNotUploadedSheet
-            open={photoSheet}
-            title={`새 사진 ${photoStatus.failed}장이 올라가지 않았어요`}
-            description="기존 사진은 그대로 있어요. 올라가지 않은 새 사진을 다시 올려보거나, 그 사진만 빼고 저장해주세요."
-            reselectLabel="다시 시도"
-            skipLabel="빼고 저장"
-            onClose={() => setPhotoSheet(false)}
-            onReselect={() => {
-              setEditingPhotos(true);
-              imageUploaderRef.current?.retryFailed();
-              setPhotoSheet(false);
-            }}
-            onSkip={() => {
-              setPhotoSheet(false);
-              imageUploaderRef.current?.removeFailed();
-              saveAll(false, null, true);
-            }}
-          />
-          {/* 2026-10-02 PR-A2: 기존 영상이 있는 매물에서 새 영상이 안 올라갔으면 기존 영상을 지키고 저장(예전엔 ×로 비운 뒤라 null로 지워짐).
-              기존 영상을 지우는 건 ×로 비우고(새 영상 고르지 않은 채) 저장할 때만 — 그때는 이 시트가 안 뜨고 null 저장 */}
-          <VideoNotUploadedSheet
-            open={videoSheet}
-            skipLabel={deal.video_url ? "기존 영상 유지하고 저장" : "영상 빼고 저장"}
-            description={
-              deal.video_url
-                ? "새로 고른 영상이 저장되지 않았어요. 기존 영상을 그대로 두고 저장하거나, 영상을 다시 골라주세요."
-                : undefined
-            }
-            onClose={() => setVideoSheet(false)}
-            onReselect={() => {
-              setEditingVideo(true);
-              videoUploaderRef.current?.reselect();
-              setVideoSheet(false);
-            }}
-            onSkip={() => {
-              setVideoSheet(false);
-              const keep = deal.video_url ?? null;
-              if (keep) setVideoUrl(keep); // 다음에 펼칠 때도 기존 영상으로 시작
-              else videoUploaderRef.current?.clear();
-              saveAll(true, keep);
-            }}
-          />
-
-    </>
-  );
-  const saveLabel = saving ? "저장 중..." : busyLabel ?? "변경사항 저장";
-  const deleteBtn = canDelete ? (
-    <button
-      type="button"
-      onClick={deleteDeal}
-      disabled={deleting}
-      className="font-bold rounded-lg px-4 py-2.5 disabled:opacity-50 mr-auto"
-      style={{ color: "#C2410C", border: "2px solid #FDEEE8", background: "#FFF9F7", fontSize: rem(14) }}
-    >
-      {deleting ? "삭제 중..." : "🗑️ 매물 삭제"}
-    </button>
-  ) : null;
 
   return (
     <div className="bg-white border border-gray200 rounded-2xl px-4 py-4" style={soonLabel ? NEEDS_ACTION_ROW_STYLE : undefined} data-deadline-soon={soonLabel ? "" : undefined} data-flash={selfFlash ? "1" : undefined}>
@@ -3300,7 +2824,7 @@ function ActiveDealCard({
         재고 {deal.remaining_qty}/{deal.total_qty}{deal.quantity_unit || "개"}
       </div>
 
-      {!expanded || panel ? (
+      {(!expanded || panel) && (
         <div className="flex gap-2 mt-3">
           <button
             type="button"
@@ -3330,22 +2854,12 @@ function ActiveDealCard({
             </button>
           )}
         </div>
-      ) : (
+      )}
+
+      {/* 모바일·📱: 같은 폼을 인라인으로 — [접기]·[삭제]는 폼 아래 */}
+      {expanded && !panel && (
         <>
-          {fieldsEl}
-          {stockEl}
-          {closesEl}
-          {photoEl}
-          {videoEl}
-          {pickerEl}
-          {editorInlineEl}
-          <button
-            onClick={() => saveAll()}
-            disabled={saving || busyLabel !== null}
-            className="w-full text-sm font-bold text-white bg-navy rounded-lg py-2.5 mt-3 disabled:opacity-50"
-          >
-            {saving ? "저장 중..." : busyLabel ?? "변경사항 저장"}
-          </button>
+          {dealForm}
           <div className="flex gap-2 mt-2">
             <button
               type="button"
@@ -3369,16 +2883,28 @@ function ActiveDealCard({
         </>
       )}
 
-      {/* PC(isDesktop): 인라인 대신 전체 화면 패널 — 3열 ① 사진·영상·재고·마감 ② 매물 정보 ③ 판매자 */}
+      {/* PC(isDesktop): 전체 화면 패널 안에 같은 DealForm — 저장 버튼은 폼이 하단 바로 옮겨 옴 */}
       {panel && (
         <AdminFullscreenPanel
           open={expanded}
           title={`매물 수정 — ${deal.title}`}
-          dirty={panelDirty}
-          onClose={discardAndClose}
+          columns={1}
+          dirty={formDirty}
+          onClose={() => setExpanded(false)}
+          footerSlotRef={setPanelFooterEl}
           footer={({ requestClose }) => (
             <>
-              {deleteBtn}
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={deleteDeal}
+                  disabled={deleting}
+                  className="font-bold rounded-lg px-4 py-2.5 disabled:opacity-50 mr-auto"
+                  style={{ color: "#C2410C", border: "2px solid #FDEEE8", background: "#FFF9F7", fontSize: rem(14) }}
+                >
+                  {deleting ? "삭제 중..." : "🗑️ 매물 삭제"}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={requestClose}
@@ -3388,36 +2914,12 @@ function ActiveDealCard({
               >
                 취소
               </button>
-              <button
-                type="button"
-                onClick={() => saveAll()}
-                disabled={saving || busyLabel !== null}
-                className="font-bold text-white bg-navy rounded-lg px-10 py-2.5 disabled:opacity-50"
-                style={{ fontSize: rem(15) }}
-                data-panel-save
-              >
-                {saveLabel}
-              </button>
             </>
           )}
         >
-          <PanelColumn title="사진·영상 · 재고 · 마감">
-            {photoEl}
-            {videoEl}
-            {stockEl}
-            {closesEl}
-          </PanelColumn>
-          <PanelColumn title="매물 정보">{fieldsEl}</PanelColumn>
-          <PanelColumn title="판매자">
-            {pickerEl}
-            <h4 className="font-bold mt-2" style={{ fontSize: rem(15), color: "#0B2540" }}>
-              판매자 비공개 정보 — 따로 저장
-            </h4>
-            {editorPanelEl}
-          </PanelColumn>
+          <div className="w-full h-full">{dealForm}</div>
         </AdminFullscreenPanel>
       )}
-      {sheetsEl}
 
       <Toast message={toastMessage} />
     </div>
@@ -3434,8 +2936,19 @@ function DealForm({
   onGoBizCheck,
   sourcedOptions = [],
   footerSlot,
+  mode = "create",
+  initialDeal,
+  onCloseDeal,
+  onToast,
 }: {
   adminKey: string;
+  /** 2026-10-23 "edit" = 진행 중 매물 수정(initialDeal로 채움, 저장은 PATCH /api/admin/deals/manage — 등록 API·알림 발송은 절대 부르지 않음) */
+  mode?: "create" | "edit";
+  initialDeal?: ActiveDeal;
+  /** edit의 [조기 마감] */
+  onCloseDeal?: () => void;
+  /** edit: 판매자 비공개 정보 저장 결과 등 짧은 안내 */
+  onToast?: (message: string) => void;
   /** PC 패널: 하단 바 안 빈 자리 — 있으면 [매물 등록 확정](+오류 문구)을 그리로 옮김(sticky 자리 대신). undefined = 인라인, null = 패널은 열렸지만 자리가 아직 없음 */
   footerSlot?: HTMLElement | null;
   /** 2026-10-10 [발굴 매니저] 선택지 — 비면 칸을 그리지 않음 */
@@ -3476,6 +2989,8 @@ function DealForm({
   /** "사업자 조회 바로가기" — 사업자 조회 섹션으로 이동(판매 신청 선택 안 함) */
   onGoBizCheck?: () => void;
 }) {
+  const edit = mode === "edit" && !!initialDeal;
+  const initial = edit ? initialDeal! : null;
   const [title, setTitle] = useState(prefill?.title ?? "");
   // 재고 유형 — 판매신청 승인이면 신청서 값을 이어받음
   const [stockType, setStockType] = useState<StockType>(isStockType(prefill?.stockType) ? prefill!.stockType as StockType : "general");
@@ -3497,7 +3012,12 @@ function DealForm({
   const [minOrderQty, setMinOrderQty] = useState(
     prefill?.minOrderQty ? String(prefill.minOrderQty) : ""
   );
-  const [location, setLocation] = useState("");
+  const [location, setLocation] = useState(initial?.location ?? "");
+  // edit 전용: 재고 수량(잔량)·마감 일시(연장 버튼은 이 칸 값에서 +n일) — create는 총수량·마감까지 남은 시간만
+  const [remainingQty, setRemainingQty] = useState(initial ? String(initial.remaining_qty) : "");
+  const [closesAtLocal, setClosesAtLocal] = useState(initial ? toLocalInput(initial.closes_at) : "");
+  const [minClosesLocal] = useState(() => toLocalInput(Date.now())); // 달력에서 지난 시각 흐리게(서버도 지금 이후만 허용)
+  const [initialPriceUnit] = useState(priceUnit);
   const [closesInHours, setClosesInHours] = useState(
     prefill?.closesInHours ? String(prefill.closesInHours) : "24"
   );
@@ -3538,8 +3058,8 @@ function DealForm({
   // 2026-09-28: 필수 = 매물명·카테고리·지역·판매가·수량. 서버(/api/admin/deals)도 같은 규칙으로
   // 400 { error, field }를 돌려준다. 제출 시 첫 누락 칸으로 스크롤·포커스.
   // 2026-10-01 2차: 묶음 펼침 — 제품 상세·거래 조건·판매자 정보 모두 기본 접힘. 접힌 칸이면 펼친 뒤(다음 렌더) 스크롤
-  const [openDeal, setOpenDeal] = useState(false);
-  const [openDetail, setOpenDetail] = useState(false);
+  const [openDeal, setOpenDeal] = useState(edit); // edit: 제품 상세·거래 조건은 펼쳐서 시작(판매자 정보는 접힘)
+  const [openDetail, setOpenDetail] = useState(edit);
   const [openSeller, setOpenSeller] = useState(false);
   const focusField = (field: DealField | "description") => {
     if (field === "category") setOpenDeal(true); // 거래 조건
@@ -3552,7 +3072,7 @@ function DealForm({
     }, 30);
   };
   // 묶음 제목 "○개 입력됨" — 기본값(일반 재고·24시간)은 세지 않음
-  const detailCount = [!lumpSum && minOrderQty, closesInHours !== "24", storageType, expiryDate, packageUnit, spec, origin, description].filter(Boolean).length;
+  const detailCount = [!lumpSum && minOrderQty, !edit && closesInHours !== "24", storageType, expiryDate, packageUnit, spec, origin, description].filter(Boolean).length;
   const dealCount = [category, stockType !== "general", pid, manifestItems.length > 0].filter(Boolean).length;
   // 재고 유형 "소비기한 임박"이면 소비기한(제품 상세)이 필수라 제품 상세를 펼쳐 둠
   useEffect(() => {
@@ -3562,7 +3082,7 @@ function DealForm({
   // 2026-10-03 PR-D: 입력 중 여부 — 첫 렌더 값과 비교(사진·영상 업로드 상태 포함)
   const snapshot = JSON.stringify([
     title, stockType, category, region, priceMode, originalPrice, dealPrice, totalQty, quantityUnit, priceUnit, minOrderQty, location,
-    closesInHours, images, videoUrl, videoStatus, photoStatus, description, packageUnit, origin, spec, storageType, expiryDate,
+    closesInHours, remainingQty, closesAtLocal, images, videoUrl, videoStatus, photoStatus, description, packageUnit, origin, spec, storageType, expiryDate,
     pid, manifestItems, seller, sellerPrivate,
   ]);
   const [initialSnapshot] = useState(snapshot);
@@ -3594,7 +3114,19 @@ function DealForm({
     if (!lumpSum && minOrderQty.trim() && !(Number(minOrderQty) > 0)) errs.minOrderQty = "최소 주문량은 0보다 커야 해요.";
     else if (!lumpSum && minOrderQty.trim() && qty > 0 && Number(minOrderQty) > qty) errs.minOrderQty = "최소주문량은 재고 총수량보다 클 수 없어요.";
     if (stockType === "near_expiry" && !expiryDate) errs.expiryDate = EXPIRY_REQUIRED_MESSAGE;
-    if (!requestId) {
+    if (edit) {
+      // 재고 수량(잔량)은 0 이상의 정수, 재고 총수량 이하 — 서버(validateDealEdit)와 같은 문구
+      const rem = Number(remainingQty);
+      if (remainingQty.trim() === "" || !Number.isInteger(rem) || rem < 0) errs.remainingQty = "재고 수량은 0 이상의 정수로 입력해주세요.";
+      else if (qty > 0 && rem > qty) errs.remainingQty = `재고 수량은 재고 총수량(${qty})보다 클 수 없어요.`;
+      if (closesAtLocal !== toLocalInput(initial!.closes_at)) {
+        const t = Date.parse(closesAtLocal);
+        if (Number.isNaN(t)) errs.closesAt = "마감 시간이 올바르지 않아요.";
+        else if (t <= Date.now()) errs.closesAt = "마감 일시는 지금 이후여야 해요.";
+        else if (expiryDate && t > Date.parse(`${expiryDate}T23:59:59+09:00`)) errs.closesAt = `마감 일시는 소비기한(${expiryDate.replace(/-/g, ".")}) 23:59 이전이어야 해요.`;
+      }
+    }
+    if (!requestId && !edit) {
       if (!sellerPrivate.company.trim()) errs.sellerPrivateCompany = "실제 판매자 상호를 입력해주세요.";
       const sellerPhone = normalizePhone(sellerPrivate.phone);
       if (!sellerPhone) errs.sellerPrivatePhone = "실제 판매자 연락처를 입력해주세요.";
@@ -3653,13 +3185,59 @@ function DealForm({
       setVideoSheet({ confirmWarnings });
       return;
     }
+    // 2026-10-23 edit: 바뀐 칸만 PATCH(/api/admin/deals/manage)로 — 등록 API(POST)·알림 발송은 부르지 않음
+    let editBody: Record<string, unknown> | null = null;
+    if (edit && initial) {
+      const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+      const initOrig = initial.original_price && initial.original_price !== initial.deal_price ? String(initial.original_price) : "";
+      const initPriceMode: PriceMode = initial.price_mode === "negotiable" ? "negotiable" : "fixed";
+      const c: Record<string, unknown> = {};
+      if (cleanTitle !== initial.title) c.title = cleanTitle;
+      if (priceMode !== initPriceMode) c.priceMode = priceMode;
+      if (priceMode === "fixed" && (initPriceMode === "negotiable" || deal !== initial.deal_price || originalPrice !== initOrig)) {
+        c.dealPrice = deal;
+        c.originalPrice = orig ?? null;
+      }
+      const qtyNum = parsePriceInput(totalQty);
+      if (qtyNum !== initial.total_qty) c.totalQty = qtyNum;
+      if (quantityUnit !== (initial.quantity_unit || "개")) c.quantityUnit = quantityUnit;
+      if (priceUnit !== initialPriceUnit) c.priceUnit = priceUnit;
+      if (!lumpSum && minOrderQty !== (initial.min_order_qty ? String(initial.min_order_qty) : "")) c.minOrderQty = minOrderQty.trim() ? Number(minOrderQty) : null;
+      if (category !== (initial.categories?.name ?? "")) c.category = category;
+      if (region !== (initial.regions?.name ?? "")) c.region = region;
+      if (location !== (initial.location ?? "")) c.location = location || null;
+      if (stockType !== (initial.stock_type ?? "general")) c.stockType = stockType;
+      if (packageUnit !== (initial.package_unit ?? "")) c.packageUnit = packageUnit || null;
+      if (spec !== (initial.spec ?? "")) c.spec = spec || null;
+      if (origin !== (initial.origin ?? "")) c.origin = origin || null;
+      if (storageType !== (initial.storage_type ?? "")) c.storageType = storageType || null;
+      if (expiryDate !== (initial.expiry_date?.slice(0, 10) ?? "")) c.expiryDate = expiryDate || null;
+      if (description !== (initial.description ?? "")) c.description = description || null;
+      if (pid !== (initial.pid ?? "")) c.pid = pid || null;
+      if (!same(manifestItems, initial.manifest_items ?? [])) c.manifestItems = manifestItems.length ? manifestItems : null;
+      if (remainingQty !== String(initial.remaining_qty)) c.remainingQty = Number(remainingQty);
+      if (closesAtLocal !== toLocalInput(initial.closes_at)) c.closesAt = new Date(Date.parse(closesAtLocal)).toISOString();
+      if (!same(images, initial.images ?? [])) c.images = images;
+      const videoToSend = skipVideo ? initial.video_url ?? null : videoUrl;
+      if (videoToSend !== (initial.video_url ?? null)) c.videoUrl = videoToSend;
+      const initSellerName = publicSellerName(initial);
+      if (seller.isPublic !== (initSellerName !== null) || (seller.isPublic && seller.companyName.trim() !== (initSellerName ?? ""))) {
+        c.sellerPublic = seller.isPublic;
+        c.sellerCompanyName = seller.companyName;
+      }
+      if (Object.keys(c).length === 0) {
+        setError("바뀐 내용이 없어요.");
+        return;
+      }
+      editBody = { id: initial.id, ...c, confirmWarnings: confirmWarnings || undefined };
+    }
     setSubmitting(true);
     const closesAt = new Date(Date.now() + Number(closesInHours) * 3600 * 1000).toISOString();
     try {
-      const res = await fetch("/api/admin/deals", {
-        method: "POST",
+      const res = await fetch(edit ? "/api/admin/deals/manage" : "/api/admin/deals", {
+        method: edit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
-        body: JSON.stringify({
+        body: JSON.stringify(editBody ?? {
           title: cleanTitle,
           confirmWarnings,
           stockType,
@@ -3710,7 +3288,11 @@ function DealForm({
           setFieldErrors({ [field]: data.error ?? "값을 확인해주세요." });
           focusField(field);
         }
-        setError(data.error ?? "등록에 실패했어요.");
+        setError(data.error ?? (edit ? "저장에 실패했어요." : "등록에 실패했어요."));
+        return;
+      }
+      if (edit) {
+        onDone(); // 저장 성공 — 닫기·토스트·목록 다시 읽기는 부르는 쪽(ActiveDealCard)
         return;
       }
       const sent = data.push?.sentCount ?? 0;
@@ -3721,10 +3303,17 @@ function DealForm({
       );
       onDone();
     } catch {
-      setError("등록에 실패했어요.");
+      setError(edit ? "저장에 실패했어요." : "등록에 실패했어요.");
     } finally {
       setSubmitting(false);
     }
+  };
+  // edit: 마감 빠른 버튼 — 지금 칸 값(비었거나 지난 시각이면 지금)에서 n일 뒤. 저장해야 반영
+  const addDays = (n: number) => {
+    const t = Date.parse(closesAtLocal);
+    const base = Math.max(Number.isNaN(t) ? Date.parse(initial?.closes_at ?? "") || 0 : t, nowMs());
+    setClosesAtLocal(toLocalInput(base + n * DAY_MS));
+    clearErr("closesAt");
   };
 
   const groupCls = (field: DealField) =>
@@ -3736,6 +3325,121 @@ function DealForm({
       field && fieldErrors[field] ? "border-[#DC2626]" : "border-gray200"
     }`;
 
+  const dealAccordionEl = (
+      <FormAccordion id="deal-sec-deal" title="거래 조건" count={dealCount} requiredCount={1} open={openDeal} onToggle={() => setOpenDeal((v) => !v)}>
+        <div className="flex flex-col gap-3">
+          <div className={FORM_ROW2}>
+            <DealFormField label="카테고리" required error={fieldErrors.category} htmlFor="deal-category">
+              <select
+                id="deal-category"
+                className={inputCls("category")}
+                value={category}
+                onChange={(e) => {
+                  setCategory(e.target.value);
+                  clearErr("category");
+                }}
+              >
+                <option value="">선택해주세요</option>
+                {mockCategories.map((c) => (
+                  <option key={c} value={c}>
+                    {categoryIcons[c]} {c}
+                  </option>
+                ))}
+              </select>
+            </DealFormField>
+            <DealFormField label="재고 유형" htmlFor="deal-stockType">
+              {/* 2026-10-01: 버튼 10개 → 드롭다운 (기본 일반 재고, 이모지 라벨 그대로) */}
+              <select
+                id="deal-stockType"
+                className={inputCls()}
+                value={stockType}
+                onChange={(e) => {
+                  if (isStockType(e.target.value)) setStockType(e.target.value);
+                }}
+              >
+                {STOCK_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.icon} {t.label}
+                  </option>
+                ))}
+              </select>
+              {stockType === "near_expiry" && (
+                <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }}>소비기한은 &quot;제품 상세&quot;에서 꼭 입력해주세요.</p>
+              )}
+            </DealFormField>
+          </div>
+          {/* 2026-09-26: 혼합매물(리퀴데이션 파렛트 등) — 신청서에서 이미 첨부됐으면 prefill로
+              채워지고, 여기서도 직접 추가/수정 가능 (전화 접수 등 신청서 없이 등록하는 경우 대비). */}
+          <DealFormField label="PID / 매니페스트 번호" htmlFor="deal-pid">
+            <input
+              id="deal-pid"
+              className={inputCls()}
+              placeholder="예: PID-240915-01"
+              value={pid}
+              onChange={(e) => setPid(e.target.value)}
+            />
+          </DealFormField>
+          <ManifestUploader onChange={setManifestItems} initialRows={prefill?.manifestItems} />
+        </div>
+      </FormAccordion>
+  );
+  // edit + wide(PC 패널)는 3열: ① 필수 정보+재고·마감 ② 제품 상세+판매자 정보 ③ 사진·영상+거래 조건 — 거래 조건 묶음이 오른쪽 열로 가서 따로 그림
+  const editWide = edit && wide;
+  const sellerAccordionEl = (
+      <FormAccordion id="deal-sec-seller" title="판매자 정보" count={(seller.isPublic ? 1 : 0) + (!requestId ? [sellerPrivate.company, sellerPrivate.phone, sellerPrivate.name, sellerPrivate.checkId].filter(Boolean).length : 0)} open={openSeller} onToggle={() => setOpenSeller((v) => !v)}>
+        <SellerDisplayPicker idPrefix={edit ? `deal-${initial!.id}` : "deal-new"} isPublic={seller.isPublic} companyName={seller.companyName} onChange={setSeller} />
+        {edit && (
+          <div className="mt-3">
+            <h4 className="font-bold mb-1" style={{ fontSize: rem(15), color: "#0B2540" }}>판매자 비공개 정보 — 따로 저장</h4>
+            {/* 실제 판매자(내부 전용) — 매물 내용 저장과 별개로 저장(자체 [판매자 정보 저장] 버튼, 알림 재발송 없음) */}
+            <DealSellerPrivateEditor adminKey={adminKey} dealId={initial!.id} onToast={(m) => (onToast ? onToast(m) : setError(m))} onGoBizCheck={onGoBizCheck ?? (() => {})} />
+          </div>
+        )}
+        {!requestId && !edit && (
+          <div className="mt-3">
+            <SellerPrivateFields
+              adminKey={adminKey}
+              idPrefix="deal"
+              value={sellerPrivate}
+              onChange={(n) => {
+                setSellerPrivate(n);
+                setFieldErrors((prev) => ({ ...prev, sellerPrivateCompany: undefined, sellerPrivatePhone: undefined, sellerPrivateName: undefined, businessCheckId: undefined }));
+              }}
+              errors={{ company: fieldErrors.sellerPrivateCompany, phone: fieldErrors.sellerPrivatePhone, name: fieldErrors.sellerPrivateName, checkId: fieldErrors.businessCheckId }}
+              showCheckPicker
+              onGoBizCheck={onGoBizCheck}
+              disabled={submitting}
+            />
+          </div>
+        )}
+        {/* 2026-10-10 매니저 실적: 이 판매자를 찾아온 관리자(새 판매자 발굴). 직접 등록·판매 신청 승인 공통, 기본 "없음" */}
+        {!edit && sourcedOptions.length > 0 && (
+          <div className="mt-3">
+            <DealFormField label="발굴 매니저" htmlFor="deal-sourced-by" error={fieldErrors.sourcedBy}>
+              <select
+                id="deal-sourced-by"
+                className={inputCls("sourcedBy")}
+                value={sourcedBy}
+                onChange={(e) => {
+                  setSourcedBy(e.target.value);
+                  clearErr("sourcedBy");
+                }}
+                disabled={submitting}
+                data-testid="deal-sourced-by"
+              >
+                <option value="">없음</option>
+                {sourcedOptions.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name} ({o.role})
+                  </option>
+                ))}
+              </select>
+            </DealFormField>
+          </div>
+        )}
+      </FormAccordion>
+  );
+
   return (
     // 2026-10-03 PR-D: PC 보기(wide)면 2단 — 왼쪽(필수 정보·접는 묶음 3개) / 오른쪽(사진·영상·안내·등록 버튼 sticky).
     // /sell(#45)과 같은 방식: 좁을 땐 두 열 틀이 display:contents라 바깥 세로 줄에 그대로 서고 order로 순서(① → 사진·영상 → 묶음 → 안내·버튼).
@@ -3743,14 +3447,19 @@ function DealForm({
     <div
       className={
         wide
-          ? "mt-3 bg-gray100 rounded-xl p-3.5 w-full grid grid-cols-[minmax(0,1fr)_clamp(360px,38%,420px)] gap-x-8 items-start"
+          ? editWide
+            ? "bg-gray100 rounded-xl p-3.5 w-full h-full grid grid-cols-3 grid-rows-[minmax(0,1fr)] gap-x-6 items-stretch"
+            : "mt-3 bg-gray100 rounded-xl p-3.5 w-full grid grid-cols-[minmax(0,1fr)_clamp(360px,38%,420px)] gap-x-8 items-start"
           : "@container mt-3 bg-gray100 rounded-xl p-3.5 flex flex-col gap-3 w-full max-w-[720px] mx-auto"
       }
     >
-      <div className={wide ? "@container flex flex-col gap-3 min-w-0" : "contents"}>
+      <div className={wide && !editWide ? "@container flex flex-col gap-3 min-w-0" : "contents"}>
+        <div className={editWide ? "@container flex flex-col gap-3 min-w-0 min-h-0 overflow-y-auto" : "contents"} data-col={editWide ? "1" : undefined}>
+        {!edit && (
         <p className="text-[0.7778rem] text-gray500">
           <span className="text-orange font-bold">*</span> 필수 항목
         </p>
+        )}
         {requestId && (!prefill?.category || !prefill?.region) && (
           <div
             className="rounded-lg text-sm font-bold leading-relaxed"
@@ -3843,9 +3552,11 @@ function DealForm({
                     ))}
                   </select>
                 </div>
+                {!edit && (
                 <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }}>
                   목록에 &quot;{formatDealPrice(30000, quantityUnit, priceUnit, { exact: true })}&quot;처럼 보여요 · 창고 출고가(배송비 별도)
                 </p>
+                )}
               </DealFormField>
               <DealFormField label="정상 단가" error={fieldErrors.originalPrice} htmlFor="deal-originalPrice">
                 <div className={groupCls("originalPrice")}>
@@ -3864,16 +3575,18 @@ function DealForm({
                   />
                   <span className="flex-shrink-0 flex items-center font-bold whitespace-nowrap" style={{ fontSize: rem(15), color: "#0B2540", padding: "0 12px 0 4px" }}>{priceUnitSuffix(priceUnit)}</span>
                 </div>
-                <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }}>판매 단가와 같은 단위로 적어주세요</p>
+                {!edit && <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }}>판매 단가와 같은 단위로 적어주세요</p>}
               </DealFormField>
+              {(!edit || (parsePriceInput(originalPrice) && parsePriceInput(dealPrice))) && (
               <div className="min-w-0 @min-[560px]:col-span-2" data-field="discount">
                 <p className="font-bold mb-1" style={{ fontSize: rem(15), color: "#374151" }}>할인율</p>
                 <DiscountHint original={parsePriceInput(originalPrice)} deal={parsePriceInput(dealPrice)} />
-                {!(parsePriceInput(originalPrice) && parsePriceInput(dealPrice)) && (
+                {!edit && !(parsePriceInput(originalPrice) && parsePriceInput(dealPrice)) && (
                   <p className="text-gray500" style={{ fontSize: rem(14) }}>판매·정상 단가를 넣으면 보여요</p>
                 )}
                 <ConfirmWarnings warnings={priceWarns} onConfirm={titleWarnings.length ? undefined : () => submit(true)} busy={submitting} />
               </div>
+              )}
             </div>
             )}
 
@@ -3929,9 +3642,11 @@ function DealForm({
                     </option>
                   ))}
                 </select>
+                {!edit && (
                 <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }}>
                   물건이 있는 곳(알림 매칭 기준)
                 </p>
+                )}
               </DealFormField>
               <DealFormField label="지역 상세" htmlFor="deal-location">
                 <input
@@ -3946,7 +3661,79 @@ function DealForm({
           </div>
         </section>
 
-        <div className="order-3 flex flex-col gap-3">
+        {/* 2026-10-23 edit 전용 — 재고 수량(총수량 이하)·마감 일시 + 연장·[조기 마감]. 사진 순서·대표 사진·영상은 오른쪽 사진·영상 칸(같은 업로더) */}
+        {edit && (
+          <section className="order-1" data-edit-only>
+            <FormSectionTitle>재고 · 마감</FormSectionTitle>
+            <div className="flex flex-col gap-3">
+              <DealFormField label="재고 수량(남은 수량)" error={fieldErrors.remainingQty} htmlFor="deal-remainingQty">
+                <div className={groupCls("remainingQty")}>
+                  <input
+                    id="deal-remainingQty"
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    onWheel={(e) => e.currentTarget.blur()}
+                    className={GROUP_INPUT_CLS}
+                    value={remainingQty}
+                    onChange={(e) => {
+                      setRemainingQty(e.target.value);
+                      clearErr("remainingQty");
+                    }}
+                  />
+                  <span className="flex-shrink-0 flex items-center font-bold whitespace-nowrap" style={{ fontSize: rem(15), color: "#0B2540", padding: "0 12px 0 4px" }}>
+                    / {parsePriceInput(totalQty) ?? initial!.total_qty}{quantityUnit}
+                  </span>
+                </div>
+              </DealFormField>
+              <DealFormField label="마감 일시" error={fieldErrors.closesAt} htmlFor="deal-closesAt">
+                <div className="flex gap-1.5 mb-1.5">
+                  {[1, 7, 30].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => addDays(n)}
+                      className="flex-1 font-bold text-navy border-2 border-gray200 rounded-lg py-2 bg-white"
+                      style={{ fontSize: rem(14) }}
+                    >
+                      +{n}일
+                    </button>
+                  ))}
+                </div>
+                <input
+                  id="deal-closesAt"
+                  type="datetime-local"
+                  className={inputCls("closesAt")}
+                  value={closesAtLocal}
+                  min={minClosesLocal}
+                  max={expiryDate ? `${expiryDate}T23:59` : undefined}
+                  onChange={(e) => {
+                    setClosesAtLocal(e.target.value);
+                    clearErr("closesAt");
+                  }}
+                />
+                <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }}>
+                  {expiryDate ? `소비기한(${expiryDate.replace(/-/g, ".")}) 23:59까지 정할 수 있어요 · ` : ""}저장해야 반영돼요 · 알림은 다시 보내지 않아요
+                </p>
+              </DealFormField>
+              {onCloseDeal && (
+                <button
+                  type="button"
+                  onClick={onCloseDeal}
+                  disabled={submitting}
+                  className="font-bold text-orange border-2 border-orange rounded-lg py-2.5 bg-white disabled:opacity-50"
+                  style={{ fontSize: rem(15) }}
+                  data-early-close
+                >
+                  조기 마감
+                </button>
+              )}
+            </div>
+          </section>
+        )}
+        </div>
+
+        <div className={editWide ? "@container flex flex-col gap-3 min-w-0 min-h-0 overflow-y-auto" : "order-3 flex flex-col gap-3"} data-col={editWide ? "2" : undefined}>
           <FormAccordion id="deal-sec-detail" title="제품 상세" count={detailCount} open={openDetail} onToggle={() => setOpenDetail((v) => !v)}>
             <div className="flex flex-col gap-3">
               <div className={FORM_ROW2}>
@@ -3972,6 +3759,7 @@ function DealForm({
                   </div>
                 </DealFormField>
                 )}
+                {!edit && (
                 <DealFormField label="마감까지 남은 시간" htmlFor="deal-closesIn">
                   <select
                     id="deal-closesIn"
@@ -3986,6 +3774,7 @@ function DealForm({
                     <option value="168">7일</option>
                   </select>
                 </DealFormField>
+                )}
               </div>
 
               <div className={FORM_ROW2}>
@@ -4016,13 +3805,13 @@ function DealForm({
 
               <div className={FORM_ROW3}>
                 <DealFormField label="포장 단위" htmlFor="deal-packageUnit">
-                  <SuggestInput id="deal-packageUnit" className={inputCls()} value={packageUnit} onChange={setPackageUnit} examples={PACKAGE_UNIT_EXAMPLES} placeholder="예: 5kg 박스" />
+                  <SuggestInput id="deal-packageUnit" className={inputCls()} value={packageUnit} onChange={setPackageUnit} examples={edit ? [] : PACKAGE_UNIT_EXAMPLES} placeholder="예: 5kg 박스" />
                 </DealFormField>
                 <DealFormField label="규격/사이즈" htmlFor="deal-spec">
-                  <SuggestInput id="deal-spec" className={inputCls()} value={spec} onChange={setSpec} examples={SPEC_EXAMPLES} placeholder="예: 대 / 30cm" />
+                  <SuggestInput id="deal-spec" className={inputCls()} value={spec} onChange={setSpec} examples={edit ? [] : SPEC_EXAMPLES} placeholder="예: 대 / 30cm" />
                 </DealFormField>
                 <DealFormField label="원산지" htmlFor="deal-origin">
-                  <SuggestInput id="deal-origin" className={inputCls()} value={origin} onChange={setOrigin} examples={ORIGIN_EXAMPLES} placeholder="예: 국내산" />
+                  <SuggestInput id="deal-origin" className={inputCls()} value={origin} onChange={setOrigin} examples={edit ? [] : ORIGIN_EXAMPLES} placeholder="예: 국내산" />
                 </DealFormField>
               </div>
               <DealFormField label="상세 설명" htmlFor="deal-description">
@@ -4042,115 +3831,16 @@ function DealForm({
             </div>
           </FormAccordion>
 
-          <FormAccordion id="deal-sec-deal" title="거래 조건" count={dealCount} requiredCount={1} open={openDeal} onToggle={() => setOpenDeal((v) => !v)}>
-            <div className="flex flex-col gap-3">
-              <div className={FORM_ROW2}>
-                <DealFormField label="카테고리" required error={fieldErrors.category} htmlFor="deal-category">
-                  <select
-                    id="deal-category"
-                    className={inputCls("category")}
-                    value={category}
-                    onChange={(e) => {
-                      setCategory(e.target.value);
-                      clearErr("category");
-                    }}
-                  >
-                    <option value="">선택해주세요</option>
-                    {mockCategories.map((c) => (
-                      <option key={c} value={c}>
-                        {categoryIcons[c]} {c}
-                      </option>
-                    ))}
-                  </select>
-                </DealFormField>
-                <DealFormField label="재고 유형" htmlFor="deal-stockType">
-                  {/* 2026-10-01: 버튼 10개 → 드롭다운 (기본 일반 재고, 이모지 라벨 그대로) */}
-                  <select
-                    id="deal-stockType"
-                    className={inputCls()}
-                    value={stockType}
-                    onChange={(e) => {
-                      if (isStockType(e.target.value)) setStockType(e.target.value);
-                    }}
-                  >
-                    {STOCK_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.icon} {t.label}
-                      </option>
-                    ))}
-                  </select>
-                  {stockType === "near_expiry" && (
-                    <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }}>소비기한은 &quot;제품 상세&quot;에서 꼭 입력해주세요.</p>
-                  )}
-                </DealFormField>
-              </div>
-              {/* 2026-09-26: 혼합매물(리퀴데이션 파렛트 등) — 신청서에서 이미 첨부됐으면 prefill로
-                  채워지고, 여기서도 직접 추가/수정 가능 (전화 접수 등 신청서 없이 등록하는 경우 대비). */}
-              <DealFormField label="PID / 매니페스트 번호" htmlFor="deal-pid">
-                <input
-                  id="deal-pid"
-                  className={inputCls()}
-                  placeholder="예: PID-240915-01"
-                  value={pid}
-                  onChange={(e) => setPid(e.target.value)}
-                />
-              </DealFormField>
-              <ManifestUploader onChange={setManifestItems} initialRows={prefill?.manifestItems} />
-            </div>
-          </FormAccordion>
+          {!editWide && dealAccordionEl}
 
-          <FormAccordion id="deal-sec-seller" title="판매자 정보" count={(seller.isPublic ? 1 : 0) + (!requestId ? [sellerPrivate.company, sellerPrivate.phone, sellerPrivate.name, sellerPrivate.checkId].filter(Boolean).length : 0)} open={openSeller} onToggle={() => setOpenSeller((v) => !v)}>
-            <SellerDisplayPicker idPrefix="deal-new" isPublic={seller.isPublic} companyName={seller.companyName} onChange={setSeller} />
-            {!requestId && (
-              <div className="mt-3">
-                <SellerPrivateFields
-                  adminKey={adminKey}
-                  idPrefix="deal"
-                  value={sellerPrivate}
-                  onChange={(n) => {
-                    setSellerPrivate(n);
-                    setFieldErrors((prev) => ({ ...prev, sellerPrivateCompany: undefined, sellerPrivatePhone: undefined, sellerPrivateName: undefined, businessCheckId: undefined }));
-                  }}
-                  errors={{ company: fieldErrors.sellerPrivateCompany, phone: fieldErrors.sellerPrivatePhone, name: fieldErrors.sellerPrivateName, checkId: fieldErrors.businessCheckId }}
-                  showCheckPicker
-                  onGoBizCheck={onGoBizCheck}
-                  disabled={submitting}
-                />
-              </div>
-            )}
-            {/* 2026-10-10 매니저 실적: 이 판매자를 찾아온 관리자(새 판매자 발굴). 직접 등록·판매 신청 승인 공통, 기본 "없음" */}
-            {sourcedOptions.length > 0 && (
-              <div className="mt-3">
-                <DealFormField label="발굴 매니저" htmlFor="deal-sourced-by" error={fieldErrors.sourcedBy}>
-                  <select
-                    id="deal-sourced-by"
-                    className={inputCls("sourcedBy")}
-                    value={sourcedBy}
-                    onChange={(e) => {
-                      setSourcedBy(e.target.value);
-                      clearErr("sourcedBy");
-                    }}
-                    disabled={submitting}
-                    data-testid="deal-sourced-by"
-                  >
-                    <option value="">없음</option>
-                    {sourcedOptions.map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.name} ({o.role})
-                      </option>
-                    ))}
-                  </select>
-                </DealFormField>
-              </div>
-            )}
-          </FormAccordion>
+          {sellerAccordionEl}
         </div>
       </div>
 
       {/* 오른쪽 — 행 높이만큼 늘어나고(self-stretch) 등록 버튼(+ 오류 문구)만 맨 아래에서 sticky. 관리자는 하단 탭바가 없어 아래 여백 12px */}
-      <div className={wide ? "@container flex flex-col gap-4 min-w-0 self-stretch" : "contents"}>
+      <div className={editWide ? "@container flex flex-col gap-4 min-w-0 min-h-0 overflow-y-auto" : wide ? "@container flex flex-col gap-4 min-w-0 self-stretch" : "contents"} data-col={editWide ? "3" : undefined}>
         <section className="order-2">
-          <FormSectionTitle hint="사진이 있으면 더 빨리 연결돼요">사진·영상</FormSectionTitle>
+          <FormSectionTitle hint={edit ? undefined : "사진이 있으면 더 빨리 연결돼요"}>사진·영상</FormSectionTitle>
           <div className="flex flex-col gap-4">
             <div id="deal-photos">
             <ImageUploader
@@ -4177,12 +3867,13 @@ function DealForm({
           </div>
         </section>
 
+        {editWide && <div>{dealAccordionEl}</div>}
         <div className="order-4 flex flex-col gap-3">
           <p className="text-[0.7778rem] text-gray500">
             <span className="text-orange font-bold">*</span> 매물명·카테고리·지역·판매 단가·재고 총수량은 필수예요{stockType === "near_expiry" ? " (소비기한 임박이면 소비기한도)" : ""}.
           </p>
           <p className="text-gray500" style={{ fontSize: rem(14) }}>
-            🌙 밤 9시~아침 8시 등록 매물은 아침 8시에 발송돼요.
+            {edit ? "수정·연장은 알림을 다시 보내지 않아요." : "🌙 밤 9시~아침 8시 등록 매물은 아침 8시에 발송돼요."}
           </p>
         </div>
 
@@ -4199,7 +3890,7 @@ function DealForm({
                 style={{ background: "#0B2540", fontSize: rem(15) }}
                 data-panel-save
               >
-                {submitting ? "등록 중..." : busyLabel ?? "매물 등록 확정"}
+                {submitting ? (edit ? "저장 중..." : "등록 중...") : busyLabel ?? (edit ? "변경사항 저장" : "매물 등록 확정")}
               </button>
             </>,
             footerSlot
@@ -4213,7 +3904,7 @@ function DealForm({
               className="text-white font-bold rounded-lg disabled:opacity-60"
               style={{ background: "#0B2540", padding: "12px 0", fontSize: rem(15) }}
             >
-              {submitting ? "등록 중..." : busyLabel ?? "매물 등록 확정"}
+              {submitting ? (edit ? "저장 중..." : "등록 중...") : busyLabel ?? (edit ? "변경사항 저장" : "매물 등록 확정")}
             </button>
           </div>
         )}
@@ -4223,7 +3914,7 @@ function DealForm({
         title={`사진 ${photoStatus.failed}장이 올라가지 않았어요`}
         description={PHOTO_FAILED_DESCRIPTION}
         reselectLabel="다시 시도"
-        skipLabel="빼고 등록"
+        skipLabel={edit ? "빼고 저장" : "빼고 등록"}
         onClose={() => setPhotoSheet(null)}
         onReselect={() => {
           imageUploaderRef.current?.retryFailed();
@@ -4245,9 +3936,13 @@ function DealForm({
           document.getElementById("deal-video")?.scrollIntoView({ behavior: "smooth", block: "center" });
           setVideoSheet(null);
         }}
+        skipLabel={edit && initial?.video_url ? "기존 영상 유지하고 저장" : edit ? "영상 빼고 저장" : undefined}
+        description={edit && initial?.video_url ? "새로 고른 영상이 저장되지 않았어요. 기존 영상을 그대로 두고 저장하거나, 영상을 다시 골라주세요." : undefined}
         onSkip={() => {
           const confirmWarnings = videoSheet?.confirmWarnings ?? false;
-          videoUploaderRef.current?.clear();
+          // edit + 기존 영상이 있으면 기존 영상 유지(다음에 열 때도 그 영상으로 시작), 없으면 비움
+          if (edit && initial?.video_url) setVideoUrl(initial.video_url);
+          else videoUploaderRef.current?.clear();
           setVideoSheet(null);
           submit(confirmWarnings, true);
         }}
@@ -4292,9 +3987,9 @@ function requestPrefill(r: SellerRequest) {
   };
 }
 
-type DealField = "title" | "category" | "region" | "originalPrice" | "dealPrice" | "totalQty" | "minOrderQty" | "expiryDate" | "sellerPrivateCompany" | "sellerPrivatePhone" | "sellerPrivateName" | "businessCheckId" | "sourcedBy";
+type DealField = "title" | "category" | "region" | "originalPrice" | "dealPrice" | "totalQty" | "remainingQty" | "closesAt" | "minOrderQty" | "expiryDate" | "sellerPrivateCompany" | "sellerPrivatePhone" | "sellerPrivateName" | "businessCheckId" | "sourcedBy";
 // 화면 위→아래 순서 (첫 누락 칸 포커스용) — 2026-10-01 2차: ① 매물명·판매/정상 단가·재고 총수량·지역 → 제품 상세(MOQ·소비기한) → 거래 조건(카테고리)
-const DEAL_FIELD_ORDER: DealField[] = ["title", "dealPrice", "originalPrice", "totalQty", "region", "minOrderQty", "expiryDate", "category", "sellerPrivateCompany", "sellerPrivatePhone", "sellerPrivateName", "businessCheckId", "sourcedBy"];
+const DEAL_FIELD_ORDER: DealField[] = ["title", "dealPrice", "originalPrice", "totalQty", "remainingQty", "closesAt", "region", "minOrderQty", "expiryDate", "category", "sellerPrivateCompany", "sellerPrivatePhone", "sellerPrivateName", "businessCheckId", "sourcedBy"];
 
 // 붙인 입력 그룹(한 테두리) — [입력 | 원 / 단위] (2026-10-01 2차)
 const GROUP_INPUT_CLS = "flex-1 min-w-0 px-3 py-2.5 text-[0.8889rem] outline-none bg-transparent";

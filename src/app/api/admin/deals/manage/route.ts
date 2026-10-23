@@ -6,7 +6,8 @@ import { resolveSellerDisplay } from "@/lib/sellerDisplay";
 import { checkDealVideoUrl } from "@/lib/videoUploadServer";
 import { normalizeTitle, DUPLICATE_TITLE_WARNING } from "@/lib/titleGuard";
 import { isLumpSum } from "@/lib/priceUnit";
-import { storageSummary } from "@/lib/dealFields";
+import { storageSummary, isStorageType } from "@/lib/dealFields";
+import { sanitizeManifest, sanitizePid } from "@/lib/parseCsv";
 import { DEAL_EDIT_KEYS, validateDealEdit, dealEditWarnings, effectivePriceMode, type DealEditInput } from "@/lib/dealEdit";
 import { ADMIN_PHOTO_LIMIT, ADMIN_PHOTO_LIMIT_ERROR } from "@/lib/photoLimit";
 
@@ -52,7 +53,7 @@ export async function PATCH(req: NextRequest) {
   if (denied) return denied;
 
   const body = await req.json();
-  const { id, remainingQty, status, images, videoUrl, sellerPublic, sellerCompanyName, confirmWarnings } = body;
+  const { id, status, images, videoUrl, sellerPublic, sellerCompanyName, confirmWarnings } = body;
   if (!id) return NextResponse.json({ error: "id가 필요합니다." }, { status: 400 });
   // DB check 제약(deals_status_check)과 같은 값만 허용 — sold_out은 사용처가 없어 제외
   if (status !== undefined && !DEAL_STATUSES.includes(status)) {
@@ -85,6 +86,17 @@ export async function PATCH(req: NextRequest) {
     if (!current) return NextResponse.json({ error: "매물을 찾을 수 없어요." }, { status: 404 });
     const invalid = validateDealEdit(edit, current);
     if (invalid) return NextResponse.json(invalid, { status: 400 });
+    // 2026-10-23 카테고리·지역 — 등록과 같이 이름으로 받아 id로 바꿈(없는 이름이면 400). 알림은 보내지 않음(이 PATCH는 sendDealPush를 부르지 않는다)
+    if (edit.category !== undefined) {
+      const { data: cat } = await supabaseAdmin.from("categories").select("id").eq("name", edit.category).single();
+      if (!cat) return NextResponse.json({ error: "없는 카테고리예요.", field: "category" }, { status: 400 });
+      update.category_id = cat.id;
+    }
+    if (edit.region !== undefined) {
+      const { data: reg } = await supabaseAdmin.from("regions").select("id").eq("name", edit.region).single();
+      if (!reg) return NextResponse.json({ error: "없는 지역이에요.", field: "region" }, { status: 400 });
+      update.region_id = reg.id;
+    }
     const cleanTitle = edit.title !== undefined ? normalizeTitle(edit.title, { admin: true }) : undefined;
     if (confirmWarnings !== true) {
       const w = dealEditWarnings(edit, current);
@@ -124,19 +136,33 @@ export async function PATCH(req: NextRequest) {
       if (edit.originalPrice !== undefined) update.original_price = edit.originalPrice || dealPrice;
       else if (edit.dealPrice !== undefined && current.original_price === current.deal_price) update.original_price = dealPrice;
     }
-    if (edit.minOrderQty !== undefined) update.min_order_qty = isLumpSum(current.price_unit) ? null : edit.minOrderQty || null;
-    if (edit.expiryDate !== undefined) {
-      const expiry_date = edit.expiryDate || null;
-      update.expiry_date = expiry_date;
+    // 단가 단위(일괄 여부)는 바뀐 값 기준 — 일괄이면 최소 주문량 없음(등록과 같음)
+    const lumpAfter = isLumpSum(edit.priceUnit !== undefined ? edit.priceUnit : current.price_unit);
+    if (edit.priceUnit !== undefined) update.price_unit = edit.priceUnit ?? null;
+    if (edit.minOrderQty !== undefined) update.min_order_qty = lumpAfter ? null : edit.minOrderQty || null;
+    else if (edit.priceUnit !== undefined && lumpAfter) update.min_order_qty = null;
+    if (edit.totalQty !== undefined) update.total_qty = edit.totalQty;
+    if (edit.quantityUnit !== undefined) update.quantity_unit = (typeof edit.quantityUnit === "string" && edit.quantityUnit.trim()) || "개";
+    if (edit.location !== undefined) update.location = edit.location ?? null;
+    if (edit.stockType !== undefined) update.stock_type = edit.stockType;
+    if (edit.packageUnit !== undefined) update.package_unit = edit.packageUnit || null;
+    if (edit.origin !== undefined) update.origin = edit.origin || null;
+    if (edit.spec !== undefined) update.spec = edit.spec || null;
+    if (edit.pid !== undefined) update.pid = sanitizePid(edit.pid);
+    if (edit.manifestItems !== undefined) update.manifest_items = sanitizeManifest(edit.manifestItems);
+    if (edit.expiryDate !== undefined || edit.storageType !== undefined) {
+      const expiry_date = edit.expiryDate !== undefined ? edit.expiryDate || null : current.expiry_date ?? null;
+      const storage_type = edit.storageType !== undefined ? (isStorageType(edit.storageType) ? edit.storageType : null) : current.storage_type ?? null;
+      if (edit.expiryDate !== undefined) update.expiry_date = expiry_date;
+      if (edit.storageType !== undefined) update.storage_type = storage_type;
       // 예전 칸(storage_condition)도 등록처럼 새 칸 요약으로 — 새 칸이 다 비면 예전 자유 입력 값은 그대로
       const hadNewFields = !!(current.storage_type || current.expiry_date);
-      update.storage_condition =
-        storageSummary({ storage_type: current.storage_type, expiry_date }) || (hadNewFields ? null : current.storage_condition ?? null);
+      update.storage_condition = storageSummary({ storage_type, expiry_date }) || (hadNewFields ? null : current.storage_condition ?? null);
     }
     if (edit.description !== undefined) update.description = edit.description || null;
     if (edit.closesAt !== undefined) update.closes_at = edit.closesAt;
   }
-  if (remainingQty !== undefined) update.remaining_qty = remainingQty;
+  if (edit.remainingQty !== undefined) update.remaining_qty = edit.remainingQty;
   if (status !== undefined) update.status = status;
   if (images !== undefined) update.images = images;
   if (videoUrl !== undefined) update.video_url = videoUrl;
