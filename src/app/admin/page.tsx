@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import { CheckCircle } from "lucide-react";
 import { mockCategories, mockRegions, categoryIcons, quantityUnits } from "@/lib/mockData";
 import ImageUploader, { type ImageUploadStatus, type ImageUploaderHandle } from "@/components/ImageUploader";
@@ -12,6 +13,7 @@ import { scrollToBizCheck } from "@/lib/bizCheckJump";
 import { NEGOTIABLE_LABEL, NEGOTIABLE_TEXT, isNegotiable, type PriceMode } from "@/lib/priceMode";
 import SellerPrivateFields, { EMPTY_SELLER_PRIVATE, type SellerPrivateDraft } from "@/components/admin/SellerPrivateFields";
 import DealSellerPrivateEditor from "@/components/admin/DealSellerPrivateEditor";
+import AdminFullscreenPanel, { PanelColumn } from "@/components/admin/AdminFullscreenPanel";
 import { publicSellerName } from "@/lib/sellerDisplay";
 import { formatPhoneTyping } from "@/lib/auth";
 import { formatPhone, normalizePhone } from "@/lib/phone";
@@ -246,6 +248,9 @@ const ADMIN_SESSION_TTL_MS = 6 * 60 * 60 * 1000; // 6시간
 // (2026-10-06: 영구 삭제·긴급 공지 등록·CSV 내보내기 버튼은 최고관리자에게만 보임)
 const SUPER_ONLY_MESSAGE = "최고관리자만 할 수 있어요";
 
+// 2026-10-23: 관리자 PC 최대 폭 한 곳(예전 1200px) — 본문 틀·상단 대시보드·목록 영역이 같이 씀. 로그인·오류 화면은 max-w-md 그대로
+const ADMIN_MAX_W = "max-w-[1600px]";
+
 export default function AdminPage() {
   const [key, setKey] = useState<string | null>(null);
   const [input, setInput] = useState("");
@@ -457,9 +462,13 @@ function AdminDashboard({
   const [openFormFor, setOpenFormFor] = useState<string | "new" | null>(null);
   // 2026-10-03 PR-D: 매물 등록 폼(새 매물·판매자 신청)은 한 자리에 하나만 — 작성 중이면 바꾸기 전에 확인
   const dealFormDirtyRef = useRef(false);
+  const [dealFormDirtyState, setDealFormDirtyState] = useState(false); // PC 패널의 "저장하지 않은 변경" 확인 바용(인라인은 ref + confirm 그대로)
   const setDealFormDirty = useCallback((dirty: boolean) => {
     dealFormDirtyRef.current = dirty;
+    setDealFormDirtyState(dirty);
   }, []);
+  const [formPanelMin, setFormPanelMin] = useState(false); // 등록 폼 작성 중 사업자 조회로 잠깐 나가는 동안 패널만 숨김(입력 유지)
+  const [panelFooterEl, setPanelFooterEl] = useState<HTMLDivElement | null>(null); // 패널 하단 바 안 빈 자리 — 폼의 [매물 등록 확정]이 여기로 옮겨 옴
   // [닫기]·[취소]·신청 카드 [닫기] — 작성 중이면(신청 폼은 미리 채운 값에서 바뀌었거나 사진·영상 변화) 확인 후 닫기, 빈 폼은 바로
   const closeDealForm = () => {
     if (dealFormDirtyRef.current && !confirm("작성 중인 내용이 사라져요. 닫을까요?")) return;
@@ -470,7 +479,7 @@ function AdminDashboard({
     const dealFormOpen = openFormFor !== null && openFormFor !== "notice";
     if (dealFormOpen && dealFormDirtyRef.current && !confirm("작성 중인 내용이 사라져요. 계속할까요?")) return;
     setOpenFormFor(next);
-    if (next !== "new" && next !== "notice") {
+    if (next !== "new" && next !== "notice" && !isDesktop) {
       // 판매자 신청 → 새 매물 자리로 스크롤 (폼이 그려진 다음)
       setTimeout(() => document.getElementById("deal-form-slot")?.scrollIntoView({ behavior: "smooth", block: "start" }), 30);
     }
@@ -985,6 +994,11 @@ function AdminDashboard({
     setBizPreselect({ id: "", nonce: Date.now() });
     scrollToBizCheck();
   };
+  // PC 패널의 등록 폼 → 사업자 조회: 패널만 숨기고(입력 유지) 섹션으로 스크롤, 아래 [작성 중인 등록 폼 다시 열기]로 돌아옴
+  const goBizFromFormPanel = () => {
+    setFormPanelMin(true);
+    requestAnimationFrame(goToBizCheck);
+  };
 
   // 2026-10-01 (커밋 J): 목록 카드를 변수로 — 📱·자동은 기존 1열 순서 그대로, 💻는 세로로 쌓는 3단(CSS columns)에
   // 중요도 순(재고문의(관심 표시) → 판매 신청 → 진행 중 매물 → 파트너 신청 → 실적 → 찾습니다 → 회원 → 관리자)으로 배치.
@@ -1427,13 +1441,35 @@ function AdminDashboard({
     />
   );
   const formRequest = openFormFor && openFormFor !== "new" && openFormFor !== "notice" ? requests.find((r) => r.id === openFormFor) ?? null : null;
+  // 2026-10-23: PC(isDesktop)는 새 매물·판매 신청 [매물로 등록하기] 폼을 전체 화면 패널에서 연다(모바일·📱는 지금 인라인 그대로)
+  const dealFormEls = (
+    <>
+      {openFormFor === "new" && (
+        <DealForm key="new" adminKey={adminKey} wide={isDesktop} footerSlot={isDesktop ? panelFooterEl : undefined} onDirtyChange={setDealFormDirty} onGoBizCheck={isDesktop ? goBizFromFormPanel : goToBizCheck} sourcedOptions={sourcedOptions} onDone={() => { setOpenFormFor(null); load(); }} />
+      )}
+      {formRequest && (
+        <DealForm
+          key={formRequest.id}
+          adminKey={adminKey}
+          wide={isDesktop}
+          footerSlot={isDesktop ? panelFooterEl : undefined}
+          onDirtyChange={setDealFormDirty}
+          onGoBizCheck={isDesktop ? goBizFromFormPanel : goToBizCheck}
+          prefill={requestPrefill(formRequest)}
+          requestId={formRequest.id}
+          sourcedOptions={sourcedOptions}
+          onDone={() => { setOpenFormFor(null); load(); }}
+        />
+      )}
+    </>
+  );
   const newDealBlock = (
     <>
       <div
         className={isDesktop ? "col-span-3" : "px-5 py-4"}
         style={isDesktop ? { order: -1 } : undefined}
       >
-        {openFormFor === "new" ? (
+        {openFormFor === "new" && !isDesktop ? (
           <button type="button" onClick={closeDealForm} className={`ml-auto ${BTN_CLASS}`} style={{ ...btnStyle("secondary"), minHeight: 40, fontSize: rem(15), padding: "0 16px" }}>
             닫기
           </button>
@@ -1442,9 +1478,9 @@ function AdminDashboard({
             + 새 매물 직접 등록
           </button>
         )}
-        {/* 2026-10-03 PR-D: 매물 등록 폼은 한 자리에 하나만 — 새 매물이든 판매자 신청([매물로 등록하기])이든 여기(전체 폭)에서 열림 */}
+        {/* 2026-10-03 PR-D: 매물 등록 폼은 한 자리에 하나만 — 새 매물이든 판매자 신청이든 여기(전체 폭)에서 열림. PC는 아래 패널 */}
         <div id="deal-form-slot" style={{ scrollMarginTop: 12 }}>
-          {formRequest && (
+          {!isDesktop && formRequest && (
             <div
               className="mt-3 flex items-center justify-between gap-3 rounded-xl"
               style={{ background: "#EEF2F7", padding: "10px 14px" }}
@@ -1462,23 +1498,46 @@ function AdminDashboard({
               </button>
             </div>
           )}
-          {openFormFor === "new" && (
-            <DealForm key="new" adminKey={adminKey} wide={isDesktop} onDirtyChange={setDealFormDirty} onGoBizCheck={goToBizCheck} sourcedOptions={sourcedOptions} onDone={() => { setOpenFormFor(null); load(); }} />
-          )}
-          {formRequest && (
-            <DealForm
-              key={formRequest.id}
-              adminKey={adminKey}
-              wide={isDesktop}
-              onDirtyChange={setDealFormDirty}
-              onGoBizCheck={goToBizCheck}
-              prefill={requestPrefill(formRequest)}
-              requestId={formRequest.id}
-              sourcedOptions={sourcedOptions}
-              onDone={() => { setOpenFormFor(null); load(); }}
-            />
-          )}
+          {!isDesktop && dealFormEls}
         </div>
+        {isDesktop && formPanelMin && (openFormFor === "new" || !!formRequest) && (
+          <button
+            type="button"
+            onClick={() => setFormPanelMin(false)}
+            className="fixed z-40 font-bold text-white rounded-full shadow-lg"
+            style={{ right: 24, bottom: 24, background: "#0B2540", padding: "12px 20px", fontSize: rem(15) }}
+            data-panel-reopen
+          >
+            📝 작성 중인 등록 폼 다시 열기
+          </button>
+        )}
+        {isDesktop && (
+          <AdminFullscreenPanel
+            open={openFormFor === "new" || !!formRequest}
+            minimized={formPanelMin}
+            title={formRequest ? `매물 등록 — 판매자 신청 '${formRequest.product_name}'` : "새 매물 직접 등록"}
+            columns={1}
+            dirty={dealFormDirtyState}
+            onClose={() => {
+              setFormPanelMin(false);
+              setOpenFormFor(null);
+            }}
+            footerSlotRef={setPanelFooterEl}
+            footer={({ requestClose }) => (
+              <button
+                type="button"
+                onClick={requestClose}
+                className="font-bold rounded-lg px-6 py-2.5 border-2 border-gray200 text-navy"
+                style={{ fontSize: rem(15) }}
+                data-panel-cancel
+              >
+                취소
+              </button>
+            )}
+          >
+            <div className="w-full max-w-[1400px] mx-auto">{dealFormEls}</div>
+          </AdminFullscreenPanel>
+        )}
 
         {/* 2026-09-28: 긴급 공지(부동산·설비 처분) — 재고 매물과 별개 등록 경로.
             방향성 확정 전까지는 메모만 해두기로 했던 부동산/설비 아이디어를
@@ -1547,6 +1606,7 @@ function AdminDashboard({
             onChanged={load}
             canDelete={role === "최고관리자"}
             onGoBizCheck={goToBizCheck}
+            panel={isDesktop}
             onClosed={(title) => showDashToast(`"${title}" 마감했어요 · 매물 상세에서 "마감됨"으로 볼 수 있어요`)}
           />
         )}
@@ -2058,7 +2118,7 @@ function AdminDashboard({
 
   return (
     <main
-      className={isDesktop ? "flex flex-col min-h-screen mx-auto w-full max-w-[1200px] bg-white shadow-sm" : "flex flex-col min-h-screen mx-auto w-full max-w-md bg-white shadow-sm"}
+      className={isDesktop ? `flex flex-col min-h-screen mx-auto w-full ${ADMIN_MAX_W} bg-white shadow-sm` : "flex flex-col min-h-screen mx-auto w-full max-w-md bg-white shadow-sm"}
       // 2026-10-01 (커밋 J): 맨 아래 목록이 화면 끝에 붙어 "끝난 것처럼" 보이던 문제 — 하단 여백 pb-24 + 안전 영역
       style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom, 0px))" }}
     >
@@ -2147,7 +2207,7 @@ function AdminDashboard({
 
       {/* 2026-09-29: 시각적 위계 — ① 조치 필요 → ② 핵심 지표 → ③ 참고 현황·목록.
           색은 의미 있을 때만(조치 1건↑ 주황/빨강, 0건 회색, 일반 지표 남색 1색). 막대는 CSS만(DashboardViz). */}
-      <div className={isDesktop ? "px-8 pt-5 max-w-[1200px] mx-auto w-full flex flex-col gap-6" : "px-5 pt-5 flex flex-col gap-6"}>
+      <div className={isDesktop ? `px-8 pt-5 ${ADMIN_MAX_W} mx-auto w-full flex flex-col gap-6` : "px-5 pt-5 flex flex-col gap-6"}>
         {(() => {
           const soonDeals = soonDealCount;
           const actions = [
@@ -2355,7 +2415,7 @@ function AdminDashboard({
           order:-1로 그리드 맨 앞 전체 폭 줄로 끌어올림. */}
       {/* 2026-10-03 PR-D: 매물 등록 폼 자리(newDealBlock)를 PC·모바일 보기에서 같은 트리 위치에 둠 — 보기 전환해도 폼이 다시 마운트되지 않아
           작성 중 내용·업로드 상태 유지. 모바일 보기에선 바깥 틀이 display:contents라 예전 세로 순서 그대로 */}
-      <div className={isDesktop ? "px-8 pb-6 max-w-[1200px] mx-auto w-full" : "contents"}>
+      <div className={isDesktop ? `px-8 pb-6 ${ADMIN_MAX_W} mx-auto w-full` : "contents"}>
         {!isDesktop && membersBlock}
         {!isDesktop && leadsBlock}
         {!isDesktop && connectionsBlock}
@@ -2600,8 +2660,11 @@ function ActiveDealCard({
   onGoBizCheck,
   onClosed,
   soonLabel = null,
+  panel = false,
 }: {
   soonLabel?: string | null; // 마감임박(6h)이면 칩 문구("마감 3시간") — 판정은 needsAction.ts isDeadlineSoon 한 곳
+  /** PC 보기(isDesktop): 수정을 인라인 대신 전체 화면 패널로 연다 — 모바일·📱는 지금 인라인 그대로 */
+  panel?: boolean;
   deal: ActiveDeal;
   adminKey: string;
   onChanged: () => void;
@@ -2653,7 +2716,7 @@ function ActiveDealCard({
   const initialPriceMode: PriceMode = deal.price_mode === "negotiable" ? "negotiable" : "fixed";
   const [priceMode, setPriceModeRaw] = useState<PriceMode>(initialPriceMode); // 2026-10-04 가격 방식 전환(가격 입력 ↔ 가격 협의)
   const initialExpiry = deal.expiry_date?.slice(0, 10) ?? "";
-  const [form, setForm] = useState(() => ({
+  const makeForm = () => ({
     title: deal.title,
     dealPrice: deal.deal_price != null ? String(deal.deal_price) : "",
     originalPrice: initialOrig,
@@ -2661,7 +2724,8 @@ function ActiveDealCard({
     expiryDate: initialExpiry,
     description: deal.description ?? "",
     closesAt: toLocalInput(deal.closes_at),
-  }));
+  });
+  const [form, setForm] = useState(makeForm);
   const [editError, setEditError] = useState<{ field: DealEditField; error: string } | null>(null);
   const [editWarns, setEditWarns] = useState<EditWarnings>(NO_EDIT_WARNINGS);
   const confirmedRef = useRef(false); // 주황 경고를 "그대로 저장"으로 확인함 — 칸을 다시 고치면 풀림
@@ -2807,6 +2871,7 @@ function ActiveDealCard({
     setEditingPhotos(false);
     setEditingVideo(false);
     setExpanded(false);
+    if (panel) setSelfFlash(true);
     showToast("저장했어요");
   };
 
@@ -2847,86 +2912,51 @@ function ActiveDealCard({
     saveAll(false, null, false, true);
   };
   const [minClosesLocal] = useState(() => toLocalInput(Date.now())); // 달력에서 지난 시각 흐리게(서버도 지금 이후만 허용)
+  // ---- PC 전체 화면 패널(2026-10-23) ----
+  // 저장 성공 → 패널 닫고 이 카드를 1.5초 강조(globals.css [data-flash])
+  const [selfFlash, setSelfFlash] = useState(false);
+  useEffect(() => {
+    if (!selfFlash) return;
+    const t = setTimeout(() => setSelfFlash(false), 1500);
+    return () => clearTimeout(t);
+  }, [selfFlash]);
+  // 열 때 값과 달라졌는지 — 판매자 비공개 편집기(자체 저장)는 제외. 올리는 중인 사진·영상이 있어도 변경으로 봄
+  const panelDirty =
+    JSON.stringify(form) !== JSON.stringify(makeForm()) ||
+    priceMode !== initialPriceMode ||
+    remainingQty !== String(deal.remaining_qty) ||
+    images.join("|") !== (deal.images ?? []).join("|") ||
+    videoUrl !== (deal.video_url ?? null) ||
+    sellerChanged ||
+    busyLabel !== null;
+  // [저장 안 하고 닫기] — 입력값을 처음 값으로 되돌리고 닫음(업로더는 다시 열 때 처음 값으로 새로 그려짐)
+  const discardAndClose = () => {
+    setForm(makeForm());
+    setPriceModeRaw(initialPriceMode);
+    setRemainingQty(String(deal.remaining_qty));
+    setImages(deal.images ?? []);
+    setVideoUrl(deal.video_url ?? null);
+    setVideoStatus(deal.video_url ? "done" : "idle");
+    setPhotoStatus({ uploading: 0, failed: 0 });
+    setSeller({ isPublic: initialSellerName !== null, companyName: initialSellerName ?? "" });
+    setEditError(null);
+    setEditWarns(NO_EDIT_WARNINGS);
+    confirmedRef.current = false;
+    setEditingPhotos(false);
+    setEditingVideo(false);
+    setExpanded(false);
+  };
+  // 사업자 조회 바로가기 — 패널을 먼저 닫은 뒤(입력값은 그대로 두고 가림) 섹션으로 스크롤
+  const goBizFromPanel = () => {
+    setExpanded(false);
+    requestAnimationFrame(() => onGoBizCheck());
+  };
   const idp = `deal-edit-${deal.id}`;
   const expiryForLimit = form.expiryDate || null;
 
-  return (
-    <div className="bg-white border border-gray200 rounded-2xl px-4 py-4" style={soonLabel ? NEEDS_ACTION_ROW_STYLE : undefined} data-deadline-soon={soonLabel ? "" : undefined}>
-      <div className="flex items-center justify-between gap-1.5">
-        <div className="flex items-center gap-1.5 text-xs font-bold text-gray500 min-w-0">
-          <span>{categoryIcons[deal.categories?.name ?? ""] ?? "🗂️"}</span>
-          <span className="truncate">{deal.categories?.name} · {deal.regions?.name}</span>
-        </div>
-        {soonLabel && <NeedsActionChip>{soonLabel}</NeedsActionChip>}
-        {/* 2026-09-27: "관심 표시한 회원" 섹션이 전역 리스트라 어떤 매물이 뜨거운지
-            한눈에 안 보였음 — deals.interest_count(이미 트리거로 실시간 유지되는
-            비정규화 카운터, 별도 조회 불필요)를 매물 관리 행에도 바로 노출.
-            2026-09-28: 총합만 보이면 회원/비회원 비중을 알 수 없어 quick_lead_count를
-            추가로 빼서 회원(interest_count - quick_lead_count) · 비회원(quick_lead_count)
-            브레이크다운을 타이틀 툴팁으로 제공. */}
-        {(deal.interest_count ?? 0) > 0 && (
-          <span
-            className="flex-shrink-0 text-xs font-bold px-2 py-0.5 rounded-full"
-            style={{ background: "#FFF0E8", color: "#E25100" }}
-            title={`회원 ${(deal.interest_count ?? 0) - (deal.quick_lead_count ?? 0)} · 비회원 ${deal.quick_lead_count ?? 0}`}
-          >
-            ❤️ {deal.interest_count}
-            {(deal.quick_lead_count ?? 0) > 0 && (
-              <span className="font-medium" style={{ color: "#B85A2E" }}>
-                {" "}
-                (비회원 {deal.quick_lead_count})
-              </span>
-            )}
-          </span>
-        )}
-      </div>
-      <div className="text-base font-bold text-gray900 mt-1.5">{deal.title}</div>
-      <div className="text-sm text-gray500 mt-1">
-        {deal.price_mode === "negotiable" || deal.deal_price == null ? NEGOTIABLE_TEXT : `${deal.deal_price.toLocaleString()}원`} · 마감{" "}
-        {new Date(deal.closes_at).toLocaleString("ko-KR", {
-          month: "numeric",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        })}
-      </div>
-
-      <div className="text-xs text-gray500 mt-1">
-        재고 {deal.remaining_qty}/{deal.total_qty}{deal.quantity_unit || "개"}
-      </div>
-
-      {!expanded ? (
-        <div className="flex gap-2 mt-3">
-          <button
-            type="button"
-            onClick={() => setExpanded(true)}
-            className="flex-1 text-xs font-bold text-navy border-2 border-gray200 rounded-lg py-2"
-          >
-            ✏️ 수정
-          </button>
-          {/* 2026-10-01: [마감] — 관리자·최고관리자. 마감되면 이 목록에서 빠지고 매물 상세·지난 매물에 "마감됨"으로 남음 */}
-          <button
-            type="button"
-            onClick={closeDeal}
-            disabled={saving}
-            className="flex-1 text-xs font-bold text-orange border-2 border-orange rounded-lg py-2 disabled:opacity-50"
-          >
-            ⏹ 마감
-          </button>
-          {canDelete && (
-            <button
-              type="button"
-              onClick={deleteDeal}
-              disabled={deleting}
-              className="flex-1 text-xs font-bold rounded-lg py-2 disabled:opacity-50"
-              style={{ color: "#C2410C", border: "2px solid #FDEEE8", background: "#FFF9F7" }}
-            >
-              {deleting ? "삭제 중..." : "🗑️ 삭제"}
-            </button>
-          )}
-        </div>
-      ) : (
-        <>
+  // 수정 UI 조각 — 인라인(모바일·📱)과 PC 전체 화면 패널이 같은 조각을 다른 배치로 쓴다(입력 상태·업로더는 한 벌)
+  const fieldsEl = (
+    <>
           {/* 2026-10-03 feat/admin-deal-edit: 매물 내용 수정 — 카테고리·사진 순서·판매자 정보(아래 따로)는 여기서 안 바꿈 */}
           <div className="flex flex-col gap-2.5 mt-3">
             <EditField label="매물명" htmlFor={`${idp}-title`} error={fieldError("title")}>
@@ -3022,6 +3052,10 @@ function ActiveDealCard({
             </EditField>
           </div>
 
+    </>
+  );
+  const stockEl = (
+    <>
           <div className="flex items-center gap-2 mt-3">
             <label className="text-xs font-bold text-gray500">재고</label>
             <input
@@ -3036,6 +3070,10 @@ function ActiveDealCard({
             <span className="text-xs text-gray500">/ {deal.total_qty}{deal.quantity_unit || "개"}</span>
           </div>
 
+    </>
+  );
+  const closesEl = (
+    <>
           {/* 2026-10-03 feat/admin-deal-edit: [+24시간 연장](바로 저장) → [+1일][+7일][+30일] + 날짜·시간 직접 지정, "변경사항 저장"으로 반영.
               소비기한이 있으면 그날 23:59까지만(서버도 같은 검사) */}
           <div className="mt-2.5">
@@ -3078,16 +3116,20 @@ function ActiveDealCard({
             </button>
           </div>
 
-          <button
+    </>
+  );
+  const photoEl = (
+    <>
+          {!panel && (<button
             type="button"
             onClick={() => setEditingPhotos((v) => !v)}
             className="w-full text-xs font-bold text-navy border-2 border-gray200 rounded-lg py-2 mt-2"
           >
             {editingPhotos ? "사진 관리 닫기" : `📷 사진 관리 (${images.length}장)`}
-          </button>
+          </button>)}
 
           {/* 2026-10-02 PR-B: 닫아도 업로드·실패 상태가 이어지게 숨기기만(예전엔 닫으면 업로더가 사라져 올리던 사진이 조용히 빠짐) — 영상 관리와 같은 방식 */}
-          <div className="mt-2.5" hidden={!editingPhotos}>
+          <div className="mt-2.5" hidden={!panel && !editingPhotos}>
               <ImageUploader
                 ref={imageUploaderRef}
                 adminKey={adminKey}
@@ -3100,20 +3142,24 @@ function ActiveDealCard({
               />
           </div>
 
+    </>
+  );
+  const videoEl = (
+    <>
           {/* 2026-09-26: 영상은 등록 시(DealForm)에만 넣을 수 있고 이후엔 있는지
               없는지조차 알 방법이 없었음 — 사진 관리와 동일한 토글 패턴으로 추가,
               버튼 라벨 자체가 "있음/없음"을 보여줘서 펼치지 않아도 첨부 여부를
               알 수 있게 함. */}
-          <button
+          {!panel && (<button
             type="button"
             onClick={() => setEditingVideo((v) => !v)}
             className="w-full text-xs font-bold text-navy border-2 border-gray200 rounded-lg py-2 mt-2"
           >
             {editingVideo ? "영상 관리 닫기" : `🎥 영상 관리 (${videoUrl ? "있음" : "없음"})`}
-          </button>
+          </button>)}
 
           {/* 2026-10-02 PR-A2: 닫아도 업로드 상태가 이어지게 숨기기만(예전엔 닫으면 업로더가 사라짐) */}
-          <div className="mt-2.5" hidden={!editingVideo}>
+          <div className="mt-2.5" hidden={!panel && !editingVideo}>
             <VideoUploader
               ref={videoUploaderRef}
               adminKey={adminKey}
@@ -3125,20 +3171,32 @@ function ActiveDealCard({
             />
           </div>
 
+    </>
+  );
+  const pickerEl = (
+    <>
           <div className="mt-3">
             <SellerDisplayPicker idPrefix={`deal-${deal.id}`} isPublic={seller.isPublic} companyName={seller.companyName} onChange={setSeller} />
           </div>
 
+    </>
+  );
+  const editorInlineEl = (
+    <>
           {/* 2026-10-04: 실제 판매자(내부 전용) — 구매자에게 보이지 않음. 매물 내용 저장과 별개로 저장(알림 재발송 없음) */}
           <DealSellerPrivateEditor adminKey={adminKey} dealId={deal.id} onToast={showToast} onGoBizCheck={onGoBizCheck} />
 
-          <button
-            onClick={() => saveAll()}
-            disabled={saving || busyLabel !== null}
-            className="w-full text-sm font-bold text-white bg-navy rounded-lg py-2.5 mt-3 disabled:opacity-50"
-          >
-            {saving ? "저장 중..." : busyLabel ?? "변경사항 저장"}
-          </button>
+    </>
+  );
+  const editorPanelEl = (
+    <>
+          {/* 2026-10-04: 실제 판매자(내부 전용) — 구매자에게 보이지 않음. 매물 내용 저장과 별개로 저장(알림 재발송 없음) */}
+          <DealSellerPrivateEditor adminKey={adminKey} dealId={deal.id} onToast={showToast} onGoBizCheck={goBizFromPanel} />
+
+    </>
+  );
+  const sheetsEl = (
+    <>
           <VideoNotUploadedSheet
             open={photoSheet}
             title={`새 사진 ${photoStatus.failed}장이 올라가지 않았어요`}
@@ -3182,6 +3240,112 @@ function ActiveDealCard({
             }}
           />
 
+    </>
+  );
+  const saveLabel = saving ? "저장 중..." : busyLabel ?? "변경사항 저장";
+  const deleteBtn = canDelete ? (
+    <button
+      type="button"
+      onClick={deleteDeal}
+      disabled={deleting}
+      className="font-bold rounded-lg px-4 py-2.5 disabled:opacity-50 mr-auto"
+      style={{ color: "#C2410C", border: "2px solid #FDEEE8", background: "#FFF9F7", fontSize: rem(14) }}
+    >
+      {deleting ? "삭제 중..." : "🗑️ 매물 삭제"}
+    </button>
+  ) : null;
+
+  return (
+    <div className="bg-white border border-gray200 rounded-2xl px-4 py-4" style={soonLabel ? NEEDS_ACTION_ROW_STYLE : undefined} data-deadline-soon={soonLabel ? "" : undefined} data-flash={selfFlash ? "1" : undefined}>
+      <div className="flex items-center justify-between gap-1.5">
+        <div className="flex items-center gap-1.5 text-xs font-bold text-gray500 min-w-0">
+          <span>{categoryIcons[deal.categories?.name ?? ""] ?? "🗂️"}</span>
+          <span className="truncate">{deal.categories?.name} · {deal.regions?.name}</span>
+        </div>
+        {soonLabel && <NeedsActionChip>{soonLabel}</NeedsActionChip>}
+        {/* 2026-09-27: "관심 표시한 회원" 섹션이 전역 리스트라 어떤 매물이 뜨거운지
+            한눈에 안 보였음 — deals.interest_count(이미 트리거로 실시간 유지되는
+            비정규화 카운터, 별도 조회 불필요)를 매물 관리 행에도 바로 노출.
+            2026-09-28: 총합만 보이면 회원/비회원 비중을 알 수 없어 quick_lead_count를
+            추가로 빼서 회원(interest_count - quick_lead_count) · 비회원(quick_lead_count)
+            브레이크다운을 타이틀 툴팁으로 제공. */}
+        {(deal.interest_count ?? 0) > 0 && (
+          <span
+            className="flex-shrink-0 text-xs font-bold px-2 py-0.5 rounded-full"
+            style={{ background: "#FFF0E8", color: "#E25100" }}
+            title={`회원 ${(deal.interest_count ?? 0) - (deal.quick_lead_count ?? 0)} · 비회원 ${deal.quick_lead_count ?? 0}`}
+          >
+            ❤️ {deal.interest_count}
+            {(deal.quick_lead_count ?? 0) > 0 && (
+              <span className="font-medium" style={{ color: "#B85A2E" }}>
+                {" "}
+                (비회원 {deal.quick_lead_count})
+              </span>
+            )}
+          </span>
+        )}
+      </div>
+      <div className="text-base font-bold text-gray900 mt-1.5">{deal.title}</div>
+      <div className="text-sm text-gray500 mt-1">
+        {deal.price_mode === "negotiable" || deal.deal_price == null ? NEGOTIABLE_TEXT : `${deal.deal_price.toLocaleString()}원`} · 마감{" "}
+        {new Date(deal.closes_at).toLocaleString("ko-KR", {
+          month: "numeric",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })}
+      </div>
+
+      <div className="text-xs text-gray500 mt-1">
+        재고 {deal.remaining_qty}/{deal.total_qty}{deal.quantity_unit || "개"}
+      </div>
+
+      {!expanded || panel ? (
+        <div className="flex gap-2 mt-3">
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="flex-1 text-xs font-bold text-navy border-2 border-gray200 rounded-lg py-2"
+          >
+            ✏️ 수정
+          </button>
+          {/* 2026-10-01: [마감] — 관리자·최고관리자. 마감되면 이 목록에서 빠지고 매물 상세·지난 매물에 "마감됨"으로 남음 */}
+          <button
+            type="button"
+            onClick={closeDeal}
+            disabled={saving}
+            className="flex-1 text-xs font-bold text-orange border-2 border-orange rounded-lg py-2 disabled:opacity-50"
+          >
+            ⏹ 마감
+          </button>
+          {canDelete && (
+            <button
+              type="button"
+              onClick={deleteDeal}
+              disabled={deleting}
+              className="flex-1 text-xs font-bold rounded-lg py-2 disabled:opacity-50"
+              style={{ color: "#C2410C", border: "2px solid #FDEEE8", background: "#FFF9F7" }}
+            >
+              {deleting ? "삭제 중..." : "🗑️ 삭제"}
+            </button>
+          )}
+        </div>
+      ) : (
+        <>
+          {fieldsEl}
+          {stockEl}
+          {closesEl}
+          {photoEl}
+          {videoEl}
+          {pickerEl}
+          {editorInlineEl}
+          <button
+            onClick={() => saveAll()}
+            disabled={saving || busyLabel !== null}
+            className="w-full text-sm font-bold text-white bg-navy rounded-lg py-2.5 mt-3 disabled:opacity-50"
+          >
+            {saving ? "저장 중..." : busyLabel ?? "변경사항 저장"}
+          </button>
           <div className="flex gap-2 mt-2">
             <button
               type="button"
@@ -3205,6 +3369,56 @@ function ActiveDealCard({
         </>
       )}
 
+      {/* PC(isDesktop): 인라인 대신 전체 화면 패널 — 3열 ① 사진·영상·재고·마감 ② 매물 정보 ③ 판매자 */}
+      {panel && (
+        <AdminFullscreenPanel
+          open={expanded}
+          title={`매물 수정 — ${deal.title}`}
+          dirty={panelDirty}
+          onClose={discardAndClose}
+          footer={({ requestClose }) => (
+            <>
+              {deleteBtn}
+              <button
+                type="button"
+                onClick={requestClose}
+                className="font-bold rounded-lg px-6 py-2.5 border-2 border-gray200 text-navy"
+                style={{ fontSize: rem(15) }}
+                data-panel-cancel
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={() => saveAll()}
+                disabled={saving || busyLabel !== null}
+                className="font-bold text-white bg-navy rounded-lg px-10 py-2.5 disabled:opacity-50"
+                style={{ fontSize: rem(15) }}
+                data-panel-save
+              >
+                {saveLabel}
+              </button>
+            </>
+          )}
+        >
+          <PanelColumn title="사진·영상 · 재고 · 마감">
+            {photoEl}
+            {videoEl}
+            {stockEl}
+            {closesEl}
+          </PanelColumn>
+          <PanelColumn title="매물 정보">{fieldsEl}</PanelColumn>
+          <PanelColumn title="판매자">
+            {pickerEl}
+            <h4 className="font-bold mt-2" style={{ fontSize: rem(15), color: "#0B2540" }}>
+              판매자 비공개 정보 — 따로 저장
+            </h4>
+            {editorPanelEl}
+          </PanelColumn>
+        </AdminFullscreenPanel>
+      )}
+      {sheetsEl}
+
       <Toast message={toastMessage} />
     </div>
   );
@@ -3219,8 +3433,11 @@ function DealForm({
   onDirtyChange,
   onGoBizCheck,
   sourcedOptions = [],
+  footerSlot,
 }: {
   adminKey: string;
+  /** PC 패널: 하단 바 안 빈 자리 — 있으면 [매물 등록 확정](+오류 문구)을 그리로 옮김(sticky 자리 대신). undefined = 인라인, null = 패널은 열렸지만 자리가 아직 없음 */
+  footerSlot?: HTMLElement | null;
   /** 2026-10-10 [발굴 매니저] 선택지 — 비면 칸을 그리지 않음 */
   sourcedOptions?: { id: string; name: string; role: string }[];
   prefill?: {
@@ -3969,17 +4186,37 @@ function DealForm({
           </p>
         </div>
 
-        <div className={wide ? "order-5 mt-auto sticky bottom-0 z-10 bg-gray100 pt-2 pb-3 flex flex-col gap-2" : "order-5 flex flex-col gap-3"}>
-          {error && <div className="text-[0.7778rem] font-medium" style={{ color: BLOCK_COLOR }}>{error}</div>}
-          <button
-            onClick={() => submit()}
-            disabled={submitting || busyLabel !== null}
-            className="text-white font-bold rounded-lg disabled:opacity-60"
-            style={{ background: "#0B2540", padding: "12px 0", fontSize: rem(15) }}
-          >
-            {submitting ? "등록 중..." : busyLabel ?? "매물 등록 확정"}
-          </button>
-        </div>
+        {footerSlot !== undefined ? (
+          footerSlot &&
+          createPortal(
+            <>
+              {error && <div className="text-[0.7778rem] font-medium" style={{ color: BLOCK_COLOR }} data-panel-error>{error}</div>}
+              <button
+                type="button"
+                onClick={() => submit()}
+                disabled={submitting || busyLabel !== null}
+                className="text-white font-bold rounded-lg disabled:opacity-60 px-10 py-2.5"
+                style={{ background: "#0B2540", fontSize: rem(15) }}
+                data-panel-save
+              >
+                {submitting ? "등록 중..." : busyLabel ?? "매물 등록 확정"}
+              </button>
+            </>,
+            footerSlot
+          )
+        ) : (
+          <div className={wide ? "order-5 mt-auto sticky bottom-0 z-10 bg-gray100 pt-2 pb-3 flex flex-col gap-2" : "order-5 flex flex-col gap-3"}>
+            {error && <div className="text-[0.7778rem] font-medium" style={{ color: BLOCK_COLOR }}>{error}</div>}
+            <button
+              onClick={() => submit()}
+              disabled={submitting || busyLabel !== null}
+              className="text-white font-bold rounded-lg disabled:opacity-60"
+              style={{ background: "#0B2540", padding: "12px 0", fontSize: rem(15) }}
+            >
+              {submitting ? "등록 중..." : busyLabel ?? "매물 등록 확정"}
+            </button>
+          </div>
+        )}
       </div>
       <VideoNotUploadedSheet
         open={photoSheet !== null}
