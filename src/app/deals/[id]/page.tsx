@@ -28,6 +28,7 @@ import PriceText from "@/components/PriceText";
 import { selectWithPriceAccess, dealPriceFields, hasMemberSession, cardDiscountPct } from "@/lib/dealPriceAccess";
 import PhotoCarousel, { type PhotoCarouselHandle } from "@/components/PhotoCarousel";
 import PhotoViewer from "@/components/PhotoViewer";
+import { formatMoq } from "@/lib/moq";
 import ZoomTip from "@/components/ZoomTip";
 import { PRIVATE_SELLER_NAME, PRIVATE_SELLER_NOTE, publicSellerName } from "@/lib/sellerDisplay";
 import FloatingCTA, { FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE_FIT, FloatingCTANote, floatingCtaButtonStyle } from "@/components/FloatingCTA";
@@ -596,7 +597,7 @@ function DealDetailPageInner() {
                 {isLumpSum(deal.price_unit)
                   ? "전체 일괄 판매"
                   : deal.min_order_qty
-                    ? `최소주문 ${deal.min_order_qty}${deal.quantity_unit || "개"}`
+                    ? formatMoq(deal.min_order_qty, deal.quantity_unit, deal.package_unit)
                     : null}
               </span>
               <button
@@ -636,7 +637,7 @@ function DealDetailPageInner() {
                 {isLumpSum(deal.price_unit)
                   ? "전체 일괄 판매"
                   : deal.min_order_qty
-                    ? `최소주문 ${deal.min_order_qty}${deal.quantity_unit || "개"}`
+                    ? formatMoq(deal.min_order_qty, deal.quantity_unit, deal.package_unit)
                     : null}
               </span>
               <button
@@ -679,7 +680,7 @@ function DealDetailPageInner() {
                 {isLumpSum(deal.price_unit)
                   ? `${hasDiscount ? " · " : ""}전체 일괄 판매`
                   : deal.min_order_qty
-                    ? `${hasDiscount ? " · " : ""}최소주문 ${deal.min_order_qty}${deal.quantity_unit || "개"}`
+                    ? `${hasDiscount ? " · " : ""}${formatMoq(deal.min_order_qty, deal.quantity_unit, deal.package_unit)}`
                     : null}
               </span>
               <button

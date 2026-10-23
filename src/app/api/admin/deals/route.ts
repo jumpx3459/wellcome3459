@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
   // 2026-09-29: 단가 단위 — DB check와 같은 값만, 안 보내면 null(= 수량 단위 기준). 일괄이면 최소주문 없음
   if (priceUnit != null && !isDealPriceUnit(priceUnit)) return bad("단가 단위가 올바르지 않아요.", "priceUnit");
   const lumpSum = isLumpSum(priceUnit);
-  if (!lumpSum && minOrderQty != null && !isPositive(minOrderQty)) return bad("최소 주문량은 0보다 커야 해요.", "minOrderQty");
+  if (!lumpSum && minOrderQty != null && (!isPositive(minOrderQty) || !Number.isInteger(minOrderQty))) return bad("최소 주문량은 1 이상의 정수로 입력해주세요.", "minOrderQty");
   if (!lumpSum && minOrderQty != null && minOrderQty > totalQty) return bad("최소주문량은 재고 총수량보다 클 수 없어요.", "minOrderQty");
   if (!closesAt || Number.isNaN(Date.parse(closesAt))) return bad("마감 시간이 올바르지 않아요.", "closesAt");
   // 2026-10-12: 사진 장수(관리자 25장, src/lib/photoLimit.ts) — 판매 신청 승인도 이 경로

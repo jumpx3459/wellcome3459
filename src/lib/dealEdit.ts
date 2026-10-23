@@ -58,6 +58,7 @@ export const DEAL_EDIT_KEYS = [
   "packageUnit", "origin", "spec", "pid", "manifestItems",
 ] as const;
 
+export const MOQ_INT_MESSAGE = "최소 주문량은 1 이상의 정수로 입력해주세요.";
 const isPositive = (v: unknown) => typeof v === "number" && Number.isFinite(v) && v > 0;
 
 /** 소비기한 날 23:59:59(한국 시간)의 ms — 마감은 이 시각을 넘을 수 없음 */
@@ -114,7 +115,8 @@ export function validateDealEdit(
   const lumpSum = isLumpSum(input.priceUnit !== undefined ? input.priceUnit : current.price_unit);
   if (!lumpSum) {
     if (input.minOrderQty !== undefined && input.minOrderQty != null) {
-      if (!isPositive(input.minOrderQty)) return bad("최소 주문량은 0보다 커야 해요.", "minOrderQty");
+      // 2026-10-23 MOQ는 1 이상 정수(단위는 매물의 수량 단위)
+      if (!isPositive(input.minOrderQty) || !Number.isInteger(input.minOrderQty)) return bad(MOQ_INT_MESSAGE, "minOrderQty");
     }
     // 총수량을 줄이거나 단가 단위를 바꾸는 수정에서도 지금 저장된 최소 주문량과 맞춰 본다
     const moq = input.minOrderQty !== undefined ? input.minOrderQty : current.min_order_qty;
