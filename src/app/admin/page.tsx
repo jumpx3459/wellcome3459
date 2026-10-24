@@ -49,7 +49,7 @@ import AdminListCard from "@/components/admin/AdminListCard";
 import BusinessCheckSection, { BusinessCheckBadge } from "@/components/admin/BusinessCheckSection";
 import ConnectionBoard from "@/components/admin/ConnectionBoard";
 import { can, type AdminPerm } from "@/lib/adminPerms";
-import { CARD_TITLE_PROPS } from "@/components/admin/cardTitle";
+import { CARD_TITLE_PROPS, LIST_CARD_TITLE_PROPS } from "@/components/admin/cardTitle";
 import { NeedsActionChip, ActionFilterChip, ActionFilterEmpty } from "@/components/admin/NeedsAction";
 import {
   leadNeedsAction,
@@ -1032,7 +1032,8 @@ function AdminDashboard({
             ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
             : "px-5 pt-4 flex flex-col gap-3"
         }
-        title={<span {...CARD_TITLE_PROPS}>최근 가입 회원 <span style={{ ...LABEL, fontWeight: 400 }}>({members.length}명)</span></span>}
+        title={<span {...LIST_CARD_TITLE_PROPS}>최근 가입 회원</span>}
+        badges={[{ text: `${members.length}명`, tone: "gray" }]}
         open={membersOpen}
         onToggle={() => setMembersOpen((v) => !v)}
         limit={null}
@@ -1259,10 +1260,9 @@ function AdminDashboard({
             : "px-5 pt-4 flex flex-col gap-3"
         }
         title={
-          <span {...CARD_TITLE_PROPS}>
-            관심 표시한 회원 <span style={{ ...LABEL, fontWeight: 400 }}>({interests.filter(leadNeedsAction).length}건 미연락)</span>
-          </span>
+          <span {...LIST_CARD_TITLE_PROPS}>관심 표시한 회원</span>
         }
+        badges={[{ text: `${interests.filter(leadNeedsAction).length}건 미연락`, tone: interests.filter(leadNeedsAction).length > 0 ? "orange" : "gray" }]}
         open={leadsOpen}
         onToggle={() => setLeadsOpen((v) => !v)}
         toolbar={
@@ -1660,7 +1660,12 @@ function AdminDashboard({
             ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
             : "px-5 pb-6 flex flex-col gap-3"
         }
-        title={<span {...CARD_TITLE_PROPS}>진행 중인 매물 <span style={{ ...LABEL, fontWeight: 400 }}>({activeDeals.length}건{soonDealCount > 0 ? ` · 마감임박 ${soonDealCount}` : ""}{passedDealCount > 0 ? ` · 마감 지남 ${passedDealCount}` : ""})</span></span>}
+        title={<span {...LIST_CARD_TITLE_PROPS}>진행 중인 매물</span>}
+        badges={[
+          { text: `${activeDeals.length}건`, tone: "gray" },
+          ...(soonDealCount > 0 ? [{ text: `마감임박 ${soonDealCount}`, tone: "orange" as const }] : []),
+          ...(passedDealCount > 0 ? [{ text: `마감 지남 ${passedDealCount}`, tone: "orange" as const }] : []),
+        ]}
         toolbar={
           soonOnly ? (
             <ActionFilterChip label="마감임박만" on onToggle={() => setSoonOnly(false)} />
@@ -1709,7 +1714,8 @@ function AdminDashboard({
             ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
             : "px-5 pb-8 flex flex-col gap-3"
         }
-        title={<span {...CARD_TITLE_PROPS}>대기 중인 판매자 신청 <span style={{ ...LABEL, fontWeight: 400 }}>({requests.filter(sellerRequestNeedsAction).length}건)</span></span>}
+        title={<span {...LIST_CARD_TITLE_PROPS}>대기 중인 판매자 신청</span>}
+        badges={[{ text: `${requests.filter(sellerRequestNeedsAction).length}건`, tone: requests.filter(sellerRequestNeedsAction).length > 0 ? "orange" : "gray" }]}
         open={sellerReqOpen}
         onToggle={() => setSellerReqOpen((v) => !v)}
         toolbar={
@@ -1891,10 +1897,9 @@ function AdminDashboard({
             : "mt-8 px-5"
         }
         title={
-          <h2 {...CARD_TITLE_PROPS}>
-            🏅 공식 점핑파트너 신청 <span style={{ ...LABEL, fontWeight: 400 }}>({partnerRequests.filter(partnerRequestNeedsAction).length}건 심사중)</span>
-          </h2>
+          <h2 {...LIST_CARD_TITLE_PROPS}>🏅 공식 점핑파트너 신청</h2>
         }
+        badges={[{ text: `${partnerRequests.filter(partnerRequestNeedsAction).length}건 심사중`, tone: partnerRequests.filter(partnerRequestNeedsAction).length > 0 ? "orange" : "gray" }]}
         open={partnerReqOpen}
         onToggle={() => setPartnerReqOpen((v) => !v)}
         toolbar={
@@ -1962,10 +1967,9 @@ function AdminDashboard({
             : "mt-8 px-5"
         }
         title={
-          <h2 {...CARD_TITLE_PROPS}>
-            📊 점핑파트너 실적 <span style={{ ...LABEL, fontWeight: 400 }}>({partnersOverview.length}명)</span>
-          </h2>
+          <h2 {...LIST_CARD_TITLE_PROPS}>📊 점핑파트너 실적</h2>
         }
+        badges={[{ text: `${partnersOverview.length}명`, tone: "gray" }]}
         open={partnersOverviewOpen}
         onToggle={() => setPartnersOverviewOpen((v) => !v)}
         empty={<p className="mt-3 text-sm text-gray500">아직 승인된 파트너가 없어요.</p>}
@@ -2019,10 +2023,9 @@ function AdminDashboard({
             : "px-5 pb-8 flex flex-col gap-3"
         }
         title={
-          <span {...CARD_TITLE_PROPS}>
-            🔍 이런 재고 찾습니다 <span style={{ ...LABEL, fontWeight: 400 }}>({buyRequests.filter(buyRequestNeedsAction).length}건 미연락)</span>
-          </span>
+          <span {...LIST_CARD_TITLE_PROPS}>🔍 이런 재고 찾습니다</span>
         }
+        badges={[{ text: `${buyRequests.filter(buyRequestNeedsAction).length}건 미연락`, tone: buyRequests.filter(buyRequestNeedsAction).length > 0 ? "orange" : "gray" }]}
         open={buyReqOpen}
         onToggle={() => setBuyReqOpen((v) => !v)}
         toolbar={
