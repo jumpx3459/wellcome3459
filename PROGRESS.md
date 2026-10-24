@@ -56,6 +56,8 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
 ## 최근 작업 (2026-10-24) — 매물 마감 기간 선택지 확대 (브랜치 `feat/deal-deadline-options`)
+- **마감 지난 active 매물 조사(2026-10-24)**: 마감 시각이 지나도 `status`는 **자동으로 안 바뀜**(Vercel cron은 morning-push뿐, pg_cron은 OTP·KPI뿐, 트리거 없음 — [마감]·[조기 마감]으로만 closed). 회원 화면은 전부 `closes_at > now` 조회 조건으로 가림(/deals·홈 띠·알림함·공유·sitemap·푸시 대상 제외, 상세는 `isDealClosed`로 마감 취급). **예외 = 관리자 `GET /api/admin/deals/manage`**(status=active만 걸고 closes_at 조건 없음)라 마감 지난 매물이 "진행 중인 매물"에 남음. 운영(공개 조회) status=active AND closes_at ≤ now 1건([테스트] 제외 후 1건).
+- **마감 지남 타일·필터 + 정렬**(별도 커밋): `needsAction.ts` `isDeadlinePassed`(active AND [테스트] 제외 AND closes_at ≤ now, 마감임박과 배타), 조치 필요 회색 타일 "마감 지남"(0건이면 숨김)·카드 제목 "마감 지남 N"·회색 세로선+칩·"마감 지남만" 필터(가장 오래 지난 순, 마감임박만과 동시에 안 켜짐). 진행 중 기본 정렬 = 최신 등록순(`manage/route.ts` order created_at desc), 필터 ON일 때만 화면에서 closes_at asc. 자동 마감·지난 매물 목록·DB 변경 없음.
 
 - 관리자 등록 폼 "마감까지 남은 시간": 24시간 / 3일 / **7일(기본)** / 14일 / 30일 / 날짜 직접 선택(날짜·시각). 3·12시간 제외(의존 없음 — 긴급·마감임박·푸시는 선택값이 아니라 남은 시간 기준). /sell 신청 → 등록 때 희망 기간은 가장 가까운 큰 값으로(3·12 → 24시간), 협의는 미선택 + 필수 선택. /sell 희망 기간 칩은 범위 밖(그대로).
 - 상한: 등록·수정 모두 closes_at ≤ 지금 + 60일(+30일 연장도 넘으면 막고 "마감은 최대 60일까지예요"). 마감 ≤ 소비기한 23:59(KST) — 폼·등록 API·수정 API 같은 규칙(`src/lib/dealDeadline.ts`, 시험 `scripts/deal-deadline-test.mts`). 등록 API는 "지금 이후"도 새로 검사. DB 변경 없음.

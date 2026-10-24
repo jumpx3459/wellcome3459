@@ -23,6 +23,14 @@ export const isDeadlineSoon = (d: { closes_at: string; title?: string | null; st
   return remain > 0 && remain <= DEADLINE_SOON_MS;
 };
 
+/** 마감 지남 — 진행 중(active)인데 마감 시각이 지난 매물: closes_at ≤ now. [테스트] 제외. isDeadlineSoon(now < closes_at ≤ now+6h)과 겹치지 않음.
+ *  (2026-10-24: 마감이 지나도 status는 자동으로 안 바뀌고 회원 화면은 closes_at 조회 조건으로 가림 → 관리자가 [마감]으로 정리하도록 조치 필요 타일로 보여 줌) */
+export const isDeadlinePassed = (d: { closes_at: string; title?: string | null; status?: string | null }, now: number | Date): boolean => {
+  if (d.status != null && d.status !== "active") return false;
+  if (d.title?.includes("[테스트]")) return false;
+  return new Date(d.closes_at).getTime() <= (typeof now === "number" ? now : now.getTime());
+};
+
 /** 칩 문구 — 1시간 미만이면 분("마감 45분"), 아니면 시간("마감 5시간", 내림) */
 export const deadlineChipLabel = (closesAt: string, now: number | Date): string => {
   const remain = new Date(closesAt).getTime() - (typeof now === "number" ? now : now.getTime());
@@ -39,3 +47,11 @@ export const NEEDS_ACTION_ROW_STYLE = {
   borderLeftColor: "#F97316",
 } as const;
 export const NEEDS_ACTION_CHIP_STYLE = { background: "#FFEDD5", color: "#9A3412" } as const;
+
+// 마감 지남 — 마감임박(주황)과 구분되는 회색 계열(빨강 금지). 세로선 4px + 연한 회색 바탕, 칩 글자 #374151 on #E5E7EB(대비 약 7.6:1)
+export const NEEDS_ACTION_PASSED_ROW_STYLE = {
+  background: "#F3F4F6",
+  borderLeftWidth: 4,
+  borderLeftColor: "#6B7280",
+} as const;
+export const NEEDS_ACTION_PASSED_CHIP_STYLE = { background: "#E5E7EB", color: "#374151" } as const;

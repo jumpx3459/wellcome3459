@@ -58,7 +58,9 @@ import {
   partnerRequestNeedsAction,
   NEEDS_ACTION_ROW_STYLE,
   isDeadlineSoon,
+  isDeadlinePassed,
   deadlineChipLabel,
+  NEEDS_ACTION_PASSED_ROW_STYLE,
 } from "@/lib/admin/needsAction";
 import { isPassingCheck, NOT_CHECKED_MESSAGE, type BusinessCheck } from "@/lib/businessCheck";
 import { formatConsentDate } from "@/lib/consent";
@@ -585,6 +587,7 @@ function AdminDashboard({
   const [sellerOnly, setSellerOnly] = useState(false);
   const [partnerOnly, setPartnerOnly] = useState(false);
   const [soonOnly, setSoonOnly] = useState(false); // 진행 중인 매물: 마감임박(6h)만
+  const [passedOnly, setPassedOnly] = useState(false); // 진행 중인 매물: 마감 지남만(마감임박만과 동시에 켜지지 않음)
   const [nowMs, setNowMs] = useState(() => Date.now()); // 마감임박 판정·칩 시각 — 1분마다 갱신
   useEffect(() => {
     const t = setInterval(() => setNowMs(Date.now()), 60_000);
@@ -1639,7 +1642,14 @@ function AdminDashboard({
     </>
   );
   const soonDealCount = activeDeals.filter((d) => isDeadlineSoon(d, nowMs)).length;
-  const shownActiveDeals = soonOnly ? activeDeals.filter((d) => isDeadlineSoon(d, nowMs)) : activeDeals;
+  const passedDealCount = activeDeals.filter((d) => isDeadlinePassed(d, nowMs)).length;
+  // 기본 = 서버가 준 최신 등록순(created_at desc). 필터 ON이면 마감 시각 오름차순(마감임박 = 가장 임박한 순, 마감 지남 = 가장 오래 지난 순)
+  const byCloses = (a: ActiveDeal, b: ActiveDeal) => Date.parse(a.closes_at) - Date.parse(b.closes_at);
+  const shownActiveDeals = soonOnly
+    ? activeDeals.filter((d) => isDeadlineSoon(d, nowMs)).sort(byCloses)
+    : passedOnly
+      ? activeDeals.filter((d) => isDeadlinePassed(d, nowMs)).sort(byCloses)
+      : activeDeals;
   const activeDealsBlock = (
     <>
       <AdminListCard
@@ -1650,13 +1660,21 @@ function AdminDashboard({
             ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
             : "px-5 pb-6 flex flex-col gap-3"
         }
-        title={<span {...CARD_TITLE_PROPS}>진행 중인 매물 <span style={{ ...LABEL, fontWeight: 400 }}>({activeDeals.length}건{soonDealCount > 0 ? ` · 마감임박 ${soonDealCount}` : ""})</span></span>}
-        toolbar={soonOnly ? <ActionFilterChip label="마감임박만" on onToggle={() => setSoonOnly(false)} /> : undefined}
-        limit={soonOnly ? null : 5}
+        title={<span {...CARD_TITLE_PROPS}>진행 중인 매물 <span style={{ ...LABEL, fontWeight: 400 }}>({activeDeals.length}건{soonDealCount > 0 ? ` · 마감임박 ${soonDealCount}` : ""}{passedDealCount > 0 ? ` · 마감 지남 ${passedDealCount}` : ""})</span></span>}
+        toolbar={
+          soonOnly ? (
+            <ActionFilterChip label="마감임박만" on onToggle={() => setSoonOnly(false)} />
+          ) : passedOnly ? (
+            <ActionFilterChip label="마감 지남만" on onToggle={() => setPassedOnly(false)} />
+          ) : undefined
+        }
+        limit={soonOnly || passedOnly ? null : 5}
         empty={
           !loading &&
           (soonOnly ? (
             <ActionFilterEmpty text="마감 6시간 이내 매물이 없어요" onShowAll={() => setSoonOnly(false)} />
+          ) : passedOnly ? (
+            <ActionFilterEmpty text="마감 지난 매물이 없어요" onShowAll={() => setPassedOnly(false)} />
           ) : (
             <div className="text-center text-gray500 py-6 text-sm">진행 중인 매물이 없어요.</div>
           ))
@@ -1668,6 +1686,7 @@ function AdminDashboard({
             key={d.id}
             deal={d}
             soonLabel={isDeadlineSoon(d, nowMs) ? deadlineChipLabel(d.closes_at, nowMs) : null}
+            passedLabel={isDeadlinePassed(d, nowMs) ? "마감 지남" : null}
             adminKey={adminKey}
             onChanged={load}
             canDelete={role === "최고관리자"}
@@ -2297,7 +2316,9 @@ function AdminDashboard({
             { label: "미연락 리드", value: interests.filter(leadNeedsAction).length, urgent: true, go: () => jumpToAction("leads", () => setLeadsOpen(true), () => setLeadFilter("uncontacted")) },
             // 2026-10-04 F-4: 24시간 단계 변화 없는 거래 연결 (거래 연결 카드가 불러온 값)
             { label: "멈춘 연결", value: connCounts.stuck, urgent: true, go: () => jumpToSection("connections", () => setConnectionsOpen(true)) },
-            { label: "마감임박(6h)", value: soonDeals, urgent: true, go: () => jumpToAction("active-deals", () => {}, () => setSoonOnly(true)) },
+            { label: "마감임박(6h)", value: soonDeals, urgent: true, go: () => jumpToAction("active-deals", () => {}, () => { setPassedOnly(false); setSoonOnly(true); }) },
+            // 2026-10-24: 마감이 지났는데 아직 진행 중(active)인 매물 — 회색 타일(빨강 아님). 자동으로 닫히지 않아 [마감]으로 정리
+            { label: "마감 지남", value: passedDealCount, urgent: false, gray: true, go: () => jumpToAction("active-deals", () => {}, () => { setSoonOnly(false); setPassedOnly(true); }) },
             { label: "대기 판매신청", value: requests.filter(sellerRequestNeedsAction).length, urgent: false, go: () => jumpToAction("pending-sellers", () => setSellerReqOpen(true), () => setSellerOnly(true)) },
             { label: "재고문의 미연락", value: buyRequests.filter(buyRequestNeedsAction).length, urgent: false, go: () => jumpToAction("buy-requests", () => setBuyReqOpen(true), () => setBuyOnly(true)) },
           ];
@@ -2317,11 +2338,16 @@ function AdminDashboard({
                       type="button"
                       onClick={a.go}
                       className="rounded-2xl text-left"
-                      style={{ padding: "14px 14px 12px", background: a.urgent ? "#FDECEC" : "#FDEEE8", border: `1px solid ${a.urgent ? "#F5B5B5" : "#F5C4A8"}` }}
+                      style={
+                        a.gray
+                          ? { padding: "14px 14px 12px", background: "#F3F4F6", border: "1px solid #D1D5DB" }
+                          : { padding: "14px 14px 12px", background: a.urgent ? "#FDECEC" : "#FDEEE8", border: `1px solid ${a.urgent ? "#F5B5B5" : "#F5C4A8"}` }
+                      }
+                      data-tile={a.label}
                     >
-                      <div style={{ ...BIG_NUM, color: a.urgent ? "#DC2626" : "#C2410C" }}>{a.value}</div>
-                      <div className="font-bold mt-0.5" style={{ fontSize: rem(14), color: a.urgent ? "#B91C1C" : "#C2410C" }}>{a.label}</div>
-                      <div className="mt-2" style={{ ...UI_LINK, color: a.urgent ? "#B91C1C" : "#C2410C" }}>바로 처리 →</div>
+                      <div style={{ ...BIG_NUM, color: a.gray ? "#374151" : a.urgent ? "#DC2626" : "#C2410C" }}>{a.value}</div>
+                      <div className="font-bold mt-0.5" style={{ fontSize: rem(14), color: a.gray ? "#374151" : a.urgent ? "#B91C1C" : "#C2410C" }}>{a.label}</div>
+                      <div className="mt-2" style={{ ...UI_LINK, color: a.gray ? "#374151" : a.urgent ? "#B91C1C" : "#C2410C" }}>바로 처리 →</div>
                     </button>
                   ))}
                 </div>
@@ -2753,8 +2779,10 @@ function ActiveDealCard({
   onGoBizCheck,
   onClosed,
   soonLabel = null,
+  passedLabel = null,
   panel = false,
 }: {
+  passedLabel?: string | null; // 마감 지남이면 칩 문구("마감 지남") — 판정은 needsAction.ts isDeadlinePassed 한 곳, 회색 강조
   soonLabel?: string | null; // 마감임박(6h)이면 칩 문구("마감 3시간") — 판정은 needsAction.ts isDeadlineSoon 한 곳
   /** PC 보기(isDesktop): 수정을 인라인 대신 전체 화면 패널로 연다 — 모바일·📱는 같은 폼을 인라인으로 */
   panel?: boolean;
@@ -2855,13 +2883,13 @@ function ActiveDealCard({
   );
 
   return (
-    <div className="bg-white border border-gray200 rounded-2xl px-4 py-4" style={soonLabel ? NEEDS_ACTION_ROW_STYLE : undefined} data-deadline-soon={soonLabel ? "" : undefined} data-flash={selfFlash ? "1" : undefined}>
+    <div className="bg-white border border-gray200 rounded-2xl px-4 py-4" style={passedLabel ? NEEDS_ACTION_PASSED_ROW_STYLE : soonLabel ? NEEDS_ACTION_ROW_STYLE : undefined} data-deadline-soon={soonLabel ? "" : undefined} data-deadline-passed={passedLabel ? "" : undefined} data-flash={selfFlash ? "1" : undefined}>
       <div className="flex items-center justify-between gap-1.5">
         <div className="flex items-center gap-1.5 text-xs font-bold text-gray500 min-w-0">
           <span>{categoryIcons[deal.categories?.name ?? ""] ?? "🗂️"}</span>
           <span className="truncate">{deal.categories?.name} · {deal.regions?.name}</span>
         </div>
-        {soonLabel && <NeedsActionChip>{soonLabel}</NeedsActionChip>}
+        {passedLabel ? <NeedsActionChip tone="gray">{passedLabel}</NeedsActionChip> : soonLabel && <NeedsActionChip>{soonLabel}</NeedsActionChip>}
         {/* 2026-09-27: "관심 표시한 회원" 섹션이 전역 리스트라 어떤 매물이 뜨거운지
             한눈에 안 보였음 — deals.interest_count(이미 트리거로 실시간 유지되는
             비정규화 카운터, 별도 조회 불필요)를 매물 관리 행에도 바로 노출.
