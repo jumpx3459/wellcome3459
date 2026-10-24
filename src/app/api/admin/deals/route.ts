@@ -12,6 +12,7 @@ import { isStorageType, isValidExpiryDate, storageSummary, priceWarnings, isMiss
 import { isPassingCheck, NOT_CHECKED_MESSAGE, ALREADY_HANDLED_MESSAGE } from "@/lib/businessCheck";
 import { ADMIN_PHOTO_LIMIT, ADMIN_PHOTO_LIMIT_ERROR } from "@/lib/photoLimit";
 import { ntsStatus } from "@/lib/nts";
+import { checkClosesAt } from "@/lib/dealDeadline";
 import { isPriceMode } from "@/lib/priceMode";
 import { writeAudit, phoneTail } from "@/lib/adminAudit";
 import { UUID_RE } from "@/lib/rateLimit";
@@ -128,6 +129,9 @@ export async function POST(req: NextRequest) {
   if (stockType === "near_expiry" && !expiryDate) return bad(EXPIRY_REQUIRED_MESSAGE, "expiryDate");
   const storage_type = isStorageType(storageType) ? storageType : null;
   const expiry_date = isValidExpiryDate(expiryDate) ? expiryDate : null;
+  // 2026-10-24 마감: 지금 이후 · 지금+60일 이하 · 소비기한이 있으면 소비기한 23:59(KST) 이하 — 관리자 폼과 같은 규칙(src/lib/dealDeadline.ts)
+  const closesErr = checkClosesAt(Date.parse(closesAt), Date.now(), expiry_date);
+  if (closesErr) return bad(closesErr, "closesAt");
 
   // 2026-10-04: 직접 등록(requestId 없음)은 실제 판매자 정보 + 통과한 사업자 조회 1건이 필수 — 판매 신청 승인은 신청 정보를 씀
   let directValue: SellerPrivateValue | null = null;

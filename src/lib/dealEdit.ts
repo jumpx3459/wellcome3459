@@ -2,6 +2,7 @@ import { normalizeTitle, checkTitle, checkDescription } from "@/lib/titleGuard";
 import { isValidExpiryDate, isStorageType, priceWarnings, EXPIRY_REQUIRED_MESSAGE } from "@/lib/dealFields";
 import { isLumpSum, isDealPriceUnit } from "@/lib/priceUnit";
 import { isStockType } from "@/lib/stockType";
+import { DEADLINE_MAX_MESSAGE, DEADLINE_MAX_MS, closesAfterExpiryMessage, expiryLimitMs } from "@/lib/dealDeadline";
 import { isPriceMode, type PriceMode } from "@/lib/priceMode";
 
 // 진행 중 매물 수정 (2026-10-03 feat/admin-deal-edit) — 관리자 카드(ActiveDealCard)와 서버(/api/admin/deals/manage PATCH)가 같이 쓰는 검증.
@@ -61,14 +62,8 @@ export const DEAL_EDIT_KEYS = [
 export const MOQ_INT_MESSAGE = "최소 주문량은 1 이상의 정수로 입력해주세요.";
 const isPositive = (v: unknown) => typeof v === "number" && Number.isFinite(v) && v > 0;
 
-/** 소비기한 날 23:59:59(한국 시간)의 ms — 마감은 이 시각을 넘을 수 없음 */
-export function expiryLimitMs(expiryDate: string): number {
-  return Date.parse(`${expiryDate}T23:59:59+09:00`);
-}
-
-export function closesAfterExpiryMessage(expiryDate: string): string {
-  return `마감 일시는 소비기한(${expiryDate.replace(/-/g, ".")}) 23:59 이전이어야 해요.`;
-}
+// 마감 시각 규칙(60일 상한·소비기한 23:59)은 src/lib/dealDeadline.ts 한 곳 — 등록 API·관리자 폼과 같이 씀
+export { expiryLimitMs, closesAfterExpiryMessage };
 
 /** 저장 뒤의 가격 방식 — 보낸 값이 없으면 지금 값(price_mode 칸이 없던 예전 행은 fixed) */
 export function effectivePriceMode(input: Pick<DealEditInput, "priceMode">, current: Pick<DealEditCurrent, "price_mode">): PriceMode {
@@ -145,6 +140,7 @@ export function validateDealEdit(
     const t = typeof input.closesAt === "string" ? Date.parse(input.closesAt) : NaN;
     if (Number.isNaN(t)) return bad("마감 시간이 올바르지 않아요.", "closesAt");
     if (t <= now) return bad("마감 일시는 지금 이후여야 해요.", "closesAt");
+    if (t > now + DEADLINE_MAX_MS) return bad(DEADLINE_MAX_MESSAGE, "closesAt"); // 2026-10-24 마감은 지금 + 60일까지
   }
   // 마감 ≤ 소비기한 23:59 — 마감이나 소비기한을 바꿀 때만 (둘 다 그대로면 예전 매물도 다른 칸 수정은 됨)
   if (input.closesAt !== undefined || input.expiryDate !== undefined) {

@@ -15,6 +15,10 @@ import SellerPrivateFields, { EMPTY_SELLER_PRIVATE, type SellerPrivateDraft } fr
 import DealSellerPrivateEditor from "@/components/admin/DealSellerPrivateEditor";
 import AdminFullscreenPanel from "@/components/admin/AdminFullscreenPanel";
 import { formatMoq, moqUnit } from "@/lib/moq";
+import {
+  DEADLINE_CHOOSE_MESSAGE, DEADLINE_CUSTOM, DEADLINE_DEFAULT, DEADLINE_MAX_MESSAGE, DEADLINE_MAX_MS, DEADLINE_OPTIONS,
+  checkClosesAt, closesAfterExpiryMessage, expiryLimitMs, mapHopeHoursToChoice,
+} from "@/lib/dealDeadline";
 import MemberDetailView from "@/components/admin/MemberDetailView";
 import AdminMediaLightbox, { type LightboxItem } from "@/components/admin/AdminMediaLightbox";
 import { publicSellerName } from "@/lib/sellerDisplay";
@@ -3089,9 +3093,11 @@ function DealForm({
   const [closesAtLocal, setClosesAtLocal] = useState(initial ? toLocalInput(initial.closes_at) : "");
   const [minClosesLocal] = useState(() => toLocalInput(Date.now())); // 달력에서 지난 시각 흐리게(서버도 지금 이후만 허용)
   const [initialPriceUnit] = useState(priceUnit);
-  const [closesInHours, setClosesInHours] = useState(
-    prefill?.closesInHours ? String(prefill.closesInHours) : "24"
-  );
+  // 2026-10-24 마감 기간: 24시간·3일·7일(기본)·14일·30일·날짜 직접 선택(src/lib/dealDeadline.ts). 판매 신청의 희망 기간은 가장 가까운 큰 값으로(3·12시간 → 24시간),
+  // 협의(희망 기간 없음)는 미선택("") + 필수 선택. 직접 등록은 7일이 기본
+  const [closesChoice, setClosesChoice] = useState(() => (requestId ? mapHopeHoursToChoice(prefill?.closesInHours ?? null) : DEADLINE_DEFAULT));
+  const [closesCustom, setClosesCustom] = useState(""); // closesChoice === "custom"일 때의 날짜·시각(datetime-local)
+  const [maxClosesLocal] = useState(() => toLocalInput(Date.now() + DEADLINE_MAX_MS)); // 달력 상한: 지금 + 60일
   const [images, setImages] = useState<string[]>(prefill?.images ?? []);
   const [videoUrl, setVideoUrl] = useState<string | null>(prefill?.videoUrl ?? null);
   // 2026-10-02 PR-A2: 영상 올리는 중엔 등록 막고, 안 올라간 채 등록하면 시트로 확인
@@ -3141,16 +3147,16 @@ function DealForm({
   const [openSeller, setOpenSeller] = useState(false);
   const focusField = (field: DealField | "description") => {
     if (field === "category") setOpenDeal(true); // 거래 조건
-    if (field === "minOrderQty" || field === "expiryDate" || field === "description") setOpenDetail(true); // 제품 상세
+    if (field === "minOrderQty" || field === "expiryDate" || field === "description" || (field === "closesAt" && !edit)) setOpenDetail(true); // 제품 상세
     if (field === "sellerPrivateCompany" || field === "sellerPrivatePhone" || field === "sellerPrivateName" || field === "businessCheckId" || field === "sourcedBy") setOpenSeller(true); // 판매자 정보
     setTimeout(() => {
-      const el = document.getElementById(`deal-${field}`);
+      const el = document.getElementById(field === "closesAt" && !edit ? "deal-closesIn" : `deal-${field}`);
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
       el?.focus({ preventScroll: true });
     }, 30);
   };
   // 묶음 제목 "○개 입력됨" — 기본값(일반 재고·24시간)은 세지 않음
-  const detailCount = [!lumpSum && minOrderQty, !edit && closesInHours !== "24", storageType, expiryDate, packageUnit, spec, origin, description].filter(Boolean).length;
+  const detailCount = [!lumpSum && minOrderQty, !edit && closesChoice !== DEADLINE_DEFAULT, storageType, expiryDate, packageUnit, spec, origin, description].filter(Boolean).length;
   const dealCount = [category, stockType !== "general", pid, manifestItems.length > 0].filter(Boolean).length;
   // 재고 유형 "소비기한 임박"이면 소비기한(제품 상세)이 필수라 제품 상세를 펼쳐 둠
   useEffect(() => {
@@ -3160,7 +3166,7 @@ function DealForm({
   // 2026-10-03 PR-D: 입력 중 여부 — 첫 렌더 값과 비교(사진·영상 업로드 상태 포함)
   const snapshot = JSON.stringify([
     title, stockType, category, region, priceMode, originalPrice, dealPrice, totalQty, quantityUnit, priceUnit, minOrderQty, location,
-    closesInHours, remainingQty, closesAtLocal, images, videoUrl, videoStatus, photoStatus, description, packageUnit, origin, spec, storageType, expiryDate,
+    closesChoice, closesCustom, remainingQty, closesAtLocal, images, videoUrl, videoStatus, photoStatus, description, packageUnit, origin, spec, storageType, expiryDate,
     pid, manifestItems, seller, sellerPrivate,
   ]);
   const [initialSnapshot] = useState(snapshot);
@@ -3197,11 +3203,23 @@ function DealForm({
       const rem = Number(remainingQty);
       if (remainingQty.trim() === "" || !Number.isInteger(rem) || rem < 0) errs.remainingQty = "재고 수량은 0 이상의 정수로 입력해주세요.";
       else if (qty > 0 && rem > qty) errs.remainingQty = `재고 수량은 재고 총수량(${qty})보다 클 수 없어요.`;
-      if (closesAtLocal !== toLocalInput(initial!.closes_at)) {
-        const t = Date.parse(closesAtLocal);
-        if (Number.isNaN(t)) errs.closesAt = "마감 시간이 올바르지 않아요.";
-        else if (t <= Date.now()) errs.closesAt = "마감 일시는 지금 이후여야 해요.";
-        else if (expiryDate && t > Date.parse(`${expiryDate}T23:59:59+09:00`)) errs.closesAt = `마감 일시는 소비기한(${expiryDate.replace(/-/g, ".")}) 23:59 이전이어야 해요.`;
+      // 마감: 지금 이후 · 지금+60일 이하 · 소비기한이 있으면 소비기한 23:59(KST) 이하 — 서버(validateDealEdit)와 같은 규칙(src/lib/dealDeadline.ts)
+      const closesChanged = closesAtLocal !== toLocalInput(initial!.closes_at);
+      const closesMs = Date.parse(closesAtLocal);
+      if (closesChanged) {
+        const e = checkClosesAt(closesMs, Date.now(), expiryDate || null);
+        if (e) errs.closesAt = e;
+      } else if (expiryDate && expiryDate !== (initial!.expiry_date?.slice(0, 10) ?? "") && closesMs > expiryLimitMs(expiryDate)) {
+        errs.expiryDate = closesAfterExpiryMessage(expiryDate); // 소비기한만 앞당겼는데 마감이 그 뒤
+      }
+    } else {
+      // 등록: 고른 기간·직접 고른 날짜 → 마감 시각(지금 + N시간)
+      if (closesChoice === "") errs.closesAt = DEADLINE_CHOOSE_MESSAGE;
+      else if (closesChoice === DEADLINE_CUSTOM && !closesCustom) errs.closesAt = "마감 날짜와 시각을 골라주세요.";
+      else {
+        const ms = closesChoice === DEADLINE_CUSTOM ? Date.parse(closesCustom) : Date.now() + Number(closesChoice) * 3600 * 1000;
+        const e = checkClosesAt(ms, Date.now(), expiryDate || null);
+        if (e) errs.closesAt = e;
       }
     }
     if (!requestId && !edit) {
@@ -3310,7 +3328,7 @@ function DealForm({
       editBody = { id: initial.id, ...c, confirmWarnings: confirmWarnings || undefined };
     }
     setSubmitting(true);
-    const closesAt = new Date(Date.now() + Number(closesInHours) * 3600 * 1000).toISOString();
+    const closesAt = new Date(closesChoice === DEADLINE_CUSTOM ? Date.parse(closesCustom) : Date.now() + Number(closesChoice) * 3600 * 1000).toISOString();
     try {
       const res = await fetch(edit ? "/api/admin/deals/manage" : "/api/admin/deals", {
         method: edit ? "PATCH" : "POST",
@@ -3390,7 +3408,13 @@ function DealForm({
   const addDays = (n: number) => {
     const t = Date.parse(closesAtLocal);
     const base = Math.max(Number.isNaN(t) ? Date.parse(initial?.closes_at ?? "") || 0 : t, nowMs());
-    setClosesAtLocal(toLocalInput(base + n * DAY_MS));
+    const next = base + n * DAY_MS;
+    if (next > nowMs() + DEADLINE_MAX_MS) {
+      // 2026-10-24 마감은 지금 + 60일까지 — 넘으면 막고 안내(값은 그대로)
+      setFieldErrors((prev) => ({ ...prev, closesAt: DEADLINE_MAX_MESSAGE }));
+      return;
+    }
+    setClosesAtLocal(toLocalInput(next));
     clearErr("closesAt");
   };
 
@@ -3783,7 +3807,7 @@ function DealForm({
                     className={`${inputCls("closesAt")} flex-1`}
                     value={closesAtLocal}
                     min={minClosesLocal}
-                    max={expiryDate ? `${expiryDate}T23:59` : undefined}
+                    max={expiryDate && `${expiryDate}T23:59` < maxClosesLocal ? `${expiryDate}T23:59` : maxClosesLocal}
                     onChange={(e) => {
                       setClosesAtLocal(e.target.value);
                       clearErr("closesAt");
@@ -3838,19 +3862,40 @@ function DealForm({
                 </DealFormField>
                 )}
                 {!edit && (
-                <DealFormField label="마감까지 남은 시간" htmlFor="deal-closesIn">
+                <DealFormField label="마감까지 남은 시간" required={!!requestId} error={fieldErrors.closesAt} htmlFor="deal-closesIn">
                   <select
                     id="deal-closesIn"
-                    className={inputCls()}
-                    value={closesInHours}
-                    onChange={(e) => setClosesInHours(e.target.value)}
+                    className={inputCls("closesAt")}
+                    value={closesChoice}
+                    onChange={(e) => {
+                      setClosesChoice(e.target.value);
+                      clearErr("closesAt");
+                    }}
                   >
-                    <option value="3">3시간</option>
-                    <option value="12">12시간</option>
-                    <option value="24">24시간</option>
-                    <option value="72">3일</option>
-                    <option value="168">7일</option>
+                    {closesChoice === "" && <option value="">선택해주세요</option>}
+                    {DEADLINE_OPTIONS.map((o) => (
+                      <option key={o.v} value={o.v}>
+                        {o.l}
+                      </option>
+                    ))}
                   </select>
+                  {closesChoice === DEADLINE_CUSTOM && (
+                    <input
+                      id="deal-closesCustom"
+                      type="datetime-local"
+                      className={`${inputCls("closesAt")} mt-1.5`}
+                      value={closesCustom}
+                      min={minClosesLocal}
+                      max={expiryDate && `${expiryDate}T23:59` < maxClosesLocal ? `${expiryDate}T23:59` : maxClosesLocal}
+                      onChange={(e) => {
+                        setClosesCustom(e.target.value);
+                        clearErr("closesAt");
+                      }}
+                    />
+                  )}
+                  <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }}>
+                    최대 60일까지{expiryDate ? " · 소비기한 23:59 이전" : ""}
+                  </p>
                 </DealFormField>
                 )}
               </div>

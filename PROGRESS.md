@@ -55,6 +55,11 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
+## 최근 작업 (2026-10-24) — 매물 마감 기간 선택지 확대 (브랜치 `feat/deal-deadline-options`)
+
+- 관리자 등록 폼 "마감까지 남은 시간": 24시간 / 3일 / **7일(기본)** / 14일 / 30일 / 날짜 직접 선택(날짜·시각). 3·12시간 제외(의존 없음 — 긴급·마감임박·푸시는 선택값이 아니라 남은 시간 기준). /sell 신청 → 등록 때 희망 기간은 가장 가까운 큰 값으로(3·12 → 24시간), 협의는 미선택 + 필수 선택. /sell 희망 기간 칩은 범위 밖(그대로).
+- 상한: 등록·수정 모두 closes_at ≤ 지금 + 60일(+30일 연장도 넘으면 막고 "마감은 최대 60일까지예요"). 마감 ≤ 소비기한 23:59(KST) — 폼·등록 API·수정 API 같은 규칙(`src/lib/dealDeadline.ts`, 시험 `scripts/deal-deadline-test.mts`). 등록 API는 "지금 이후"도 새로 검사. DB 변경 없음.
+
 ## 최근 작업 (2026-10-23) — 관리자 회원 상세 패널(보기 전용) (브랜치 `feat/admin-member-detail`)
 - **[+ 찾습니다 대신 등록]**(별도 커밋): 사업자 조회 섹션 위 테두리 버튼 — `/buy/new`를 새 탭으로 열기만(target=_blank, rel=noopener). members 권한(최고관리자·관리자)만 표시, 점핑매니저는 안 보임.
 - **#113 병합 기록**(회원 상세 패널 + [+ 찾습니다 대신 등록] 버튼): squash 병합 `77ebfa4`(10/24) · PR CI(run 39911764596) 성공 · Deploy to Vercel(run 40079693882) 성공. 운영 시험 없음 — 대표가 회원 카드 클릭 → 상세 3열·감사 로그 `member_detail_view` 1건 확인 대기.
