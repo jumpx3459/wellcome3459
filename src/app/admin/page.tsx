@@ -15,6 +15,7 @@ import SellerPrivateFields, { EMPTY_SELLER_PRIVATE, type SellerPrivateDraft } fr
 import DealSellerPrivateEditor from "@/components/admin/DealSellerPrivateEditor";
 import AdminFullscreenPanel from "@/components/admin/AdminFullscreenPanel";
 import { formatMoq, moqUnit } from "@/lib/moq";
+import MemberDetailView from "@/components/admin/MemberDetailView";
 import AdminMediaLightbox, { type LightboxItem } from "@/components/admin/AdminMediaLightbox";
 import { publicSellerName } from "@/lib/sellerDisplay";
 import { formatPhoneTyping } from "@/lib/auth";
@@ -594,6 +595,7 @@ function AdminDashboard({
   }, [flash]);
   const [adminsOpen, setAdminsOpen] = useState(false);
   const [memberShowCount, setMemberShowCount] = useState(20);
+  const [detailMemberId, setDetailMemberId] = useState<string | null>(null); // 회원 상세(보기 전용) — PC는 전체 화면 패널, 모바일·📱는 카드 아래 펼침
 
   const viewBusinessLicense = async (memberId: string) => {
     setLicenseLoadingId(memberId);
@@ -1075,7 +1077,13 @@ function AdminDashboard({
         }
         items={filteredMembers.slice(0, memberShowCount)}
         renderItem={(m) => (
-          <div key={m.id} className="bg-white border border-gray200 rounded-2xl px-4 py-3.5">
+          <div
+            key={m.id}
+            className="bg-white border border-gray200 rounded-2xl px-4 py-3.5 cursor-pointer"
+            onClick={() => setDetailMemberId((cur) => (!isDesktop && cur === m.id ? null : m.id))}
+            data-member-card
+          >
+            {/* 2026-10-23: 카드를 누르면 회원 상세(보기 전용). 카드 안 버튼([번호 보기]·등록증·인증·임명)은 stopPropagation으로 상세를 열지 않음 */}
             {/* 2026-09-28: 데스크톱 3열 레이아웃의 좁은 컬럼 폭에서 전화번호+뱃지가
                 줄바꿈 없이 한 줄로 강제돼 카드 자체가 옆으로 넘쳤음(overflow-y만
                 걸려 있으면 overflow-x가 자동으로 auto가 되는 CSS 규칙 때문에
@@ -1084,7 +1092,13 @@ function AdminDashboard({
                 둘째 줄로 내려가게 해서 카드 폭 안에 항상 들어오도록 수정. */}
             <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
               <div className="text-base font-bold text-gray900">
-                {m.phone_masked ? <MemberPhoneReveal memberId={m.id} masked={m.phone} adminKey={adminKey} /> : formatPhone(m.phone)}
+                {m.phone_masked ? (
+                  <span onClick={(e) => e.stopPropagation()}>
+                    <MemberPhoneReveal memberId={m.id} masked={m.phone} adminKey={adminKey} />
+                  </span>
+                ) : (
+                  formatPhone(m.phone)
+                )}
                 {m.member_no != null && (
                   <span className="text-xs font-bold text-gray500 ml-1.5 whitespace-nowrap">{formatMemberNo(m.member_no)}</span>
                 )}
@@ -1122,7 +1136,7 @@ function AdminDashboard({
               <div className="text-sm font-bold text-navy mt-1">{m.company_name}</div>
             )}
             {m.has_business_license && !m.business_verified && (
-              <div className="flex flex-wrap items-center gap-1.5 mt-2">
+              <div className="flex flex-wrap items-center gap-1.5 mt-2" onClick={(e) => e.stopPropagation()}>
                 <span
                   className="text-xs font-bold px-2 py-1 rounded-full flex-shrink-0"
                   style={{ background: "#FFF4E0", color: "#966B00" }}
@@ -1165,13 +1179,29 @@ function AdminDashboard({
               </div>
               {role === "최고관리자" && !adminPhones.has(normalizePhone(m.phone)) && (
                 <button
-                  onClick={() => openAppoint(m)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openAppoint(m);
+                  }}
                   className="text-xs font-bold rounded-lg px-2.5 py-1 border border-gray200 text-navy"
                 >
                   관리자로 임명
                 </button>
               )}
             </div>
+            {/* 모바일·📱: 카드 아래 인라인 펼침(PC는 아래 전체 화면 패널) */}
+            {!isDesktop && detailMemberId === m.id && (
+              <div onClick={(e) => e.stopPropagation()}>
+                <MemberDetailView adminKey={adminKey} memberId={m.id} layout="inline" renderPhone={(id, masked) => <MemberPhoneReveal memberId={id} masked={masked} adminKey={adminKey} />} />
+                <button
+                  type="button"
+                  onClick={() => setDetailMemberId(null)}
+                  className="w-full mt-3 text-sm font-bold text-navy border-2 border-gray200 rounded-lg py-2"
+                >
+                  닫기
+                </button>
+              </div>
+            )}
           </div>
         )}
         after={
@@ -1186,6 +1216,28 @@ function AdminDashboard({
           )
         }
       />
+      {/* 2026-10-23 PC: 회원 상세(보기 전용) 전체 화면 패널 — dirty 없음, 하단 바는 [닫기]만. 제목에는 번호를 넣지 않음(JX 코드만) */}
+      {isDesktop && detailMemberId && (
+        <AdminFullscreenPanel
+          open
+          title={`회원 상세 — ${formatMemberNo(members.find((x) => x.id === detailMemberId)?.member_no)}`}
+          columns={3}
+          onClose={() => setDetailMemberId(null)}
+          footer={({ requestClose }) => (
+            <button
+              type="button"
+              onClick={requestClose}
+              className="font-bold rounded-lg px-8 py-2.5 border-2 border-gray200 text-navy"
+              style={{ fontSize: rem(15) }}
+              data-panel-cancel
+            >
+              닫기
+            </button>
+          )}
+        >
+          <MemberDetailView adminKey={adminKey} memberId={detailMemberId} layout="panel" renderPhone={(id, masked) => <MemberPhoneReveal memberId={id} masked={masked} adminKey={adminKey} />} />
+        </AdminFullscreenPanel>
+      )}
     </>
   );
   const leadsBlock = !perm("leads") ? null : (
@@ -1772,19 +1824,36 @@ function AdminDashboard({
   );
   // 2026-10-04 판매자 신원 확인: "사업자 조회" — 판매자 신청 목록 바로 위(📱 세로 순서·💻 3단 모두)
   const bizCheckBlock = (
-    <BusinessCheckSection
-      adminKey={adminKey}
-      adminRole={adminRole}
-      requests={requests}
-      phoneMatch={bizPhoneMatch}
-      preselect={bizPreselect}
-      className={
-        isDesktop
-          ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
-          : "px-5 pb-6 flex flex-col gap-3"
-      }
-      onChanged={() => loadBizChecks(requests.map((r) => r.id))}
-    />
+    <>
+      {/* 2026-10-23: 사업자 조회 위 [+ 찾습니다 대신 등록] — 회원 화면 /buy/new를 새 탭으로 열기만(다른 동작 없음). members 권한(최고관리자·관리자)만 */}
+      {perm("members") && (
+        <div className={isDesktop ? "mb-3" : "px-5 pb-3"}>
+          <a
+            href="/buy/new"
+            target="_blank"
+            rel="noopener"
+            className={`flex items-center justify-center w-full ${BTN_CLASS}`}
+            style={btnStyle("secondary")}
+            data-buy-proxy-link
+          >
+            + 찾습니다 대신 등록
+          </a>
+        </div>
+      )}
+      <BusinessCheckSection
+        adminKey={adminKey}
+        adminRole={adminRole}
+        requests={requests}
+        phoneMatch={bizPhoneMatch}
+        preselect={bizPreselect}
+        className={
+          isDesktop
+            ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
+            : "px-5 pb-6 flex flex-col gap-3"
+        }
+        onChanged={() => loadBizChecks(requests.map((r) => r.id))}
+      />
+    </>
   );
   const partnerReqBlock = !perm("partnerView") ? null : (
     <>

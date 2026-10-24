@@ -55,8 +55,16 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
+## 최근 작업 (2026-10-23) — 관리자 회원 상세 패널(보기 전용) (브랜치 `feat/admin-member-detail`)
+- **[+ 찾습니다 대신 등록]**(별도 커밋): 사업자 조회 섹션 위 테두리 버튼 — `/buy/new`를 새 탭으로 열기만(target=_blank, rel=noopener). members 권한(최고관리자·관리자)만 표시, 점핑매니저는 안 보임.
+
+- 회원 카드 클릭 → PC 전체 화면 패널(3열: 기본·가입 / 사업자·동의·알림 / 활동), 모바일·📱는 카드 아래 인라인. 카드 안 버튼([번호 보기]·등록증·인증·임명)은 상세를 열지 않음. 패널 열 때마다 API 1회(캐시 없음).
+- 새 API `GET /api/admin/members/[id]`(members 권한 = 최고관리자·관리자, 점핑매니저 403): 회원 1행 + 병렬 조회(카테고리·지역·구독 기기 수·동의 종류별 최신·닉네임·추천인·추천 수·판매 신청+연결 매물·찾는 상품·관심 표시·거래 연결·파트너 신청·인증일 감사 로그). 비회원 행은 번호가 같아도 조회하지 않음(회원 키로만), 응답에 연락처·사업자번호·등록증 경로 없음. 번호는 최고관리자 전체/관리자 가림(+기존 [번호 보기]). 열람 감사 로그 `member_detail_view`(detail 번호 뒤 4자리만).
+- 조립 규칙 `src/lib/adminMemberDetail.ts`, 시험 `scripts/member-detail-test.mts`. DB·SQL 변경 없음, 회원 화면 변경 없음.
+
 ## 최근 작업 (2026-10-23) — 관리자 매물 패널 사진 확대·영상 재생·1열 간격 (브랜치 `feat/admin-media-viewer`)
 
+- **#112 병합 기록**: squash 병합 `cadc05f`(10/23) · PR CI(run 39906534146) 성공 · Deploy to Vercel(run 39907054110) 성공 · 운영 `/admin`·`/deals` 200. 운영 MOQ 단위≠개 3건(kg·박스·세트) 상세 화면 문구 정상("최소 5kg 이상 · 포장 1kg*20/박스" 등). /sell 회귀는 대표 확인 대기.
 - 사진 확대(라이트박스 `src/components/admin/AdminMediaLightbox.tsx`): 썸네일 클릭 → 패널 위(z 70) 오버레이, ←/→·버튼·"3 / 9"·대표 사진 표시, 영상은 사진 다음 항목. Esc는 window 캡처 단계에서 가로채 확대만 닫힘(패널 Esc·dirty 유지), 바깥 클릭·✕·안드로이드 뒤로가기도 확대만. 드래그(5px+)·✕ 삭제는 확대 안 열림. 등록·수정·모바일 인라인 동일(DealForm 한 곳).
 - 영상: 패널에서 `<video controls playsInline preload="metadata">`(최대 150px) + [크게 보기], 재생 실패 시 "이 브라우저에서 재생할 수 없는 형식이에요" + 파일 다운로드 링크. `ImageUploader`·`VideoUploader`는 선택 prop(`onPreview`·`inlinePlayer`)만 추가 — 기본 동작(회원 /sell) 그대로.
 - 1열 간격: 1920×950에서 [조기 마감]까지 스크롤 없음(칸 간격·라벨 여백·마감 연장 한 줄·안내 문구 숨김, 글자 크기 그대로). 운영 영상 현황(읽기): 익명 공개 조회 1건 webm/VP9 5.4MB — faststart 없는 MP4 없음. DB·API 변경 없음.
