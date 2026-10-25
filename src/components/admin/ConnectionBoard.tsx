@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { CARD_TITLE_PROPS } from "@/components/admin/cardTitle";
+import { LIST_CARD_TITLE_PROPS } from "@/components/admin/cardTitle";
 import AdminListCard from "@/components/admin/AdminListCard";
 import { LABEL } from "@/components/admin/DashboardViz";
 import { UI_CARD_TITLE } from "@/lib/uiText";
@@ -120,23 +120,11 @@ export default function ConnectionBoard({
     <AdminListCard
       id="connections"
       className={isDesktop ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3" : "px-5 pt-4 flex flex-col gap-3"}
-      title={
-        <span {...CARD_TITLE_PROPS}>
-          거래 연결{" "}
-          <span style={{ ...LABEL, fontWeight: 400 }}>
-            ({(items ?? []).length}건 진행
-            {stuckCount > 0 && (
-              <>
-                {" · "}
-                <span style={{ color: "#B91C1C", fontWeight: 700 }} data-testid="conn-stuck-count">
-                  {stuckCount}건 멈춤
-                </span>
-              </>
-            )}
-            )
-          </span>
-        </span>
-      }
+      title={<span {...LIST_CARD_TITLE_PROPS}>거래 연결</span>}
+      badges={[
+        { text: `${(items ?? []).length}건 진행`, tone: "gray" },
+        ...(stuckCount > 0 ? [{ text: `${stuckCount}건 멈춤`, tone: "orange" as const, testId: "conn-stuck-count" }] : []),
+      ]}
       open={open}
       onToggle={onToggle}
       empty={

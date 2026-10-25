@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
     .from("deals")
     .select("*, categories(name), regions(name)")
     .eq("status", "active")
-    .order("closes_at", { ascending: true });
+    .order("created_at", { ascending: false }); // 2026-10-24 최신 등록순(마감임박·마감 지남 필터는 화면에서 마감 시각 순으로 다시 정렬)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

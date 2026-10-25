@@ -15,6 +15,10 @@ import SellerPrivateFields, { EMPTY_SELLER_PRIVATE, type SellerPrivateDraft } fr
 import DealSellerPrivateEditor from "@/components/admin/DealSellerPrivateEditor";
 import AdminFullscreenPanel from "@/components/admin/AdminFullscreenPanel";
 import { formatMoq, moqUnit } from "@/lib/moq";
+import {
+  DEADLINE_CHOOSE_MESSAGE, DEADLINE_CUSTOM, DEADLINE_DEFAULT, DEADLINE_MAX_MESSAGE, DEADLINE_MAX_MS, DEADLINE_OPTIONS,
+  checkClosesAt, closesAfterExpiryMessage, expiryLimitMs, mapHopeHoursToChoice,
+} from "@/lib/dealDeadline";
 import MemberDetailView from "@/components/admin/MemberDetailView";
 import AdminMediaLightbox, { type LightboxItem } from "@/components/admin/AdminMediaLightbox";
 import { publicSellerName } from "@/lib/sellerDisplay";
@@ -45,7 +49,7 @@ import AdminListCard from "@/components/admin/AdminListCard";
 import BusinessCheckSection, { BusinessCheckBadge } from "@/components/admin/BusinessCheckSection";
 import ConnectionBoard from "@/components/admin/ConnectionBoard";
 import { can, type AdminPerm } from "@/lib/adminPerms";
-import { CARD_TITLE_PROPS } from "@/components/admin/cardTitle";
+import { CARD_TITLE_PROPS, LIST_CARD_TITLE_PROPS } from "@/components/admin/cardTitle";
 import { NeedsActionChip, ActionFilterChip, ActionFilterEmpty } from "@/components/admin/NeedsAction";
 import {
   leadNeedsAction,
@@ -54,7 +58,9 @@ import {
   partnerRequestNeedsAction,
   NEEDS_ACTION_ROW_STYLE,
   isDeadlineSoon,
+  isDeadlinePassed,
   deadlineChipLabel,
+  NEEDS_ACTION_PASSED_ROW_STYLE,
 } from "@/lib/admin/needsAction";
 import { isPassingCheck, NOT_CHECKED_MESSAGE, type BusinessCheck } from "@/lib/businessCheck";
 import { formatConsentDate } from "@/lib/consent";
@@ -581,6 +587,7 @@ function AdminDashboard({
   const [sellerOnly, setSellerOnly] = useState(false);
   const [partnerOnly, setPartnerOnly] = useState(false);
   const [soonOnly, setSoonOnly] = useState(false); // 진행 중인 매물: 마감임박(6h)만
+  const [passedOnly, setPassedOnly] = useState(false); // 진행 중인 매물: 마감 지남만(마감임박만과 동시에 켜지지 않음)
   const [nowMs, setNowMs] = useState(() => Date.now()); // 마감임박 판정·칩 시각 — 1분마다 갱신
   useEffect(() => {
     const t = setInterval(() => setNowMs(Date.now()), 60_000);
@@ -1025,7 +1032,8 @@ function AdminDashboard({
             ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
             : "px-5 pt-4 flex flex-col gap-3"
         }
-        title={<span {...CARD_TITLE_PROPS}>최근 가입 회원 <span style={{ ...LABEL, fontWeight: 400 }}>({members.length}명)</span></span>}
+        title={<span {...LIST_CARD_TITLE_PROPS}>최근 가입 회원</span>}
+        badges={[{ text: `${members.length}명`, tone: "gray" }]}
         open={membersOpen}
         onToggle={() => setMembersOpen((v) => !v)}
         limit={null}
@@ -1252,10 +1260,9 @@ function AdminDashboard({
             : "px-5 pt-4 flex flex-col gap-3"
         }
         title={
-          <span {...CARD_TITLE_PROPS}>
-            관심 표시한 회원 <span style={{ ...LABEL, fontWeight: 400 }}>({interests.filter(leadNeedsAction).length}건 미연락)</span>
-          </span>
+          <span {...LIST_CARD_TITLE_PROPS}>관심 표시한 회원</span>
         }
+        badges={[{ text: `${interests.filter(leadNeedsAction).length}건 미연락`, tone: interests.filter(leadNeedsAction).length > 0 ? "orange" : "gray" }]}
         open={leadsOpen}
         onToggle={() => setLeadsOpen((v) => !v)}
         toolbar={
@@ -1635,7 +1642,14 @@ function AdminDashboard({
     </>
   );
   const soonDealCount = activeDeals.filter((d) => isDeadlineSoon(d, nowMs)).length;
-  const shownActiveDeals = soonOnly ? activeDeals.filter((d) => isDeadlineSoon(d, nowMs)) : activeDeals;
+  const passedDealCount = activeDeals.filter((d) => isDeadlinePassed(d, nowMs)).length;
+  // 기본 = 서버가 준 최신 등록순(created_at desc). 필터 ON이면 마감 시각 오름차순(마감임박 = 가장 임박한 순, 마감 지남 = 가장 오래 지난 순)
+  const byCloses = (a: ActiveDeal, b: ActiveDeal) => Date.parse(a.closes_at) - Date.parse(b.closes_at);
+  const shownActiveDeals = soonOnly
+    ? activeDeals.filter((d) => isDeadlineSoon(d, nowMs)).sort(byCloses)
+    : passedOnly
+      ? activeDeals.filter((d) => isDeadlinePassed(d, nowMs)).sort(byCloses)
+      : activeDeals;
   const activeDealsBlock = (
     <>
       <AdminListCard
@@ -1646,13 +1660,26 @@ function AdminDashboard({
             ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
             : "px-5 pb-6 flex flex-col gap-3"
         }
-        title={<span {...CARD_TITLE_PROPS}>진행 중인 매물 <span style={{ ...LABEL, fontWeight: 400 }}>({activeDeals.length}건{soonDealCount > 0 ? ` · 마감임박 ${soonDealCount}` : ""})</span></span>}
-        toolbar={soonOnly ? <ActionFilterChip label="마감임박만" on onToggle={() => setSoonOnly(false)} /> : undefined}
-        limit={soonOnly ? null : 5}
+        title={<span {...LIST_CARD_TITLE_PROPS}>진행 중인 매물</span>}
+        badges={[
+          { text: `${activeDeals.length}건`, tone: "gray" },
+          ...(soonDealCount > 0 ? [{ text: `마감임박 ${soonDealCount}`, tone: "orange" as const }] : []),
+          ...(passedDealCount > 0 ? [{ text: `마감 지남 ${passedDealCount}`, tone: "orange" as const }] : []),
+        ]}
+        toolbar={
+          soonOnly ? (
+            <ActionFilterChip label="마감임박만" on onToggle={() => setSoonOnly(false)} />
+          ) : passedOnly ? (
+            <ActionFilterChip label="마감 지남만" on onToggle={() => setPassedOnly(false)} />
+          ) : undefined
+        }
+        limit={soonOnly || passedOnly ? null : 5}
         empty={
           !loading &&
           (soonOnly ? (
             <ActionFilterEmpty text="마감 6시간 이내 매물이 없어요" onShowAll={() => setSoonOnly(false)} />
+          ) : passedOnly ? (
+            <ActionFilterEmpty text="마감 지난 매물이 없어요" onShowAll={() => setPassedOnly(false)} />
           ) : (
             <div className="text-center text-gray500 py-6 text-sm">진행 중인 매물이 없어요.</div>
           ))
@@ -1664,6 +1691,7 @@ function AdminDashboard({
             key={d.id}
             deal={d}
             soonLabel={isDeadlineSoon(d, nowMs) ? deadlineChipLabel(d.closes_at, nowMs) : null}
+            passedLabel={isDeadlinePassed(d, nowMs) ? "마감 지남" : null}
             adminKey={adminKey}
             onChanged={load}
             canDelete={role === "최고관리자"}
@@ -1686,7 +1714,8 @@ function AdminDashboard({
             ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
             : "px-5 pb-8 flex flex-col gap-3"
         }
-        title={<span {...CARD_TITLE_PROPS}>대기 중인 판매자 신청 <span style={{ ...LABEL, fontWeight: 400 }}>({requests.filter(sellerRequestNeedsAction).length}건)</span></span>}
+        title={<span {...LIST_CARD_TITLE_PROPS}>대기 중인 판매자 신청</span>}
+        badges={[{ text: `${requests.filter(sellerRequestNeedsAction).length}건`, tone: requests.filter(sellerRequestNeedsAction).length > 0 ? "orange" : "gray" }]}
         open={sellerReqOpen}
         onToggle={() => setSellerReqOpen((v) => !v)}
         toolbar={
@@ -1868,10 +1897,9 @@ function AdminDashboard({
             : "mt-8 px-5"
         }
         title={
-          <h2 {...CARD_TITLE_PROPS}>
-            🏅 공식 점핑파트너 신청 <span style={{ ...LABEL, fontWeight: 400 }}>({partnerRequests.filter(partnerRequestNeedsAction).length}건 심사중)</span>
-          </h2>
+          <h2 {...LIST_CARD_TITLE_PROPS}>🏅 공식 점핑파트너 신청</h2>
         }
+        badges={[{ text: `${partnerRequests.filter(partnerRequestNeedsAction).length}건 심사중`, tone: partnerRequests.filter(partnerRequestNeedsAction).length > 0 ? "orange" : "gray" }]}
         open={partnerReqOpen}
         onToggle={() => setPartnerReqOpen((v) => !v)}
         toolbar={
@@ -1939,10 +1967,9 @@ function AdminDashboard({
             : "mt-8 px-5"
         }
         title={
-          <h2 {...CARD_TITLE_PROPS}>
-            📊 점핑파트너 실적 <span style={{ ...LABEL, fontWeight: 400 }}>({partnersOverview.length}명)</span>
-          </h2>
+          <h2 {...LIST_CARD_TITLE_PROPS}>📊 점핑파트너 실적</h2>
         }
+        badges={[{ text: `${partnersOverview.length}명`, tone: "gray" }]}
         open={partnersOverviewOpen}
         onToggle={() => setPartnersOverviewOpen((v) => !v)}
         empty={<p className="mt-3 text-sm text-gray500">아직 승인된 파트너가 없어요.</p>}
@@ -1996,10 +2023,9 @@ function AdminDashboard({
             : "px-5 pb-8 flex flex-col gap-3"
         }
         title={
-          <span {...CARD_TITLE_PROPS}>
-            🔍 이런 재고 찾습니다 <span style={{ ...LABEL, fontWeight: 400 }}>({buyRequests.filter(buyRequestNeedsAction).length}건 미연락)</span>
-          </span>
+          <span {...LIST_CARD_TITLE_PROPS}>🔍 이런 재고 찾습니다</span>
         }
+        badges={[{ text: `${buyRequests.filter(buyRequestNeedsAction).length}건 미연락`, tone: buyRequests.filter(buyRequestNeedsAction).length > 0 ? "orange" : "gray" }]}
         open={buyReqOpen}
         onToggle={() => setBuyReqOpen((v) => !v)}
         toolbar={
@@ -2293,7 +2319,9 @@ function AdminDashboard({
             { label: "미연락 리드", value: interests.filter(leadNeedsAction).length, urgent: true, go: () => jumpToAction("leads", () => setLeadsOpen(true), () => setLeadFilter("uncontacted")) },
             // 2026-10-04 F-4: 24시간 단계 변화 없는 거래 연결 (거래 연결 카드가 불러온 값)
             { label: "멈춘 연결", value: connCounts.stuck, urgent: true, go: () => jumpToSection("connections", () => setConnectionsOpen(true)) },
-            { label: "마감임박(6h)", value: soonDeals, urgent: true, go: () => jumpToAction("active-deals", () => {}, () => setSoonOnly(true)) },
+            { label: "마감임박(6h)", value: soonDeals, urgent: true, go: () => jumpToAction("active-deals", () => {}, () => { setPassedOnly(false); setSoonOnly(true); }) },
+            // 2026-10-24: 마감이 지났는데 아직 진행 중(active)인 매물 — 회색 타일(빨강 아님). 자동으로 닫히지 않아 [마감]으로 정리
+            { label: "마감 지남", value: passedDealCount, urgent: false, gray: true, go: () => jumpToAction("active-deals", () => {}, () => { setSoonOnly(false); setPassedOnly(true); }) },
             { label: "대기 판매신청", value: requests.filter(sellerRequestNeedsAction).length, urgent: false, go: () => jumpToAction("pending-sellers", () => setSellerReqOpen(true), () => setSellerOnly(true)) },
             { label: "재고문의 미연락", value: buyRequests.filter(buyRequestNeedsAction).length, urgent: false, go: () => jumpToAction("buy-requests", () => setBuyReqOpen(true), () => setBuyOnly(true)) },
           ];
@@ -2313,11 +2341,16 @@ function AdminDashboard({
                       type="button"
                       onClick={a.go}
                       className="rounded-2xl text-left"
-                      style={{ padding: "14px 14px 12px", background: a.urgent ? "#FDECEC" : "#FDEEE8", border: `1px solid ${a.urgent ? "#F5B5B5" : "#F5C4A8"}` }}
+                      style={
+                        a.gray
+                          ? { padding: "14px 14px 12px", background: "#F3F4F6", border: "1px solid #D1D5DB" }
+                          : { padding: "14px 14px 12px", background: a.urgent ? "#FDECEC" : "#FDEEE8", border: `1px solid ${a.urgent ? "#F5B5B5" : "#F5C4A8"}` }
+                      }
+                      data-tile={a.label}
                     >
-                      <div style={{ ...BIG_NUM, color: a.urgent ? "#DC2626" : "#C2410C" }}>{a.value}</div>
-                      <div className="font-bold mt-0.5" style={{ fontSize: rem(14), color: a.urgent ? "#B91C1C" : "#C2410C" }}>{a.label}</div>
-                      <div className="mt-2" style={{ ...UI_LINK, color: a.urgent ? "#B91C1C" : "#C2410C" }}>바로 처리 →</div>
+                      <div style={{ ...BIG_NUM, color: a.gray ? "#374151" : a.urgent ? "#DC2626" : "#C2410C" }}>{a.value}</div>
+                      <div className="font-bold mt-0.5" style={{ fontSize: rem(14), color: a.gray ? "#374151" : a.urgent ? "#B91C1C" : "#C2410C" }}>{a.label}</div>
+                      <div className="mt-2" style={{ ...UI_LINK, color: a.gray ? "#374151" : a.urgent ? "#B91C1C" : "#C2410C" }}>바로 처리 →</div>
                     </button>
                   ))}
                 </div>
@@ -2749,8 +2782,10 @@ function ActiveDealCard({
   onGoBizCheck,
   onClosed,
   soonLabel = null,
+  passedLabel = null,
   panel = false,
 }: {
+  passedLabel?: string | null; // 마감 지남이면 칩 문구("마감 지남") — 판정은 needsAction.ts isDeadlinePassed 한 곳, 회색 강조
   soonLabel?: string | null; // 마감임박(6h)이면 칩 문구("마감 3시간") — 판정은 needsAction.ts isDeadlineSoon 한 곳
   /** PC 보기(isDesktop): 수정을 인라인 대신 전체 화면 패널로 연다 — 모바일·📱는 같은 폼을 인라인으로 */
   panel?: boolean;
@@ -2851,13 +2886,13 @@ function ActiveDealCard({
   );
 
   return (
-    <div className="bg-white border border-gray200 rounded-2xl px-4 py-4" style={soonLabel ? NEEDS_ACTION_ROW_STYLE : undefined} data-deadline-soon={soonLabel ? "" : undefined} data-flash={selfFlash ? "1" : undefined}>
+    <div className="bg-white border border-gray200 rounded-2xl px-4 py-4" style={passedLabel ? NEEDS_ACTION_PASSED_ROW_STYLE : soonLabel ? NEEDS_ACTION_ROW_STYLE : undefined} data-deadline-soon={soonLabel ? "" : undefined} data-deadline-passed={passedLabel ? "" : undefined} data-flash={selfFlash ? "1" : undefined}>
       <div className="flex items-center justify-between gap-1.5">
         <div className="flex items-center gap-1.5 text-xs font-bold text-gray500 min-w-0">
           <span>{categoryIcons[deal.categories?.name ?? ""] ?? "🗂️"}</span>
           <span className="truncate">{deal.categories?.name} · {deal.regions?.name}</span>
         </div>
-        {soonLabel && <NeedsActionChip>{soonLabel}</NeedsActionChip>}
+        {passedLabel ? <NeedsActionChip tone="gray">{passedLabel}</NeedsActionChip> : soonLabel && <NeedsActionChip>{soonLabel}</NeedsActionChip>}
         {/* 2026-09-27: "관심 표시한 회원" 섹션이 전역 리스트라 어떤 매물이 뜨거운지
             한눈에 안 보였음 — deals.interest_count(이미 트리거로 실시간 유지되는
             비정규화 카운터, 별도 조회 불필요)를 매물 관리 행에도 바로 노출.
@@ -3089,9 +3124,11 @@ function DealForm({
   const [closesAtLocal, setClosesAtLocal] = useState(initial ? toLocalInput(initial.closes_at) : "");
   const [minClosesLocal] = useState(() => toLocalInput(Date.now())); // 달력에서 지난 시각 흐리게(서버도 지금 이후만 허용)
   const [initialPriceUnit] = useState(priceUnit);
-  const [closesInHours, setClosesInHours] = useState(
-    prefill?.closesInHours ? String(prefill.closesInHours) : "24"
-  );
+  // 2026-10-24 마감 기간: 24시간·3일·7일(기본)·14일·30일·날짜 직접 선택(src/lib/dealDeadline.ts). 판매 신청의 희망 기간은 가장 가까운 큰 값으로(3·12시간 → 24시간),
+  // 협의(희망 기간 없음)는 미선택("") + 필수 선택. 직접 등록은 7일이 기본
+  const [closesChoice, setClosesChoice] = useState(() => (requestId ? mapHopeHoursToChoice(prefill?.closesInHours ?? null) : DEADLINE_DEFAULT));
+  const [closesCustom, setClosesCustom] = useState(""); // closesChoice === "custom"일 때의 날짜·시각(datetime-local)
+  const [maxClosesLocal] = useState(() => toLocalInput(Date.now() + DEADLINE_MAX_MS)); // 달력 상한: 지금 + 60일
   const [images, setImages] = useState<string[]>(prefill?.images ?? []);
   const [videoUrl, setVideoUrl] = useState<string | null>(prefill?.videoUrl ?? null);
   // 2026-10-02 PR-A2: 영상 올리는 중엔 등록 막고, 안 올라간 채 등록하면 시트로 확인
@@ -3141,16 +3178,16 @@ function DealForm({
   const [openSeller, setOpenSeller] = useState(false);
   const focusField = (field: DealField | "description") => {
     if (field === "category") setOpenDeal(true); // 거래 조건
-    if (field === "minOrderQty" || field === "expiryDate" || field === "description") setOpenDetail(true); // 제품 상세
+    if (field === "minOrderQty" || field === "expiryDate" || field === "description" || (field === "closesAt" && !edit)) setOpenDetail(true); // 제품 상세
     if (field === "sellerPrivateCompany" || field === "sellerPrivatePhone" || field === "sellerPrivateName" || field === "businessCheckId" || field === "sourcedBy") setOpenSeller(true); // 판매자 정보
     setTimeout(() => {
-      const el = document.getElementById(`deal-${field}`);
+      const el = document.getElementById(field === "closesAt" && !edit ? "deal-closesIn" : `deal-${field}`);
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
       el?.focus({ preventScroll: true });
     }, 30);
   };
   // 묶음 제목 "○개 입력됨" — 기본값(일반 재고·24시간)은 세지 않음
-  const detailCount = [!lumpSum && minOrderQty, !edit && closesInHours !== "24", storageType, expiryDate, packageUnit, spec, origin, description].filter(Boolean).length;
+  const detailCount = [!lumpSum && minOrderQty, !edit && closesChoice !== DEADLINE_DEFAULT, storageType, expiryDate, packageUnit, spec, origin, description].filter(Boolean).length;
   const dealCount = [category, stockType !== "general", pid, manifestItems.length > 0].filter(Boolean).length;
   // 재고 유형 "소비기한 임박"이면 소비기한(제품 상세)이 필수라 제품 상세를 펼쳐 둠
   useEffect(() => {
@@ -3160,7 +3197,7 @@ function DealForm({
   // 2026-10-03 PR-D: 입력 중 여부 — 첫 렌더 값과 비교(사진·영상 업로드 상태 포함)
   const snapshot = JSON.stringify([
     title, stockType, category, region, priceMode, originalPrice, dealPrice, totalQty, quantityUnit, priceUnit, minOrderQty, location,
-    closesInHours, remainingQty, closesAtLocal, images, videoUrl, videoStatus, photoStatus, description, packageUnit, origin, spec, storageType, expiryDate,
+    closesChoice, closesCustom, remainingQty, closesAtLocal, images, videoUrl, videoStatus, photoStatus, description, packageUnit, origin, spec, storageType, expiryDate,
     pid, manifestItems, seller, sellerPrivate,
   ]);
   const [initialSnapshot] = useState(snapshot);
@@ -3197,11 +3234,23 @@ function DealForm({
       const rem = Number(remainingQty);
       if (remainingQty.trim() === "" || !Number.isInteger(rem) || rem < 0) errs.remainingQty = "재고 수량은 0 이상의 정수로 입력해주세요.";
       else if (qty > 0 && rem > qty) errs.remainingQty = `재고 수량은 재고 총수량(${qty})보다 클 수 없어요.`;
-      if (closesAtLocal !== toLocalInput(initial!.closes_at)) {
-        const t = Date.parse(closesAtLocal);
-        if (Number.isNaN(t)) errs.closesAt = "마감 시간이 올바르지 않아요.";
-        else if (t <= Date.now()) errs.closesAt = "마감 일시는 지금 이후여야 해요.";
-        else if (expiryDate && t > Date.parse(`${expiryDate}T23:59:59+09:00`)) errs.closesAt = `마감 일시는 소비기한(${expiryDate.replace(/-/g, ".")}) 23:59 이전이어야 해요.`;
+      // 마감: 지금 이후 · 지금+60일 이하 · 소비기한이 있으면 소비기한 23:59(KST) 이하 — 서버(validateDealEdit)와 같은 규칙(src/lib/dealDeadline.ts)
+      const closesChanged = closesAtLocal !== toLocalInput(initial!.closes_at);
+      const closesMs = Date.parse(closesAtLocal);
+      if (closesChanged) {
+        const e = checkClosesAt(closesMs, Date.now(), expiryDate || null);
+        if (e) errs.closesAt = e;
+      } else if (expiryDate && expiryDate !== (initial!.expiry_date?.slice(0, 10) ?? "") && closesMs > expiryLimitMs(expiryDate)) {
+        errs.expiryDate = closesAfterExpiryMessage(expiryDate); // 소비기한만 앞당겼는데 마감이 그 뒤
+      }
+    } else {
+      // 등록: 고른 기간·직접 고른 날짜 → 마감 시각(지금 + N시간)
+      if (closesChoice === "") errs.closesAt = DEADLINE_CHOOSE_MESSAGE;
+      else if (closesChoice === DEADLINE_CUSTOM && !closesCustom) errs.closesAt = "마감 날짜와 시각을 골라주세요.";
+      else {
+        const ms = closesChoice === DEADLINE_CUSTOM ? Date.parse(closesCustom) : Date.now() + Number(closesChoice) * 3600 * 1000;
+        const e = checkClosesAt(ms, Date.now(), expiryDate || null);
+        if (e) errs.closesAt = e;
       }
     }
     if (!requestId && !edit) {
@@ -3310,7 +3359,7 @@ function DealForm({
       editBody = { id: initial.id, ...c, confirmWarnings: confirmWarnings || undefined };
     }
     setSubmitting(true);
-    const closesAt = new Date(Date.now() + Number(closesInHours) * 3600 * 1000).toISOString();
+    const closesAt = new Date(closesChoice === DEADLINE_CUSTOM ? Date.parse(closesCustom) : Date.now() + Number(closesChoice) * 3600 * 1000).toISOString();
     try {
       const res = await fetch(edit ? "/api/admin/deals/manage" : "/api/admin/deals", {
         method: edit ? "PATCH" : "POST",
@@ -3390,7 +3439,13 @@ function DealForm({
   const addDays = (n: number) => {
     const t = Date.parse(closesAtLocal);
     const base = Math.max(Number.isNaN(t) ? Date.parse(initial?.closes_at ?? "") || 0 : t, nowMs());
-    setClosesAtLocal(toLocalInput(base + n * DAY_MS));
+    const next = base + n * DAY_MS;
+    if (next > nowMs() + DEADLINE_MAX_MS) {
+      // 2026-10-24 마감은 지금 + 60일까지 — 넘으면 막고 안내(값은 그대로)
+      setFieldErrors((prev) => ({ ...prev, closesAt: DEADLINE_MAX_MESSAGE }));
+      return;
+    }
+    setClosesAtLocal(toLocalInput(next));
     clearErr("closesAt");
   };
 
@@ -3783,7 +3838,7 @@ function DealForm({
                     className={`${inputCls("closesAt")} flex-1`}
                     value={closesAtLocal}
                     min={minClosesLocal}
-                    max={expiryDate ? `${expiryDate}T23:59` : undefined}
+                    max={expiryDate && `${expiryDate}T23:59` < maxClosesLocal ? `${expiryDate}T23:59` : maxClosesLocal}
                     onChange={(e) => {
                       setClosesAtLocal(e.target.value);
                       clearErr("closesAt");
@@ -3838,19 +3893,40 @@ function DealForm({
                 </DealFormField>
                 )}
                 {!edit && (
-                <DealFormField label="마감까지 남은 시간" htmlFor="deal-closesIn">
+                <DealFormField label="마감까지 남은 시간" required={!!requestId} error={fieldErrors.closesAt} htmlFor="deal-closesIn">
                   <select
                     id="deal-closesIn"
-                    className={inputCls()}
-                    value={closesInHours}
-                    onChange={(e) => setClosesInHours(e.target.value)}
+                    className={inputCls("closesAt")}
+                    value={closesChoice}
+                    onChange={(e) => {
+                      setClosesChoice(e.target.value);
+                      clearErr("closesAt");
+                    }}
                   >
-                    <option value="3">3시간</option>
-                    <option value="12">12시간</option>
-                    <option value="24">24시간</option>
-                    <option value="72">3일</option>
-                    <option value="168">7일</option>
+                    {closesChoice === "" && <option value="">선택해주세요</option>}
+                    {DEADLINE_OPTIONS.map((o) => (
+                      <option key={o.v} value={o.v}>
+                        {o.l}
+                      </option>
+                    ))}
                   </select>
+                  {closesChoice === DEADLINE_CUSTOM && (
+                    <input
+                      id="deal-closesCustom"
+                      type="datetime-local"
+                      className={`${inputCls("closesAt")} mt-1.5`}
+                      value={closesCustom}
+                      min={minClosesLocal}
+                      max={expiryDate && `${expiryDate}T23:59` < maxClosesLocal ? `${expiryDate}T23:59` : maxClosesLocal}
+                      onChange={(e) => {
+                        setClosesCustom(e.target.value);
+                        clearErr("closesAt");
+                      }}
+                    />
+                  )}
+                  <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }}>
+                    최대 60일까지{expiryDate ? " · 소비기한 23:59 이전" : ""}
+                  </p>
                 </DealFormField>
                 )}
               </div>

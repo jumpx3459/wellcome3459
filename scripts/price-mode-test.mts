@@ -9,7 +9,7 @@ import { pathToFileURL, fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dir = mkdtempSync(join(tmpdir(), "price-mode-"));
 mkdirSync(join(dir, "lib"), { recursive: true });
-for (const f of ["priceMode", "format", "dealPriceAccess", "dealEdit", "titleGuard", "dealFields", "priceUnit", "stockType"]) {
+for (const f of ["priceMode", "format", "dealPriceAccess", "dealEdit", "titleGuard", "dealFields", "priceUnit", "stockType", "dealDeadline"]) {
   let src = readFileSync(join(root, "src/lib", `${f}.ts`), "utf8");
   src = src.replace(/from "@\/lib\/supabase"/g, 'from "./supabase.ts"').replace(/from "@\/lib\/([A-Za-z]+)"/g, 'from "./$1.ts"');
   writeFileSync(join(dir, "lib", `${f}.ts`), src);

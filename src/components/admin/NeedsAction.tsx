@@ -1,15 +1,15 @@
 "use client";
 
 import { rem } from "@/lib/rem";
-import { NEEDS_ACTION_CHIP_STYLE } from "@/lib/admin/needsAction";
+import { NEEDS_ACTION_CHIP_STYLE, NEEDS_ACTION_PASSED_CHIP_STYLE } from "@/lib/admin/needsAction";
 
 // 2026-10-20: 목록 줄의 상태 칩(미연락·대기·심사중) — 색은 needsAction.ts 한 곳
-export function NeedsActionChip({ children }: { children: string }) {
+export function NeedsActionChip({ children, tone = "orange" }: { children: string; tone?: "orange" | "gray" }) {
   return (
     <span
       className="font-bold px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0"
-      style={{ fontSize: rem(14), ...NEEDS_ACTION_CHIP_STYLE }}
-      data-needs-chip=""
+      style={{ fontSize: rem(14), ...(tone === "gray" ? NEEDS_ACTION_PASSED_CHIP_STYLE : NEEDS_ACTION_CHIP_STYLE) }}
+      data-needs-chip={tone === "gray" ? "passed" : ""}
     >
       {children}
     </span>
