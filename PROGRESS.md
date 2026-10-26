@@ -65,6 +65,7 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - **글자 색**(색만, 크기·전역 토큰 그대로): `src/lib/adminText.ts` — 보조 #566070, 흐림 #6B7480(예전 #B0B7C0·#9AA3AD), 주황 글자 #C2410C, 초록 글자 #15703A. Tailwind `text-gray500`·`text-orange`는 `globals.css` `[data-admin-root]` 안에서만 같은 색으로 덮음.
 - 시험: 시험 `pw15`(권한 3역할 최고관리자·관리자·점핑매니저 × 1280×900 + 360) 통과, 기존 관리자 시험 9종 통과, tsc 0, lint 신규 0(기존 3건 그대로). KPI 7행 시험은 fake DB에 KPI 행이 없어 데이터로는 못 봄.
 - 범위 밖(다음): 지표 통합·숫자 기준 변경(PR-C2), 전화번호 가림(매니저 복수 시), 공급 제안 A안.
+- **#116 병합 기록**(관리자 화면 배치 v1): squash 병합 `190bb54`(10/26) · PR CI `build` run 40265822907 성공 · Deploy to Vercel run 40266108279 성공 · 운영 /admin 200(비로그인 응답 코드만)·/deals 200. 운영 확인 대기: KPI 기록 7행·[전체 보기](데이터로는 미확인), PC 3열·바로가기 칩, [⋯] 메뉴 안 [삭제](최고관리자).
 
 ## 회원 화면 가로 넘침 (2026-10-26, 브랜치 `fix/mobile-overflow`)
 - 증상(대표 실기기): /buy·/sell에서 손날로 쓸면 화면이 옆으로 밀리고 오른쪽 잘림. 기본 글자 크기·360/390/412 폭 로컬 Chromium에서는 **재현 안 됨**(scrollWidth = clientWidth, 화면 밖 요소 0).
