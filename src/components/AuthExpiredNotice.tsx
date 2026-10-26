@@ -10,12 +10,18 @@ import { rem } from "@/lib/rem";
 export default function AuthExpiredNotice() {
   const [show, setShow] = useState(false);
   const pathname = usePathname();
+  // 2026-10-26 /sell?buyRef=<id>(공급 제안)는 로그인 후 같은 주소로 돌아와 공급 제안 모드가 이어지게 buyRef를 붙임 — 그 밖의 화면은 예전처럼 경로만
+  const [returnQuery, setReturnQuery] = useState("");
 
   useEffect(() => {
-    const onExpired = () => setShow(true);
+    const onExpired = () => {
+      const ref = pathname === "/sell" ? new URLSearchParams(window.location.search).get("buyRef") : null;
+      setReturnQuery(ref ? `?buyRef=${encodeURIComponent(ref)}` : "");
+      setShow(true);
+    };
     window.addEventListener(AUTH_EXPIRED_EVENT, onExpired);
     return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
-  }, []);
+  }, [pathname]);
 
   if (!show) return null;
   return (
@@ -27,7 +33,7 @@ export default function AuthExpiredNotice() {
       <div className="flex items-center gap-2 rounded-2xl text-white shadow-lg" style={{ background: "#0B2540", padding: "12px 12px 12px 16px" }}>
         <span className="flex-1 min-w-0 font-bold" style={{ fontSize: rem(15) }}>로그인이 만료됐어요. 다시 로그인해주세요</span>
         <Link
-          href={`/login?returnTo=${encodeURIComponent(pathname || "/mypage")}`}
+          href={`/login?returnTo=${encodeURIComponent((pathname || "/mypage") + returnQuery)}`}
           className="flex-shrink-0 font-black rounded-full"
           style={{ background: "#fff", color: "#0B2540", padding: "8px 14px", fontSize: rem(14) }}
           onClick={() => setShow(false)}

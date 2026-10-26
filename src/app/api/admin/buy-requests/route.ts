@@ -29,7 +29,21 @@ export async function GET(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ items: data });
+  // 2026-10-26 공급 제안: 요청마다 "대기 중(pending)인 공급 제안" 건수 — 판매 신청 중 buy_request_id가 이 요청인 것. 조회가 실패해도 목록은 그대로(건수 없음)
+  const rows = (data ?? []) as Array<Record<string, unknown> & { id: string }>;
+  const supplyPending = new Map<string, number>();
+  if (rows.length) {
+    const { data: sup } = await supabaseAdmin
+      .from("seller_requests")
+      .select("buy_request_id")
+      .eq("status", "pending")
+      .in("buy_request_id", rows.map((r) => r.id));
+    for (const s of (sup ?? []) as { buy_request_id: string | null }[]) {
+      if (s.buy_request_id) supplyPending.set(s.buy_request_id, (supplyPending.get(s.buy_request_id) ?? 0) + 1);
+    }
+  }
+
+  return NextResponse.json({ items: rows.map((r) => ({ ...r, supply_pending: supplyPending.get(r.id) ?? 0 })) });
 }
 
 // 연락 완료 체크 / 매칭 성사·불발 처리

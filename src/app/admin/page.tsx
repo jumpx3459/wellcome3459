@@ -110,6 +110,10 @@ type SellerRequest = {
   video_url: string | null;
   categories: { name: string } | null;
   regions: { name: string } | null;
+  // 2026-10-26 찾습니다 공급 제안 — 연결된 요청(없으면 일반 판매 신청). buy_request_visible = 그 요청이 지금 공개 노출 중인가
+  buy_request_id?: string | null;
+  buy_requests?: { product_name: string | null } | null;
+  buy_request_visible?: boolean;
 };
 
 type PartnerRequest = {
@@ -424,6 +428,7 @@ type BuyRequest = {
   created_at: string;
   categories: { name: string } | null;
   regions: { name: string } | null;
+  supply_pending?: number; // 2026-10-26 대기 중인 공급 제안 건수(판매 신청 pending 중 이 요청에 연결된 것)
 };
 
 function SessionCountdown({ expiresAt }: { expiresAt: number }) {
@@ -1760,9 +1765,22 @@ function AdminDashboard({
                 <span className="flex-shrink-0">{categoryIcons[r.categories?.name ?? ""] ?? "🗂️"}</span>
                 <span className="truncate">{[r.categories?.name, r.regions?.name].filter(Boolean).join(" · ") || "카테고리/지역 미입력"}</span>
               </div>
-              {sellerRequestNeedsAction(r) && <NeedsActionChip>대기</NeedsActionChip>}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {r.buy_request_id && (
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: "#E8F1FB", color: "#1A4B78" }} data-supply-badge>
+                    📣 찾습니다 응답
+                  </span>
+                )}
+                {sellerRequestNeedsAction(r) && <NeedsActionChip>대기</NeedsActionChip>}
+              </div>
             </div>
             <div className="text-base font-bold text-gray900 mt-1.5">{r.product_name}</div>
+            {r.buy_request_id && (
+              <div className="text-sm font-bold mt-1 break-words" style={{ color: "#1A4B78" }} data-supply-response>
+                찾습니다 응답: {r.buy_requests?.product_name?.trim() || "찾는 상품"}
+                {r.buy_request_visible === false && <span className="font-medium" style={{ color: ADMIN_TEXT.muted }}> (노출 종료)</span>}
+              </div>
+            )}
             {/* 2026-09-29: 재고 유형 배지 (일반 재고는 없음) */}
             <StockTypeBadge value={r.stock_type} className="mt-1" />
             <div className="text-sm text-gray500 mt-1">
@@ -1860,6 +1878,11 @@ function AdminDashboard({
                 거절
               </button>
             </div>
+            {r.buy_request_id && (
+              <div className="mt-1.5 text-sm text-gray500" data-supply-note>
+                ※ 공개 여부는 판매자 확인 후 등록해 주세요
+              </div>
+            )}
             {openFormFor !== r.id && !isPassingCheck(latestBizCheck(r.id)) && (
               <div className="mt-1.5 text-sm text-gray500">{NOT_CHECKED_MESSAGE}</div>
             )}
@@ -2089,6 +2112,20 @@ function AdminDashboard({
               </div>
             </div>
             <div className="text-base font-bold text-gray900 mt-1.5">{b.product_name}</div>
+            {(b.supply_pending ?? 0) > 0 && (
+              <div className="mt-1.5">
+                {/* 2026-10-26 공급 제안 N건(대기 중만) — 누르면 대기 중인 판매자 신청 카드로 이동(필터는 그대로) */}
+                <button
+                  type="button"
+                  onClick={() => jumpToAction("pending-sellers", () => setSellerReqOpen(true), () => {})}
+                  className="inline-flex items-center gap-1 text-xs font-bold rounded-full px-2.5 py-1"
+                  style={{ background: "#FDEEE8", color: "#C2410C" }}
+                  data-supply-chip
+                >
+                  📦 공급 제안 {b.supply_pending}건 ›
+                </button>
+              </div>
+            )}
             <div className="text-sm text-gray500 mt-1">
               {/* 2026-09-26: 카드 전체는 눌러도 반응이 없어 혼란을 줬음(정보가
                   이미 다 펼쳐져 있어 상세 모달 자체가 없는 구조) — 실제로
