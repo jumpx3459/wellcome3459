@@ -12,7 +12,7 @@ import { rem } from "@/lib/rem";
 
 // "찾습니다" 목록 (2026-10-20) — 점핑매니저가 연락해 확인한 구매 요청만(노출 조건·시험 제외는 src/lib/buyExposure.ts, /api/buy-requests/public).
 // 연락처·희망가·설명·이름은 받지도 않는다. 등록 폼은 /buy/new. 카드 [공급 가능해요] → /sell?buyRef=<id>(공급 제안 모드).
-// 2026-10-26 버튼 위계: 이 화면의 주 행동은 공급 제안이라 카드 [공급 가능해요]가 주황(primary), 상단 [찾는 상품 등록]은 테두리(secondary). 0건 화면의 [찾는 상품 등록]은 원래 테두리.
+// 2026-10-26 버튼 위계: 이 화면의 주 행동은 공급 제안이라 카드 [공급 가능해요]가 주황(primary), 상단 [찾는 상품 등록]은 테두리(secondary). 0건 화면은 주 버튼 1개 원칙 — 상단 버튼을 숨기고 안내 박스 안 [찾는 상품 등록]을 주황(primary)으로.
 export default function BuyListPage() {
   const router = useRouter();
   const [items, setItems] = useState<PublicBuyItem[] | null>(null);
@@ -45,6 +45,8 @@ export default function BuyListPage() {
       찾는 상품 등록
     </Link>
   );
+  // 0건(또는 불러오기 실패) 화면에서는 안내 박스의 버튼이 유일한 주 버튼이라 상단 버튼은 숨긴다
+  const showEmpty = items !== null && items.length === 0;
 
   return (
     <main className="flex flex-col min-h-screen" style={{ background: "#fff" }}>
@@ -71,16 +73,16 @@ export default function BuyListPage() {
         <p className="leading-relaxed" style={{ fontSize: rem(15), color: "#4B5563" }} data-buy-guide>
           보유한 재고가 있으면 [공급 가능해요]를 눌러 등록해 주세요. 점핑매니저가 연결해드려요.
         </p>
-        {registerButton}
+        {!showEmpty && registerButton}
 
         {items === null && <div className="text-center py-10" style={{ fontSize: rem(15), color: "#6B7480" }}>불러오는 중...</div>}
 
-        {items !== null && items.length === 0 && (
+        {showEmpty && (
           <div className="rounded-2xl text-center flex flex-col items-center gap-3" style={{ background: "#F5F6F8", padding: "28px 18px" }} data-buy-empty>
             <p className="font-bold" style={{ fontSize: rem(17), color: "#0B2540" }}>
               {failed ? "목록을 불러오지 못했어요" : "지금 찾는 상품이 없어요"}
             </p>
-            <Link href="/buy/new" className={`${BTN_CLASS} w-full`} style={btnStyle("secondary")}>
+            <Link href="/buy/new" className={`${BTN_CLASS} w-full`} style={btnStyle("primary")} data-buy-register>
               찾는 상품 등록
             </Link>
           </div>
