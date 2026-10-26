@@ -6,6 +6,7 @@ import { rem } from "@/lib/rem";
 import { usePointerFine } from "@/lib/usePointerFine";
 import { requestVideoUploadUrl, uploadToSignedUrlWithProgress } from "@/lib/uploadClient";
 import { MAX_VIDEO_BYTES, VIDEO_EXT, VIDEO_TOO_LARGE_MESSAGE, VIDEO_TYPE_MESSAGE, videoContentType } from "@/lib/videoUpload";
+import { ADMIN_VIDEO_AUTH_MESSAGE } from "@/lib/adminSession";
 
 const MAX_SECONDS = 30;
 
@@ -148,6 +149,8 @@ export default function VideoUploader({
       }
       if (!res.ok || !data.signedUrl || !data.publicUrl) {
         // 400 = 서버가 형식·크기로 거절, 그 밖(401·500 등)은 올리기 실패
+        // 2026-10-26: 관리자 화면 401 = 세션 만료 — 영상은 자동 재시도가 없어 로그인 뒤 [다시 시도] 안내(로그인 창은 uploadClient가 띄움)
+        if (adminKey && res.status === 401) return fail(ADMIN_VIDEO_AUTH_MESSAGE);
         return fail(data.error ?? "영상 업로드에 실패했어요. 잠시 후 다시 시도해주세요.", res.status === 400 ? "rejected" : "failed");
       }
       const result = await uploadToSignedUrlWithProgress(data.signedUrl, file, contentType, setProgress);

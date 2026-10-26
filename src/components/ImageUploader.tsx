@@ -4,13 +4,15 @@ import { useEffect, useImperativeHandle, useRef, useState, type ClipboardEvent a
 import { resizeImageForUpload } from "@/lib/resizeImage";
 import { rem } from "@/lib/rem";
 import { uploadFormData } from "@/lib/uploadClient";
+import { ADMIN_AUTH_RESTORED_EVENT, ADMIN_PHOTO_AUTH_MESSAGE } from "@/lib/adminSession";
 import { SELLER_PHOTO_LIMIT } from "@/lib/photoLimit";
 import { usePointerFine } from "@/lib/usePointerFine";
 import { DEAL_LABEL_STYLE, FORM_HINT_STYLE, UPLOAD_ERROR_CLASS, UPLOAD_ERROR_STYLE } from "@/components/FormField";
 import Toast, { useToast } from "@/components/Toast";
 
 // 2026-10-02 PR-B: file은 이번에 고른 사진만(다시 시도용) — 불러온 기존 사진(initialUrls)엔 없음. error는 실패 이유(목록 아래 안내)
-type Item = { id: number; preview: string; url?: string; uploading: boolean; file?: File; error?: string };
+// authFailed(2026-10-26): 관리자 세션 만료(401)로 실패 — 다시 로그인하면 이 사진만 자동으로 한 번 다시 올림
+type Item = { id: number; preview: string; url?: string; uploading: boolean; file?: File; error?: string; authFailed?: boolean };
 
 // 칸 id — 화면 안에서만 쓰는 번호라 모듈 전체에서 늘어나기만 하면 됨
 let nextItemId = 0;
@@ -42,7 +44,7 @@ function isTextTarget(el: EventTarget | null): boolean {
 }
 
 // retry: 네트워크 오류·5xx(서버 사정)만 한 번 더 시도 — 형식·크기·한도(4xx)와 HEIC는 다시 해도 같으니 바로 실패
-type UploadResult = { url: string } | { error: string; retry: boolean };
+type UploadResult = { url: string } | { error: string; retry: boolean; auth?: boolean };
 
 export default function ImageUploader({
   onChange,
@@ -146,6 +148,8 @@ export default function ImageUploader({
     const data = await res.json().catch(() => ({}));
     const url: string | undefined = data.urls?.[0];
     if (res.ok && url) return { url };
+    // 2026-10-26: 관리자 화면에서 401 = 세션 만료. 서버 문구("로그인이 필요합니다.") 대신 안내하고, 로그인 후 자동 재시도 대상으로 표시(로그인 창은 uploadClient가 띄움)
+    if (adminKey && res.status === 401) return { error: ADMIN_PHOTO_AUTH_MESSAGE, retry: false, auth: true };
     if (heic) return { error: HEIC_MESSAGE, retry: false };
     return { error: (typeof data.error === "string" && data.error) || DEFAULT_FAIL_MESSAGE, retry: res.status >= 500 };
   };
@@ -159,7 +163,7 @@ export default function ImageUploader({
       result = await tryUpload(file);
     }
     if ("url" in result) patchItem(id, { url: result.url, uploading: false, error: undefined });
-    else patchItem(id, { uploading: false, error: result.error });
+    else patchItem(id, { uploading: false, error: result.error, authFailed: "auth" in result && result.auth === true });
   };
 
   const startBatch = (ids: number[]) => {
@@ -207,9 +211,25 @@ export default function ImageUploader({
     const ids = new Set(list.map((it) => it.id));
     startBatch([...ids]);
     itemsRef.current = itemsRef.current.map((it) => (ids.has(it.id) ? { ...it, uploading: true } : it));
-    setItems((prev) => prev.map((it) => (ids.has(it.id) ? { ...it, uploading: true, error: undefined } : it)));
+    setItems((prev) => prev.map((it) => (ids.has(it.id) ? { ...it, uploading: true, error: undefined, authFailed: false } : it)));
     for (const it of list) await uploadOne(it.id, it.file as File);
   };
+
+  // 2026-10-26 관리자 다시 로그인 성공 신호 — 세션 만료로 실패한 사진만 한 번 다시 올림(다시 401이면 로그인 창이 또 뜨고, 자동 재시도는 다음 로그인 때)
+  // 신호를 보내는 부모 effect보다 자식 effect가 먼저 돌아 ref는 새 토큰을 든 최신 retry를 가리킴
+  const authRetryRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    authRetryRef.current = () => {
+      const targets = itemsRef.current.filter((it) => it.authFailed && it.file && !it.uploading && !it.url);
+      if (targets.length) void retry(targets);
+    };
+  });
+  useEffect(() => {
+    if (!adminKey) return;
+    const onRestored = () => authRetryRef.current();
+    window.addEventListener(ADMIN_AUTH_RESTORED_EVENT, onRestored);
+    return () => window.removeEventListener(ADMIN_AUTH_RESTORED_EVENT, onRestored);
+  }, [adminKey]);
 
   useImperativeHandle(ref, () => ({
     retryFailed: () => retry(items),
