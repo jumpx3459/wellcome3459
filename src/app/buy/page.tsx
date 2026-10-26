@@ -11,7 +11,8 @@ import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 import { rem } from "@/lib/rem";
 
 // "찾습니다" 목록 (2026-10-20) — 점핑매니저가 연락해 확인한 구매 요청만(노출 조건·시험 제외는 src/lib/buyExposure.ts, /api/buy-requests/public).
-// 연락처·희망가·설명·이름은 받지도 않는다. 등록 폼은 /buy/new. 카드 [공급 가능해요] → /sell?buyRef=<id>(카테고리·설명 미리 채움).
+// 연락처·희망가·설명·이름은 받지도 않는다. 등록 폼은 /buy/new. 카드 [공급 가능해요] → /sell?buyRef=<id>(공급 제안 모드).
+// 2026-10-26 버튼 위계: 이 화면의 주 행동은 공급 제안이라 카드 [공급 가능해요]가 주황(primary), 상단 [찾는 상품 등록]은 테두리(secondary). 0건 화면의 [찾는 상품 등록]은 원래 테두리.
 export default function BuyListPage() {
   const router = useRouter();
   const [items, setItems] = useState<PublicBuyItem[] | null>(null);
@@ -40,7 +41,7 @@ export default function BuyListPage() {
   }, []);
 
   const registerButton = (
-    <Link href="/buy/new" className={`${BTN_CLASS} w-full`} style={btnStyle("primary")} data-buy-register>
+    <Link href="/buy/new" className={`${BTN_CLASS} w-full`} style={btnStyle("secondary")} data-buy-register>
       찾는 상품 등록
     </Link>
   );
@@ -98,7 +99,7 @@ export default function BuyListPage() {
             <div className="mt-1" style={{ fontSize: rem(15), color: "#4B5563" }}>
               {it.quantity ? `희망 수량 ${it.quantity}` : "수량 협의"} · {it.region ?? "전국"}
             </div>
-            <Link href={`/sell?buyRef=${it.id}`} className={`${BTN_CLASS} w-full mt-3`} style={btnStyle("secondary")} data-supply-link>
+            <Link href={`/sell?buyRef=${it.id}`} className={`${BTN_CLASS} w-full mt-3`} style={btnStyle("primary")} data-supply-link>
               공급 가능해요
             </Link>
           </div>
