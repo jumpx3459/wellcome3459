@@ -25,7 +25,7 @@ export default function RotatingUrgencyTag({
   return (
     <div
       key={tagIndex}
-      className={`text-base font-black py-2 -my-2 whitespace-nowrap animate-onboarding-step ${className}`}
+      className={`text-base font-black py-2 -my-2 max-w-full animate-onboarding-step ${className}`}
       style={style}
     >
       {ROTATING_TAGS[tagIndex]}

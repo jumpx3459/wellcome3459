@@ -682,7 +682,7 @@ ${prev}` : line));
         }}
       >
         <div className="px-5 pt-5 pb-5">
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center flex-wrap gap-x-2 gap-y-1.5 mb-3">
             {/* 2026-09-27: buy(찾습니다)·sell(매물등록)은 진입 경로가 다양해
                 로고=홈 링크만으로는 부족하다는 피드백 — 뒤로가기(←)를 복원. */}
             <button type="button" onClick={goBack} style={{ fontSize: rem(19), color: "rgba(255,255,255,0.8)", background: "none", border: "none", padding: 0, cursor: "pointer" }}>←</button>
