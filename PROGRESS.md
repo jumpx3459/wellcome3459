@@ -55,6 +55,13 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
+## 회원 화면 가로 넘침 (2026-10-26, 브랜치 `fix/mobile-overflow`)
+- 증상(대표 실기기): /buy·/sell에서 손날로 쓸면 화면이 옆으로 밀리고 오른쪽 잘림. 기본 글자 크기·360/390/412 폭 로컬 Chromium에서는 **재현 안 됨**(scrollWidth = clientWidth, 화면 밖 요소 0).
+- 글자를 키워 시험(130%·200%)하자 **/sell 비회원 상단 [카카오톡 채널 …(채팅 상담)] 링크**(`ContactLinks`, `whitespace-nowrap`)가 360px·130%에서 폭 322px로 화면 오른쪽(368px)을 넘음 — AppShell `overflow-x: clip`에 가려 scrollWidth는 같지만 잘려 보임(clip 미지원 브라우저는 밀림). 그 밖에 /sell 머리 줄(← 로고 Powered by JumpX 수수료 0원)이 한 줄로 억지로 몰려 로고가 찌그러지고, `RotatingUrgencyTag`(nowrap)가 매우 큰 글자에서 폭 초과.
+- 수정(클래스만, 기본 글자 크기에서는 화면 픽셀 동일 — 360·412 × /·/deals·/buy·/buy/new·/sell 전체 화면 캡처 바이트 비교 일치): `ContactLinks` `whitespace-nowrap` → `max-w-full`(줄바꿈 허용), `RotatingUrgencyTag` `whitespace-nowrap` → `max-w-full`, `/sell` 머리 줄 `flex-wrap`. body/html overflow-x 덮어쓰기 없음.
+- 새 시험 `scripts/mobile-overflow-test.mjs`: 7개 경로 × 360·390·412 × 글자 기본·130%·200% × 회원·비회원 — scrollWidth = clientWidth + 화면 오른쪽 끝을 넘는 요소 0(clip에 가려진 것 포함). 수정 전 8건 실패(전부 /sell 비회원 ContactLinks) → 수정 후 216건 통과. 200%는 /buy·/buy/new·/sell만 요구(홈·/deals 가격 줄 등은 알려진 한계 — 200%에서 `whitespace-nowrap` 가격이 넘침, 별도 작업).
+- **/buy 증상은 원인 미확정**: 어떤 조합에서도 /buy 요소가 화면을 넘지 않음. 실기기 확인 필요(주소창 javascript: innerWidth/clientWidth/scrollWidth, 글자 크기 설정). 의심: 손날 접촉이 핀치 확대로 인식(뷰포트에 확대 제한 없음) — 대표 결정 전 변경 없음.
+
 ## 최근 작업 (2026-10-24) — 매물 마감 기간 선택지 확대 (브랜치 `feat/deal-deadline-options`)
 - **마감 지난 active 매물 조사(2026-10-24)**: 마감 시각이 지나도 `status`는 **자동으로 안 바뀜**(Vercel cron은 morning-push뿐, pg_cron은 OTP·KPI뿐, 트리거 없음 — [마감]·[조기 마감]으로만 closed). 회원 화면은 전부 `closes_at > now` 조회 조건으로 가림(/deals·홈 띠·알림함·공유·sitemap·푸시 대상 제외, 상세는 `isDealClosed`로 마감 취급). **예외 = 관리자 `GET /api/admin/deals/manage`**(status=active만 걸고 closes_at 조건 없음)라 마감 지난 매물이 "진행 중인 매물"에 남음. 운영(공개 조회) status=active AND closes_at ≤ now 1건([테스트] 제외 후 1건).
 - **마감 지남 타일·필터 + 정렬**(별도 커밋): `needsAction.ts` `isDeadlinePassed`(active AND [테스트] 제외 AND closes_at ≤ now, 마감임박과 배타), 조치 필요 회색 타일 "마감 지남"(0건이면 숨김)·카드 제목 "마감 지남 N"·회색 세로선+칩·"마감 지남만" 필터(가장 오래 지난 순, 마감임박만과 동시에 안 켜짐). 진행 중 기본 정렬 = 최신 등록순(`manage/route.ts` order created_at desc), 필터 ON일 때만 화면에서 closes_at asc. 자동 마감·지난 매물 목록·DB 변경 없음.
