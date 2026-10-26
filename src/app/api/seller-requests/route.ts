@@ -12,6 +12,9 @@ import { isReservedSellerName } from "@/lib/sellerDisplay";
 import { TERMS_VERSION } from "@/lib/consent";
 import { normalizeTitle, checkTitle, checkDescription, DUPLICATE_TITLE_WARNING } from "@/lib/titleGuard";
 import { isStorageType, isValidExpiryDate, storageSummary, priceWarnings, isMissingNewColumn, EXPIRY_REQUIRED_MESSAGE } from "@/lib/dealFields";
+import { isSupplyRef, resolveSupplyPrice, supplyPushBody, SUPPLY_PUSH_TITLE } from "@/lib/supplyProposal";
+import { resolveSupplyLink } from "@/lib/supplyProposalServer";
+import { sendAdminPush } from "@/lib/sendPush";
 
 const LOGIN_REQUIRED = "판매 신청은 회원만 할 수 있어요. 로그인 후 다시 시도해주세요.";
 
@@ -53,7 +56,9 @@ export async function POST(req: NextRequest) {
     accessToken,
     sellerTermsAgreed,
     confirmWarnings, // 2026-10-01: 매물명·설명 경고를 확인하고 "그대로 저장"
+    buyRef, // 2026-10-26: /sell?buyRef=<찾습니다 id> 공급 제안 — 있으면(유효성 무관) 단가 빈칸=협의·정상가 없음·관리자 푸시, 연결은 아래에서
   } = body;
+  const isSupply = isSupplyRef(buyRef);
 
   if (!contactPhone || !productName || !quantity) {
     return NextResponse.json({ error: "필수 항목이 누락되었습니다." }, { status: 400 });
@@ -75,10 +80,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "재고 위치(지역)가 올바르지 않아요.", field: "region" }, { status: 400 });
   }
   // 2026-09-29: 희망 단가 필수 (sell 폼과 같은 규칙) — 2026-10-05: 가격 협의(negotiable)면 희망가·정상가 없이 접수
-  const price = resolveSellerRequestPrice({ priceMode, hopePrice, originalPrice });
+  // 2026-10-26 공급 제안: 제안 단가가 유효한 숫자면 fixed, 아니면 협의(400 없음) · 정상 단가는 받지 않음(src/lib/supplyProposal.ts)
+  const price = isSupply ? resolveSupplyPrice({ hopePrice }) : resolveSellerRequestPrice({ priceMode, hopePrice, originalPrice });
   if (!price.ok) return NextResponse.json({ error: price.error, field: price.field }, { status: 400 });
   const negotiable = price.priceMode === "negotiable";
-  if (!negotiable && originalPrice != null && (typeof originalPrice !== "number" || !Number.isFinite(originalPrice) || originalPrice <= 0)) {
+  if (!isSupply && !negotiable && originalPrice != null && (typeof originalPrice !== "number" || !Number.isFinite(originalPrice) || originalPrice <= 0)) {
     return NextResponse.json({ error: "정상 단가는 0보다 커야 해요.", field: "originalPrice" }, { status: 400 });
   }
   // 단가 단위 — DB check와 같은 값만, 안 보내면 null(= 수량 단위 기준)
@@ -146,7 +152,7 @@ export async function POST(req: NextRequest) {
       .eq("title", cleanName);
     const titleWarnings = [...nameCheck.warnings, ...((dupCount ?? 0) > 0 ? [DUPLICATE_TITLE_WARNING] : [])];
     const descriptionWarnings = checkDescription(description);
-    const priceWarns = negotiable ? [] : priceWarnings(originalPrice, price.hopePrice!); // 할인율 80% 이상
+    const priceWarns = negotiable || isSupply ? [] : priceWarnings(originalPrice, price.hopePrice!); // 할인율 80% 이상(공급 제안은 정상가 없음)
     if (titleWarnings.length || descriptionWarnings.length || priceWarns.length) {
       return NextResponse.json(
         {
@@ -176,6 +182,10 @@ export async function POST(req: NextRequest) {
   if (region && !regRow) {
     return NextResponse.json({ error: "없는 지역이에요. 다시 선택해주세요.", field: "region" }, { status: 400 });
   }
+
+  // 2026-10-26 공급 제안 연결: buyRef가 uuid이고 buy_requests에 행이 있으면 노출 여부와 무관하게 연결, 아니면 null(400 없음).
+  // publicName = 지금 공개 노출 중인 요청의 공개 칸 이름(푸시 본문용 — 원문 이름·판매자 입력은 쓰지 않음)
+  const supply = isSupply ? await resolveSupplyLink(supabaseAdmin, buyRef) : null;
 
   // 판매자 확인 사항 동의 기록 — 신청보다 먼저 남김(기록 없이 신청만 들어가지 않게).
   // source 'sell'은 member_consents.source check에 추가하는 SQL(schema.sql 커밋 E 블록)이 실행돼 있어야 함.
@@ -223,6 +233,8 @@ export async function POST(req: NextRequest) {
     manifest_items: sanitizeManifest(manifestItems),
     images: images ?? [],
     video_url: videoUrl ?? null,
+    // 공급 제안일 때만 키를 넣음 — 일반 신청 행은 예전과 같음
+    ...(supply ? { buy_request_id: supply.buyRequestId } : {}),
   };
   let { error } = await supabaseAdmin.from("seller_requests").insert(row);
   if (error && isMissingNewColumn(error)) {
@@ -236,6 +248,15 @@ export async function POST(req: NextRequest) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // 2026-10-26 공급 제안만 관리자 푸시(일반 판매 신청은 기존대로 없음) — 품목명만, 연락처·상호 금지. 푸시 실패가 접수를 막지 않음
+  if (supply) {
+    try {
+      await sendAdminPush(SUPPLY_PUSH_TITLE, supplyPushBody(supply.publicName), "/admin");
+    } catch (e) {
+      console.error("[seller-requests] 공급 제안 관리자 푸시 실패", e instanceof Error ? e.message : e);
+    }
   }
 
   return NextResponse.json({ ok: true });
