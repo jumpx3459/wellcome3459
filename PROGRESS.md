@@ -55,6 +55,18 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
+## 최근 작업 (2026-10-26) — 찾습니다 공급 제안 A안 (브랜치 `feat/buy-supply-proposal`)
+- **무엇**: /buy 카드 [공급 가능해요] → `/sell?buyRef=<찾습니다 id>` = "공급 제안" 모드. 일반 판매 신청과 같은 API(`/api/seller-requests`, 판매 신청 행 + 판매자 확인 동의 기록)로 들어가되 `seller_requests.buy_request_id`로 요청과 연결. 공개 매물 체크 없음(공개 전환은 관리자 등록).
+- **DB**: `seller_requests.buy_request_id uuid` + FK(`buy_requests`, on delete set null) + 부분 인덱스 `seller_requests_buy_request_id_idx` — **운영 적용 2026-10-26(대표), 확인 uuid / 1 / 1 / 0**. `supabase/migrations/20261026_seller_request_buy_ref.sql`, `schema.sql` 끝 블록.
+- **서버**(`src/app/api/seller-requests/route.ts`, `src/lib/supplyProposal.ts`·`supplyProposalServer.ts`): `body.buyRef`가 **있으면(유효성 무관)** 공급 제안 — 단가가 유효한 숫자(>0)면 fixed, 빈칸·0·음수·비숫자(문자열 포함)는 negotiable, 정상가는 항상 null, 이 경로에서 buyRef 때문에 400은 없음. 연결: buyRef가 uuid 형식이고 `buy_requests`에 행이 있으면 **노출 여부와 무관하게** `buy_request_id` 연결(service_role 조회), 없거나 형식 불량·조회 실패면 null. 관리자 푸시 `sendAdminPush("📦 새 공급 제안", 품목명)`은 공급 제안만 — 품목명은 공개 판정(`isBuyVisible`) 통과 시 공개 칸 name, 그 외·null이면 "찾는 상품"(원문 이름·판매자 입력·연락처·상호 금지). 일반 신청은 행·응답·푸시 변화 없음(`buy_request_id` 키 자체를 안 넣음). 일반 판매 신청 관리자 푸시는 여전히 없음(범위 밖).
+- **/sell 공급 제안 모드**(`src/app/sell/page.tsx`): 상단 요청 요약(공개 API 칸만: 품목·요청 수량 원문·카테고리), 노출 종료·형식 불량·조회 실패는 "찾는 상품"만. 가격 방식 라디오·정상 단가 칸은 그리지 않음(검증·scrollTo 대상에서도 빠짐) → 제안 단가 한 칸(선택, 비우면 협의), 라벨 "공급 가능 수량"·"상품명", 버튼 "공급 제안 보내기", 안내 "점핑매니저가 확인 후 구매자에게 전달해요". 임시 저장은 일반과 분리 — 초안 읽기·쓰기·이어쓰기 창·401 저장·성공 시 삭제 모두 건너뜀(일반 초안 보존). 401이면 `AuthExpiredNotice`가 returnTo에 buyRef 유지(`/sell?buyRef=` 한정), 비회원은 `SellGuestNotice` returnTo 그대로. 품목명이 null(연락처 섞임)이면 상품명 미리 채움 없이 빈칸. 예전 설명 "[찾습니다 참조]" 줄은 더 이상 안 넣음.
+- **관리자**: 찾습니다 카드 `📦 공급 제안 N건 ›`(**대기 중만**, 누르면 #pending-sellers로 이동·필터 그대로) — `GET /api/admin/buy-requests`가 요청별 `supply_pending`. 판매 신청 카드 `📣 찾습니다 응답` 칩 + "찾습니다 응답: 품목명"(연결 요청이 지금 비노출이면 회색 "(노출 종료)", `isBuyVisible` 재사용) + [매물로 등록하기] 아래 "※ 공개 여부는 판매자 확인 후 등록해 주세요"(연결 건만) — `GET /api/admin/seller-requests`가 `buy_requests(product_name)` 임베드·`buy_request_visible`. 점핑매니저는 찾습니다 카드가 없어(권한 buyRequests) 칩은 못 보고 판매 신청 카드 표시만 봄.
+- **/buy**: 버튼 위계 반전(카드 [공급 가능해요] 주황, 상단 [찾는 상품 등록] 테두리, 0건 화면은 그대로 테두리).
+- **집계**: 공급 제안은 일반 판매 신청과 같은 `seller_requests`라 대기 판매 신청 수·KPI 신규 판매 신청·카테고리별 활성 공급자에 **구분 없이 합산**됨(지표 통합 PR-C2에서 다룸).
+- **시험**: 단위 `scripts/seller-supply-test.mts`(25), 서버·화면·관리자는 fake DB + Playwright(저장소 밖 시험 스크립트).
+- 이번 PR에서 제외: 200% 글자 홈·/deals 가격 줄 nowrap(공급 제안 merge 후 별도 작은 PR), 일반 판매 신청 관리자 푸시, 요청별 공급 제안 필터.
+- **#116 병합 기록**은 위 "관리자 화면 1단계" 섹션 끝에 넣었음(커밋 0).
+
 ## 최근 작업 (2026-10-26) — 관리자 화면 1단계: 배치 개선 (브랜치 `feat/admin-layout-v1`)
 - 로직·API·DB 변경 없음, 화면 배치·접기·글자 색만. 지시서 `docs/plans/admin-layout-v1.md`.
 - **순서**: 조치 필요 → 업무 카드 → 지표(핵심 지표·7일 추세·참고 현황·KPI·카테고리). 1280×900에서 첫 업무 카드 y 1667 → 약 480. 조치 0건이면 "✓ 모두 처리됨" 한 줄.
@@ -73,7 +85,7 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 수정(클래스만, 기본 글자 크기에서는 화면 픽셀 동일 — 360·412 × /·/deals·/buy·/buy/new·/sell 전체 화면 캡처 바이트 비교 일치): `ContactLinks` `whitespace-nowrap` → `max-w-full`(줄바꿈 허용), `RotatingUrgencyTag` `whitespace-nowrap` → `max-w-full`, `/sell` 머리 줄 `flex-wrap`. body/html overflow-x 덮어쓰기 없음.
 - 새 시험 `scripts/mobile-overflow-test.mjs`: 7개 경로 × 360·390·412 × 글자 기본·130%·200% × 회원·비회원 — scrollWidth = clientWidth + 화면 오른쪽 끝을 넘는 요소 0(clip에 가려진 것 포함). 수정 전 8건 실패(전부 /sell 비회원 ContactLinks) → 수정 후 216건 통과. 200%는 /buy·/buy/new·/sell만 요구(홈·/deals 가격 줄 등은 알려진 한계 — 200%에서 `whitespace-nowrap` 가격이 넘침, 별도 작업).
 - **/buy 증상은 원인 미확정**: 어떤 조합에서도 /buy 요소가 화면을 넘지 않음. 실기기 확인 필요(주소창 javascript: innerWidth/clientWidth/scrollWidth, 글자 크기 설정). 의심: 손날 접촉이 핀치 확대로 인식(뷰포트에 확대 제한 없음) — 대표 결정 전 변경 없음.
-- **결정(2026-10-26)**: 확대 제한(`touch-action`·`maximumScale`)은 접근성 때문에 하지 않음. /buy 증상은 대표 실기기 확인(축소 복귀 여부·글자 크기 설정) 결과를 받은 뒤 필요 시 추적. 200% 글자의 홈·/deals 가격 줄 nowrap은 다음 회원 화면 PR(공급 제안 A안)에서 처리(백로그).
+- **결정(2026-10-26)**: 확대 제한(`touch-action`·`maximumScale`)은 접근성 때문에 하지 않음. /buy 증상은 대표 실기기 확인(축소 복귀 여부·글자 크기 설정) 결과를 받은 뒤 필요 시 추적. 200% 글자의 홈·/deals 가격 줄 nowrap은 공급 제안 A안 merge 후 별도 작은 PR에서 처리(백로그 — 10/26 대표 조정: 공급 제안 PR에는 넣지 않음).
 - **#115 병합 기록**(회원 화면 가로 넘침): squash 병합 `5c3b882`(10/26) · PR CI `build` run 40260125848 성공 · Deploy to Vercel run 40264988211 성공. 운영 확인 대기: 대표 폴드4 바깥 화면 /deals·MY.
 
 ## 착수 메모 (2026-10-25) — 관리자 화면 1단계(배치 개선) (브랜치 `feat/admin-layout-v1`)
