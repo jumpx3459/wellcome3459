@@ -10,6 +10,7 @@ import VideoUploader, { type VideoUploadStatus, type VideoUploaderHandle } from 
 import VideoNotUploadedSheet, { PHOTO_FAILED_DESCRIPTION, uploadingLabel, videoNotUploaded } from "@/components/VideoNotUploadedSheet";
 import SellerDisplayPicker from "@/components/SellerDisplayPicker";
 import { scrollToBizCheck } from "@/lib/bizCheckJump";
+import AdminJumpBar from "@/components/admin/AdminJumpBar";
 import { NEGOTIABLE_LABEL, NEGOTIABLE_TEXT, isNegotiable, type PriceMode } from "@/lib/priceMode";
 import SellerPrivateFields, { EMPTY_SELLER_PRIVATE, type SellerPrivateDraft } from "@/components/admin/SellerPrivateFields";
 import DealSellerPrivateEditor from "@/components/admin/DealSellerPrivateEditor";
@@ -2320,6 +2321,16 @@ function AdminDashboard({
         </div>
       </div>
 
+      <AdminJumpBar
+        chips={[
+          { label: "조치", targetId: "actions" },
+          { label: "매물", targetId: "active-deals" },
+          ...(perm("buyRequests") ? [{ label: "구매요청", targetId: "buy-requests" }] : []),
+          ...(perm("members") ? [{ label: "회원", targetId: "members" }] : []),
+          ...(perm("dashboard") ? [{ label: "지표", targetId: "metrics" }] : []),
+        ]}
+      />
+
       {/* 2026-09-29: 시각적 위계 — ① 조치 필요 → ② 핵심 지표 → ③ 참고 현황·목록.
           색은 의미 있을 때만(조치 1건↑ 주황/빨강, 0건 회색, 일반 지표 남색 1색). 막대는 CSS만(DashboardViz). */}
       <div className={isDesktop ? `px-8 pt-5 ${ADMIN_MAX_W} mx-auto w-full flex flex-col gap-6` : "px-5 pt-5 flex flex-col gap-6"}>
@@ -2341,7 +2352,7 @@ function AdminDashboard({
           const hot = shown.filter((a) => a.value > 0);
           const cold = shown.filter((a) => a.value === 0);
           return (
-            <section aria-label="조치 필요">
+            <section aria-label="조치 필요" id="actions" style={{ scrollMarginTop: 56 }}>
               <h2 style={UI_SECTION}>⚡ 조치 필요</h2>
               {hot.length > 0 && (
                 <div className={`mt-2.5 grid gap-2 ${isDesktop ? "grid-cols-5" : "grid-cols-2"}`}>
@@ -2393,7 +2404,7 @@ function AdminDashboard({
           ) : (
             <div key={key} className="min-w-0">
               {count === 0 ? (
-                <div className="bg-white border border-gray200 rounded-2xl flex items-center justify-between gap-2" style={{ padding: "12px 16px" }}>
+                <div id={key} className="bg-white border border-gray200 rounded-2xl flex items-center justify-between gap-2" style={{ padding: "12px 16px" }}>
                   <span {...CARD_TITLE_PROPS}>{title}</span>
                   <span style={LABEL}>없어요</span>
                 </div>
