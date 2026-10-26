@@ -2324,7 +2324,7 @@ function AdminDashboard({
       // 2026-10-01 (커밋 J): 맨 아래 목록이 화면 끝에 붙어 "끝난 것처럼" 보이던 문제 — 하단 여백 pb-24 + 안전 영역
       style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom, 0px))" }}
     >
-      <SessionBanner className="sticky top-0 z-40" />
+      <SessionBanner className="sticky top-0 z-40" offsetVar />
       <div
         className="px-5 pt-6 pb-5 text-white flex items-center justify-between"
         style={{ background: "linear-gradient(120deg,#04101C,#1A4B78)" }}
@@ -3545,7 +3545,7 @@ function DealForm({
       });
       if (res.status === 401) {
         // 세션 만료 — 로그인 창은 adminFetch가 띄움. 입력은 그대로, 다시 로그인한 뒤 직접 누르게 함(자동 재제출 없음: 중복 등록·알림 발송 방지)
-        setError(adminSaveAuthMessage(edit ? "저장" : "매물 등록 확정"));
+        setError(adminSaveAuthMessage(edit ? "변경사항 저장" : "매물 등록 확정"));
         return;
       }
       const data = await res.json().catch(() => ({}));

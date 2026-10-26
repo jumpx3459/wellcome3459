@@ -16,7 +16,7 @@ type SessionCtx = { expiresAt: number | null; requestLogin: (reason: LoginReason
 const SessionContext = createContext<SessionCtx>({ expiresAt: null, requestLogin: () => {} });
 export const AdminSessionProvider = SessionContext.Provider;
 
-export function SessionBanner({ className = "" }: { className?: string }) {
+export function SessionBanner({ className = "", offsetVar = false }: { className?: string; /** true면 배너 높이를 --session-banner-h로 알려 줌(sticky 바로가기 칩이 그 아래에 붙게) — 페이지 맨 위 배너만 */ offsetVar?: boolean }) {
   const { expiresAt, requestLogin } = useContext(SessionContext);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -24,13 +24,28 @@ export function SessionBanner({ className = "" }: { className?: string }) {
     const t = setInterval(() => setNow(Date.now()), 15000);
     return () => clearInterval(t);
   }, [expiresAt]);
-  if (!expiresAt) return null;
-  const remaining = expiresAt - now;
-  if (remaining > ADMIN_SESSION_WARN_MS) return null;
+  const remaining = expiresAt ? expiresAt - now : Infinity;
+  const show = remaining <= ADMIN_SESSION_WARN_MS;
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!offsetVar || !show || !ref.current) return;
+    const el = ref.current;
+    const root = document.documentElement;
+    const set = () => root.style.setProperty("--session-banner-h", `${el.offsetHeight}px`);
+    set();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(set) : null;
+    ro?.observe(el);
+    return () => {
+      ro?.disconnect();
+      root.style.removeProperty("--session-banner-h");
+    };
+  }, [offsetVar, show]);
+  if (!expiresAt || !show) return null;
   const ended = remaining <= 0;
   const min = Math.max(1, Math.ceil(remaining / 60000));
   return (
     <div
+      ref={ref}
       role={ended ? "alert" : "status"}
       className={`flex items-center justify-between gap-3 px-4 flex-shrink-0 ${className}`}
       style={{ minHeight: 44, background: ended ? "#FDECEC" : "#FFF4E0", color: ended ? "#9B1C1C" : "#7A3E00", borderBottom: `1px solid ${ended ? "#F3B8B8" : "#F5D9A8"}` }}
