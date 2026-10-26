@@ -48,6 +48,8 @@ import { FieldLabel, FORM_INPUT_FONT_SIZE } from "@/components/FormField";
 import { RatioMetric, DailyBars, FunnelBars, InlineBar, BIG_NUM, LABEL, CARD } from "@/components/admin/DashboardViz";
 import AdminListCard from "@/components/admin/AdminListCard";
 import BusinessCheckSection, { BusinessCheckBadge } from "@/components/admin/BusinessCheckSection";
+import { AdminLoginFields, AdminLoginOverlay, AdminSessionProvider, SessionBanner, type LoginReason } from "@/components/admin/AdminSessionUI";
+import { adminFetch, adminSaveAuthMessage, notifyAdminAuthRestored, ADMIN_AUTH_EXPIRED_EVENT } from "@/lib/adminSession";
 import ConnectionBoard from "@/components/admin/ConnectionBoard";
 import { can, type AdminPerm } from "@/lib/adminPerms";
 import { CARD_TITLE_PROPS, LIST_CARD_TITLE_PROPS, LIST_CARD_BAND_BG, bandBleedClass } from "@/components/admin/cardTitle";
@@ -283,6 +285,28 @@ export default function AdminPage() {
   const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loggingIn, setLoggingIn] = useState(false);
+  // 2026-10-26 세션 만료 대응: key를 비우지 않고(대시보드·등록 패널·입력 유지) 그 위에 로그인 창만 띄움. 성공하면 key만 새 토큰으로 바뀜
+  const [loginReason, setLoginReason] = useState<LoginReason | null>(null);
+  const [restoreTick, setRestoreTick] = useState(0);
+  const keyRef = useRef<string | null>(null);
+  useEffect(() => {
+    keyRef.current = key;
+  }, [key]);
+  useEffect(() => {
+    // 이 토큰으로 보낸 요청이 401 — 이미 새 토큰으로 바뀐 뒤 늦게 도착한 옛 요청의 401은 무시
+    const onExpired = (e: Event) => {
+      const k = (e as CustomEvent<{ key: string | null }>).detail?.key;
+      if (!keyRef.current || k !== keyRef.current) return;
+      setLoginError(null);
+      setLoginReason("expired");
+    };
+    window.addEventListener(ADMIN_AUTH_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(ADMIN_AUTH_EXPIRED_EVENT, onExpired);
+  }, []);
+  useEffect(() => {
+    // 다시 로그인 성공(새 토큰 반영) 뒤 — 실패한 사진 업로드가 이 신호로 한 번 다시 올림. 자식 effect가 먼저 돌아 최신 토큰을 들고 있음
+    if (restoreTick > 0) notifyAdminAuthRestored();
+  }, [restoreTick]);
 
   useEffect(() => {
     const stored = sessionStorage.getItem("jumpingbid_admin_session");
@@ -294,6 +318,7 @@ export default function AdminPage() {
           setAdminName(session.name ?? null);
           setAdminRole(session.role ?? null);
           setSessionExpiresAt(session.ts + ADMIN_SESSION_TTL_MS);
+          if (typeof session.phone === "string") setLoginPhone(session.phone); // 다시 로그인 창 번호 미리 채움(탭 세션에만 저장)
         } else {
           sessionStorage.removeItem("jumpingbid_admin_session");
         }
@@ -318,12 +343,17 @@ export default function AdminPage() {
         return;
       }
       const ts = Date.now();
-      const session = { key: data.token, ts, name: data.admin.name, role: data.admin.role };
+      // 2026-10-26: 번호도 이 탭 세션 객체에만 보관(다시 로그인 창 미리 채움) — 탭을 닫거나 로그아웃하면 같이 지워짐, localStorage 안 씀
+      const session = { key: data.token, ts, name: data.admin.name, role: data.admin.role, phone: loginPhone };
       sessionStorage.setItem("jumpingbid_admin_session", JSON.stringify(session));
+      const relogin = keyRef.current !== null;
       setKey(data.token);
       setAdminName(data.admin.name);
       setAdminRole(data.admin.role);
       setSessionExpiresAt(ts + ADMIN_SESSION_TTL_MS);
+      setInput("");
+      setLoginReason(null);
+      if (relogin) setRestoreTick((t) => t + 1);
     } finally {
       setLoggingIn(false);
     }
@@ -335,6 +365,10 @@ export default function AdminPage() {
     setAdminName(null);
     setAdminRole(null);
     setSessionExpiresAt(null);
+    setLoginReason(null);
+    setLoginPhone("");
+    setInput("");
+    setLoginError(null);
   };
 
   if (!key) {
@@ -349,49 +383,44 @@ export default function AdminPage() {
           </span>
         </div>
         <h1 className="font-display text-xl text-navy mb-4">관리자 로그인</h1>
-        <input
-          type="tel"
-          name="username"
-          autoComplete="username"
-          inputMode="numeric"
-          className="w-full max-w-xs border-2 border-gray200 rounded-xl px-4 text-base outline-none focus:border-orange mb-2"
-          style={{ height: "52px" }}
-          value={loginPhone}
-          onChange={(e) => setLoginPhone(formatPhoneTyping(e.target.value))}
-          placeholder="관리자 휴대폰 번호"
-        />
-        <input
-          type="password"
-          name="password"
-          autoComplete="current-password"
-          className="w-full max-w-xs border-2 border-gray200 rounded-xl px-4 text-base outline-none focus:border-orange"
-          style={{ height: "52px" }}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && login()}
-          placeholder="비밀번호 입력"
-        />
-        {loginError && <p className="text-orange text-sm font-medium mt-2">{loginError}</p>}
-        <button
-          onClick={login}
-          disabled={loggingIn}
-          className="w-full max-w-xs mt-3 text-white font-bold rounded-xl text-base disabled:opacity-60"
-          style={{ background: "#0B2540", padding: "14px 0" }}
-        >
-          {loggingIn ? "확인 중..." : "입장"}
-        </button>
+        <AdminLoginFields phone={loginPhone} onPhone={(v) => setLoginPhone(formatPhoneTyping(v))} password={input} onPassword={setInput} error={loginError} busy={loggingIn} onSubmit={login} />
       </main>
     );
   }
 
   return (
-    <AdminDashboard
-      adminKey={key}
-      adminName={adminName}
-      adminRole={adminRole}
-      sessionExpiresAt={sessionExpiresAt}
-      onLogout={logout}
-    />
+    <AdminSessionProvider
+      value={{
+        expiresAt: sessionExpiresAt,
+        requestLogin: (reason) => {
+          setLoginError(null);
+          setInput("");
+          setLoginReason(reason);
+        },
+      }}
+    >
+      <AdminDashboard
+        adminKey={key}
+        adminName={adminName}
+        adminRole={adminRole}
+        sessionExpiresAt={sessionExpiresAt}
+        onLogout={logout}
+      />
+      {loginReason && (
+        <AdminLoginOverlay
+          reason={loginReason}
+          onClose={() => setLoginReason(null)}
+          phone={loginPhone}
+          onPhone={(v) => setLoginPhone(formatPhoneTyping(v))}
+          password={input}
+          onPassword={setInput}
+          error={loginError}
+          busy={loggingIn}
+          onSubmit={login}
+          autoFocusPassword={loginPhone.trim() !== ""}
+        />
+      )}
+    </AdminSessionProvider>
   );
 }
 
@@ -647,15 +676,17 @@ function AdminDashboard({
   const load = () => {
     setLoading(true);
     // 권한 없는 목록은 부르지 않음(403 소음 없이 빈 목록) — 점핑매니저는 회원·리드·재고 문의·파트너·지표·공지·관리자 목록 없음
+    // 2026-10-26: 401은 adminFetch가 한 곳에서 알려 로그인 창이 뜸(대시보드는 그대로)
     const allowed = (p: AdminPerm, url: string) =>
-      can(role, p) ? fetch(url, { headers: { "x-admin-key": adminKey } }) : Promise.resolve(new Response(JSON.stringify({ items: [] }), { status: 200 }));
-    fetch("/api/admin/me", { headers: { "x-admin-key": adminKey } })
+      can(role, p) ? adminFetch(url, adminKey) : Promise.resolve(new Response(JSON.stringify({ items: [] }), { status: 200 }));
+    adminFetch("/api/admin/me", adminKey)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => d?.id && setMe(d))
       .catch(() => {});
     Promise.all([
-      fetch("/api/admin/seller-requests", { headers: { "x-admin-key": adminKey } }).then((res) => {
-        if (res.status === 401 || res.status === 429) {
+      adminFetch("/api/admin/seller-requests", adminKey).then((res) => {
+        if (res.status === 401) throw new Error("unauthorized"); // 로그인 창은 adminFetch가 이미 띄움 — 예전처럼 화면을 통째로 바꾸지 않음
+        if (res.status === 429) {
           return res.json().then((body) => {
             setAuthError(body?.error ?? "인증에 실패했어요.");
             throw new Error("unauthorized");
@@ -663,7 +694,7 @@ function AdminDashboard({
         }
         return res.json();
       }),
-      fetch("/api/admin/deals/manage", { headers: { "x-admin-key": adminKey } }).then((res) =>
+      adminFetch("/api/admin/deals/manage", adminKey).then((res) =>
         res.json()
       ),
       allowed("leads", "/api/admin/interests").then((res) =>
@@ -2293,6 +2324,7 @@ function AdminDashboard({
       // 2026-10-01 (커밋 J): 맨 아래 목록이 화면 끝에 붙어 "끝난 것처럼" 보이던 문제 — 하단 여백 pb-24 + 안전 영역
       style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom, 0px))" }}
     >
+      <SessionBanner className="sticky top-0 z-40" />
       <div
         className="px-5 pt-6 pb-5 text-white flex items-center justify-between"
         style={{ background: "linear-gradient(120deg,#04101C,#1A4B78)" }}
@@ -3468,9 +3500,9 @@ function DealForm({
     setSubmitting(true);
     const closesAt = new Date(closesChoice === DEADLINE_CUSTOM ? Date.parse(closesCustom) : Date.now() + Number(closesChoice) * 3600 * 1000).toISOString();
     try {
-      const res = await fetch(edit ? "/api/admin/deals/manage" : "/api/admin/deals", {
+      const res = await adminFetch(edit ? "/api/admin/deals/manage" : "/api/admin/deals", adminKey, {
         method: edit ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editBody ?? {
           title: cleanTitle,
           confirmWarnings,
@@ -3511,6 +3543,11 @@ function DealForm({
               }),
         }),
       });
+      if (res.status === 401) {
+        // 세션 만료 — 로그인 창은 adminFetch가 띄움. 입력은 그대로, 다시 로그인한 뒤 직접 누르게 함(자동 재제출 없음: 중복 등록·알림 발송 방지)
+        setError(adminSaveAuthMessage(edit ? "저장" : "매물 등록 확정"));
+        return;
+      }
       const data = await res.json().catch(() => ({}));
       if (res.status === 422 && data.needsConfirm) {
         showWarnings(data.warnings?.title ?? [], data.warnings?.description ?? [], data.warnings?.price ?? []);
@@ -4417,9 +4454,9 @@ function NoticeForm({ adminKey, onDone }: { adminKey: string; onDone: () => void
     }
     setSubmitting(true);
     try {
-      const res = await fetch("/api/admin/notices", {
+      const res = await adminFetch("/api/admin/notices", adminKey, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           category,
           title,

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { rem } from "@/lib/rem";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
+import { SessionBanner } from "@/components/admin/AdminSessionUI";
 
 // 2026-10-23 관리자 PC 전체 화면 수정 패널(PR 1) — 매물 수정·매물 등록을 3단 칸 안에서 인라인으로 펼치던 것을 전체 화면으로 연다.
 // 위 상단 바(제목 + ✕) / 가운데 본문 / 아래 저장 바. 본문은 lg 이상에서 3열(열마다 안쪽 스크롤 가능), 그 아래는 한 줄로 쌓여 본문 전체가 스크롤.
@@ -124,6 +125,9 @@ export default function AdminFullscreenPanel({
           ✕
         </button>
       </div>
+
+      {/* 2026-10-26 세션 만료 대응: 전체 화면 패널이 페이지를 덮어도 "곧 로그아웃돼요 [연장]"이 보이게 같은 줄을 패널 안에도 둠 */}
+      <SessionBanner className="px-8" />
 
       {confirming && (
         <div
