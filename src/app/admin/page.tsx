@@ -581,6 +581,13 @@ function AdminDashboard({
   const [connectionsOpen, setConnectionsOpen] = useState(true);
   const [connCounts, setConnCounts] = useState<{ open: number; closed: number; stuck: number }>({ open: -1, closed: 0, stuck: 0 });
   const [sellerReqOpen, setSellerReqOpen] = useState(true);
+  // 2026-10-26: 처음 불러온 직후 한 번만 — 처리할 판매자 신청이 1건 이상이면 펼치고, 0건이면 접어 둠(이후 직접 펼치고 접은 상태는 그대로)
+  const sellerAutoRef = useRef(false);
+  useEffect(() => {
+    if (loading || sellerAutoRef.current) return;
+    sellerAutoRef.current = true;
+    setSellerReqOpen(requests.some(sellerRequestNeedsAction));
+  }, [loading, requests]);
   const [partnerReqOpen, setPartnerReqOpen] = useState(true);
   const [buyReqOpen, setBuyReqOpen] = useState(true);
   // 2026-10-20: 카드별 "미연락만/대기만/심사중만" 필터(관심·연결은 leadFilter === "uncontacted"가 같은 역할) + 이동 직후 테두리 강조
@@ -2837,6 +2844,7 @@ function ActiveDealCard({
   const [expanded, setExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false); // 2026-10-26: [삭제]는 [마감] 옆 같은 크기 버튼 대신 ⋯ 메뉴 안(최고관리자만)
   const [formDirty, setFormDirty] = useState(false); // DealForm(edit)이 알려 줌 — 패널 닫기 확인 바용. 판매자 비공개 편집기는 폼 밖이라 제외
   const [panelFooterEl, setPanelFooterEl] = useState<HTMLDivElement | null>(null);
   const { message: toastMessage, showToast } = useToast();
@@ -2989,14 +2997,29 @@ function ActiveDealCard({
           {canDelete && (
             <button
               type="button"
-              onClick={deleteDeal}
-              disabled={deleting}
-              className="flex-1 text-xs font-bold rounded-lg py-2 disabled:opacity-50"
-              style={{ color: "#C2410C", border: "2px solid #FDEEE8", background: "#FFF9F7" }}
+              onClick={() => setMoreOpen((v) => !v)}
+              aria-label="더보기"
+              aria-expanded={moreOpen}
+              className="flex-shrink-0 font-bold text-navy border-2 border-gray200 rounded-lg flex items-center justify-center"
+              style={{ minWidth: 44, minHeight: 44, fontSize: rem(18) }}
+              data-deal-more
             >
-              {deleting ? "삭제 중..." : "🗑️ 삭제"}
+              ⋯
             </button>
           )}
+        </div>
+      )}
+      {canDelete && moreOpen && (!expanded || panel) && (
+        <div className="mt-2 flex justify-end" data-deal-more-menu>
+          <button
+            type="button"
+            onClick={() => { setMoreOpen(false); void deleteDeal(); }}
+            disabled={deleting}
+            className="font-bold rounded-lg px-4 disabled:opacity-50"
+            style={{ color: "#C2410C", border: "2px solid #FDEEE8", background: "#FFF9F7", minHeight: 44, fontSize: rem(14) }}
+          >
+            {deleting ? "삭제 중..." : "🗑️ 삭제"}
+          </button>
         </div>
       )}
 
