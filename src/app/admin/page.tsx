@@ -602,6 +602,8 @@ function AdminDashboard({
     return () => clearTimeout(t);
   }, [flash]);
   const [adminsOpen, setAdminsOpen] = useState(false);
+  const [kpiAll, setKpiAll] = useState(false); // 2026-10-26: KPI 기록 표 최근 7행 + [전체 보기]
+  const [categoryOpen, setCategoryOpen] = useState(false); // 카테고리별 현황 표 기본 접힘
   const [bizOpen, setBizOpen] = useState(false); // 2026-10-26: 사업자 조회는 기본 접힘(바로가기·판매 신청 [사업자 조회]는 펼치고 이동)
   const [memberShowCount, setMemberShowCount] = useState(20);
   const [detailMemberId, setDetailMemberId] = useState<string | null>(null); // 회원 상세(보기 전용) — PC는 전체 화면 패널, 모바일·📱는 카드 아래 펼침
@@ -2546,7 +2548,7 @@ function AdminDashboard({
                   </tr>
                 </thead>
                 <tbody>
-                  {kpiDaily.map((r) => (
+                  {(kpiAll ? kpiDaily : kpiDaily.slice(0, 7)).map((r) => (
                     <tr key={r.snapshot_date} style={{ borderTop: "1px solid #F1F3F5" }}>
                       <td className="px-3 py-2 whitespace-nowrap">{r.snapshot_date.slice(5).replace("-", ".")}</td>
                       <td className="px-3 py-2">{r.members_total.toLocaleString()}</td>
@@ -2563,10 +2565,19 @@ function AdminDashboard({
               </table>
             </div>
           )}
+          {kpiDaily && kpiDaily.length > 7 && (
+            <button type="button" onClick={() => setKpiAll((v) => !v)} className={`w-full mt-2 ${BTN_CLASS}`} style={{ ...btnStyle("secondary"), minHeight: 44, fontSize: rem(15) }} data-kpi-toggle>
+              {kpiAll ? "최근 7일만 보기 ▲" : `전체 보기 (${kpiDaily.length}일) ▼`}
+            </button>
+          )}
         </section>
 
         <section aria-label="카테고리별 현황">
-          <h2 style={UI_SECTION}>카테고리별 현황 <span style={{ ...LABEL, fontWeight: 400 }}>(액티브 = 최근 7일)</span></h2>
+          <button type="button" onClick={() => setCategoryOpen((v) => !v)} className="w-full flex items-center justify-between gap-2 text-left" style={{ minHeight: 44 }} data-category-toggle>
+            <h2 style={UI_SECTION}>카테고리별 현황 <span style={{ ...LABEL, fontWeight: 400 }}>(액티브 = 최근 7일)</span></h2>
+            <span className="font-bold flex-shrink-0" style={{ fontSize: rem(14), color: "#3730A3" }}>{categoryOpen ? "접기 ▲" : "펼치기 ▼"}</span>
+          </button>
+          {categoryOpen && (
           <div className="mt-2.5 bg-white border border-gray200 rounded-2xl overflow-hidden" style={{ fontVariantNumeric: "tabular-nums" }}>
             <div className="grid grid-cols-[1.3fr_1.3fr_0.7fr_0.6fr_0.6fr] gap-2 px-3 py-2 bg-gray100" style={{ fontSize: rem(14) }}>
               <span className="font-bold text-gray500">카테고리</span>
@@ -2595,6 +2606,7 @@ function AdminDashboard({
               <div className="text-center" style={{ ...LABEL, padding: "16px 12px" }}>아직 데이터가 없어요.</div>
             )}
           </div>
+          )}
         </section>
         </div>
       )}
