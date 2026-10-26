@@ -49,6 +49,8 @@ const AUTH_LOST_MESSAGE = "로그인이 풀렸어요. 입력한 내용은 그대
 const NETWORK_LOST_MESSAGE = "인터넷 연결이 끊겼어요. 연결 후";
 // 작성 중 내용 자동 저장 간격 — 화면이 가려질 때(visibilitychange·pagehide)는 기다리지 않고 바로 저장
 const DRAFT_SAVE_DEBOUNCE_MS = 500;
+// 2026-10-26 공급 제안 모드 상단 요약 — 공개 API(/api/buy-requests/public)에서 받은 공개 칸만. gone = 노출 종료·없는 요청·형식 불량·조회 실패
+type SupplyInfo = { state: "loading" } | { state: "gone" } | { state: "ok"; name: string | null; category: string | null; quantity: string | null };
 
 export default function SellPage() {
   const router = useRouter();
@@ -81,6 +83,17 @@ export default function SellPage() {
   // 2026-09-30: 판매 신청은 회원 전용 — 비회원(로그인 안 함·가입 전)이면 폼 대신 SellGuestNotice.
   // checking 동안은 폼을 그리지 않음(작성 중 내용 복원 전 업로더가 먼저 마운트되지 않게).
   const [authState, setAuthState] = useState<"checking" | "member" | "guest">("checking");
+
+  // 2026-10-26 찾습니다 공급 제안 모드 — /sell?buyRef=<id>: buyRef가 있으면(유효성 무관, 서버 /api/seller-requests와 같은 기준) 공급 제안.
+  // 일반 판매 신청과 임시 저장을 나눔(초안 읽기·쓰기·이어쓰기 창·401 저장 없음). 주소는 마운트 뒤에 읽음(첫 화면은 일반과 같음)
+  // — 아래 회원 확인 effect보다 먼저 선언해야 같은 렌더에서 반영됨.
+  const [supplyRef, setSupplyRef] = useState<string | null>(null);
+  const supply = supplyRef !== null;
+  const [supplyInfo, setSupplyInfo] = useState<SupplyInfo | null>(null);
+  useEffect(() => {
+    const r = new URLSearchParams(window.location.search).get("buyRef");
+    if (r) setSupplyRef(r);
+  }, []);
 
   // 로그인한 회원이면 인증된 번호를 미리 채워준다 — 대리 등록(다른 담당자
   // 연락처로 접수) 케이스가 있어서 수정은 그대로 허용한다.
@@ -171,8 +184,9 @@ export default function SellPage() {
   };
   // 2026-10-05: 가격 방식 — "fixed"(가격 입력, 기본) | "negotiable"(가격은 협의할게요 — 희망가·정상가를 보내지 않음, 서버는 null로 저장)
   const [priceMode, setPriceMode] = useState<PriceMode>("fixed");
-  const negotiable = priceMode === "negotiable";
   const [hopePrice, setHopePrice] = useState("");
+  // 공급 제안은 가격 방식 라디오 없이 제안 단가 한 칸 — 유효한 숫자(0 초과)면 가격 입력(fixed), 빈칸·0·숫자 아님은 협의(서버 resolveSupplyPrice와 같은 기준)
+  const negotiable = supply ? !((parsePriceInput(hopePrice) ?? 0) > 0) : priceMode === "negotiable";
   const [originalPrice, setOriginalPrice] = useState(""); // 2026-10-01 PR-B [3]: 정상 단가(선택) — 할인율 표시
   const [priceWarns, setPriceWarns] = useState<string[]>([]); // [12] 할인율 80% 이상
   // 2026-09-29: 단가 단위 — 수량 단위와 따로. 기본은 수량 단위를 따라가고, 직접 고르면 그 값 유지
@@ -289,6 +303,11 @@ export default function SellPage() {
   // 회원 확인 뒤 한 번: 옛 탭 단위 초안 옮기기 → 읽기. 401로 로그인을 다녀온 길이면 묻지 않고 바로 복원(예전 동작)
   useEffect(() => {
     if (!draftOwner) return;
+    // 공급 제안: 초안을 읽지도 쓰지도 않음(draftSaving 꺼 둠) — 일반 매물 초안을 덮거나 이어쓰기 창이 뜨지 않게
+    if (supply) {
+      setDraftReady(true);
+      return;
+    }
     migrateLegacySellDraft(draftOwner);
     const stored = readSellDraft(draftOwner);
     const resume = takeSellDraftResume();
@@ -301,31 +320,39 @@ export default function SellPage() {
       setDraftSaving(true); // 초안 없음·연락처만 있는 초안(묻지 않고 무시 — 곧 지금 폼 값으로 덮어씀)
     }
     setDraftReady(true);
-  }, [draftOwner]);
-  // 2026-10-20: /buy "찾습니다" 카드의 [공급 가능해요] → /sell?buyRef=<id> — 노출 중인 글이면 카테고리 선택 + 추가 설명 맨 앞에 참조 문구를 미리 채움
-  // (사용자가 고칠 수 있음). 이어쓰기 창이 떠 있으면 고른 뒤에 채움. uuid 형식·노출 조건(공개 API) 통과 건만 — 조회 실패·만료 건은 조용히 무시(일반 /sell).
-  const buyRefDone = useRef(false);
+  }, [draftOwner, supply]);
+  // 2026-10-26: /buy "찾습니다" 카드의 [공급 가능해요] → /sell?buyRef=<id> = 공급 제안 모드. 상단 요약은 공개 API(노출 중인 글의 공개 칸만 — 구매자 정보 없음)로만 채움.
+  // 노출 종료·없는 요청·형식 불량·조회 실패는 "찾는 상품"만 보임(제안은 그대로 보낼 수 있음). 상품명은 공개 이름이 있을 때만 미리 채움(연락처·링크가 섞여 null이면 빈칸).
+  // 예전의 "[찾습니다 참조] … 공급 가능" 설명 줄은 요약 카드가 대신해서 더 이상 넣지 않음.
+  const supplyFetched = useRef(false);
   useEffect(() => {
-    if (buyRefDone.current || authState !== "member" || !draftReady || draftOffer) return;
-    buyRefDone.current = true;
-    const ref = new URLSearchParams(window.location.search).get("buyRef");
-    if (!ref || !UUID_RE.test(ref)) return;
-    fetch(`/api/buy-requests/public?id=${ref}`, { cache: "no-store" })
+    if (supplyFetched.current || !supplyRef || authState !== "member") return;
+    supplyFetched.current = true;
+    setSupplyInfo({ state: "loading" });
+    if (!UUID_RE.test(supplyRef)) {
+      setSupplyInfo({ state: "gone" });
+      return;
+    }
+    fetch(`/api/buy-requests/public?id=${supplyRef}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         const it = d?.items?.[0];
-        if (!it || it.id !== ref) return;
-        if (typeof it.category === "string" && categoryIcons[it.category]) {
-          setCategory((prev) => prev || it.category);
+        if (!it || typeof it.id !== "string" || it.id.toLowerCase() !== supplyRef.toLowerCase()) {
+          setSupplyInfo({ state: "gone" });
+          return;
+        }
+        const name = typeof it.name === "string" && it.name ? it.name : null;
+        const cat = typeof it.category === "string" && categoryIcons[it.category] ? it.category : null;
+        setSupplyInfo({ state: "ok", name, category: cat, quantity: typeof it.quantity === "string" && it.quantity ? it.quantity : null });
+        if (name) setProductName((prev) => prev || name);
+        if (cat) {
+          setCategory((prev) => prev || cat);
           setCategoryTouched(true);
           setCategoryEditing(false);
         }
-        const line = `[찾습니다 참조] ${typeof it.name === "string" && it.name ? it.name : "찾는 상품"} 공급 가능`;
-        setDescription((prev) => (prev.includes("[찾습니다 참조]") ? prev : prev ? `${line}
-${prev}` : line));
       })
-      .catch(() => {});
-  }, [authState, draftReady, draftOffer]);
+      .catch(() => setSupplyInfo({ state: "gone" }));
+  }, [authState, supplyRef]);
   const resumeDraft = () => {
     if (draftOffer) applyDraft(draftOffer.data);
     setDraftOffer(null);
@@ -420,9 +447,9 @@ ${prev}` : line));
     setQuantityError(null);
     // 2026-10-02: 첫 누락 칸으로 스크롤·포커스·빨간 테두리 (문구만 뜨던 것 개선)
     if (!productName || !parsePriceInput(quantity) || !contactPhone) {
-      setError("매물명 · 재고 총수량 · 연락처는 꼭 입력해주세요.");
+      setError(supply ? "상품명 · 공급 가능 수량 · 연락처는 꼭 입력해주세요." : "매물명 · 재고 총수량 · 연락처는 꼭 입력해주세요.");
       if (!productName) {
-        setTitleError("매물 상품명을 입력해주세요.");
+        setTitleError(supply ? "상품명을 입력해주세요." : "매물 상품명을 입력해주세요.");
         scrollTo("sell-productName");
       } else if (!parsePriceInput(quantity)) {
         setQuantityError("재고 총수량을 입력해주세요.");
@@ -450,7 +477,7 @@ ${prev}` : line));
       return;
     }
     // 2026-10-04: 재고 위치(지역)는 선택 — 알림 매칭 기준이 아님(카테고리만). 비워 두면 점핑매니저가 확인
-    const orig = negotiable ? null : parsePriceInput(originalPrice);
+    const orig = negotiable || supply ? null : parsePriceInput(originalPrice); // 공급 제안은 정상 단가 칸이 없음(서버도 받지 않음)
     // 2026-10-01 PR-B: 소비기한 임박 재고는 소비기한 필수 (서버도 같은 규칙) — ③이 접혀 있으면 펼침
     if (stockType === "near_expiry" && !expiryDate) {
       setExpiryError(EXPIRY_REQUIRED_MESSAGE);
@@ -512,7 +539,7 @@ ${prev}` : line));
           quantityUnit,
           minOrderQty: !lumpSum && minOrderQty ? Number(minOrderQty) : null, // 일괄 판매면 최소주문 없음
           priceUnit: negotiable ? null : priceUnit,
-          priceMode,
+          priceMode: supply ? (negotiable ? "negotiable" : "fixed") : priceMode,
           hopePrice: negotiable ? null : parsePriceInput(hopePrice) ?? null,
           originalPrice: negotiable ? null : orig ?? null,
           hopeDurationHours: hopeDurationHours ? Number(hopeDurationHours) : null,
@@ -528,12 +555,14 @@ ${prev}` : line));
           videoUrl: skipVideo ? null : videoUrl,
           sellerTermsAgreed,
           confirmWarnings,
+          ...(supply ? { buyRef: supplyRef } : {}), // 공급 제안일 때만 — 서버가 연결·협의 강제·관리자 푸시
         },
       });
       if (res.status === 401) {
         // 세션이 끊김 — 폼은 그대로 두고 AuthExpiredNotice [로그인]으로 안내. 작성 중 내용은 지금 바로 저장하고
         // "로그인 다녀오는 길" 표시를 남겨, 로그인 후 /sell로 돌아오면 묻지 않고 그대로 이어짐(sellDraft.ts)
-        if (draftOwner) {
+        // 공급 제안은 초안을 저장하지 않음 — 로그인 후 같은 주소(returnTo에 buyRef 유지, AuthExpiredNotice)로 공급 제안 모드로만 돌아옴
+        if (draftOwner && !supply) {
           pendingDraftRef.current = null;
           writeSellDraft(draftOwner, currentDraft());
           markSellDraftResume();
@@ -599,7 +628,7 @@ ${prev}` : line));
       }
       pendingDraftRef.current = null; // 화면 전환(done) 때 남은 값을 다시 쓰지 않게
       setDone(true);
-      if (draftOwner) clearSellDraft(draftOwner);
+      if (draftOwner && !supply) clearSellDraft(draftOwner); // 공급 제안은 초안을 안 쓰므로 일반 매물 초안을 지우지 않음
     } catch (e) {
       setError(isAuthNetworkError(e) ? NETWORK_LOST_MESSAGE : "신청 처리 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");
     } finally {
@@ -633,17 +662,27 @@ ${prev}` : line));
               모든 하단탭 화면 헤더에 작은 로고를 공통으로 배치. */}
           <img src="/images/logo.png" alt="덤핑점핑" className="w-6 h-6 rounded-md flex-shrink-0 object-contain" />
           <span className="font-display text-2xl whitespace-nowrap" style={{ color: "#0B2540" }}>
-            재고 판매 등록
+            {supply ? "공급 제안" : "재고 판매 등록"}
           </span>
         </div>
         <div className="flex flex-col items-center text-center px-6" style={{ paddingTop: 36 }}>
           <CheckCircle className="w-12 h-12 mb-4 text-verified" />
-          <h1 className="font-display text-2xl text-navy mb-2">신청이 접수됐어요</h1>
+          <h1 className="font-display text-2xl text-navy mb-2">{supply ? "공급 제안이 접수됐어요" : "신청이 접수됐어요"}</h1>
           <p className="text-gray500 text-base leading-relaxed mb-6">
             {/* 2026-09-29: "24시간 이내에" → 매물 상세 배지("빠르게 연락드려요")와 같은 톤 */}
-            점핑매니저가 검토 후{" "}
-            <br className="hidden sm:inline" />
-            입력하신 번호로 빠르게 연락드려요.
+            {supply ? (
+              <>
+                점핑매니저가 확인 후 구매자에게 전달해요.
+                <br />
+                입력하신 번호로 연락드릴 수 있어요.
+              </>
+            ) : (
+              <>
+                점핑매니저가 검토 후{" "}
+                <br className="hidden sm:inline" />
+                입력하신 번호로 빠르게 연락드려요.
+              </>
+            )}
           </p>
           <div className="bg-gray100 rounded-2xl px-6 py-5 flex flex-col items-center gap-3">
             <img
@@ -651,7 +690,7 @@ ${prev}` : line));
               alt="점핑매니저"
               className="w-32 h-32 rounded-xl object-contain bg-white"
             />
-            <p className="text-sm font-bold text-navy">점핑매니저가 바로 연락드립니다.</p>
+            <p className="text-sm font-bold text-navy">{supply ? "점핑매니저가 확인하고 있어요" : "점핑매니저가 바로 연락드립니다."}</p>
           </div>
 
           <TabLink
@@ -703,11 +742,11 @@ ${prev}` : line));
           </div>
           <div className="flex items-center justify-between flex-wrap gap-y-1.5">
             <div className="text-xs font-bold tracking-widest whitespace-nowrap" style={{ color: "#FFD166" }}>
-              재고 판매 등록
+              {supply ? "공급 제안" : "재고 판매 등록"}
             </div>
-            <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />
+            {!supply && <RotatingUrgencyTag style={{ color: "var(--color-brandOrangeAccent)" }} />}
           </div>
-          <h1 className="font-display text-2xl mt-1.5 text-white">지금 등록하고 빠르게 파세요</h1>
+          <h1 className="font-display text-2xl mt-1.5 text-white">{supply ? "찾는 상품, 있으면 알려주세요" : "지금 등록하고 빠르게 파세요"}</h1>
         </div>
 
       </div>
@@ -726,6 +765,9 @@ ${prev}` : line));
       {/* 왼쪽 */}
       <div className="contents lg:@container lg:flex lg:flex-col lg:gap-5 lg:min-w-0">
         {/* 2026-09-29: 헤더 안 캐릭터 소개(76px/13px) 대신 buy와 같은 "완전 무료" 카드 (판매자용 문구) */}
+        {supply ? (
+          <SupplyRequestCard info={supplyInfo} />
+        ) : (
         <div className="order-1 flex items-center gap-3 rounded-2xl" style={{ background: "#fff", border: "1.5px solid #E4E7EB", padding: "15px 16px" }}>
           <img src="/images/manager.png" alt="점핑매니저" className="flex-shrink-0 rounded-xl bg-white" style={{ width: 72, height: 72, objectFit: "contain" }} />
           <span className="flex-1 min-w-0">
@@ -735,6 +777,7 @@ ${prev}` : line));
             </span>
           </span>
         </div>
+        )}
 
         <p className="order-1" style={DEAL_HINT_STYLE}>
           <span style={{ color: "#E25100", fontWeight: 800 }}>*</span> 필수 항목
@@ -745,7 +788,7 @@ ${prev}` : line));
           <FormSectionTitle>필수 정보</FormSectionTitle>
           <div className="flex flex-col gap-4">
             <div className="min-w-0">
-              <FieldLabel compact need="required" htmlFor="sell-productName">매물 상품명</FieldLabel>
+              <FieldLabel compact need="required" htmlFor="sell-productName">{supply ? "상품명" : "매물 상품명"}</FieldLabel>
               <input
                 id="sell-productName"
                 className="w-full rounded-xl outline-none bg-white"
@@ -759,11 +802,13 @@ ${prev}` : line));
                 onBlur={() => logUnmatchedProductName("sell", productName)}
                 placeholder={stockType === "closure" ? "예: 사무집기 일괄 (책상·의자·캐비닛)" : "예: 국내산 갈치 20kg 박스"}
               />
+              {supply && !titleError && <p className="mt-1" style={DEAL_HINT_STYLE}>{productName ? "제안할 상품에 맞게 고쳐 주세요" : "제안할 상품명을 적어 주세요"}</p>}
               {titleError && <p className="font-medium mt-1.5" style={{ fontSize: rem(14), color: BLOCK_COLOR }}>{titleError}</p>}
               <ConfirmWarnings warnings={titleWarnings} onConfirm={() => submit(true)} busy={submitting} />
             </div>
 
             {/* 2026-10-05 가격 방식 — 기본 "가격 입력", 선택 "가격은 협의할게요"(희망가·정상가 칸을 숨기고 null로 접수) */}
+            {!supply && (
             <div className="min-w-0">
               <div className="font-bold mb-1" style={{ fontSize: rem(15), color: "#374151" }}>가격</div>
               <div className="flex gap-2" role="radiogroup" aria-label="가격 방식">
@@ -789,9 +834,50 @@ ${prev}` : line));
                 ))}
               </div>
             </div>
+            )}
+
+            {/* 2026-10-26 공급 제안: 가격 방식 라디오·정상 단가 칸은 그리지 않음(검증·스크롤 대상에서도 빠짐) — 제안 단가 한 칸(선택), 비우면 협의 */}
+            {supply && (
+            <div className="min-w-0">
+              <FieldLabel compact need="optional" htmlFor="sell-hopePrice">제안 단가</FieldLabel>
+              <div className="flex items-stretch rounded-xl overflow-hidden bg-white" style={{ border: "1.5px solid #E4E7EB" }}>
+                <input
+                  id="sell-hopePrice"
+                  type="text"
+                  inputMode="numeric"
+                  className="flex-1 min-w-0 outline-none"
+                  style={{ border: "none", padding: "13px 0 13px 12px", fontSize: DEAL_INPUT_FONT_SIZE }}
+                  value={formatPriceInput(hopePrice)}
+                  onChange={(e) => setHopePrice(e.target.value)}
+                  placeholder="비우면 가격 협의"
+                />
+                <span className="flex-shrink-0 flex items-center font-bold" style={{ padding: "0 4px 0 6px", fontSize: DEAL_INPUT_FONT_SIZE, color: "#0B2540" }}>원 /</span>
+                <select
+                  id="sell-priceUnit"
+                  aria-label="제안 단가 단위"
+                  className="flex-shrink-0 outline-none"
+                  style={{ border: "none", borderLeft: "1px solid #E4E7EB", padding: "0 6px", fontSize: DEAL_INPUT_FONT_SIZE, fontWeight: 700, color: "#0B2540", background: "#FAFBFC" }}
+                  value={priceUnit}
+                  onChange={(e) => {
+                    if (!isDealPriceUnit(e.target.value)) return;
+                    setPriceUnit(e.target.value);
+                    setPriceUnitTouched(true);
+                    if (e.target.value === LUMP_SUM) setMinOrderQty("");
+                  }}
+                >
+                  {DEAL_PRICE_UNITS.map((u) => (
+                    <option key={u} value={u}>
+                      {u === LUMP_SUM ? "일괄(전체)" : u}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="mt-1" style={DEAL_HINT_STYLE}>비우면 가격은 협의로 전달돼요 · 가격은 점핑매니저가 구매자와 협의해요</p>
+            </div>
+            )}
 
             {/* 가격 한 줄: [판매 단가 | 원 / 단위] · 정상 단가(같은 단위, 할인율은 라벨 옆 배지) — 단위 = price_unit(기본 수량 단위, 일괄이면 최소주문 숨김) */}
-            {!negotiable && (
+            {!supply && !negotiable && (
             <div className={FORM_ROW2}>
               <div className="min-w-0">
                 <FieldLabel compact need="required" htmlFor="sell-hopePrice">판매 단가</FieldLabel>
@@ -867,7 +953,7 @@ ${prev}` : line));
             {/* 재고 총수량+단위 · 재고 위치(지역, 선택 — 알림 매칭과 무관) · 연락처 — 2단(lg) 왼쪽은 묶음 내용 680px 이상일 때만 3칸, 미만은 2칸(수량·지역 / 연락처) */}
             <div className={`${FORM_ROW3} lg:@min-[680px]:grid-cols-3!`}>
               <div className="min-w-0">
-                <FieldLabel compact need="required" htmlFor="sell-quantity">재고 총수량</FieldLabel>
+                <FieldLabel compact need="required" htmlFor="sell-quantity">{supply ? "공급 가능 수량" : "재고 총수량"}</FieldLabel>
                 <div className="flex rounded-xl overflow-hidden bg-white" style={{ border: `1.5px solid ${quantityError ? BLOCK_COLOR : "#E4E7EB"}` }}>
                   <input
                     id="sell-quantity"
@@ -1262,7 +1348,7 @@ ${prev}` : line));
           <div className="order-4 flex items-center gap-2.5 rounded-2xl" style={{ background: "#F5F6F8", padding: "14px 16px" }}>
             <span style={{ fontSize: rem(18) }}>🔔</span>
             <span className="flex-1" style={{ ...DEAL_HINT_STYLE, color: "#0B2540", fontWeight: 500 }}>
-              점핑매니저 검토 후, 이 조건 알림을 받는 회원들에게 빠르게 발송돼요.
+              {supply ? "점핑매니저가 확인 후 구매자에게 전달해요" : "점핑매니저 검토 후, 이 조건 알림을 받는 회원들에게 빠르게 발송돼요."}
             </span>
           </div>
         </div>
@@ -1277,7 +1363,7 @@ ${prev}` : line));
               className={FLOATING_CTA_BUTTON_CLASS}
               style={floatingCtaButtonStyle()}
             >
-              {submitting ? "처리 중..." : busyLabel ?? "무료로 매물 등록하기"}
+              {submitting ? "처리 중..." : busyLabel ?? (supply ? "공급 제안 보내기" : "무료로 매물 등록하기")}
             </button>
           </div>
         )}
@@ -1310,7 +1396,7 @@ ${prev}` : line));
             className={FLOATING_CTA_BUTTON_CLASS}
             style={floatingCtaButtonStyle()}
           >
-            {submitting ? "처리 중..." : busyLabel ?? "무료로 매물 등록하기"}
+            {submitting ? "처리 중..." : busyLabel ?? (supply ? "공급 제안 보내기" : "무료로 매물 등록하기")}
           </button>
               </FloatingCTA>
       )}
@@ -1352,6 +1438,30 @@ ${prev}` : line));
       </>
       )}
     </main>
+  );
+}
+
+// 공급 제안 모드 상단 요약 (2026-10-26) — 요청 품목·요청 수량 원문·카테고리(공개 목록 칸만). 노출 종료·조회 실패는 "찾는 상품"만(구매자 정보는 어떤 경우에도 없음)
+function SupplyRequestCard({ info }: { info: SupplyInfo | null }) {
+  const ok = info?.state === "ok" ? info : null;
+  return (
+    <div className="order-1 rounded-2xl min-w-0" style={{ background: "#FFF7F0", border: "1.5px solid #F2C9A8", padding: "14px 16px" }} data-supply-card data-supply-state={info?.state ?? "loading"}>
+      <div className="font-extrabold" style={{ fontSize: rem(14), color: "#C2410C" }}>📣 이 상품을 찾고 있어요</div>
+      <div className="mt-1 font-extrabold break-words" style={{ fontSize: rem(18), color: "#0B2540" }} data-supply-name>{ok?.name ?? "찾는 상품"}</div>
+      {ok && (
+        <>
+          <div className="mt-1" style={{ fontSize: rem(15), color: "#374151" }} data-supply-qty>
+            요청 수량 <b style={{ color: "#0B2540" }}>{ok.quantity ?? "수량 협의"}</b>
+          </div>
+          <div className="mt-0.5" style={{ fontSize: rem(14), color: "#566070" }} data-supply-category>
+            {ok.category ? `${categoryIcons[ok.category] ?? "🗂️"} ${ok.category}` : "🗂️ 카테고리 미지정"}
+          </div>
+        </>
+      )}
+      {info?.state === "gone" && (
+        <div className="mt-1" style={{ fontSize: rem(14), color: "#566070" }}>요청 내용이 더는 보이지 않아도 제안은 점핑매니저가 확인해요.</div>
+      )}
+    </div>
   );
 }
 
