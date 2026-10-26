@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import { CheckCircle } from "lucide-react";
@@ -10,6 +10,7 @@ import VideoUploader, { type VideoUploadStatus, type VideoUploaderHandle } from 
 import VideoNotUploadedSheet, { PHOTO_FAILED_DESCRIPTION, uploadingLabel, videoNotUploaded } from "@/components/VideoNotUploadedSheet";
 import SellerDisplayPicker from "@/components/SellerDisplayPicker";
 import { scrollToBizCheck } from "@/lib/bizCheckJump";
+import AdminJumpBar from "@/components/admin/AdminJumpBar";
 import { NEGOTIABLE_LABEL, NEGOTIABLE_TEXT, isNegotiable, type PriceMode } from "@/lib/priceMode";
 import SellerPrivateFields, { EMPTY_SELLER_PRIVATE, type SellerPrivateDraft } from "@/components/admin/SellerPrivateFields";
 import DealSellerPrivateEditor from "@/components/admin/DealSellerPrivateEditor";
@@ -49,7 +50,7 @@ import AdminListCard from "@/components/admin/AdminListCard";
 import BusinessCheckSection, { BusinessCheckBadge } from "@/components/admin/BusinessCheckSection";
 import ConnectionBoard from "@/components/admin/ConnectionBoard";
 import { can, type AdminPerm } from "@/lib/adminPerms";
-import { CARD_TITLE_PROPS, LIST_CARD_TITLE_PROPS } from "@/components/admin/cardTitle";
+import { CARD_TITLE_PROPS, LIST_CARD_TITLE_PROPS, LIST_CARD_BAND_BG, bandBleedClass } from "@/components/admin/cardTitle";
 import { NeedsActionChip, ActionFilterChip, ActionFilterEmpty } from "@/components/admin/NeedsAction";
 import {
   leadNeedsAction,
@@ -64,6 +65,7 @@ import {
 } from "@/lib/admin/needsAction";
 import { isPassingCheck, NOT_CHECKED_MESSAGE, type BusinessCheck } from "@/lib/businessCheck";
 import { formatConsentDate } from "@/lib/consent";
+import { ADMIN_TEXT } from "@/lib/adminText";
 
 // 2026-09-30 (커밋 K): /api/admin/kpi-daily 한 줄 (kpi_daily 테이블 일부 컬럼)
 type KpiDailyRow = {
@@ -580,6 +582,13 @@ function AdminDashboard({
   const [connectionsOpen, setConnectionsOpen] = useState(true);
   const [connCounts, setConnCounts] = useState<{ open: number; closed: number; stuck: number }>({ open: -1, closed: 0, stuck: 0 });
   const [sellerReqOpen, setSellerReqOpen] = useState(true);
+  // 2026-10-26: 처음 불러온 직후 한 번만 — 처리할 판매자 신청이 1건 이상이면 펼치고, 0건이면 접어 둠(이후 직접 펼치고 접은 상태는 그대로)
+  const sellerAutoRef = useRef(false);
+  useEffect(() => {
+    if (loading || sellerAutoRef.current) return;
+    sellerAutoRef.current = true;
+    setSellerReqOpen(requests.some(sellerRequestNeedsAction));
+  }, [loading, requests]);
   const [partnerReqOpen, setPartnerReqOpen] = useState(true);
   const [buyReqOpen, setBuyReqOpen] = useState(true);
   // 2026-10-20: 카드별 "미연락만/대기만/심사중만" 필터(관심·연결은 leadFilter === "uncontacted"가 같은 역할) + 이동 직후 테두리 강조
@@ -601,6 +610,9 @@ function AdminDashboard({
     return () => clearTimeout(t);
   }, [flash]);
   const [adminsOpen, setAdminsOpen] = useState(false);
+  const [kpiAll, setKpiAll] = useState(false); // 2026-10-26: KPI 기록 표 최근 7행 + [전체 보기]
+  const [categoryOpen, setCategoryOpen] = useState(false); // 카테고리별 현황 표 기본 접힘
+  const [bizOpen, setBizOpen] = useState(false); // 2026-10-26: 사업자 조회는 기본 접힘(바로가기·판매 신청 [사업자 조회]는 펼치고 이동)
   const [memberShowCount, setMemberShowCount] = useState(20);
   const [detailMemberId, setDetailMemberId] = useState<string | null>(null); // 회원 상세(보기 전용) — PC는 전체 화면 패널, 모바일·📱는 카드 아래 펼침
 
@@ -1010,6 +1022,7 @@ function AdminDashboard({
   // 2026-10-04: 매물 등록 폼·수정 카드의 "사업자 조회 바로가기" — 사업자 조회 섹션의 판매 신청을 "선택 안 함(직접 등록)"으로 되돌리고
   // (예전에 어떤 신청 카드에서 골라 둔 게 남아 있으면 직접 등록용 조회가 그 신청에 붙어 버림) 그 위치로 스크롤 + 잠깐 강조
   const goToBizCheck = () => {
+    setBizOpen(true);
     setBizPreselect({ id: "", nonce: Date.now() });
     scrollToBizCheck();
   };
@@ -1027,6 +1040,7 @@ function AdminDashboard({
   const membersBlock = !perm("members") ? null : (
     <>
       <AdminListCard
+        id="members"
         className={
           isDesktop
             ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
@@ -1062,7 +1076,7 @@ function AdminDashboard({
               style={
                 memberFilter === f.key
                   ? { background: "#0B2540", color: "#fff" }
-                  : { background: "#F5F6F8", color: "#6B7480" }
+                  : { background: "#F5F6F8", color: ADMIN_TEXT.muted }
               }
             >
               {f.label}
@@ -1117,7 +1131,7 @@ function AdminDashboard({
                   className="text-xs font-bold px-2 py-1 rounded-full"
                   style={{
                     background: m.push_subscribed ? "#E8F8EC" : "#FDEEE8",
-                    color: m.push_subscribed ? "#1D8A44" : "#C2410C",
+                    color: m.push_subscribed ? ADMIN_TEXT.ok : "#C2410C",
                   }}
                 >
                   {m.push_subscribed ? "🔔 구독중" : "🔕 미구독"}
@@ -1133,7 +1147,7 @@ function AdminDashboard({
                 {m.business_verified && (
                   <span
                     className="text-xs font-bold px-2 py-1 rounded-full inline-flex items-center gap-1"
-                    style={{ background: "#E8F8EC", color: "#1D8A44" }}
+                    style={{ background: "#E8F8EC", color: ADMIN_TEXT.ok }}
                   >
                     <CheckCircle className="w-3 h-3" /> 인증된 사업자
                   </span>
@@ -1292,7 +1306,7 @@ function AdminDashboard({
               style={
                 leadFilter === f.key
                   ? { background: "#0B2540", color: "#fff" }
-                  : { background: "#F5F6F8", color: "#6B7480" }
+                  : { background: "#F5F6F8", color: ADMIN_TEXT.muted }
               }
             >
               {f.label}
@@ -1378,7 +1392,7 @@ function AdminDashboard({
                   )}
                   {i.members?.member_no != null && <span className="whitespace-nowrap" style={LABEL}>· {formatMemberNo(i.members.member_no)}</span>}
                   {i.members?.business_verified ? (
-                    <span className="whitespace-nowrap inline-flex items-center gap-0.5" style={{ fontSize: rem(14), color: "#1D8A44" }}>
+                    <span className="whitespace-nowrap inline-flex items-center gap-0.5" style={{ fontSize: rem(14), color: ADMIN_TEXT.ok }}>
                       · <CheckCircle className="w-3 h-3" /> 인증 사업자
                     </span>
                   ) : (
@@ -1387,7 +1401,7 @@ function AdminDashboard({
                 </div>
                 <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
                   {i.outcome === "completed" && (
-                    <span className="font-bold px-2 py-0.5 rounded-full" style={{ fontSize: rem(14), background: "#E8F8EC", color: "#1D8A44" }}>
+                    <span className="font-bold px-2 py-0.5 rounded-full" style={{ fontSize: rem(14), background: "#E8F8EC", color: ADMIN_TEXT.ok }}>
                       성사
                     </span>
                   )}
@@ -1402,7 +1416,7 @@ function AdminDashboard({
                     </span>
                   )}
                   {i.connection_consent_at && (
-                    <span className="font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ fontSize: rem(14), background: "#E8F8EC", color: "#1D8A44" }}>
+                    <span className="font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ fontSize: rem(14), background: "#E8F8EC", color: ADMIN_TEXT.ok }}>
                       연결 동의 ✓ {formatConsentDate(i.connection_consent_at)}
                     </span>
                   )}
@@ -1416,7 +1430,7 @@ function AdminDashboard({
                     minute: "2-digit",
                   })}
                   {i.outcome === "completed" && i.completed_amount && (
-                    <span className="ml-1.5 font-bold" style={{ color: "#1D8A44" }}>
+                    <span className="ml-1.5 font-bold" style={{ color: ADMIN_TEXT.ok }}>
                       · {i.completed_amount.toLocaleString()}원
                     </span>
                   )}
@@ -1435,7 +1449,7 @@ function AdminDashboard({
                   load();
                 }}
                 className="flex-1 font-bold rounded-lg whitespace-nowrap"
-                style={{ fontSize: rem(15), minHeight: 40, ...(i.contacted ? { background: "#F5F6F8", color: "#6B7480" } : { background: "#0B2540", color: "#fff" }) }}
+                style={{ fontSize: rem(15), minHeight: 40, ...(i.contacted ? { background: "#F5F6F8", color: ADMIN_TEXT.muted } : { background: "#0B2540", color: "#fff" }) }}
               >
                 {i.contacted ? "✓ 연락완료" : "연락완료"}
               </button>
@@ -1471,7 +1485,7 @@ function AdminDashboard({
                     load();
                   }}
                   className="flex-1 font-bold rounded-lg inline-flex items-center justify-center gap-1 whitespace-nowrap"
-                  style={{ fontSize: rem(15), minHeight: 40, background: "#E8F8EC", color: "#1D8A44" }}
+                  style={{ fontSize: rem(15), minHeight: 40, background: "#E8F8EC", color: ADMIN_TEXT.ok }}
                 >
                   <CheckCircle className="w-3.5 h-3.5" /> 성사
                 </button>
@@ -1534,10 +1548,9 @@ function AdminDashboard({
   );
   const newDealBlock = (
     <>
-      <div
-        className={isDesktop ? "col-span-3" : "px-5 py-4"}
-        style={isDesktop ? { order: -1 } : undefined}
-      >
+      {/* 2026-10-26 admin-layout-v1: PC는 가운데 열 맨 위 — 버튼 두 개를 한 줄(2칸)로, 폼·목록은 전체 폭(col-span-2) */}
+      <div className={isDesktop ? "grid grid-cols-2 gap-2 items-stretch" : "px-5 py-4"}>
+        <div className={isDesktop && !(isSuperAdmin && openFormFor !== "notice") ? "col-span-2" : undefined} style={isDesktop ? { order: -2 } : undefined}>
         {openFormFor === "new" && !isDesktop ? (
           <button type="button" onClick={closeDealForm} className={`ml-auto ${BTN_CLASS}`} style={{ ...btnStyle("secondary"), minHeight: 40, fontSize: rem(15), padding: "0 16px" }}>
             닫기
@@ -1547,8 +1560,9 @@ function AdminDashboard({
             + 새 매물 직접 등록
           </button>
         )}
+        </div>
         {/* 2026-10-03 PR-D: 매물 등록 폼은 한 자리에 하나만 — 새 매물이든 판매자 신청이든 여기(전체 폭)에서 열림. PC는 아래 패널 */}
-        <div id="deal-form-slot" style={{ scrollMarginTop: 12 }}>
+        <div id="deal-form-slot" className={isDesktop ? "col-span-2" : undefined} style={{ scrollMarginTop: 12 }}>
           {!isDesktop && formRequest && (
             <div
               className="mt-3 flex items-center justify-between gap-3 rounded-xl"
@@ -1613,25 +1627,27 @@ function AdminDashboard({
             "긴급 공지"라는 가벼운 트랙으로 구현. 구인/구직은 법률 검토 전까지 제외.
             2026-10-06: 등록(= 푸시 발송) 버튼·폼은 최고관리자만(서버 /api/admin/notices POST도 최고관리자만). 아래 목록·[마감]은 그대로 */}
         {!isSuperAdmin ? null : openFormFor === "notice" ? (
-          <div className="flex items-center justify-between mt-3">
-            <span {...CARD_TITLE_PROPS}>긴급 공지 등록</span>
+          <div className={`flex items-center justify-between gap-2 rounded-xl px-3 py-2 ${isDesktop ? "col-span-2" : "mt-3"}`} style={{ background: LIST_CARD_BAND_BG }} data-card-band-x>
+            <span {...LIST_CARD_TITLE_PROPS}>긴급 공지 등록</span>
             <button type="button" onClick={() => setOpenFormFor(null)} className={BTN_CLASS} style={{ ...btnStyle("secondary"), minHeight: 40, fontSize: rem(15), padding: "0 16px" }}>
               닫기
             </button>
           </div>
         ) : (
-          <button onClick={() => switchForm("notice")} className={`w-full mt-2 ${BTN_CLASS}`} style={btnStyle("secondary")}>
+          <button onClick={() => switchForm("notice")} className={`w-full ${isDesktop ? "" : "mt-2"} ${BTN_CLASS}`} style={isDesktop ? { ...btnStyle("secondary"), order: -1 } : btnStyle("secondary")}>
             + 긴급 공지 등록 (부동산·설비)
           </button>
         )}
         {isSuperAdmin && openFormFor === "notice" && (
-          <NoticeForm adminKey={adminKey} onDone={() => { setOpenFormFor(null); load(); }} />
+          <div className={isDesktop ? "col-span-2" : undefined}>
+            <NoticeForm adminKey={adminKey} onDone={() => { setOpenFormFor(null); load(); }} />
+          </div>
         )}
 
         {/* 2026-09-28 (2): 등록 폼만 있고 내릴 방법이 없다는 지적 반영 — 등록된
             공지를 한 줄 요약 + [마감]으로 노출. deals의 "조기 마감" 패턴과 동일. */}
         {perm("noticeManage") && notices.length > 0 && (
-          <div className="flex flex-col gap-2 mt-3">
+          <div className={`flex flex-col gap-2 ${isDesktop ? "col-span-2 mt-1" : "mt-3"}`}>
             <div className="text-xs font-bold text-gray500">등록된 긴급 공지 ({notices.length})</div>
             {notices.map((n) => (
               <NoticeAdminRow key={n.id} notice={n} adminKey={adminKey} onChanged={load} />
@@ -1811,6 +1827,7 @@ function AdminDashboard({
               <button
                 type="button"
                 onClick={() => {
+                  setBizOpen(true);
                   setBizPreselect({ id: r.id, nonce: Date.now() });
                   scrollToBizCheck();
                 }}
@@ -1851,30 +1868,33 @@ function AdminDashboard({
       />
     </>
   );
+  // 2026-10-23: [+ 찾습니다 대신 등록] — 회원 화면 /buy/new를 새 탭으로 열기만(다른 동작 없음). members 권한(최고관리자·관리자)만.
+  // 2026-10-26: 사업자 조회 위에서 왼쪽 열(관심 표시한 회원 아래)로 이동
+  const buyProxyBlock = !perm("members") ? null : (
+    <div className={isDesktop ? "" : "px-5 pb-3"}>
+      <a
+        href="/buy/new"
+        target="_blank"
+        rel="noopener"
+        className={`flex items-center justify-center w-full ${BTN_CLASS}`}
+        style={btnStyle("secondary")}
+        data-buy-proxy-link
+      >
+        + 찾습니다 대신 등록
+      </a>
+    </div>
+  );
   // 2026-10-04 판매자 신원 확인: "사업자 조회" — 판매자 신청 목록 바로 위(📱 세로 순서·💻 3단 모두)
   const bizCheckBlock = (
     <>
-      {/* 2026-10-23: 사업자 조회 위 [+ 찾습니다 대신 등록] — 회원 화면 /buy/new를 새 탭으로 열기만(다른 동작 없음). members 권한(최고관리자·관리자)만 */}
-      {perm("members") && (
-        <div className={isDesktop ? "mb-3" : "px-5 pb-3"}>
-          <a
-            href="/buy/new"
-            target="_blank"
-            rel="noopener"
-            className={`flex items-center justify-center w-full ${BTN_CLASS}`}
-            style={btnStyle("secondary")}
-            data-buy-proxy-link
-          >
-            + 찾습니다 대신 등록
-          </a>
-        </div>
-      )}
       <BusinessCheckSection
         adminKey={adminKey}
         adminRole={adminRole}
         requests={requests}
         phoneMatch={bizPhoneMatch}
         preselect={bizPreselect}
+        open={bizOpen}
+        onToggle={() => setBizOpen((v) => !v)}
         className={
           isDesktop
             ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
@@ -1923,7 +1943,7 @@ function AdminDashboard({
                 ) : (
                   <span
                     className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
-                    style={r.status === "approved" ? { background: "#E8F8EC", color: "#1D8A44" } : { background: "#F1F1EF", color: "#6B7480" }}
+                    style={r.status === "approved" ? { background: "#E8F8EC", color: ADMIN_TEXT.ok } : { background: "#F1F1EF", color: ADMIN_TEXT.muted }}
                   >
                     {r.status === "approved" ? "승인됨" : "거절됨"}
                   </span>
@@ -1961,6 +1981,7 @@ function AdminDashboard({
           파트너들의 성과 비교용. 승인 즉시 여기 0건으로 나타남. */}
       <AdminListCard
         as="section"
+        id="partners-overview"
         className={
           isDesktop
             ? "bg-white border border-gray200 rounded-2xl p-4"
@@ -2056,7 +2077,7 @@ function AdminDashboard({
               <div className="flex items-center gap-1 flex-shrink-0">
                 {buyRequestNeedsAction(b) && <NeedsActionChip>미연락</NeedsActionChip>}
                 {b.outcome === "matched" && (
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: "#E8F8EC", color: "#1D8A44" }}>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: "#E8F8EC", color: ADMIN_TEXT.ok }}>
                     매칭 완료
                   </span>
                 )}
@@ -2085,7 +2106,7 @@ function AdminDashboard({
             </div>
             {b.description && (
               <div className="text-sm text-gray500 mt-1 bg-gray100 rounded-lg px-3 py-2">
-                <span className="font-bold" style={{ color: "#9AA3AD" }}>
+                <span className="font-bold" style={{ color: ADMIN_TEXT.faint }}>
                   💬 메모{" "}
                 </span>
                 {b.description}
@@ -2104,7 +2125,7 @@ function AdminDashboard({
                 className="flex-1 text-xs font-bold rounded-lg py-2"
                 style={
                   b.contacted
-                    ? { background: "#F5F6F8", color: "#6B7480" }
+                    ? { background: "#F5F6F8", color: ADMIN_TEXT.muted }
                     : { background: "#FDEEE8", color: "#C2410C" }
                 }
               >
@@ -2126,7 +2147,7 @@ function AdminDashboard({
                       load();
                     }}
                     className="flex-1 text-xs font-bold rounded-lg py-2"
-                    style={{ background: "#E8F8EC", color: "#1D8A44" }}
+                    style={{ background: "#E8F8EC", color: ADMIN_TEXT.ok }}
                   >
                     매칭 완료
                   </button>
@@ -2153,15 +2174,22 @@ function AdminDashboard({
     </>
   );
   const adminsBlock = role === "최고관리자" ? (
-        <div className={isDesktop ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3" : "px-5 pt-4 pb-8 flex flex-col gap-3"}>
-          <button
-            type="button"
-            onClick={() => setAdminsOpen((v) => !v)}
-            className="w-full flex items-center justify-between"
-          >
-            <span {...CARD_TITLE_PROPS}>관리자 목록 <span style={{ ...LABEL, fontWeight: 400 }}>({admins.length}명)</span></span>
-            <span className="text-sm font-bold text-gray500">{adminsOpen ? "접기 ▲" : "펼치기 ▼"}</span>
-          </button>
+        <div id="admins" className={isDesktop ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3" : "px-5 pt-4 pb-8 flex flex-col gap-3"}>
+          <div className={`${bandBleedClass(isDesktop ? "p-4" : "px-5")} py-2`} style={{ background: LIST_CARD_BAND_BG }} data-card-band-x>
+            <button
+              type="button"
+              onClick={() => setAdminsOpen((v) => !v)}
+              className="w-full flex items-center justify-between gap-2 text-left"
+              style={{ minHeight: 44 }}
+              data-card-toggle
+            >
+              <span className="min-w-0 flex items-center gap-x-2 gap-y-1 flex-wrap">
+                <span {...LIST_CARD_TITLE_PROPS}>관리자 목록</span>
+                <span className="inline-flex items-center rounded-full font-bold whitespace-nowrap" style={{ fontSize: rem(14), padding: "2px 10px", background: "#E5E7EB", color: "#374151" }} data-card-badge="gray">{admins.length}명</span>
+              </span>
+              <span className="font-bold flex-shrink-0 flex items-center justify-center" style={{ minWidth: 44, minHeight: 44, fontSize: rem(14), color: "#3730A3" }}>{adminsOpen ? "접기 ▲" : "펼치기 ▼"}</span>
+            </button>
+          </div>
           {adminsOpen && (
           <>
           {admins.map((a) => (
@@ -2223,6 +2251,7 @@ function AdminDashboard({
 
   return (
     <main
+      data-admin-root
       className={isDesktop ? `flex flex-col min-h-screen mx-auto w-full ${ADMIN_MAX_W} bg-white shadow-sm` : "flex flex-col min-h-screen mx-auto w-full max-w-md bg-white shadow-sm"}
       // 2026-10-01 (커밋 J): 맨 아래 목록이 화면 끝에 붙어 "끝난 것처럼" 보이던 문제 — 하단 여백 pb-24 + 안전 영역
       style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom, 0px))" }}
@@ -2310,6 +2339,16 @@ function AdminDashboard({
         </div>
       </div>
 
+      <AdminJumpBar
+        chips={[
+          { label: "조치", targetId: "actions" },
+          { label: "매물", targetId: "active-deals" },
+          ...(perm("buyRequests") ? [{ label: "구매요청", targetId: "buy-requests" }] : []),
+          ...(perm("members") ? [{ label: "회원", targetId: "members" }] : []),
+          ...(perm("dashboard") ? [{ label: "지표", targetId: "metrics" }] : []),
+        ]}
+      />
+
       {/* 2026-09-29: 시각적 위계 — ① 조치 필요 → ② 핵심 지표 → ③ 참고 현황·목록.
           색은 의미 있을 때만(조치 1건↑ 주황/빨강, 0건 회색, 일반 지표 남색 1색). 막대는 CSS만(DashboardViz). */}
       <div className={isDesktop ? `px-8 pt-5 ${ADMIN_MAX_W} mx-auto w-full flex flex-col gap-6` : "px-5 pt-5 flex flex-col gap-6"}>
@@ -2331,7 +2370,7 @@ function AdminDashboard({
           const hot = shown.filter((a) => a.value > 0);
           const cold = shown.filter((a) => a.value === 0);
           return (
-            <section aria-label="조치 필요">
+            <section aria-label="조치 필요" id="actions" style={{ scrollMarginTop: 56 }}>
               <h2 style={UI_SECTION}>⚡ 조치 필요</h2>
               {hot.length > 0 && (
                 <div className={`mt-2.5 grid gap-2 ${isDesktop ? "grid-cols-5" : "grid-cols-2"}`}>
@@ -2355,17 +2394,77 @@ function AdminDashboard({
                   ))}
                 </div>
               )}
-              {cold.length > 0 && (
+              {hot.length === 0 && (
+                <p className="mt-2.5 font-bold rounded-2xl" style={{ fontSize: rem(18), color: "#15703A", background: "#E8F8EC", padding: "14px 16px" }} data-all-done>
+                  ✓ 모두 처리됨
+                </p>
+              )}
+              {cold.length > 0 && hot.length > 0 && (
                 <p className="mt-2" style={{ ...LABEL, fontVariantNumeric: "tabular-nums" }}>
-                  {hot.length === 0 ? "✓ 지금 처리할 일이 없어요 · " : ""}
                   {cold.map((a) => `${a.label} 0`).join(" · ")}
                 </p>
               )}
             </section>
           );
         })()}
+      </div>
 
-        {perm("dashboard") && (<>
+      {/* 2026-10-26 admin-layout-v1: 업무 카드는 PC 고정 3열(masonry 대신) — 높이에 따라 카드 위치가 바뀌지 않음.
+          좌 = 관심 표시한 회원 → [+ 찾습니다 대신 등록] → 이런 재고 찾습니다 → 거래 연결
+          중 = [+ 새 매물 직접 등록]·[+ 긴급 공지 등록] → 대기 중인 판매자 신청 → 진행 중인 매물
+          우 = 사업자 조회(기본 접힘) → 공식 점핑파트너 신청 → 점핑파트너 실적 → 최근 가입 회원 → 관리자 목록
+          📱·360 폭은 같은 순서(좌 → 중 → 우)로 1열 — 같은 트리라 보기를 바꿔도 등록 폼이 다시 마운트되지 않음(2026-10-03 PR-D).
+          열 높이 보정 없음. PC에서 0건 카드는 한 줄(제목 + "없어요")로 줄임. */}
+      {(() => {
+        const slot = (key: string, title: string, count: number, node: React.ReactNode) =>
+          !node ? null : !isDesktop ? (
+            <Fragment key={key}>{node}</Fragment>
+          ) : (
+            <div key={key} className="min-w-0">
+              {count === 0 ? (
+                <div id={key} className="bg-white border border-gray200 rounded-2xl flex items-center justify-between gap-2" style={{ padding: "12px 16px" }}>
+                  <span {...CARD_TITLE_PROPS}>{title}</span>
+                  <span style={LABEL}>없어요</span>
+                </div>
+              ) : (
+                node
+              )}
+            </div>
+          );
+        const col = (key: string, children: React.ReactNode) => (
+          <div className={isDesktop ? "flex flex-col gap-4 min-w-0" : "contents"} data-col={key}>
+            {children}
+          </div>
+        );
+        return (
+          <div id="work-cards" className={isDesktop ? `px-8 pb-6 ${ADMIN_MAX_W} mx-auto w-full` : "contents"}>
+            <div className={isDesktop ? "grid grid-cols-3 gap-4 items-start" : "contents"}>
+              {col("left", <>
+                {slot("leads", "관심 표시한 회원", interests.length, leadsBlock)}
+                {buyProxyBlock && (isDesktop ? <div key="buy-proxy">{buyProxyBlock}</div> : <Fragment key="buy-proxy">{buyProxyBlock}</Fragment>)}
+                {slot("buy-requests", "🔍 이런 재고 찾습니다", buyRequests.length, buyRequestsBlock)}
+                {slot("connections", "거래 연결", connCounts.open + connCounts.closed === 0 ? 0 : -1, connectionsBlock)}
+              </>)}
+              {col("middle", <>
+                <div className={isDesktop ? "" : "contents"}>{newDealBlock}</div>
+                {slot("pending-sellers", "대기 중인 판매자 신청", requests.length, pendingSellersBlock)}
+                {slot("active-deals", "진행 중인 매물", activeDeals.length, activeDealsBlock)}
+              </>)}
+              {col("right", <>
+                {slot("business-check", "사업자 조회", -1, bizCheckBlock)}
+                {slot("partner-requests", "🏅 공식 점핑파트너 신청", partnerRequests.length, partnerReqBlock)}
+                {slot("partners-overview", "📊 점핑파트너 실적", partnersOverview.length, partnersOverviewBlock)}
+                {slot("members", "최근 가입 회원", members.length, membersBlock)}
+                {slot("admins", "관리자 목록", -1, adminsBlock)}
+              </>)}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 2026-10-26 admin-layout-v1: 지표는 업무 카드 아래로(조치 필요 → 업무 카드 → 지표) */}
+      {perm("dashboard") && (
+        <div id="metrics" className={isDesktop ? `px-8 pb-6 ${ADMIN_MAX_W} mx-auto w-full flex flex-col gap-6` : "px-5 pb-6 flex flex-col gap-6"} style={{ scrollMarginTop: 56 }}>
         <section aria-label="핵심 지표">
           <h2 style={UI_SECTION}>📈 핵심 지표</h2>
           {metrics?.excluded && (
@@ -2465,7 +2564,7 @@ function AdminDashboard({
                   </tr>
                 </thead>
                 <tbody>
-                  {kpiDaily.map((r) => (
+                  {(kpiAll ? kpiDaily : kpiDaily.slice(0, 7)).map((r) => (
                     <tr key={r.snapshot_date} style={{ borderTop: "1px solid #F1F3F5" }}>
                       <td className="px-3 py-2 whitespace-nowrap">{r.snapshot_date.slice(5).replace("-", ".")}</td>
                       <td className="px-3 py-2">{r.members_total.toLocaleString()}</td>
@@ -2482,10 +2581,19 @@ function AdminDashboard({
               </table>
             </div>
           )}
+          {kpiDaily && kpiDaily.length > 7 && (
+            <button type="button" onClick={() => setKpiAll((v) => !v)} className={`w-full mt-2 ${BTN_CLASS}`} style={{ ...btnStyle("secondary"), minHeight: 44, fontSize: rem(15) }} data-kpi-toggle>
+              {kpiAll ? "최근 7일만 보기 ▲" : `전체 보기 (${kpiDaily.length}일) ▼`}
+            </button>
+          )}
         </section>
 
         <section aria-label="카테고리별 현황">
-          <h2 style={UI_SECTION}>카테고리별 현황 <span style={{ ...LABEL, fontWeight: 400 }}>(액티브 = 최근 7일)</span></h2>
+          <button type="button" onClick={() => setCategoryOpen((v) => !v)} className="w-full flex items-center justify-between gap-2 text-left" style={{ minHeight: 44 }} data-category-toggle>
+            <h2 style={UI_SECTION}>카테고리별 현황 <span style={{ ...LABEL, fontWeight: 400 }}>(액티브 = 최근 7일)</span></h2>
+            <span className="font-bold flex-shrink-0" style={{ fontSize: rem(14), color: "#3730A3" }}>{categoryOpen ? "접기 ▲" : "펼치기 ▼"}</span>
+          </button>
+          {categoryOpen && (
           <div className="mt-2.5 bg-white border border-gray200 rounded-2xl overflow-hidden" style={{ fontVariantNumeric: "tabular-nums" }}>
             <div className="grid grid-cols-[1.3fr_1.3fr_0.7fr_0.6fr_0.6fr] gap-2 px-3 py-2 bg-gray100" style={{ fontSize: rem(14) }}>
               <span className="font-bold text-gray500">카테고리</span>
@@ -2504,7 +2612,7 @@ function AdminDashboard({
                     <b className="text-navy" style={{ minWidth: "2ch" }}>{c.leads}</b>
                     <InlineBar value={c.leads} max={maxLeads} />
                   </span>
-                  <span className="text-right" style={{ color: c.completionRate == null ? "#9AA3AD" : "#0B2540" }}>{c.completionRate == null ? "—" : `${c.completionRate}%`}</span>
+                  <span className="text-right" style={{ color: c.completionRate == null ? ADMIN_TEXT.faint : "#0B2540" }}>{c.completionRate == null ? "—" : `${c.completionRate}%`}</span>
                   <span className="text-right">{c.activeSuppliers}</span>
                   <span className="text-right">{c.activeDemanders}</span>
                 </div>
@@ -2514,64 +2622,10 @@ function AdminDashboard({
               <div className="text-center" style={{ ...LABEL, padding: "16px 12px" }}>아직 데이터가 없어요.</div>
             )}
           </div>
+          )}
         </section>
-        </>)}
-      </div>
-
-      {/* 2026-09-26 (4): PC에서도 그냥 한 열로 쭉 늘어놓기만 해서 여전히 스크롤이
-          길다는 피드백 — 리드/진행중매물/판매자신청/점핑파트너신청/재고찾습니다/
-          최근가입회원 6개 섹션을 3열 패널 그리드로 묶고, 패널마다 내부 스크롤을
-          줘서 전체 대시보드가 한 화면에 가깝게 들어오도록 함. 모바일에서는
-          display:contents로 그리드를 무효화해 기존 구조 그대로 유지 — "+ 새 매물
-          직접 등록" 버튼은 DOM 위치(모바일 순서)는 그대로 두고 desktop에서만
-          order:-1로 그리드 맨 앞 전체 폭 줄로 끌어올림. */}
-      {/* 2026-10-03 PR-D: 매물 등록 폼 자리(newDealBlock)를 PC·모바일 보기에서 같은 트리 위치에 둠 — 보기 전환해도 폼이 다시 마운트되지 않아
-          작성 중 내용·업로드 상태 유지. 모바일 보기에선 바깥 틀이 display:contents라 예전 세로 순서 그대로 */}
-      <div className={isDesktop ? `px-8 pb-6 ${ADMIN_MAX_W} mx-auto w-full` : "contents"}>
-        {!isDesktop && membersBlock}
-        {!isDesktop && leadsBlock}
-        {!isDesktop && connectionsBlock}
-        <div className={isDesktop ? "mb-4" : "contents"}>{newDealBlock}</div>
-        {isDesktop ? (
-          <div className="columns-3 gap-4">
-            {[
-              { key: "leads", title: "관심 표시한 회원", count: interests.length, node: leadsBlock },
-              { key: "connections", title: "거래 연결", count: connCounts.open + connCounts.closed === 0 ? 0 : -1, node: connectionsBlock },
-              { key: "business-check", title: "사업자 조회", count: -1, node: bizCheckBlock },
-              { key: "pending-sellers", title: "대기 중인 판매자 신청", count: requests.length, node: pendingSellersBlock },
-              { key: "active-deals", title: "진행 중인 매물", count: activeDeals.length, node: activeDealsBlock },
-              { key: "partner-requests", title: "🏅 공식 점핑파트너 신청", count: partnerRequests.length, node: partnerReqBlock },
-              { key: "partners-overview", title: "📊 점핑파트너 실적", count: partnersOverview.length, node: partnersOverviewBlock },
-              { key: "buy-requests", title: "🔍 이런 재고 찾습니다", count: buyRequests.length, node: buyRequestsBlock },
-              { key: "members", title: "최근 가입 회원", count: members.length, node: membersBlock },
-              { key: "admins", title: "관리자 목록", count: -1, node: adminsBlock },
-            ]
-              .filter((c) => c.node)
-              .map((c) => (
-                <div key={c.key} className="break-inside-avoid mb-4">
-                  {c.count === 0 ? (
-                    <div className="bg-white border border-gray200 rounded-2xl flex items-center justify-between gap-2" style={{ padding: "12px 16px" }}>
-                      <span {...CARD_TITLE_PROPS}>{c.title}</span>
-                      <span style={LABEL}>없어요</span>
-                    </div>
-                  ) : (
-                    c.node
-                  )}
-                </div>
-              ))}
-          </div>
-        ) : (
-          <>
-            {activeDealsBlock}
-            {bizCheckBlock}
-            {pendingSellersBlock}
-            {partnerReqBlock}
-            {partnersOverviewBlock}
-            {buyRequestsBlock}
-            {adminsBlock}
-          </>
-        )}
-      </div>
+        </div>
+      )}
 
       {appointFor && (
         <div
@@ -2602,7 +2656,7 @@ function AdminDashboard({
                   style={
                     appointRole === r
                       ? { background: "#0B2540", color: "#fff" }
-                      : { background: "#F5F6F8", color: "#6B7480" }
+                      : { background: "#F5F6F8", color: ADMIN_TEXT.muted }
                   }
                 >
                   {r}
@@ -2799,6 +2853,7 @@ function ActiveDealCard({
   const [expanded, setExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false); // 2026-10-26: [삭제]는 [마감] 옆 같은 크기 버튼 대신 ⋯ 메뉴 안(최고관리자만)
   const [formDirty, setFormDirty] = useState(false); // DealForm(edit)이 알려 줌 — 패널 닫기 확인 바용. 판매자 비공개 편집기는 폼 밖이라 제외
   const [panelFooterEl, setPanelFooterEl] = useState<HTMLDivElement | null>(null);
   const { message: toastMessage, showToast } = useToast();
@@ -2902,7 +2957,7 @@ function ActiveDealCard({
         {(deal.interest_count ?? 0) > 0 && (
           <span
             className="flex-shrink-0 text-xs font-bold px-2 py-0.5 rounded-full"
-            style={{ background: "#FFF0E8", color: "#E25100" }}
+            style={{ background: "#FFF0E8", color: ADMIN_TEXT.warn }}
             title={`회원 ${(deal.interest_count ?? 0) - (deal.quick_lead_count ?? 0)} · 비회원 ${deal.quick_lead_count ?? 0}`}
           >
             ❤️ {deal.interest_count}
@@ -2951,14 +3006,29 @@ function ActiveDealCard({
           {canDelete && (
             <button
               type="button"
-              onClick={deleteDeal}
-              disabled={deleting}
-              className="flex-1 text-xs font-bold rounded-lg py-2 disabled:opacity-50"
-              style={{ color: "#C2410C", border: "2px solid #FDEEE8", background: "#FFF9F7" }}
+              onClick={() => setMoreOpen((v) => !v)}
+              aria-label="더보기"
+              aria-expanded={moreOpen}
+              className="flex-shrink-0 font-bold text-navy border-2 border-gray200 rounded-lg flex items-center justify-center"
+              style={{ minWidth: 44, minHeight: 44, fontSize: rem(18) }}
+              data-deal-more
             >
-              {deleting ? "삭제 중..." : "🗑️ 삭제"}
+              ⋯
             </button>
           )}
+        </div>
+      )}
+      {canDelete && moreOpen && (!expanded || panel) && (
+        <div className="mt-2 flex justify-end" data-deal-more-menu>
+          <button
+            type="button"
+            onClick={() => { setMoreOpen(false); void deleteDeal(); }}
+            disabled={deleting}
+            className="font-bold rounded-lg px-4 disabled:opacity-50"
+            style={{ color: "#C2410C", border: "2px solid #FDEEE8", background: "#FFF9F7", minHeight: 44, fontSize: rem(14) }}
+          >
+            {deleting ? "삭제 중..." : "🗑️ 삭제"}
+          </button>
         </div>
       )}
 

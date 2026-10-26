@@ -55,6 +55,17 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
+## 최근 작업 (2026-10-26) — 관리자 화면 1단계: 배치 개선 (브랜치 `feat/admin-layout-v1`)
+- 로직·API·DB 변경 없음, 화면 배치·접기·글자 색만. 지시서 `docs/plans/admin-layout-v1.md`.
+- **순서**: 조치 필요 → 업무 카드 → 지표(핵심 지표·7일 추세·참고 현황·KPI·카테고리). 1280×900에서 첫 업무 카드 y 1667 → 약 480. 조치 0건이면 "✓ 모두 처리됨" 한 줄.
+- **PC 고정 3열**(masonry 대신, 열 높이 보정 없음): 좌 = 관심 표시한 회원 → [+ 찾습니다 대신 등록] → 이런 재고 찾습니다 → 거래 연결 / 중 = [+ 새 매물 직접 등록]·[+ 긴급 공지 등록] 버튼 줄 → 대기 중인 판매자 신청 → 진행 중인 매물 / 우 = 사업자 조회(기본 접힘) → 공식 점핑파트너 신청 → 점핑파트너 실적 → 최근 가입 회원 → 관리자 목록. 360·📱은 같은 트리에서 좌 → 중 → 우 1열(보기를 바꿔도 등록 폼 다시 마운트 안 됨). 앵커 id 신설: `actions`·`metrics`·`members`·`partners-overview`·`admins`.
+- **바로가기 칩**(`AdminJumpBar`, sticky): 조치·매물·구매요청·회원·지표 — 권한 없는 칩은 숨김(점핑매니저는 조치·매물만).
+- **지표**: KPI 기록 최근 7행 + [전체 보기], 카테고리별 현황 기본 접힘.
+- **카드**: [삭제]는 ⋯ 메뉴 안(최고관리자만, 확인창 그대로, 폼 안 [매물 삭제]는 그대로). 판매자 신청은 처음 불러올 때 처리할 건 1건↑ 펼침·0건 접힘(주황 배지는 기존 규칙). 사업자 조회·긴급 공지 등록·관리자 목록 제목을 목록 카드와 같은 남색 띠로 통일.
+- **글자 색**(색만, 크기·전역 토큰 그대로): `src/lib/adminText.ts` — 보조 #566070, 흐림 #6B7480(예전 #B0B7C0·#9AA3AD), 주황 글자 #C2410C, 초록 글자 #15703A. Tailwind `text-gray500`·`text-orange`는 `globals.css` `[data-admin-root]` 안에서만 같은 색으로 덮음.
+- 시험: 시험 `pw15`(권한 3역할 최고관리자·관리자·점핑매니저 × 1280×900 + 360) 통과, 기존 관리자 시험 9종 통과, tsc 0, lint 신규 0(기존 3건 그대로). KPI 7행 시험은 fake DB에 KPI 행이 없어 데이터로는 못 봄.
+- 범위 밖(다음): 지표 통합·숫자 기준 변경(PR-C2), 전화번호 가림(매니저 복수 시), 공급 제안 A안.
+
 ## 회원 화면 가로 넘침 (2026-10-26, 브랜치 `fix/mobile-overflow`)
 - 증상(대표 실기기): /buy·/sell에서 손날로 쓸면 화면이 옆으로 밀리고 오른쪽 잘림. 기본 글자 크기·360/390/412 폭 로컬 Chromium에서는 **재현 안 됨**(scrollWidth = clientWidth, 화면 밖 요소 0).
 - 글자를 키워 시험(130%·200%)하자 **/sell 비회원 상단 [카카오톡 채널 …(채팅 상담)] 링크**(`ContactLinks`, `whitespace-nowrap`)가 360px·130%에서 폭 322px로 화면 오른쪽(368px)을 넘음 — AppShell `overflow-x: clip`에 가려 scrollWidth는 같지만 잘려 보임(clip 미지원 브라우저는 밀림). 그 밖에 /sell 머리 줄(← 로고 Powered by JumpX 수수료 0원)이 한 줄로 억지로 몰려 로고가 찌그러지고, `RotatingUrgencyTag`(nowrap)가 매우 큰 글자에서 폭 초과.
@@ -62,14 +73,20 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 새 시험 `scripts/mobile-overflow-test.mjs`: 7개 경로 × 360·390·412 × 글자 기본·130%·200% × 회원·비회원 — scrollWidth = clientWidth + 화면 오른쪽 끝을 넘는 요소 0(clip에 가려진 것 포함). 수정 전 8건 실패(전부 /sell 비회원 ContactLinks) → 수정 후 216건 통과. 200%는 /buy·/buy/new·/sell만 요구(홈·/deals 가격 줄 등은 알려진 한계 — 200%에서 `whitespace-nowrap` 가격이 넘침, 별도 작업).
 - **/buy 증상은 원인 미확정**: 어떤 조합에서도 /buy 요소가 화면을 넘지 않음. 실기기 확인 필요(주소창 javascript: innerWidth/clientWidth/scrollWidth, 글자 크기 설정). 의심: 손날 접촉이 핀치 확대로 인식(뷰포트에 확대 제한 없음) — 대표 결정 전 변경 없음.
 - **결정(2026-10-26)**: 확대 제한(`touch-action`·`maximumScale`)은 접근성 때문에 하지 않음. /buy 증상은 대표 실기기 확인(축소 복귀 여부·글자 크기 설정) 결과를 받은 뒤 필요 시 추적. 200% 글자의 홈·/deals 가격 줄 nowrap은 다음 회원 화면 PR(공급 제안 A안)에서 처리(백로그).
+- **#115 병합 기록**(회원 화면 가로 넘침): squash 병합 `5c3b882`(10/26) · PR CI `build` run 40260125848 성공 · Deploy to Vercel run 40264988211 성공. 운영 확인 대기: 대표 폴드4 바깥 화면 /deals·MY.
+
+## 착수 메모 (2026-10-25) — 관리자 화면 1단계(배치 개선) (브랜치 `feat/admin-layout-v1`)
+- 10/25 대표 지시로 관리자 화면 1단계(배치 개선) 착수. 먼저 조사·설계안만(코드 변경 없음) 보고하고 승인 후 구현.
+- 같은 PR 정리: `contact-phone-test` 검사 경로를 `/buy/new/page.tsx`로(PR #104에서 폼 이동), `buy-requests/route.ts` 주석 경로 수정.
 
 ## 최근 작업 (2026-10-24) — 매물 마감 기간 선택지 확대 (브랜치 `feat/deal-deadline-options`)
+- **#114 병합 기록**: squash merge `b09f0f7`, CI `build` run 40246056494(통과), Deploy run 40247129774(성공), 운영 /admin·/deals 200.
+- 관리자 등록 폼 "마감까지 남은 시간": 24시간 / 3일 / **7일(기본)** / 14일 / 30일 / 날짜 직접 선택(날짜·시각). 3·12시간 제외(의존 없음 — 긴급·마감임박·푸시는 선택값이 아니라 남은 시간 기준). /sell 신청 → 등록 때 희망 기간은 가장 가까운 큰 값으로(3·12 → 24시간), 협의는 미선택 + 필수 선택. /sell 희망 기간 칩은 범위 밖(그대로).
+- 상한: 등록·수정 모두 closes_at ≤ 지금 + 60일(+30일 연장도 넘으면 막고 "마감은 최대 60일까지예요"). 마감 ≤ 소비기한 23:59(KST) — 폼·등록 API·수정 API 같은 규칙(`src/lib/dealDeadline.ts`, 시험 `scripts/deal-deadline-test.mts`). 등록 API는 "지금 이후"도 새로 검사. DB 변경 없음.
 - **마감 지난 active 매물 조사(2026-10-24)**: 마감 시각이 지나도 `status`는 **자동으로 안 바뀜**(Vercel cron은 morning-push뿐, pg_cron은 OTP·KPI뿐, 트리거 없음 — [마감]·[조기 마감]으로만 closed). 회원 화면은 전부 `closes_at > now` 조회 조건으로 가림(/deals·홈 띠·알림함·공유·sitemap·푸시 대상 제외, 상세는 `isDealClosed`로 마감 취급). **예외 = 관리자 `GET /api/admin/deals/manage`**(status=active만 걸고 closes_at 조건 없음)라 마감 지난 매물이 "진행 중인 매물"에 남음. 운영(공개 조회) status=active AND closes_at ≤ now 1건([테스트] 제외 후 1건).
 - **마감 지남 타일·필터 + 정렬**(별도 커밋): `needsAction.ts` `isDeadlinePassed`(active AND [테스트] 제외 AND closes_at ≤ now, 마감임박과 배타), 조치 필요 회색 타일 "마감 지남"(0건이면 숨김)·카드 제목 "마감 지남 N"·회색 세로선+칩·"마감 지남만" 필터(가장 오래 지난 순, 마감임박만과 동시에 안 켜짐). 진행 중 기본 정렬 = 최신 등록순(`manage/route.ts` order created_at desc), 필터 ON일 때만 화면에서 closes_at asc. 자동 마감·지난 매물 목록·DB 변경 없음.
 - **관리자 카드 제목 줄 시인성**(스타일만, 별도 커밋): 공용 `AdminListCard` 제목 줄을 연한 남색 띠(#EEF2FF, 카드 위쪽 모서리 맞춤)·왼쪽 4px 남색 선·20px 굵은 진한 남색 글자로 통일(`LIST_CARD_TITLE_PROPS`), "(n건 …)"는 알약 배지로 분리(조치형 1건 이상 주황·0건/총계형 회색, 건수 계산 기준 그대로), [접기 ▲] 클릭 영역 44px·남색 글자. 거래 연결의 빨간 "멈춤"은 주황 배지로. 빨강 없음. AdminListCard를 쓰지 않는 제목(사업자 조회·관리자 목록·긴급 공지 등록·핵심 지표 섹션 제목)은 그대로.
 
-- 관리자 등록 폼 "마감까지 남은 시간": 24시간 / 3일 / **7일(기본)** / 14일 / 30일 / 날짜 직접 선택(날짜·시각). 3·12시간 제외(의존 없음 — 긴급·마감임박·푸시는 선택값이 아니라 남은 시간 기준). /sell 신청 → 등록 때 희망 기간은 가장 가까운 큰 값으로(3·12 → 24시간), 협의는 미선택 + 필수 선택. /sell 희망 기간 칩은 범위 밖(그대로).
-- 상한: 등록·수정 모두 closes_at ≤ 지금 + 60일(+30일 연장도 넘으면 막고 "마감은 최대 60일까지예요"). 마감 ≤ 소비기한 23:59(KST) — 폼·등록 API·수정 API 같은 규칙(`src/lib/dealDeadline.ts`, 시험 `scripts/deal-deadline-test.mts`). 등록 API는 "지금 이후"도 새로 검사. DB 변경 없음.
 ## 결정 기록 (2026-10-24) — 부동산·등록 동산 매물 조건부 허용 (브랜치 `docs/real-estate-policy`)
 
 - 대표 확정 기록을 `docs/legal/real-estate-conditional-2026-10-24.md`에 그대로 보관(무료 기간 한정 조건부 허용, 분류 ①부동산 ②등록 동산 ③인허가·사업권 ④설비·재고, 로펌 보완 3문항). **문서만 — 약관·코드·화면 반영은 아직 없음**(약관은 로펌 회신 후 보류 개정안과 함께).

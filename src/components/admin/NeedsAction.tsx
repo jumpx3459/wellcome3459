@@ -2,6 +2,7 @@
 
 import { rem } from "@/lib/rem";
 import { NEEDS_ACTION_CHIP_STYLE, NEEDS_ACTION_PASSED_CHIP_STYLE } from "@/lib/admin/needsAction";
+import { ADMIN_TEXT } from "@/lib/adminText";
 
 // 2026-10-20: 목록 줄의 상태 칩(미연락·대기·심사중) — 색은 needsAction.ts 한 곳
 export function NeedsActionChip({ children, tone = "orange" }: { children: string; tone?: "orange" | "gray" }) {
@@ -26,7 +27,7 @@ export function ActionFilterChip({ label, on, onToggle }: { label: string; on: b
       aria-label={on ? `${label} 해제(전체 보기)` : label}
       data-action-filter={on ? "on" : "off"}
       className="self-start text-xs font-bold rounded-full px-3 py-1.5 whitespace-nowrap"
-      style={on ? { background: "#9A3412", color: "#fff" } : { background: "#F5F6F8", color: "#6B7480" }}
+      style={on ? { background: "#9A3412", color: "#fff" } : { background: "#F5F6F8", color: ADMIN_TEXT.muted }}
     >
       {on ? `${label} ✕` : label}
     </button>

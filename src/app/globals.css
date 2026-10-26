@@ -227,3 +227,8 @@ input[type="date"]::-webkit-datetime-edit {
     transition: outline-color 0.4s ease;
   }
 }
+
+/* 2026-10-26 admin-layout-v1 (커밋 F): 관리자 대시보드 안에서만 보조 글씨·주황 글씨 대비를 4.5:1 이상으로.
+   전역 토큰(:root)은 그대로 — 색만 바꾸고 크기·굵기는 그대로. 값은 src/lib/adminText.ts와 같게 */
+[data-admin-root] .text-gray500 { color: #566070; }
+[data-admin-root] .text-orange { color: #c2410c; }

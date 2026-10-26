@@ -1,4 +1,5 @@
 import { rem } from "@/lib/rem";
+import { ADMIN_TEXT } from "@/lib/adminText";
 
 // 관리자 대시보드 표시 조각 (2026-09-29) — 차트 라이브러리 없이 CSS 막대만.
 // 색은 의미 있을 때만: 일반 지표 남색 1색, 오늘/조치 필요만 주황, 0은 회색으로 흐리게.
@@ -6,7 +7,7 @@ export const NAVY = "#1B3A5C";
 export const ORANGE = "#E25100";
 export const MUTED = "#D5DAE0";
 export const BIG_NUM = { fontSize: rem(28), fontWeight: 800, fontVariantNumeric: "tabular-nums", lineHeight: 1.15 } as const;
-export const LABEL = { fontSize: rem(14), color: "#6B7480" } as const;
+export const LABEL = { fontSize: rem(14), color: ADMIN_TEXT.muted } as const;
 export const CARD = "bg-white border border-gray200 rounded-2xl p-4";
 
 const pct = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 100) : null);
@@ -18,7 +19,7 @@ export function RatioMetric({ label, num, den, unit, note }: { label: string; nu
     <div className={CARD}>
       <div style={LABEL} className="font-bold">{label}</div>
       <div className="mt-1 flex items-baseline gap-2">
-        <span style={{ ...BIG_NUM, color: p === null ? "#9AA3AD" : "#0B2540" }}>{p === null ? "—" : `${p}%`}</span>
+        <span style={{ ...BIG_NUM, color: p === null ? ADMIN_TEXT.faint : "#0B2540" }}>{p === null ? "—" : `${p}%`}</span>
         <span style={{ ...LABEL, fontVariantNumeric: "tabular-nums" }}>
           {num.toLocaleString()} / {den.toLocaleString()}
           {unit}
@@ -48,7 +49,7 @@ export function DailyBars({ title, days, values }: { title: string; days: string
           const today = i === values.length - 1;
           return (
             <div key={days[i]} className="flex-1 flex flex-col items-center justify-end h-full min-w-0" title={`${days[i]} ${v}`}>
-              <span style={{ fontSize: rem(14), fontVariantNumeric: "tabular-nums", color: v === 0 ? "#B0B7C0" : today ? ORANGE : "#0B2540", fontWeight: today ? 800 : 600 }}>{v}</span>
+              <span style={{ fontSize: rem(14), fontVariantNumeric: "tabular-nums", color: v === 0 ? ADMIN_TEXT.faint : today ? ADMIN_TEXT.warn : "#0B2540", fontWeight: today ? 800 : 600 }}>{v}</span>
               <div
                 className="w-full rounded-t"
                 style={{ height: v === 0 ? 2 : Math.max(6, Math.round((v / max) * H)), background: v === 0 ? MUTED : today ? ORANGE : NAVY, marginTop: 2 }}
@@ -59,7 +60,7 @@ export function DailyBars({ title, days, values }: { title: string; days: string
       </div>
       <div className="mt-1 flex gap-1.5">
         {days.map((d, i) => (
-          <span key={d} className="flex-1 text-center min-w-0" style={{ fontSize: rem(14), color: i === days.length - 1 ? ORANGE : "#6B7480", fontWeight: i === days.length - 1 ? 800 : 400, fontVariantNumeric: "tabular-nums" }}>
+          <span key={d} className="flex-1 text-center min-w-0" style={{ fontSize: rem(14), color: i === days.length - 1 ? ADMIN_TEXT.warn : ADMIN_TEXT.muted, fontWeight: i === days.length - 1 ? 800 : 400, fontVariantNumeric: "tabular-nums" }}>
             {i === days.length - 1 ? "오늘" : `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`}
           </span>
         ))}

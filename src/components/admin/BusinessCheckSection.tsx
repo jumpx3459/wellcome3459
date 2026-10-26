@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { rem } from "@/lib/rem";
 import { UI_META, BTN_CLASS, btnStyle } from "@/lib/uiText";
-import { CARD_TITLE_PROPS } from "@/components/admin/cardTitle";
+import { LIST_CARD_TITLE_PROPS, LIST_CARD_BAND_BG, bandBleedClass } from "@/components/admin/cardTitle";
 import { DEAL_LABEL_STYLE, DEAL_INPUT_FONT_SIZE } from "@/components/FormField";
 import { checkBadge, isPassingCheck, statusLabel, type BusinessCheck, type CheckTone } from "@/lib/businessCheck";
 import ReuseCandidate from "@/components/admin/ReuseCandidate";
 import { can } from "@/lib/adminPerms";
 import { groupHistory, visibleCards } from "@/lib/businessCheckHistory";
+import { ADMIN_TEXT } from "@/lib/adminText";
 
 // 2026-10-04 판매자 신원 확인 — 관리자 "사업자 조회" 섹션(판매자 신청 목록 바로 위).
 // 점핑매니저가 통화로 받은 사업자번호·대표자명·개업일자로 국세청 진위확인·상태조회 → 결과 배지·이력.
@@ -18,11 +19,12 @@ import { groupHistory, visibleCards } from "@/lib/businessCheckHistory";
 export type BizCheckRequest = { id: string; product_name: string; company_name: string | null };
 
 const TONE: Record<CheckTone, { background: string; color: string }> = {
-  ok: { background: "#E8F8EC", color: "#1D8A44" },
+  ok: { background: "#E8F8EC", color: ADMIN_TEXT.ok },
   warn: { background: "#FFF4E0", color: "#966B00" },
   bad: { background: "#FDECEC", color: "#C2282D" },
-  wait: { background: "#F1F1EF", color: "#6B7480" },
+  wait: { background: "#F1F1EF", color: ADMIN_TEXT.muted },
 };
+const META = { ...UI_META, color: ADMIN_TEXT.muted } as const;
 const WARN_BOX = { background: "#FFF8DB", color: "#7A5B00", fontSize: rem(14), padding: "8px 12px", lineHeight: 1.5 } as const;
 
 export function BusinessCheckBadge({ check }: { check: BusinessCheck | null | undefined }) {
@@ -67,6 +69,8 @@ export default function BusinessCheckSection({
   phoneMatch,
   preselect,
   className,
+  open,
+  onToggle,
   onChanged,
 }: {
   adminKey: string;
@@ -78,6 +82,9 @@ export default function BusinessCheckSection({
   /** 판매 신청 카드 [사업자 조회]로 들어올 때 미리 고를 신청 — nonce가 바뀌면 다시 적용 */
   preselect: { id: string; nonce: number } | null;
   className: string;
+  /** open·onToggle을 안 주면 접기 없이 항상 펼침. 접혀 있어도 맨 바깥 div(#business-check)는 렌더됨(바로가기 대상) */
+  open?: boolean;
+  onToggle?: () => void;
   /** 조회·예외 확인 뒤 판매 신청 카드 배지 다시 읽기 */
   onChanged: () => void;
 }) {
@@ -188,8 +195,20 @@ export default function BusinessCheckSection({
 
   return (
     <div id="business-check" className={className} style={{ scrollMarginTop: 12 }}>
-      <div {...CARD_TITLE_PROPS}>사업자 조회</div>
-      <p style={UI_META}>통화로 받은 사업자번호·대표자명·개업일자로 국세청 진위확인을 해요. 판매 신청은 조회가 통과해야 매물로 등록할 수 있어요.</p>
+      <div className={`${bandBleedClass(className)} py-2`} style={{ background: LIST_CARD_BAND_BG }} data-card-band-x>
+      {onToggle ? (
+        <button type="button" onClick={onToggle} className="w-full flex items-center justify-between gap-2 text-left" style={{ minHeight: 44 }} data-card-toggle>
+          <span {...LIST_CARD_TITLE_PROPS}>사업자 조회</span>
+          <span className="font-bold flex-shrink-0 flex items-center justify-center" style={{ minWidth: 44, minHeight: 44, fontSize: rem(14), color: "#3730A3" }}>
+            {open ? "접기 ▲" : "펼치기 ▼"}
+          </span>
+        </button>
+      ) : (
+        <div {...LIST_CARD_TITLE_PROPS}>사업자 조회</div>
+      )}
+      </div>
+      {(open ?? true) && (<>
+      <p style={META}>통화로 받은 사업자번호·대표자명·개업일자로 국세청 진위확인을 해요. 판매 신청은 조회가 통과해야 매물로 등록할 수 있어요.</p>
 
       <label className="flex flex-col gap-1">
         <span style={DEAL_LABEL_STYLE}>판매 신청 (선택)</span>
@@ -263,7 +282,7 @@ export default function BusinessCheckSection({
               <BusinessCheckBadge check={last} />
               {last.reused_from_check_id && <ReusedChip />}
             </span>
-            <span style={UI_META}>
+            <span style={META}>
               {last.b_no_masked} · {requestName(last.seller_request_id)}
             </span>
           </div>
@@ -284,11 +303,11 @@ export default function BusinessCheckSection({
           <div className="font-bold" style={{ fontSize: rem(15), color: "#0B2540" }}>
             {requestId ? "이 신청의 조회 이력" : "최근 조회 이력"} ({cards.length})
           </div>
-          {cards.length === 0 && <div style={UI_META}>아직 조회 기록이 없어요.</div>}
+          {cards.length === 0 && <div style={META}>아직 조회 기록이 없어요.</div>}
           {shown.map(({ check: c, rechecks }) => (
             <div key={c.id} className="border border-gray200 rounded-xl" style={{ padding: "8px 12px" }} data-biz-card>
               {c.kind === "status_recheck" ? (
-                <div style={UI_META}>
+                <div style={META}>
                   승인 시 상태 재조회 · {statusLabel(c.status_code)} · {fmtDate(c.checked_at)}
                 </div>
               ) : (
@@ -296,15 +315,15 @@ export default function BusinessCheckSection({
                 <div className="flex flex-wrap items-center gap-2">
                   <BusinessCheckBadge check={c} />
                   {c.reused_from_check_id && <ReusedChip />}
-                  <span style={UI_META}>{fmtDate(c.checked_at)}{c.checked_by_name ? ` · ${c.checked_by_name}` : ""}</span>
+                  <span style={META}>{fmtDate(c.checked_at)}{c.checked_by_name ? ` · ${c.checked_by_name}` : ""}</span>
                 </div>
-                <div style={UI_META}>
+                <div style={META}>
                   {c.b_no_masked} · {c.rep_name} · 개업 {fmtOpen(c.open_date)}
                   {c.input_company_name ? ` · ${c.input_company_name}` : ""}
                   {!requestId ? ` · ${requestName(c.seller_request_id)}` : ""}
                 </div>
                 {c.exception_ok && (
-                  <div style={UI_META}>
+                  <div style={META}>
                     예외 확인 · {c.exception_by_admin_name ?? ""} · {c.exception_reason}
                   </div>
                 )}
@@ -320,8 +339,8 @@ export default function BusinessCheckSection({
                         value={reason}
                         onChange={(e) => setReason(e.target.value)}
                       />
-                      <div style={{ ...UI_META, color: "#966B00" }}>사업자등록증·폐업사실증명원 사본은 확인 후 바로 파기해 주세요(저장하지 않아요).</div>
-                      {exceptionError && <div style={{ ...UI_META, color: "#C2282D" }}>{exceptionError}</div>}
+                      <div style={{ ...META, color: "#966B00" }}>사업자등록증·폐업사실증명원 사본은 확인 후 바로 파기해 주세요(저장하지 않아요).</div>
+                      {exceptionError && <div style={{ ...META, color: "#C2282D" }}>{exceptionError}</div>}
                       <div className="flex gap-2">
                         <button type="button" onClick={() => saveException(c.id)} className="font-bold rounded-lg text-sm px-3.5 py-2 text-white" style={{ background: "#0B2540" }}>
                           예외 확인 저장
@@ -354,7 +373,7 @@ export default function BusinessCheckSection({
                   )
                 )}
                   {rechecks.map((r) => (
-                    <div key={r.id} style={UI_META} data-biz-recheck>
+                    <div key={r.id} style={META} data-biz-recheck>
                       · 승인 시 재조회 {statusLabel(r.status_code)} {fmtDate(r.checked_at)}
                     </div>
                   ))}
@@ -375,6 +394,7 @@ export default function BusinessCheckSection({
           )}
         </div>
       )}
+      </>)}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { rem } from "@/lib/rem";
 import { DEAL_HINT_STYLE } from "@/components/FormField";
 import { canReuseRoot, type ReuseWarning } from "@/lib/businessReuse";
 import type { BusinessCheck } from "@/lib/businessCheck";
+import { ADMIN_TEXT } from "@/lib/adminText";
 
 // 2026-10-21 확인된 판매자 재사용 — "✓ 확인된 판매자 · YYYY.MM.DD 조회(원본 관리자)" 후보 카드 + [이 기록 재사용].
 //   by = { sellerRequestId }(판매 신청 카드: 같은 회원의 이전 신청 기록을 자동으로 찾음) 또는 "bNo 입력"(관리자 등록 폼: 사업자번호 10자리).
@@ -172,7 +173,7 @@ export default function ReuseCandidate({
 
       {candidate && (
         <div className="rounded-xl min-w-0" style={{ border: "2px solid #BFE6CB", background: "#F3FBF6", padding: "10px 12px" }} data-reuse-card>
-          <div className="font-bold" style={{ fontSize: rem(14), color: "#1D8A44" }}>
+          <div className="font-bold" style={{ fontSize: rem(14), color: ADMIN_TEXT.ok }}>
             ✓ 확인된 판매자 · 조회일 {dotDate(candidate.checked_at)}{candidate.checked_by_name ? ` (${candidate.checked_by_name})` : ""}
           </div>
           <div className="mt-0.5 break-words" style={{ fontSize: rem(14), color: "#374151" }}>
@@ -209,7 +210,7 @@ export default function ReuseCandidate({
         </div>
       )}
       {done && warnings && warnings.length === 0 && (
-        <p style={{ ...DEAL_HINT_STYLE, color: "#1D8A44" }} data-reuse-ok>
+        <p style={{ ...DEAL_HINT_STYLE, color: ADMIN_TEXT.ok }} data-reuse-ok>
           재사용했어요. 이번 상태 조회에서도 경고가 없어요.
         </p>
       )}
