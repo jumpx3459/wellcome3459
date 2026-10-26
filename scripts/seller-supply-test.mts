@@ -38,10 +38,16 @@ ok(sp.supplyRefId(`${U}'; drop table x;--`) === null, "supplyRefId: 덧붙인 �
 // resolveSupplyPrice — 유효 숫자>0 → fixed, 그 외 → negotiable, 정상가 항상 null, 400(ok:false) 없음
 let x = sp.resolveSupplyPrice({ hopePrice: 5000 });
 ok(x.ok && x.priceMode === "fixed" && x.hopePrice === 5000 && x.originalPrice === null, "단가 5000 → fixed·5000·정상가 null");
-for (const [label, v] of [["undefined", undefined], ["null", null], ["0", 0], ["-5", -5], ["NaN", NaN], ["Infinity", Infinity], ["'abc'", "abc"], ["'5000'(문자열)", "5000"], ["''", ""]] as const) {
+for (const [label, v] of [["undefined", undefined], ["null", null], ["0", 0], ["-5", -5], ["NaN", NaN], ["Infinity", Infinity], ["'abc'", "abc"], ["'abc5000'", "abc5000"], ["'-5000'", "-5000"], ["'0x10'", "0x10"], ["'1e3'", "1e3"], ["'0'(문자열)", "0"], ["' '", " "], ["''", ""]] as const) {
   x = sp.resolveSupplyPrice({ hopePrice: v });
   ok(x.ok === true && x.priceMode === "negotiable" && x.hopePrice === null && x.originalPrice === null, `단가 ${label} → negotiable·희망가 null`);
 }
+for (const v of ["5000", "5,000", " 5 000 ", 5000]) {
+  x = sp.resolveSupplyPrice({ hopePrice: v });
+  ok(x.ok && x.priceMode === "fixed" && x.hopePrice === 5000 && x.originalPrice === null, `단가 ${JSON.stringify(v)} → fixed·5000`);
+}
+x = sp.resolveSupplyPrice({ hopePrice: "1,234.5" });
+ok(x.ok && x.priceMode === "fixed" && x.hopePrice === 1234.5, "단가 '1,234.5' → fixed·1234.5");
 x = sp.resolveSupplyPrice({});
 ok(x.ok === true && x.priceMode === "negotiable", "단가 칸 없음 → negotiable");
 // 정상가를 넘겨도 무시(입력 타입에 없지만 서버가 body를 그대로 넘기지 않음 — 반환은 항상 null)

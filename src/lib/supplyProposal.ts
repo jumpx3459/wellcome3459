@@ -21,13 +21,24 @@ export function supplyRefId(v: unknown): string | null {
 
 export type SupplyPrice = { ok: true; priceMode: "fixed" | "negotiable"; hopePrice: number | null; originalPrice: null };
 
+/** 단가 값 → 0 초과 유한수 또는 null. number 는 그대로, 문자열은 쉼표·공백 제거 후 숫자 모양("5000"·"5,000"·"1234.5")일 때만 변환 */
+function supplyPriceNumber(v: unknown): number | null {
+  let n: number | null = null;
+  if (typeof v === "number") n = v;
+  else if (typeof v === "string") {
+    const t = v.replace(/[,\s]/g, "");
+    if (/^\d+(\.\d+)?$/.test(t)) n = Number(t);
+  }
+  return n !== null && Number.isFinite(n) && n > 0 ? n : null;
+}
+
 /**
- * 공급 제안의 제안 단가 — 유효한 숫자(number, 0 초과)면 fixed, 빈칸·0·음수·비숫자(문자열 포함)는 negotiable(희망가 null).
+ * 공급 제안의 제안 단가 — 유효한 숫자(number 또는 "5,000" 같은 숫자 문자열, 0 초과)면 fixed, 빈칸·0·음수·숫자 아닌 값은 negotiable(희망가 null).
  * 정상 단가는 받지 않아 항상 null. 400을 내지 않는다(seller_requests_price_by_mode_check 와 맞음).
  */
 export function resolveSupplyPrice(input: { hopePrice?: unknown }): SupplyPrice {
-  const h = input.hopePrice;
-  if (typeof h === "number" && Number.isFinite(h) && h > 0) return { ok: true, priceMode: "fixed", hopePrice: h, originalPrice: null };
+  const h = supplyPriceNumber(input.hopePrice);
+  if (h !== null) return { ok: true, priceMode: "fixed", hopePrice: h, originalPrice: null };
   return { ok: true, priceMode: "negotiable", hopePrice: null, originalPrice: null };
 }
 
