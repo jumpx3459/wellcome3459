@@ -9,6 +9,7 @@ import { rem } from "@/lib/rem";
 import { formatPhone } from "@/lib/phone";
 import { formatMemberNo, formatPriceInput, parsePriceInput } from "@/lib/format";
 import { formatConsentDate } from "@/lib/consent";
+import { ADMIN_TEXT } from "@/lib/adminText";
 import {
   BOARD_STEPS, END_REASONS, MEMO_MAX, MEMO_PLACEHOLDER, RESULT_LABEL,
   boardStep, contactMessage, resultDueAt, type ConnectionResult, type ConnectionStatus, type EndReasonKey,
@@ -165,7 +166,7 @@ function StepBar({ status }: { status: ConnectionStatus }) {
             <div style={{ height: 5, borderRadius: 3, background: color }} />
             <span
               className="text-center leading-tight"
-              style={{ fontSize: rem(12), fontWeight: i === cur ? 800 : 500, color: i === cur ? ORANGE : i < cur ? NAVY : "#8A939E", wordBreak: "keep-all" }}
+              style={{ fontSize: rem(12), fontWeight: i === cur ? 800 : 500, color: i === cur ? ORANGE : i < cur ? NAVY : ADMIN_TEXT.muted, wordBreak: "keep-all" }}
             >
               {label}
             </span>
@@ -365,7 +366,7 @@ function ConnectionRow({ item, adminKey, onDone, assignees }: { item: Connection
     >
       <div className="flex items-center gap-1.5 min-w-0">
         {item.is_test && (
-          <span className="flex-shrink-0 font-bold px-2 py-0.5 rounded-full" style={chip("#EEF0F3", "#6B7480")} data-testid="conn-test">
+          <span className="flex-shrink-0 font-bold px-2 py-0.5 rounded-full" style={chip("#EEF0F3", ADMIN_TEXT.muted)} data-testid="conn-test">
             테스트
           </span>
         )}
@@ -398,7 +399,7 @@ function ConnectionRow({ item, adminKey, onDone, assignees }: { item: Connection
           </span>
         )}
       </div>
-      <div className="mt-0.5" style={{ fontSize: rem(13), color: item.consent_at ? "#1D8A44" : "#8A939E" }} data-testid="conn-consent">
+      <div className="mt-0.5" style={{ fontSize: rem(13), color: item.consent_at ? ADMIN_TEXT.ok : ADMIN_TEXT.muted }} data-testid="conn-consent">
         {item.consent_at ? `연결 동의 ✓ ${formatConsentDate(item.consent_at)}` : "연결 동의 없음"}
       </div>
       {assignees ? (
@@ -468,7 +469,7 @@ function ConnectionRow({ item, adminKey, onDone, assignees }: { item: Connection
           type="button"
           onClick={() => setEndOpen((v) => !v)}
           className="font-bold whitespace-nowrap"
-          style={{ fontSize: rem(14), color: "#6B7480", minHeight: 36, textDecoration: "underline" }}
+          style={{ fontSize: rem(14), color: ADMIN_TEXT.muted, minHeight: 36, textDecoration: "underline" }}
           data-testid="conn-end-toggle"
         >
           {endOpen ? "끝내기 닫기" : "이 건 끝내기"}
@@ -762,7 +763,7 @@ function SellerPrivatePanel({ connectionId, adminKey, autoLoad = false }: { conn
         </>
       )}
       {msg && (
-        <p className="font-bold" style={{ fontSize: rem(14), color: msg.error ? "#B91C1C" : "#1D8A44" }}>
+        <p className="font-bold" style={{ fontSize: rem(14), color: msg.error ? "#B91C1C" : ADMIN_TEXT.ok }}>
           {msg.text}
         </p>
       )}

@@ -6,6 +6,7 @@ import { formatMemberNo } from "@/lib/format";
 import { formatPhone } from "@/lib/phone";
 import { PanelColumn } from "@/components/admin/AdminFullscreenPanel";
 import type { MemberDetail } from "@/lib/adminMemberDetail";
+import { ADMIN_TEXT } from "@/lib/adminText";
 
 // 2026-10-23 관리자 회원 상세(보기 전용) 본문 — PC는 전체 화면 패널의 3열(PanelColumn), 모바일·📱는 카드 아래 한 줄로 쌓아 펼침.
 // 열 때마다 GET /api/admin/members/[id] 1회(캐시 없이). 번호는 서버가 권한별로(최고관리자 전체 / 관리자 가림) 내려 주고,
@@ -52,7 +53,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 function Chip({ children, tone = "gray" }: { children: ReactNode; tone?: "gray" | "green" | "orange" | "navy" }) {
-  const c = { gray: ["#F1F1EF", "#6B7480"], green: ["#E8F8EC", "#1D8A44"], orange: ["#FFF4E0", "#966B00"], navy: ["#EAF0F7", "#1B3A5C"] }[tone];
+  const c = { gray: ["#F1F1EF", ADMIN_TEXT.muted], green: ["#E8F8EC", ADMIN_TEXT.ok], orange: ["#FFF4E0", "#966B00"], navy: ["#EAF0F7", "#1B3A5C"] }[tone];
   return (
     <span className="inline-block rounded-full font-bold whitespace-nowrap" style={{ background: c[0], color: c[1], fontSize: rem(13), padding: "2px 10px" }}>
       {children}

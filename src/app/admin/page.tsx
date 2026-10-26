@@ -65,6 +65,7 @@ import {
 } from "@/lib/admin/needsAction";
 import { isPassingCheck, NOT_CHECKED_MESSAGE, type BusinessCheck } from "@/lib/businessCheck";
 import { formatConsentDate } from "@/lib/consent";
+import { ADMIN_TEXT } from "@/lib/adminText";
 
 // 2026-09-30 (커밋 K): /api/admin/kpi-daily 한 줄 (kpi_daily 테이블 일부 컬럼)
 type KpiDailyRow = {
@@ -1075,7 +1076,7 @@ function AdminDashboard({
               style={
                 memberFilter === f.key
                   ? { background: "#0B2540", color: "#fff" }
-                  : { background: "#F5F6F8", color: "#6B7480" }
+                  : { background: "#F5F6F8", color: ADMIN_TEXT.muted }
               }
             >
               {f.label}
@@ -1130,7 +1131,7 @@ function AdminDashboard({
                   className="text-xs font-bold px-2 py-1 rounded-full"
                   style={{
                     background: m.push_subscribed ? "#E8F8EC" : "#FDEEE8",
-                    color: m.push_subscribed ? "#1D8A44" : "#C2410C",
+                    color: m.push_subscribed ? ADMIN_TEXT.ok : "#C2410C",
                   }}
                 >
                   {m.push_subscribed ? "🔔 구독중" : "🔕 미구독"}
@@ -1146,7 +1147,7 @@ function AdminDashboard({
                 {m.business_verified && (
                   <span
                     className="text-xs font-bold px-2 py-1 rounded-full inline-flex items-center gap-1"
-                    style={{ background: "#E8F8EC", color: "#1D8A44" }}
+                    style={{ background: "#E8F8EC", color: ADMIN_TEXT.ok }}
                   >
                     <CheckCircle className="w-3 h-3" /> 인증된 사업자
                   </span>
@@ -1305,7 +1306,7 @@ function AdminDashboard({
               style={
                 leadFilter === f.key
                   ? { background: "#0B2540", color: "#fff" }
-                  : { background: "#F5F6F8", color: "#6B7480" }
+                  : { background: "#F5F6F8", color: ADMIN_TEXT.muted }
               }
             >
               {f.label}
@@ -1391,7 +1392,7 @@ function AdminDashboard({
                   )}
                   {i.members?.member_no != null && <span className="whitespace-nowrap" style={LABEL}>· {formatMemberNo(i.members.member_no)}</span>}
                   {i.members?.business_verified ? (
-                    <span className="whitespace-nowrap inline-flex items-center gap-0.5" style={{ fontSize: rem(14), color: "#1D8A44" }}>
+                    <span className="whitespace-nowrap inline-flex items-center gap-0.5" style={{ fontSize: rem(14), color: ADMIN_TEXT.ok }}>
                       · <CheckCircle className="w-3 h-3" /> 인증 사업자
                     </span>
                   ) : (
@@ -1400,7 +1401,7 @@ function AdminDashboard({
                 </div>
                 <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
                   {i.outcome === "completed" && (
-                    <span className="font-bold px-2 py-0.5 rounded-full" style={{ fontSize: rem(14), background: "#E8F8EC", color: "#1D8A44" }}>
+                    <span className="font-bold px-2 py-0.5 rounded-full" style={{ fontSize: rem(14), background: "#E8F8EC", color: ADMIN_TEXT.ok }}>
                       성사
                     </span>
                   )}
@@ -1415,7 +1416,7 @@ function AdminDashboard({
                     </span>
                   )}
                   {i.connection_consent_at && (
-                    <span className="font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ fontSize: rem(14), background: "#E8F8EC", color: "#1D8A44" }}>
+                    <span className="font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ fontSize: rem(14), background: "#E8F8EC", color: ADMIN_TEXT.ok }}>
                       연결 동의 ✓ {formatConsentDate(i.connection_consent_at)}
                     </span>
                   )}
@@ -1429,7 +1430,7 @@ function AdminDashboard({
                     minute: "2-digit",
                   })}
                   {i.outcome === "completed" && i.completed_amount && (
-                    <span className="ml-1.5 font-bold" style={{ color: "#1D8A44" }}>
+                    <span className="ml-1.5 font-bold" style={{ color: ADMIN_TEXT.ok }}>
                       · {i.completed_amount.toLocaleString()}원
                     </span>
                   )}
@@ -1448,7 +1449,7 @@ function AdminDashboard({
                   load();
                 }}
                 className="flex-1 font-bold rounded-lg whitespace-nowrap"
-                style={{ fontSize: rem(15), minHeight: 40, ...(i.contacted ? { background: "#F5F6F8", color: "#6B7480" } : { background: "#0B2540", color: "#fff" }) }}
+                style={{ fontSize: rem(15), minHeight: 40, ...(i.contacted ? { background: "#F5F6F8", color: ADMIN_TEXT.muted } : { background: "#0B2540", color: "#fff" }) }}
               >
                 {i.contacted ? "✓ 연락완료" : "연락완료"}
               </button>
@@ -1484,7 +1485,7 @@ function AdminDashboard({
                     load();
                   }}
                   className="flex-1 font-bold rounded-lg inline-flex items-center justify-center gap-1 whitespace-nowrap"
-                  style={{ fontSize: rem(15), minHeight: 40, background: "#E8F8EC", color: "#1D8A44" }}
+                  style={{ fontSize: rem(15), minHeight: 40, background: "#E8F8EC", color: ADMIN_TEXT.ok }}
                 >
                   <CheckCircle className="w-3.5 h-3.5" /> 성사
                 </button>
@@ -1942,7 +1943,7 @@ function AdminDashboard({
                 ) : (
                   <span
                     className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
-                    style={r.status === "approved" ? { background: "#E8F8EC", color: "#1D8A44" } : { background: "#F1F1EF", color: "#6B7480" }}
+                    style={r.status === "approved" ? { background: "#E8F8EC", color: ADMIN_TEXT.ok } : { background: "#F1F1EF", color: ADMIN_TEXT.muted }}
                   >
                     {r.status === "approved" ? "승인됨" : "거절됨"}
                   </span>
@@ -2076,7 +2077,7 @@ function AdminDashboard({
               <div className="flex items-center gap-1 flex-shrink-0">
                 {buyRequestNeedsAction(b) && <NeedsActionChip>미연락</NeedsActionChip>}
                 {b.outcome === "matched" && (
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: "#E8F8EC", color: "#1D8A44" }}>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: "#E8F8EC", color: ADMIN_TEXT.ok }}>
                     매칭 완료
                   </span>
                 )}
@@ -2105,7 +2106,7 @@ function AdminDashboard({
             </div>
             {b.description && (
               <div className="text-sm text-gray500 mt-1 bg-gray100 rounded-lg px-3 py-2">
-                <span className="font-bold" style={{ color: "#9AA3AD" }}>
+                <span className="font-bold" style={{ color: ADMIN_TEXT.faint }}>
                   💬 메모{" "}
                 </span>
                 {b.description}
@@ -2124,7 +2125,7 @@ function AdminDashboard({
                 className="flex-1 text-xs font-bold rounded-lg py-2"
                 style={
                   b.contacted
-                    ? { background: "#F5F6F8", color: "#6B7480" }
+                    ? { background: "#F5F6F8", color: ADMIN_TEXT.muted }
                     : { background: "#FDEEE8", color: "#C2410C" }
                 }
               >
@@ -2146,7 +2147,7 @@ function AdminDashboard({
                       load();
                     }}
                     className="flex-1 text-xs font-bold rounded-lg py-2"
-                    style={{ background: "#E8F8EC", color: "#1D8A44" }}
+                    style={{ background: "#E8F8EC", color: ADMIN_TEXT.ok }}
                   >
                     매칭 완료
                   </button>
@@ -2243,6 +2244,7 @@ function AdminDashboard({
 
   return (
     <main
+      data-admin-root
       className={isDesktop ? `flex flex-col min-h-screen mx-auto w-full ${ADMIN_MAX_W} bg-white shadow-sm` : "flex flex-col min-h-screen mx-auto w-full max-w-md bg-white shadow-sm"}
       // 2026-10-01 (커밋 J): 맨 아래 목록이 화면 끝에 붙어 "끝난 것처럼" 보이던 문제 — 하단 여백 pb-24 + 안전 영역
       style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom, 0px))" }}
@@ -2603,7 +2605,7 @@ function AdminDashboard({
                     <b className="text-navy" style={{ minWidth: "2ch" }}>{c.leads}</b>
                     <InlineBar value={c.leads} max={maxLeads} />
                   </span>
-                  <span className="text-right" style={{ color: c.completionRate == null ? "#9AA3AD" : "#0B2540" }}>{c.completionRate == null ? "—" : `${c.completionRate}%`}</span>
+                  <span className="text-right" style={{ color: c.completionRate == null ? ADMIN_TEXT.faint : "#0B2540" }}>{c.completionRate == null ? "—" : `${c.completionRate}%`}</span>
                   <span className="text-right">{c.activeSuppliers}</span>
                   <span className="text-right">{c.activeDemanders}</span>
                 </div>
@@ -2647,7 +2649,7 @@ function AdminDashboard({
                   style={
                     appointRole === r
                       ? { background: "#0B2540", color: "#fff" }
-                      : { background: "#F5F6F8", color: "#6B7480" }
+                      : { background: "#F5F6F8", color: ADMIN_TEXT.muted }
                   }
                 >
                   {r}
@@ -2948,7 +2950,7 @@ function ActiveDealCard({
         {(deal.interest_count ?? 0) > 0 && (
           <span
             className="flex-shrink-0 text-xs font-bold px-2 py-0.5 rounded-full"
-            style={{ background: "#FFF0E8", color: "#E25100" }}
+            style={{ background: "#FFF0E8", color: ADMIN_TEXT.warn }}
             title={`회원 ${(deal.interest_count ?? 0) - (deal.quick_lead_count ?? 0)} · 비회원 ${deal.quick_lead_count ?? 0}`}
           >
             ❤️ {deal.interest_count}
