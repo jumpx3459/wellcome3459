@@ -61,6 +61,7 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 수정(클래스만, 기본 글자 크기에서는 화면 픽셀 동일 — 360·412 × /·/deals·/buy·/buy/new·/sell 전체 화면 캡처 바이트 비교 일치): `ContactLinks` `whitespace-nowrap` → `max-w-full`(줄바꿈 허용), `RotatingUrgencyTag` `whitespace-nowrap` → `max-w-full`, `/sell` 머리 줄 `flex-wrap`. body/html overflow-x 덮어쓰기 없음.
 - 새 시험 `scripts/mobile-overflow-test.mjs`: 7개 경로 × 360·390·412 × 글자 기본·130%·200% × 회원·비회원 — scrollWidth = clientWidth + 화면 오른쪽 끝을 넘는 요소 0(clip에 가려진 것 포함). 수정 전 8건 실패(전부 /sell 비회원 ContactLinks) → 수정 후 216건 통과. 200%는 /buy·/buy/new·/sell만 요구(홈·/deals 가격 줄 등은 알려진 한계 — 200%에서 `whitespace-nowrap` 가격이 넘침, 별도 작업).
 - **/buy 증상은 원인 미확정**: 어떤 조합에서도 /buy 요소가 화면을 넘지 않음. 실기기 확인 필요(주소창 javascript: innerWidth/clientWidth/scrollWidth, 글자 크기 설정). 의심: 손날 접촉이 핀치 확대로 인식(뷰포트에 확대 제한 없음) — 대표 결정 전 변경 없음.
+- **결정(2026-10-26)**: 확대 제한(`touch-action`·`maximumScale`)은 접근성 때문에 하지 않음. /buy 증상은 대표 실기기 확인(축소 복귀 여부·글자 크기 설정) 결과를 받은 뒤 필요 시 추적. 200% 글자의 홈·/deals 가격 줄 nowrap은 다음 회원 화면 PR(공급 제안 A안)에서 처리(백로그).
 
 ## 최근 작업 (2026-10-24) — 매물 마감 기간 선택지 확대 (브랜치 `feat/deal-deadline-options`)
 - **마감 지난 active 매물 조사(2026-10-24)**: 마감 시각이 지나도 `status`는 **자동으로 안 바뀜**(Vercel cron은 morning-push뿐, pg_cron은 OTP·KPI뿐, 트리거 없음 — [마감]·[조기 마감]으로만 closed). 회원 화면은 전부 `closes_at > now` 조회 조건으로 가림(/deals·홈 띠·알림함·공유·sitemap·푸시 대상 제외, 상세는 `isDealClosed`로 마감 취급). **예외 = 관리자 `GET /api/admin/deals/manage`**(status=active만 걸고 closes_at 조건 없음)라 마감 지난 매물이 "진행 중인 매물"에 남음. 운영(공개 조회) status=active AND closes_at ≤ now 1건([테스트] 제외 후 1건).
