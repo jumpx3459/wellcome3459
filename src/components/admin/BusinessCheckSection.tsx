@@ -67,6 +67,8 @@ export default function BusinessCheckSection({
   phoneMatch,
   preselect,
   className,
+  open,
+  onToggle,
   onChanged,
 }: {
   adminKey: string;
@@ -78,6 +80,9 @@ export default function BusinessCheckSection({
   /** 판매 신청 카드 [사업자 조회]로 들어올 때 미리 고를 신청 — nonce가 바뀌면 다시 적용 */
   preselect: { id: string; nonce: number } | null;
   className: string;
+  /** open·onToggle을 안 주면 접기 없이 항상 펼침. 접혀 있어도 맨 바깥 div(#business-check)는 렌더됨(바로가기 대상) */
+  open?: boolean;
+  onToggle?: () => void;
   /** 조회·예외 확인 뒤 판매 신청 카드 배지 다시 읽기 */
   onChanged: () => void;
 }) {
@@ -188,7 +193,17 @@ export default function BusinessCheckSection({
 
   return (
     <div id="business-check" className={className} style={{ scrollMarginTop: 12 }}>
-      <div {...CARD_TITLE_PROPS}>사업자 조회</div>
+      {onToggle ? (
+        <button type="button" onClick={onToggle} className="w-full flex items-center justify-between gap-2 text-left" style={{ minHeight: 44 }} data-card-toggle>
+          <span {...CARD_TITLE_PROPS}>사업자 조회</span>
+          <span className="font-bold flex-shrink-0 flex items-center justify-center" style={{ minWidth: 44, minHeight: 44, fontSize: rem(14), color: "#3730A3" }}>
+            {open ? "접기 ▲" : "펼치기 ▼"}
+          </span>
+        </button>
+      ) : (
+        <div {...CARD_TITLE_PROPS}>사업자 조회</div>
+      )}
+      {(open ?? true) && (<>
       <p style={UI_META}>통화로 받은 사업자번호·대표자명·개업일자로 국세청 진위확인을 해요. 판매 신청은 조회가 통과해야 매물로 등록할 수 있어요.</p>
 
       <label className="flex flex-col gap-1">
@@ -375,6 +390,7 @@ export default function BusinessCheckSection({
           )}
         </div>
       )}
+      </>)}
     </div>
   );
 }

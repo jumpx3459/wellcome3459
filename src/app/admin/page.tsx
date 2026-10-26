@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import { CheckCircle } from "lucide-react";
@@ -601,6 +601,7 @@ function AdminDashboard({
     return () => clearTimeout(t);
   }, [flash]);
   const [adminsOpen, setAdminsOpen] = useState(false);
+  const [bizOpen, setBizOpen] = useState(false); // 2026-10-26: 사업자 조회는 기본 접힘(바로가기·판매 신청 [사업자 조회]는 펼치고 이동)
   const [memberShowCount, setMemberShowCount] = useState(20);
   const [detailMemberId, setDetailMemberId] = useState<string | null>(null); // 회원 상세(보기 전용) — PC는 전체 화면 패널, 모바일·📱는 카드 아래 펼침
 
@@ -1010,6 +1011,7 @@ function AdminDashboard({
   // 2026-10-04: 매물 등록 폼·수정 카드의 "사업자 조회 바로가기" — 사업자 조회 섹션의 판매 신청을 "선택 안 함(직접 등록)"으로 되돌리고
   // (예전에 어떤 신청 카드에서 골라 둔 게 남아 있으면 직접 등록용 조회가 그 신청에 붙어 버림) 그 위치로 스크롤 + 잠깐 강조
   const goToBizCheck = () => {
+    setBizOpen(true);
     setBizPreselect({ id: "", nonce: Date.now() });
     scrollToBizCheck();
   };
@@ -1027,6 +1029,7 @@ function AdminDashboard({
   const membersBlock = !perm("members") ? null : (
     <>
       <AdminListCard
+        id="members"
         className={
           isDesktop
             ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
@@ -1534,10 +1537,9 @@ function AdminDashboard({
   );
   const newDealBlock = (
     <>
-      <div
-        className={isDesktop ? "col-span-3" : "px-5 py-4"}
-        style={isDesktop ? { order: -1 } : undefined}
-      >
+      {/* 2026-10-26 admin-layout-v1: PC는 가운데 열 맨 위 — 버튼 두 개를 한 줄(2칸)로, 폼·목록은 전체 폭(col-span-2) */}
+      <div className={isDesktop ? "grid grid-cols-2 gap-2 items-stretch" : "px-5 py-4"}>
+        <div className={isDesktop && !(isSuperAdmin && openFormFor !== "notice") ? "col-span-2" : undefined} style={isDesktop ? { order: -2 } : undefined}>
         {openFormFor === "new" && !isDesktop ? (
           <button type="button" onClick={closeDealForm} className={`ml-auto ${BTN_CLASS}`} style={{ ...btnStyle("secondary"), minHeight: 40, fontSize: rem(15), padding: "0 16px" }}>
             닫기
@@ -1547,8 +1549,9 @@ function AdminDashboard({
             + 새 매물 직접 등록
           </button>
         )}
+        </div>
         {/* 2026-10-03 PR-D: 매물 등록 폼은 한 자리에 하나만 — 새 매물이든 판매자 신청이든 여기(전체 폭)에서 열림. PC는 아래 패널 */}
-        <div id="deal-form-slot" style={{ scrollMarginTop: 12 }}>
+        <div id="deal-form-slot" className={isDesktop ? "col-span-2" : undefined} style={{ scrollMarginTop: 12 }}>
           {!isDesktop && formRequest && (
             <div
               className="mt-3 flex items-center justify-between gap-3 rounded-xl"
@@ -1613,25 +1616,27 @@ function AdminDashboard({
             "긴급 공지"라는 가벼운 트랙으로 구현. 구인/구직은 법률 검토 전까지 제외.
             2026-10-06: 등록(= 푸시 발송) 버튼·폼은 최고관리자만(서버 /api/admin/notices POST도 최고관리자만). 아래 목록·[마감]은 그대로 */}
         {!isSuperAdmin ? null : openFormFor === "notice" ? (
-          <div className="flex items-center justify-between mt-3">
+          <div className={`flex items-center justify-between ${isDesktop ? "col-span-2" : "mt-3"}`}>
             <span {...CARD_TITLE_PROPS}>긴급 공지 등록</span>
             <button type="button" onClick={() => setOpenFormFor(null)} className={BTN_CLASS} style={{ ...btnStyle("secondary"), minHeight: 40, fontSize: rem(15), padding: "0 16px" }}>
               닫기
             </button>
           </div>
         ) : (
-          <button onClick={() => switchForm("notice")} className={`w-full mt-2 ${BTN_CLASS}`} style={btnStyle("secondary")}>
+          <button onClick={() => switchForm("notice")} className={`w-full ${isDesktop ? "" : "mt-2"} ${BTN_CLASS}`} style={isDesktop ? { ...btnStyle("secondary"), order: -1 } : btnStyle("secondary")}>
             + 긴급 공지 등록 (부동산·설비)
           </button>
         )}
         {isSuperAdmin && openFormFor === "notice" && (
-          <NoticeForm adminKey={adminKey} onDone={() => { setOpenFormFor(null); load(); }} />
+          <div className={isDesktop ? "col-span-2" : undefined}>
+            <NoticeForm adminKey={adminKey} onDone={() => { setOpenFormFor(null); load(); }} />
+          </div>
         )}
 
         {/* 2026-09-28 (2): 등록 폼만 있고 내릴 방법이 없다는 지적 반영 — 등록된
             공지를 한 줄 요약 + [마감]으로 노출. deals의 "조기 마감" 패턴과 동일. */}
         {perm("noticeManage") && notices.length > 0 && (
-          <div className="flex flex-col gap-2 mt-3">
+          <div className={`flex flex-col gap-2 ${isDesktop ? "col-span-2 mt-1" : "mt-3"}`}>
             <div className="text-xs font-bold text-gray500">등록된 긴급 공지 ({notices.length})</div>
             {notices.map((n) => (
               <NoticeAdminRow key={n.id} notice={n} adminKey={adminKey} onChanged={load} />
@@ -1811,6 +1816,7 @@ function AdminDashboard({
               <button
                 type="button"
                 onClick={() => {
+                  setBizOpen(true);
                   setBizPreselect({ id: r.id, nonce: Date.now() });
                   scrollToBizCheck();
                 }}
@@ -1851,30 +1857,33 @@ function AdminDashboard({
       />
     </>
   );
+  // 2026-10-23: [+ 찾습니다 대신 등록] — 회원 화면 /buy/new를 새 탭으로 열기만(다른 동작 없음). members 권한(최고관리자·관리자)만.
+  // 2026-10-26: 사업자 조회 위에서 왼쪽 열(관심 표시한 회원 아래)로 이동
+  const buyProxyBlock = !perm("members") ? null : (
+    <div className={isDesktop ? "" : "px-5 pb-3"}>
+      <a
+        href="/buy/new"
+        target="_blank"
+        rel="noopener"
+        className={`flex items-center justify-center w-full ${BTN_CLASS}`}
+        style={btnStyle("secondary")}
+        data-buy-proxy-link
+      >
+        + 찾습니다 대신 등록
+      </a>
+    </div>
+  );
   // 2026-10-04 판매자 신원 확인: "사업자 조회" — 판매자 신청 목록 바로 위(📱 세로 순서·💻 3단 모두)
   const bizCheckBlock = (
     <>
-      {/* 2026-10-23: 사업자 조회 위 [+ 찾습니다 대신 등록] — 회원 화면 /buy/new를 새 탭으로 열기만(다른 동작 없음). members 권한(최고관리자·관리자)만 */}
-      {perm("members") && (
-        <div className={isDesktop ? "mb-3" : "px-5 pb-3"}>
-          <a
-            href="/buy/new"
-            target="_blank"
-            rel="noopener"
-            className={`flex items-center justify-center w-full ${BTN_CLASS}`}
-            style={btnStyle("secondary")}
-            data-buy-proxy-link
-          >
-            + 찾습니다 대신 등록
-          </a>
-        </div>
-      )}
       <BusinessCheckSection
         adminKey={adminKey}
         adminRole={adminRole}
         requests={requests}
         phoneMatch={bizPhoneMatch}
         preselect={bizPreselect}
+        open={bizOpen}
+        onToggle={() => setBizOpen((v) => !v)}
         className={
           isDesktop
             ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
@@ -1961,6 +1970,7 @@ function AdminDashboard({
           파트너들의 성과 비교용. 승인 즉시 여기 0건으로 나타남. */}
       <AdminListCard
         as="section"
+        id="partners-overview"
         className={
           isDesktop
             ? "bg-white border border-gray200 rounded-2xl p-4"
@@ -2153,7 +2163,7 @@ function AdminDashboard({
     </>
   );
   const adminsBlock = role === "최고관리자" ? (
-        <div className={isDesktop ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3" : "px-5 pt-4 pb-8 flex flex-col gap-3"}>
+        <div id="admins" className={isDesktop ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3" : "px-5 pt-4 pb-8 flex flex-col gap-3"}>
           <button
             type="button"
             onClick={() => setAdminsOpen((v) => !v)}
@@ -2370,60 +2380,58 @@ function AdminDashboard({
         })()}
       </div>
 
-      {/* 2026-09-26 (4): PC에서도 그냥 한 열로 쭉 늘어놓기만 해서 여전히 스크롤이
-          길다는 피드백 — 리드/진행중매물/판매자신청/점핑파트너신청/재고찾습니다/
-          최근가입회원 6개 섹션을 3열 패널 그리드로 묶고, 패널마다 내부 스크롤을
-          줘서 전체 대시보드가 한 화면에 가깝게 들어오도록 함. 모바일에서는
-          display:contents로 그리드를 무효화해 기존 구조 그대로 유지 — "+ 새 매물
-          직접 등록" 버튼은 DOM 위치(모바일 순서)는 그대로 두고 desktop에서만
-          order:-1로 그리드 맨 앞 전체 폭 줄로 끌어올림. */}
-      {/* 2026-10-03 PR-D: 매물 등록 폼 자리(newDealBlock)를 PC·모바일 보기에서 같은 트리 위치에 둠 — 보기 전환해도 폼이 다시 마운트되지 않아
-          작성 중 내용·업로드 상태 유지. 모바일 보기에선 바깥 틀이 display:contents라 예전 세로 순서 그대로 */}
-      <div className={isDesktop ? `px-8 pb-6 ${ADMIN_MAX_W} mx-auto w-full` : "contents"}>
-        {!isDesktop && membersBlock}
-        {!isDesktop && leadsBlock}
-        {!isDesktop && connectionsBlock}
-        <div className={isDesktop ? "mb-4" : "contents"}>{newDealBlock}</div>
-        {isDesktop ? (
-          <div className="columns-3 gap-4">
-            {[
-              { key: "leads", title: "관심 표시한 회원", count: interests.length, node: leadsBlock },
-              { key: "connections", title: "거래 연결", count: connCounts.open + connCounts.closed === 0 ? 0 : -1, node: connectionsBlock },
-              { key: "business-check", title: "사업자 조회", count: -1, node: bizCheckBlock },
-              { key: "pending-sellers", title: "대기 중인 판매자 신청", count: requests.length, node: pendingSellersBlock },
-              { key: "active-deals", title: "진행 중인 매물", count: activeDeals.length, node: activeDealsBlock },
-              { key: "partner-requests", title: "🏅 공식 점핑파트너 신청", count: partnerRequests.length, node: partnerReqBlock },
-              { key: "partners-overview", title: "📊 점핑파트너 실적", count: partnersOverview.length, node: partnersOverviewBlock },
-              { key: "buy-requests", title: "🔍 이런 재고 찾습니다", count: buyRequests.length, node: buyRequestsBlock },
-              { key: "members", title: "최근 가입 회원", count: members.length, node: membersBlock },
-              { key: "admins", title: "관리자 목록", count: -1, node: adminsBlock },
-            ]
-              .filter((c) => c.node)
-              .map((c) => (
-                <div key={c.key} className="break-inside-avoid mb-4">
-                  {c.count === 0 ? (
-                    <div className="bg-white border border-gray200 rounded-2xl flex items-center justify-between gap-2" style={{ padding: "12px 16px" }}>
-                      <span {...CARD_TITLE_PROPS}>{c.title}</span>
-                      <span style={LABEL}>없어요</span>
-                    </div>
-                  ) : (
-                    c.node
-                  )}
+      {/* 2026-10-26 admin-layout-v1: 업무 카드는 PC 고정 3열(masonry 대신) — 높이에 따라 카드 위치가 바뀌지 않음.
+          좌 = 관심 표시한 회원 → [+ 찾습니다 대신 등록] → 이런 재고 찾습니다 → 거래 연결
+          중 = [+ 새 매물 직접 등록]·[+ 긴급 공지 등록] → 대기 중인 판매자 신청 → 진행 중인 매물
+          우 = 사업자 조회(기본 접힘) → 공식 점핑파트너 신청 → 점핑파트너 실적 → 최근 가입 회원 → 관리자 목록
+          📱·360 폭은 같은 순서(좌 → 중 → 우)로 1열 — 같은 트리라 보기를 바꿔도 등록 폼이 다시 마운트되지 않음(2026-10-03 PR-D).
+          열 높이 보정 없음. PC에서 0건 카드는 한 줄(제목 + "없어요")로 줄임. */}
+      {(() => {
+        const slot = (key: string, title: string, count: number, node: React.ReactNode) =>
+          !node ? null : !isDesktop ? (
+            <Fragment key={key}>{node}</Fragment>
+          ) : (
+            <div key={key} className="min-w-0">
+              {count === 0 ? (
+                <div className="bg-white border border-gray200 rounded-2xl flex items-center justify-between gap-2" style={{ padding: "12px 16px" }}>
+                  <span {...CARD_TITLE_PROPS}>{title}</span>
+                  <span style={LABEL}>없어요</span>
                 </div>
-              ))}
+              ) : (
+                node
+              )}
+            </div>
+          );
+        const col = (key: string, children: React.ReactNode) => (
+          <div className={isDesktop ? "flex flex-col gap-4 min-w-0" : "contents"} data-col={key}>
+            {children}
           </div>
-        ) : (
-          <>
-            {activeDealsBlock}
-            {bizCheckBlock}
-            {pendingSellersBlock}
-            {partnerReqBlock}
-            {partnersOverviewBlock}
-            {buyRequestsBlock}
-            {adminsBlock}
-          </>
-        )}
-      </div>
+        );
+        return (
+          <div id="work-cards" className={isDesktop ? `px-8 pb-6 ${ADMIN_MAX_W} mx-auto w-full` : "contents"}>
+            <div className={isDesktop ? "grid grid-cols-3 gap-4 items-start" : "contents"}>
+              {col("left", <>
+                {slot("leads", "관심 표시한 회원", interests.length, leadsBlock)}
+                {buyProxyBlock && (isDesktop ? <div key="buy-proxy">{buyProxyBlock}</div> : <Fragment key="buy-proxy">{buyProxyBlock}</Fragment>)}
+                {slot("buy-requests", "🔍 이런 재고 찾습니다", buyRequests.length, buyRequestsBlock)}
+                {slot("connections", "거래 연결", connCounts.open + connCounts.closed === 0 ? 0 : -1, connectionsBlock)}
+              </>)}
+              {col("middle", <>
+                <div className={isDesktop ? "" : "contents"}>{newDealBlock}</div>
+                {slot("pending-sellers", "대기 중인 판매자 신청", requests.length, pendingSellersBlock)}
+                {slot("active-deals", "진행 중인 매물", activeDeals.length, activeDealsBlock)}
+              </>)}
+              {col("right", <>
+                {slot("business-check", "사업자 조회", -1, bizCheckBlock)}
+                {slot("partner-requests", "🏅 공식 점핑파트너 신청", partnerRequests.length, partnerReqBlock)}
+                {slot("partners-overview", "📊 점핑파트너 실적", partnersOverview.length, partnersOverviewBlock)}
+                {slot("members", "최근 가입 회원", members.length, membersBlock)}
+                {slot("admins", "관리자 목록", -1, adminsBlock)}
+              </>)}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 2026-10-26 admin-layout-v1: 지표는 업무 카드 아래로(조치 필요 → 업무 카드 → 지표) */}
       {perm("dashboard") && (
