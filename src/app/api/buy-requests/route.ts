@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "개인정보 수집·이용에 동의해주세요.", field: "privacyConsent" }, { status: 400 });
   }
   // 2026-09-29: 사무실 번호도 허용 (휴대폰 전용 검증은 로그인 OTP에만)
-  // 2026-10-06: 휴대폰은 010 + 8자리만, 사무실 번호는 그대로 — 화면(buy/page.tsx)과 같은 checkContactPhone
+  // 2026-10-06: 휴대폰은 010 + 8자리만, 사무실 번호는 그대로 — 화면(buy/new/page.tsx)과 같은 checkContactPhone
   const contactProblem = checkContactPhone(contactPhone);
   if (contactProblem) {
     return NextResponse.json({ error: contactProblem, field: "contactPhone" }, { status: 400 });

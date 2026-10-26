@@ -36,7 +36,7 @@ for (const bad of ["", "123", "02-12-345", "030-123-4567", "070-123-4567", "1234
 ok(auth.isValidContactPhone("010-1234-5678") === true && auth.isValidContactPhone("010-000-0000") === false, "isValidContactPhone = checkContactPhone 통과 여부");
 
 // 화면·서버가 같은 함수를 쓰는지 (다른 검사가 끼어들면 결과가 달라짐)
-for (const f of ["src/app/buy/page.tsx", "src/app/sell/page.tsx", "src/app/api/buy-requests/route.ts", "src/app/api/seller-requests/route.ts"]) {
+for (const f of ["src/app/buy/new/page.tsx", "src/app/sell/page.tsx", "src/app/api/buy-requests/route.ts", "src/app/api/seller-requests/route.ts"]) {
   const src = readFileSync(join(root, f), "utf8");
   ok(/checkContactPhone\(contactPhone\)/.test(src) && !/isValidContactPhone\(/.test(src), `${f} → checkContactPhone(contactPhone)만 사용`);
 }
