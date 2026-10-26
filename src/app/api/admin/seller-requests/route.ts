@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { checkAdminAuth, requirePerm } from "@/lib/adminAuth";
 import { writeAudit } from "@/lib/adminAudit";
+import { visibleBuyRequestIds } from "@/lib/supplyProposalServer";
 
 function getAdminClient() {
   return createClient(
@@ -23,13 +24,20 @@ export async function GET(req: NextRequest) {
   const supabaseAdmin = getAdminClient();
   const { data, error } = await supabaseAdmin
     .from("seller_requests")
-    .select("*, categories(name), regions(name)")
+    // 2026-10-26 공급 제안: buy_request_id(연결된 찾습니다)와 그 요청 품목명 — 관리자 카드 "찾습니다 응답: 품목명"
+    .select("*, categories(name), regions(name), buy_requests(product_name)")
     .eq("status", "pending")
     .order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ items: data });
+  // 연결된 요청이 지금 공개 노출 중인지(isBuyVisible 재사용) — 아니면 카드에 "(노출 종료)" 표시. 연결 없는 일반 신청은 칸 자체를 안 붙임
+  const rows = (data ?? []) as Array<Record<string, unknown> & { buy_request_id?: string | null }>;
+  const linkedIds = rows.map((r) => r.buy_request_id).filter((v): v is string => typeof v === "string" && v !== "");
+  const visible = linkedIds.length ? await visibleBuyRequestIds(supabaseAdmin, linkedIds) : new Set<string>();
+  const items = rows.map((r) => (r.buy_request_id ? { ...r, buy_request_visible: visible.has(r.buy_request_id) } : r));
+
+  return NextResponse.json({ items });
 }
 
 export async function PATCH(req: NextRequest) {
