@@ -55,6 +55,19 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
+## 최근 작업 (2026-10-26) — 관리자 세션 만료 대응 (브랜치 `fix/admin-session-expiry`)
+- **배경**: 10/26 새 매물 등록 중 세션 6시간 만료 → `/api/upload` 401 → 사진 8장 실패 + "로그인이 필요합니다"(10/14 확정안 미구현, 2회째). 원인 = 관리자 화면에 401을 받아 처리하는 공통 길이 없었음(401 분기는 `load()`의 seller-requests 하나, 그것도 대시보드 전체를 "다시 입력하기" 화면으로 바꿔 입력이 사라짐).
+- **세션 구조(변화 없음)**: 토큰 서버 `exp` 6시간 고정(`adminAuth.ts` SESSION_TTL_MS) · 브라우저 `sessionStorage` `jumpingbid_admin_session`(탭 단위, 쿠키 없음) · `x-admin-key` 헤더. 연장·갱신 API 없음 — **새 토큰이 나오는 곳은 기존 `/api/admin/login` 하나**(이번에도 안 만듦). 서버 변경 없음.
+- **401 한 곳**: `src/lib/adminSession.ts` — `adminFetch(url, adminKey, init)`가 401이면 `dj-admin-auth-expired`(받은 토큰 포함)를 알림. `uploadClient`(`/api/upload`·`/api/upload/video-url`)·`load()`·매물 등록/수정 저장·긴급 공지 저장에 적용. 이미 새 토큰으로 바뀐 뒤 늦게 도착한 옛 요청의 401은 무시.
+- **그 자리 로그인 창**(`src/components/admin/AdminSessionUI.tsx`): 만료돼도 `key`를 비우지 않고 대시보드·전체 화면 패널·입력은 그대로, 그 위(z-[60], 패널 z-50·라이트박스 z-70 사이)에 로그인 창. 성공하면 `key`만 새 토큰으로 교체. 창 열린 동안 Esc는 이 창만 닫음(패널 Esc·"저장 안 하고 닫기" 확인 차단), Tab은 창 안. `load()` 401은 화면 교체 대신 이 창(429는 예전 화면 그대로).
+- **번호 미리 채움**: 기존 sessionStorage 세션 객체에 `phone` 추가(탭 닫기·로그아웃 시 삭제, localStorage 안 씀). 비밀번호는 로그인 성공 뒤 상태에서 비움.
+- **사진**: 401이면 칸 아래 "관리자 로그인이 끝났어요. 다시 로그인하면 이어서 올라가요" — 로그인 성공 신호로 **실패한 그 사진만 자동 재업로드 1회**(다시 401이면 창이 또 뜸, 자동 재시도는 다음 로그인 때). **영상**은 자동 재시도 없이 "…다시 로그인한 뒤 [다시 시도]를 눌러주세요".
+- **폼 저장 401**: 등록·수정·긴급 공지 모두 "다시 로그인한 뒤 [매물 등록 확정/변경사항 저장]을 눌러주세요. 입력한 내용은 그대로예요" — **자동 재제출 없음**(중복 등록·알림 발송 방지).
+- **배너**: 남은 10분 이하 "곧 로그아웃돼요 · N분 남음 [연장]", 만료 뒤 "로그인이 끝났어요 [다시 로그인]"(페이지 맨 위 sticky + 전체 화면 패널 안 같은 줄). 배너가 떠 있으면 바로가기 칩이 그 아래에 붙고 점프 여백에 배너 높이 반영. **[연장] = 같은 로그인 창(비밀번호 재입력)** — 비밀번호 없이 세션이 이어지는 경로는 없음.
+- **남은 직접 fetch(후속, 401이 나면 조용히 실패/오류 문구만 — 로그인 창은 다음 `adminFetch` 401·배너로)**: `admin/page.tsx` 21곳(admins·buy-requests·interests·business-license·change-password·deals/manage(마감·삭제 등)·export·members phone·partner-requests·seller-requests 승인/거절·business-checks 목록 등), `BusinessCheckSection`(3), `ConnectionBoard`(6), `DealSellerPrivateEditor`(2), `MemberDetailView`(1), `ReuseCandidate`(2), `SellerPrivateFields`(1).
+- **이번 PR에서 제외(PR 2 — 관리자 작은 개선)**: 관심 표시한 회원 기본 필터 `pending`(limit 5 유지) · 공식 점핑파트너 신청 0건이면 기본 접힘 · [+ 긴급 공지 등록] 문구("(부동산·설비)"는 폼 제목) · (선택) 접힌 사업자 조회 카드 아래 여백 · 대리 등록 반복 입력 줄이기(7b [같은 판매자로 다음 매물 등록] → 7a 최근 확인된 판매자 칩, 매니저는 담당 아닌 매물이면 상호만·대표자명 응답 금지·최근 1년·재사용과 값 조회 분리·감사 `seller_private_view` via `check_prefill`) · 상단 바로가기 칩 개선(높이 44px·아이콘·숫자 배지·옅은 남색 띠, scrollspy 보류). 200% 글자 nowrap은 그 뒤 별도 작은 PR.
+- 시험: 새 시험(fake DB + 실제 서버 401·실제 로그인·실제 업로드) 54건 — 사진 8장 401→문구→창→로그인→8장 자동 재업로드, 등록 확정 401→로그인→입력 유지→자동 재제출 0→직접 재확정 1건, `load()` 401, 10분 배너·[연장]·만료 배너, 역할 3종, 360·PC. 기존 관리자 시험·tsc·lint 신규 0.
+
 ## 최근 작업 (2026-10-26) — 찾습니다 공급 제안 A안 (브랜치 `feat/buy-supply-proposal`)
 - **무엇**: /buy 카드 [공급 가능해요] → `/sell?buyRef=<찾습니다 id>` = "공급 제안" 모드. 일반 판매 신청과 같은 API(`/api/seller-requests`, 판매 신청 행 + 판매자 확인 동의 기록)로 들어가되 `seller_requests.buy_request_id`로 요청과 연결. 공개 매물 체크 없음(공개 전환은 관리자 등록).
 - **DB**: `seller_requests.buy_request_id uuid` + FK(`buy_requests`, on delete set null) + 부분 인덱스 `seller_requests_buy_request_id_idx` — **운영 적용 2026-10-26(대표), 확인 uuid / 1 / 1 / 0**. `supabase/migrations/20261026_seller_request_buy_ref.sql`, `schema.sql` 끝 블록.
