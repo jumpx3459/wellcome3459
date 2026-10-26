@@ -67,6 +67,7 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - **백로그**: `/sell?buyRef` 첫 렌더 직후 헤더가 순간 일반 문구("판매 신청")로 보였다가 "공급 제안"으로 바뀜(주소를 마운트 뒤에 읽음 — 폼은 회원 확인 전이라 안 보임).
 - 이번 PR에서 제외: 200% 글자 홈·/deals 가격 줄 nowrap(공급 제안 merge 후 별도 작은 PR), 일반 판매 신청 관리자 푸시, 요청별 공급 제안 필터.
 - **#116 병합 기록**은 위 "관리자 화면 1단계" 섹션 끝에 넣었음(커밋 0).
+- **#117 병합 기록**(찾습니다 공급 제안 A안): squash 병합 `348d45d`(10/26) · PR CI `build` run 40288814752 성공 · Deploy to Vercel run 40289728707 성공 · 운영 /sell·/buy·/admin 200(비로그인 응답 코드만). `seller_requests.hope_price`는 numeric이라 소수 단가도 저장 가능(수정 없음). 운영 확인 대기: 푸시 실수신·실제 가입 후 복귀·실기기·운영 `buy_requests` 임베드.
 
 ## 최근 작업 (2026-10-26) — 관리자 화면 1단계: 배치 개선 (브랜치 `feat/admin-layout-v1`)
 - 로직·API·DB 변경 없음, 화면 배치·접기·글자 색만. 지시서 `docs/plans/admin-layout-v1.md`.
