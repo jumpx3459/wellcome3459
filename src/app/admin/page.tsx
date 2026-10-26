@@ -50,7 +50,7 @@ import AdminListCard from "@/components/admin/AdminListCard";
 import BusinessCheckSection, { BusinessCheckBadge } from "@/components/admin/BusinessCheckSection";
 import ConnectionBoard from "@/components/admin/ConnectionBoard";
 import { can, type AdminPerm } from "@/lib/adminPerms";
-import { CARD_TITLE_PROPS, LIST_CARD_TITLE_PROPS } from "@/components/admin/cardTitle";
+import { CARD_TITLE_PROPS, LIST_CARD_TITLE_PROPS, LIST_CARD_BAND_BG, bandBleedClass } from "@/components/admin/cardTitle";
 import { NeedsActionChip, ActionFilterChip, ActionFilterEmpty } from "@/components/admin/NeedsAction";
 import {
   leadNeedsAction,
@@ -1627,8 +1627,8 @@ function AdminDashboard({
             "긴급 공지"라는 가벼운 트랙으로 구현. 구인/구직은 법률 검토 전까지 제외.
             2026-10-06: 등록(= 푸시 발송) 버튼·폼은 최고관리자만(서버 /api/admin/notices POST도 최고관리자만). 아래 목록·[마감]은 그대로 */}
         {!isSuperAdmin ? null : openFormFor === "notice" ? (
-          <div className={`flex items-center justify-between ${isDesktop ? "col-span-2" : "mt-3"}`}>
-            <span {...CARD_TITLE_PROPS}>긴급 공지 등록</span>
+          <div className={`flex items-center justify-between gap-2 rounded-xl px-3 py-2 ${isDesktop ? "col-span-2" : "mt-3"}`} style={{ background: LIST_CARD_BAND_BG }} data-card-band-x>
+            <span {...LIST_CARD_TITLE_PROPS}>긴급 공지 등록</span>
             <button type="button" onClick={() => setOpenFormFor(null)} className={BTN_CLASS} style={{ ...btnStyle("secondary"), minHeight: 40, fontSize: rem(15), padding: "0 16px" }}>
               닫기
             </button>
@@ -2175,14 +2175,21 @@ function AdminDashboard({
   );
   const adminsBlock = role === "최고관리자" ? (
         <div id="admins" className={isDesktop ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3" : "px-5 pt-4 pb-8 flex flex-col gap-3"}>
-          <button
-            type="button"
-            onClick={() => setAdminsOpen((v) => !v)}
-            className="w-full flex items-center justify-between"
-          >
-            <span {...CARD_TITLE_PROPS}>관리자 목록 <span style={{ ...LABEL, fontWeight: 400 }}>({admins.length}명)</span></span>
-            <span className="text-sm font-bold text-gray500">{adminsOpen ? "접기 ▲" : "펼치기 ▼"}</span>
-          </button>
+          <div className={`${bandBleedClass(isDesktop ? "p-4" : "px-5")} py-2`} style={{ background: LIST_CARD_BAND_BG }} data-card-band-x>
+            <button
+              type="button"
+              onClick={() => setAdminsOpen((v) => !v)}
+              className="w-full flex items-center justify-between gap-2 text-left"
+              style={{ minHeight: 44 }}
+              data-card-toggle
+            >
+              <span className="min-w-0 flex items-center gap-x-2 gap-y-1 flex-wrap">
+                <span {...LIST_CARD_TITLE_PROPS}>관리자 목록</span>
+                <span className="inline-flex items-center rounded-full font-bold whitespace-nowrap" style={{ fontSize: rem(14), padding: "2px 10px", background: "#E5E7EB", color: "#374151" }} data-card-badge="gray">{admins.length}명</span>
+              </span>
+              <span className="font-bold flex-shrink-0 flex items-center justify-center" style={{ minWidth: 44, minHeight: 44, fontSize: rem(14), color: "#3730A3" }}>{adminsOpen ? "접기 ▲" : "펼치기 ▼"}</span>
+            </button>
+          </div>
           {adminsOpen && (
           <>
           {admins.map((a) => (

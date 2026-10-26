@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { rem } from "@/lib/rem";
 import { UI_META, BTN_CLASS, btnStyle } from "@/lib/uiText";
-import { CARD_TITLE_PROPS } from "@/components/admin/cardTitle";
+import { LIST_CARD_TITLE_PROPS, LIST_CARD_BAND_BG, bandBleedClass } from "@/components/admin/cardTitle";
 import { DEAL_LABEL_STYLE, DEAL_INPUT_FONT_SIZE } from "@/components/FormField";
 import { checkBadge, isPassingCheck, statusLabel, type BusinessCheck, type CheckTone } from "@/lib/businessCheck";
 import ReuseCandidate from "@/components/admin/ReuseCandidate";
@@ -195,16 +195,18 @@ export default function BusinessCheckSection({
 
   return (
     <div id="business-check" className={className} style={{ scrollMarginTop: 12 }}>
+      <div className={`${bandBleedClass(className)} py-2`} style={{ background: LIST_CARD_BAND_BG }} data-card-band-x>
       {onToggle ? (
         <button type="button" onClick={onToggle} className="w-full flex items-center justify-between gap-2 text-left" style={{ minHeight: 44 }} data-card-toggle>
-          <span {...CARD_TITLE_PROPS}>사업자 조회</span>
+          <span {...LIST_CARD_TITLE_PROPS}>사업자 조회</span>
           <span className="font-bold flex-shrink-0 flex items-center justify-center" style={{ minWidth: 44, minHeight: 44, fontSize: rem(14), color: "#3730A3" }}>
             {open ? "접기 ▲" : "펼치기 ▼"}
           </span>
         </button>
       ) : (
-        <div {...CARD_TITLE_PROPS}>사업자 조회</div>
+        <div {...LIST_CARD_TITLE_PROPS}>사업자 조회</div>
       )}
+      </div>
       {(open ?? true) && (<>
       <p style={META}>통화로 받은 사업자번호·대표자명·개업일자로 국세청 진위확인을 해요. 판매 신청은 조회가 통과해야 매물로 등록할 수 있어요.</p>
 

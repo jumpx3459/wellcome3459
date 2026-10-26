@@ -17,3 +17,7 @@ export const LIST_CARD_TITLE_PROPS = {
   "data-card-title": "",
 } as const;
 export const LIST_CARD_BAND_BG = "#EEF2FF"; // indigo-50 — 글자(#312E81) 대비 약 11:1, [접기](#3730A3) 약 9:1
+
+/** AdminListCard 밖 제목(사업자 조회·긴급 공지 등록·관리자 목록)이 같은 남색 띠를 쓰도록 — 카드 안쪽 여백을 음수 여백으로 상쇄(AdminListCard와 같은 규칙) */
+export const bandBleedClass = (cardClassName: string) =>
+  /\bp-4\b/.test(cardClassName) ? "-mx-4 -mt-4 px-4 rounded-t-2xl" : /\bpx-5\b/.test(cardClassName) ? "-mx-5 px-5" : "";
