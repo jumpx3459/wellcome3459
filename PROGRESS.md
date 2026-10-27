@@ -55,6 +55,12 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
+## 최근 작업 (2026-10-27) — 푸시 알림 클릭 무반응 수정 (브랜치 `fix/push-click`)
+- **증상**: 양배추환 푸시 → 상단 알림 "지금 확인하기" 클릭 → 화면 이동 없음.
+- **원인**(`public/sw.js` notificationclick): 열린 창의 주소에 알림 주소가 부분 일치하면 `focus()`만 하고 이동 안 함(같은 매물이 이미 열려 있거나 기본값 `/deals`) · `focus`·`openWindow`가 실패해도 대체 동작 없음 · `includes` 부분일치(`/deals/abc`≈`/deals/abcd`). 버튼(`view`)과 본문 클릭은 같은 경로라 버튼 문제 아님.
+- **수정**: 절대 주소(`new URL(url, origin)`) · `matchAll({includeUncontrolled:true})` · 경로 정확 비교 · 같은 매물 창은 focus만, 다른 화면 창은 focus + `navigate` · 실패 시 `openWindow` · dismiss·클릭 기록(`logClick`)·vercel.app 정식 주소 처리 유지. install `skipWaiting`·activate `clients.claim` 이미 있음(새 sw 즉시 적용). 서버·push 핸들러 변경 없음.
+- **미확인**: 실기기(안드로이드 설치 앱 WebAPK)에서의 실제 동작. 배포 후 대표 확인 = 앱·탭을 한 번 완전히 닫았다 열고 → 다음 푸시에서 본문·[지금 확인하기] 각각 클릭.
+
 ## 최근 작업 (2026-10-26) — 관리자 세션 만료 대응 (브랜치 `fix/admin-session-expiry`)
 - **배경**: 10/26 새 매물 등록 중 세션 6시간 만료 → `/api/upload` 401 → 사진 8장 실패 + "로그인이 필요합니다"(10/14 확정안 미구현, 2회째). 원인 = 관리자 화면에 401을 받아 처리하는 공통 길이 없었음(401 분기는 `load()`의 seller-requests 하나, 그것도 대시보드 전체를 "다시 입력하기" 화면으로 바꿔 입력이 사라짐).
 - **세션 구조(변화 없음)**: 토큰 서버 `exp` 6시간 고정(`adminAuth.ts` SESSION_TTL_MS) · 브라우저 `sessionStorage` `jumpingbid_admin_session`(탭 단위, 쿠키 없음) · `x-admin-key` 헤더. 연장·갱신 API 없음 — **새 토큰이 나오는 곳은 기존 `/api/admin/login` 하나**(이번에도 안 만듦). 서버 변경 없음.

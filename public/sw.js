@@ -68,12 +68,27 @@ self.addEventListener("notificationclick", (event) => {
   const SITE_URL = "https://www.dumpingjumping.com";
   const url = self.location.hostname.endsWith(".vercel.app") ? new URL(path, SITE_URL).href : path;
 
-  const openClient = clients.matchAll({ type: "window" }).then((clientList) => {
-    for (const client of clientList) {
-      if (client.url.includes(url) && "focus" in client) return client.focus();
+  // 2026-10-27: 절대 주소로 통일 + 열린 창이 있어도 알림의 주소로 이동하고, 실패하면 새 창으로(대체 동작).
+  // 예전엔 열린 창의 주소에 알림 주소가 "포함"되기만 하면 focus만 하고 끝 — 같은 매물이 이미 열려 있거나 기본값 /deals일 때
+  // 눌러도 화면이 안 바뀌어 무반응처럼 보였고, focus가 거부되면 대체 동작이 없었음. 경로는 정확히 비교(/deals/abc ≠ /deals/abcd)
+  const target = new URL(url, self.location.origin).href;
+  const openClient = (async () => {
+    try {
+      const list = await clients.matchAll({ type: "window", includeUncontrolled: true });
+      const targetUrl = new URL(target);
+      const sameOrigin = list.filter((c) => new URL(c.url).origin === targetUrl.origin);
+      const exact = sameOrigin.find((c) => new URL(c.url).pathname === targetUrl.pathname);
+      const win = exact || sameOrigin[0];
+      if (win) {
+        await win.focus();
+        if (!exact && "navigate" in win) await win.navigate(target); // 다른 화면이 열려 있으면 그 창을 알림 매물로 이동
+        return;
+      }
+    } catch {
+      // focus·navigate 거부 등 → 아래 새 창 열기로
     }
-    if (clients.openWindow) return clients.openWindow(url);
-  });
+    if (clients.openWindow) await clients.openWindow(target);
+  })();
 
   const logClick = logId
     ? fetch("/api/notification-click", {
