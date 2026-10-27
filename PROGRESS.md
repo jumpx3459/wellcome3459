@@ -68,6 +68,7 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - **남은 직접 fetch(후속, 401이 나면 조용히 실패/오류 문구만 — 로그인 창은 다음 `adminFetch` 401·배너로)**: `admin/page.tsx` 21곳(admins·buy-requests·interests·business-license·change-password·deals/manage(마감·삭제 등)·export·members phone·partner-requests·seller-requests 승인/거절·business-checks 목록 등), `BusinessCheckSection`(3), `ConnectionBoard`(6), `DealSellerPrivateEditor`(2), `MemberDetailView`(1), `ReuseCandidate`(2), `SellerPrivateFields`(1).
 - **이번 PR에서 제외(PR 2 — 관리자 작은 개선)**: 관심 표시한 회원 기본 필터 `pending`(limit 5 유지) · 공식 점핑파트너 신청 0건이면 기본 접힘 · [+ 긴급 공지 등록] 문구("(부동산·설비)"는 폼 제목) · (선택) 접힌 사업자 조회 카드 아래 여백 · 대리 등록 반복 입력 줄이기(7b [같은 판매자로 다음 매물 등록] → 7a 최근 확인된 판매자 칩, 매니저는 담당 아닌 매물이면 상호만·대표자명 응답 금지·최근 1년·재사용과 값 조회 분리·감사 `seller_private_view` via `check_prefill`) · 상단 바로가기 칩 개선(높이 44px·아이콘·숫자 배지·옅은 남색 띠, scrollspy 보류). 200% 글자 nowrap은 그 뒤 별도 작은 PR.
 - 시험: 새 시험(fake DB + 실제 서버 401·실제 로그인·실제 업로드) 61건(번호 고정 7건 포함) — 사진 8장 401→문구→창→로그인→8장 자동 재업로드, 등록 확정 401→로그인→입력 유지→자동 재제출 0→직접 재확정 1건, `load()` 401, 10분 배너·[연장]·만료 배너, 역할 3종, 360·PC. 기존 관리자 시험·tsc·lint 신규 0.
+- **#118 병합 기록**(관리자 세션 만료 대응): squash 병합 `0efb62a`(10/27) · PR CI `build` run 40425971632 성공 · Deploy to Vercel run 40426321758 성공 · 운영 /admin 200(비로그인 응답 코드만).
 
 ## 최근 작업 (2026-10-26) — 찾습니다 공급 제안 A안 (브랜치 `feat/buy-supply-proposal`)
 - **무엇**: /buy 카드 [공급 가능해요] → `/sell?buyRef=<찾습니다 id>` = "공급 제안" 모드. 일반 판매 신청과 같은 API(`/api/seller-requests`, 판매 신청 행 + 판매자 확인 동의 기록)로 들어가되 `seller_requests.buy_request_id`로 요청과 연결. 공개 매물 체크 없음(공개 전환은 관리자 등록).
