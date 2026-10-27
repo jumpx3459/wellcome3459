@@ -55,6 +55,10 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
+## 최근 작업 (2026-10-27) — 회원 화면 작은 수정 (브랜치 `fix/member-ui-small`)
+- **#120 병합 기록**(브랜드 보호 1단계 PR 1): squash 병합 `c7a208bfff03981776d93a98a001639264081dc7`(10/27) · PR CI `build` run 40464383488 성공 · Deploy to Vercel run 40464855183 성공.
+- **운영 확인(10/27)**: anon 프로브 `protected_images`·`brand_name` select → 42501(정상)·`brand_protected`·`protected_image_count` → 200 ✓ · 대표 실기기: 목록 🛡 배지·"보호 사진 2장" ✓ · 회원 상세 브랜드명 ✓ · 비회원 상세 잠금·[가입하고 보기] ✓.
+
 ## 최근 작업 (2026-10-27) — 브랜드 보호 1단계 PR 1 (브랜치 `feat/brand-protected`)
 - **#119 병합 기록**(푸시 클릭 무반응 수정): squash 병합 `386c23f`(10/27) · PR CI `build` run 40427834732 성공 · Deploy to Vercel run 40429097690 성공.
 - **푸시 원인 구분 결과(대표 운영 DB 조회)**: 양배추환 09:22 발송분에 대표 계정 구독 5개(Windows PC 크롬 4 + Android 폰 1) 모두 로그 행 sent·clicked 전부 NULL, 전체 클릭 기록 265/17건으로 기능은 정상 → 폰에서 클릭이 서비스워커에 도달하지 못한 것(삼성 배터리 절전·앱 동결 추정, 기기 쪽). #119는 별도 실제 결함(열린 창 focus만·대체 없음·부분일치) 수정. 대표가 폰 배터리 '제한 없음'+앱 완전 종료 후 재시험 예정.
