@@ -529,7 +529,7 @@ function DealDetailPageInner() {
           </TabLink>
         </div>
         {remainPct <= 30 && (
-          <div className="text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap flex-shrink-0" style={{ background: "#FF6F0F", color: "#fff" }}>
+          <div className="text-xs font-bold px-3 py-1.5 rounded-full max-w-[65%]" style={{ background: "#FF6F0F", color: "#fff" }}>
             🔥 소진임박 · {deal.remaining_qty}{deal.quantity_unit || "개"} 남음
           </div>
         )}
@@ -586,7 +586,7 @@ function DealDetailPageInner() {
                     </div>
                   )}
                   {remainPct <= 30 && (
-                    <div className="text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow" style={{ background: "#FF6F0F", color: "#fff" }}>
+                    <div className="text-xs font-bold px-3 py-1.5 rounded-full max-w-full shadow" style={{ background: "#FF6F0F", color: "#fff" }}>
                       🔥 소진임박 · {deal.remaining_qty}{deal.quantity_unit || "개"} 남음
                     </div>
                   )}
@@ -688,7 +688,7 @@ function DealDetailPageInner() {
               <p className="text-2xl font-black text-navy">{NEGOTIABLE_LABEL}</p>
               <p className="text-base font-bold text-gray500 mt-0.5">{NEGOTIABLE_NOTE}</p>
             </div>
-            <div className="flex items-center justify-between gap-2 mt-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
               <span className="text-sm text-gray500">
                 {isLumpSum(deal.price_unit)
                   ? "전체 일괄 판매"
@@ -728,7 +728,7 @@ function DealDetailPageInner() {
             <div className="rounded-2xl" style={{ background: "#FFF4EC", border: "1.5px solid #F6D3BF", padding: "14px 16px" }}>
               <p className="text-base font-bold text-navy">가입하면 회원가를 볼 수 있어요</p>
             </div>
-            <div className="flex items-center justify-between gap-2 mt-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
               <span className="text-sm text-gray500">
                 {isLumpSum(deal.price_unit)
                   ? "전체 일괄 판매"
@@ -755,7 +755,7 @@ function DealDetailPageInner() {
                   -{percentOff(deal.original_price, deal.deal_price)}%
                 </span>
               )}
-              <span className="text-3xl font-black" style={{ color: "#0B2540" }}>
+              <span className="text-3xl font-black min-w-0 [overflow-wrap:anywhere]" style={{ color: "#0B2540" }}>
                 <PriceText text={dealPriceLabel(deal)} />
               </span>
               {/* 2026-09-26: 카드 리스트와 동일한 threshold-gating(3건 미만 숨김) */}
@@ -768,7 +768,7 @@ function DealDetailPageInner() {
                 </span>
               )}
             </div>
-            <div className="flex items-center justify-between gap-2 mt-1">
+            <div className="flex flex-wrap items-center justify-between gap-2 mt-1">
               <span className="text-sm text-gray500">
                 {hasDiscount && (
                   <span className="line-through"><PriceText text={formatDealPrice(deal.original_price!, deal.quantity_unit, deal.price_unit)} /></span>
@@ -831,10 +831,10 @@ function DealDetailPageInner() {
             ].filter((row): row is { k: string; v: string } => row !== null)
           ).map((row, i, arr) => (
             <div key={row.k} className={i < arr.length - 1 ? "flex border-b border-gray200" : "flex"}>
-              <div className="w-24 flex-shrink-0 px-3.5 py-3 text-xs font-bold text-gray500 bg-gray100">
+              <div className="flex-shrink-0 px-3.5 py-3 text-xs font-bold text-gray500 bg-gray100 break-words" style={{ width: "6rem", maxWidth: "36%" }}>
                 {row.k}
               </div>
-              <div className="flex-1 px-3.5 py-3 text-sm text-gray900">{row.v}</div>
+              <div className="flex-1 min-w-0 px-3.5 py-3 text-sm text-gray900 break-words">{row.v}</div>
             </div>
           ))}
         </div>
@@ -1010,15 +1010,16 @@ function DealDetailPageInner() {
                   점핑매니저가 바로 연락드립니다.
                 </p>
                 {/* 2026-09-29: "당일 연락 원칙" → "빠르게 연락드려요" (지킬 수 있는 표현으로). 390px에서 배지 2개 한 줄 유지
-                    2026-10-01: 360px에선 카드 밖으로 22px 넘쳐서 줄바꿈 허용(390px 이상은 그대로 한 줄) */}
+                    2026-10-01: 360px에선 카드 밖으로 22px 넘쳐서 줄바꿈 허용(390px 이상은 그대로 한 줄) 
+                    2026-10-27: 배지 안 글자도 줄바꿈 허용(nowrap 제거) — 글자 150%↑에서 배지 한 개가 칸 밖으로 20~140px 넘침 */}
                 <div className="flex items-center gap-1 gap-y-1.5 mt-1.5 flex-wrap">
                   <span
-                    className="font-bold px-2 py-1 rounded-full whitespace-nowrap"
+                    className="font-bold px-2 py-1 rounded-full max-w-full"
                     style={{ fontSize: rem(13), background: "#E8F8EC", color: "#1D8A44" }}
                   >
                     ✓ 검증된 매니저
                   </span>
-                  <span className="font-bold text-gray500 px-2 py-1 rounded-full bg-white whitespace-nowrap" style={{ fontSize: rem(13) }}>
+                  <span className="font-bold text-gray500 px-2 py-1 rounded-full bg-white max-w-full" style={{ fontSize: rem(13) }}>
                     빠르게 연락드려요
                   </span>
                 </div>
