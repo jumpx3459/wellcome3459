@@ -1,5 +1,6 @@
 import { authFetch } from "@/lib/authFetch";
 import { VIDEO_TOO_LARGE_MESSAGE, VIDEO_TYPE_MESSAGE } from "@/lib/videoUpload";
+import { adminFetch } from "@/lib/adminSession";
 
 // 2026-10-02: 응답이 JSON이 아니면(Vercel 413 "Request Entity Too Large" 페이지 등) res.json()이 예외를 내서
 // 원인이 묻혔음 — 같은 상태 코드의 JSON { error } 응답으로 바꿔서 돌려줌(호출부는 그대로 res.json() 사용).
@@ -22,7 +23,7 @@ async function asJsonResponse(res: Response): Promise<Response> {
 // 관리자 화면은 x-admin-key(관리자 세션 토큰), 회원 화면은 authFetch(토큰 갱신·401 재시도 포함).
 export async function uploadFormData(formData: FormData, adminKey?: string): Promise<Response> {
   const res = adminKey
-    ? await fetch("/api/upload", { method: "POST", headers: { "x-admin-key": adminKey }, body: formData })
+    ? await adminFetch("/api/upload", adminKey, { method: "POST", body: formData }) // 401이면 로그인 창(adminSession)
     : await authFetch("/api/upload", { formData });
   return asJsonResponse(res);
 }
@@ -33,9 +34,9 @@ export async function requestVideoUploadUrl(
   adminKey?: string,
 ): Promise<Response> {
   const res = adminKey
-    ? await fetch("/api/upload/video-url", {
+    ? await adminFetch("/api/upload/video-url", adminKey, {
         method: "POST",
-        headers: { "x-admin-key": adminKey, "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
       })
     : await authFetch("/api/upload/video-url", { json: input });

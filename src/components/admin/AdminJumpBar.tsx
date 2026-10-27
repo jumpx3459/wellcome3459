@@ -11,15 +11,16 @@ export default function AdminJumpBar({ chips }: { chips: JumpChip[] }) {
     const el = document.getElementById(id);
     if (!el) return;
     const bar = document.querySelector<HTMLElement>("[data-jump-bar]");
-    const offset = (bar?.getBoundingClientRect().height ?? 0) + 8;
+    const banner = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--session-banner-h")) || 0; // 세션 만료 배너가 떠 있으면 그 높이도
+    const offset = (bar?.getBoundingClientRect().height ?? 0) + banner + 8;
     window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - offset, behavior: "smooth" });
   };
   return (
     <nav
       aria-label="바로가기"
       data-jump-bar
-      className="sticky top-0 z-30 bg-white border-b border-gray200"
-      style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      className="sticky z-30 bg-white border-b border-gray200"
+      style={{ top: "var(--session-banner-h, 0px)", paddingTop: "env(safe-area-inset-top, 0px)" }} // 세션 만료 배너가 떠 있으면 그 아래에 붙음
     >
       <div className="flex gap-2 overflow-x-auto no-scrollbar px-5 py-2">
         {chips.map((c) => (
