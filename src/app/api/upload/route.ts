@@ -4,6 +4,7 @@ import { getPhotoLimit, photoLimitError, ADMIN_PHOTO_LIMIT } from "@/lib/photoLi
 import { getMemberFromToken } from "@/lib/photoLimitServer";
 import { checkAdminAuth } from "@/lib/adminAuth";
 import { VIDEO_EXT, baseMimeType } from "@/lib/videoUpload";
+import { PROTECTED_BUCKET, ADMIN_PREVIEW_TTL_SECONDS, signProtectedPaths } from "@/lib/brandProtected";
 
 const BUCKET = "deal-images";
 // 2026-10-02 PR-A: 화면(VideoUploader)은 이제 /api/upload/video-url로 Storage에 직접 올림 — 아래 영상 분기는 예전 클라이언트 호환용으로 남김
@@ -41,11 +42,16 @@ export async function POST(req: NextRequest) {
   }
   const supabaseAdmin = createClient(supabaseUrl, serviceKey);
   let photoLimit = ADMIN_PHOTO_LIMIT;
-  if (!(await checkAdminAuth(req)).ok) {
+  const isAdmin = (await checkAdminAuth(req)).ok;
+  if (!isAdmin) {
     const member = await getMemberFromToken(supabaseAdmin, formData.get("accessToken"));
     if (!member) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
     photoLimit = getPhotoLimit(member);
   }
+  // 2026-10-27 브랜드 보호: protected=1이면 비공개 버킷(deal-images-protected)에 올리고 URL 대신 경로를 돌려줌 — 관리자 전용(/sell은 PR 2), 영상은 함께 올릴 수 없음
+  const toProtected = formData.get("protected") === "1";
+  if (toProtected && !isAdmin) return NextResponse.json({ error: "권한이 없어요." }, { status: 403 });
+  if (toProtected && video) return NextResponse.json({ error: "브랜드 보호 매물은 영상을 올릴 수 없어요.", field: "video" }, { status: 400 });
 
   for (const file of files) {
     if (typeof file === "string" || !IMAGE_EXT[file.type]) {
@@ -71,6 +77,7 @@ export async function POST(req: NextRequest) {
   }
 
   const urls: string[] = [];
+  const protectedPaths: string[] = [];
 
   // 2026-10-12: 판매자 12장 · 관리자 25장(src/lib/photoLimit.ts)
   // — 실제 업로드 개수 제한은 클라이언트(ImageUploader max prop)가 맥락별로 정확히
@@ -83,12 +90,12 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
 
     const { error } = await supabaseAdmin.storage
-      .from(BUCKET)
+      .from(toProtected ? PROTECTED_BUCKET : BUCKET)
       .upload(path, arrayBuffer, { contentType: file.type, upsert: false });
 
     if (!error) {
-      const { data } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path);
-      urls.push(data.publicUrl);
+      if (toProtected) protectedPaths.push(path);
+      else urls.push(supabaseAdmin.storage.from(BUCKET).getPublicUrl(path).data.publicUrl);
     }
   }
 
@@ -109,5 +116,10 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  if (toProtected) {
+    // 관리자 폼 미리보기용 서명 URL(1시간) — 저장되는 값은 경로뿐
+    const previews = await signProtectedPaths(supabaseAdmin, protectedPaths, ADMIN_PREVIEW_TTL_SECONDS);
+    return NextResponse.json({ urls: [], videoUrl: null, protectedPaths, protectedPreviews: previews });
+  }
   return NextResponse.json({ urls, videoUrl });
 }
