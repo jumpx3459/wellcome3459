@@ -6,13 +6,18 @@ import { rem } from "@/lib/rem";
 import { uploadFormData } from "@/lib/uploadClient";
 import { ADMIN_AUTH_RESTORED_EVENT, ADMIN_PHOTO_AUTH_MESSAGE } from "@/lib/adminSession";
 import { SELLER_PHOTO_LIMIT } from "@/lib/photoLimit";
+import { isProtectedRef, toProtectedRef } from "@/lib/brandProtected";
 import { usePointerFine } from "@/lib/usePointerFine";
 import { DEAL_LABEL_STYLE, FORM_HINT_STYLE, UPLOAD_ERROR_CLASS, UPLOAD_ERROR_STYLE } from "@/components/FormField";
 import Toast, { useToast } from "@/components/Toast";
 
 // 2026-10-02 PR-B: file은 이번에 고른 사진만(다시 시도용) — 불러온 기존 사진(initialUrls)엔 없음. error는 실패 이유(목록 아래 안내)
 // authFailed(2026-10-26): 관리자 세션 만료(401)로 실패 — 다시 로그인하면 이 사진만 자동으로 한 번 다시 올림
-type Item = { id: number; preview: string; url?: string; uploading: boolean; file?: File; error?: string; authFailed?: boolean };
+// prot(2026-10-27 브랜드 보호): 이 사진을 "보호"로 둘지(protectMode일 때만 의미) — url은 공개 URL 또는 "protected:<경로>"(어느 버킷에 있는지), prot은 저장할 때의 뜻(공개/보호).
+// 둘이 달라도 됨(예: 보호로 올린 사진을 공개로 바꿈) — 서버가 저장할 때 새 버킷으로 옮김
+type Item = { id: number; preview: string; url?: string; uploading: boolean; file?: File; error?: string; authFailed?: boolean; prot?: boolean };
+
+export type PhotoRef = { ref: string; isProtected: boolean };
 
 // 칸 id — 화면 안에서만 쓰는 번호라 모듈 전체에서 늘어나기만 하면 됨
 let nextItemId = 0;
@@ -57,6 +62,9 @@ export default function ImageUploader({
   globalPaste = false,
   cameraButtons = false,
   onPreview,
+  protectMode = false,
+  initialProtected = [],
+  onPhotosChange,
   ref,
 }: {
   onChange: (urls: string[]) => void;
@@ -75,11 +83,17 @@ export default function ImageUploader({
   cameraButtons?: boolean;
   // 2026-10-23 관리자 패널: 썸네일을 누르면 크게 보기 — (올라간·올라가는 중 사진 주소 목록, 그중 누른 순서). 안 넘기면(기본) 예전과 똑같음 — /sell·MY 화면 영향 없음
   onPreview?: (urls: string[], index: number) => void;
+  // 2026-10-27 브랜드 보호(관리자 전용): 켜면 사진마다 [공개]/[보호] 토글 — 공개는 1장만(다른 사진을 공개로 하면 나머지는 보호), 새 사진은 첫 장만 공개·나머지는 비공개 버킷으로 올림.
+  // 안 넘기면(기본) 예전과 똑같음. 저장할 사진 목록은 onPhotosChange({ref, isProtected})로 받음(공개 = 공개 URL, 보호 = "protected:<경로>" 또는 공개 URL — 서버가 정리)
+  protectMode?: boolean;
+  initialProtected?: { path: string; preview: string | null }[];
+  onPhotosChange?: (photos: PhotoRef[]) => void;
   ref?: Ref<ImageUploaderHandle>;
 }) {
-  const [items, setItems] = useState<Item[]>(() =>
-    initialUrls.map((url) => ({ id: nextItemId++, preview: url, url, uploading: false }))
-  );
+  const [items, setItems] = useState<Item[]>(() => [
+    ...initialUrls.map((url) => ({ id: nextItemId++, preview: url, url, uploading: false, prot: false })),
+    ...initialProtected.map((pp) => ({ id: nextItemId++, preview: pp.preview ?? "", url: toProtectedRef(pp.path), uploading: false, prot: true })),
+  ]);
   // 이번 묶음(올리는 중이 하나도 없을 때 시작, 올리는 중에 더 고르면 같은 묶음에 더함) — "올리는 중 2/5장"
   const [batchIds, setBatchIds] = useState<number[]>([]);
   const [dragOver, setDragOver] = useState(false);
@@ -109,6 +123,23 @@ export default function ImageUploader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlsKey]);
 
+  // 보호 모드를 켜면 첫 장만 공개·나머지는 보호(기본), 끄면 전부 공개(전환 불가 조건은 폼이 막음)
+  const prevProtectMode = useRef(protectMode);
+  useEffect(() => {
+    if (prevProtectMode.current === protectMode) return;
+    prevProtectMode.current = protectMode;
+    setItems((prev) => prev.map((it, idx) => ({ ...it, prot: protectMode ? idx !== 0 : false })));
+  }, [protectMode]);
+  // 저장할 사진 목록(올라간 것만, 화면 순서)과 공개/보호 표시가 바뀔 때만 폼에 알림
+  const photosKey = items.filter((i) => i.url).map((i) => `${i.prot ? "P" : "U"}${i.url}`).join("\n");
+  const lastPhotosKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (lastPhotosKey.current === photosKey) return;
+    lastPhotosKey.current = photosKey;
+    onPhotosChange?.(items.filter((i) => i.url).map((i) => ({ ref: i.url as string, isProtected: i.prot === true })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photosKey]);
+
   const uploadingCount = items.filter((i) => i.uploading).length;
   const failedCount = items.filter((i) => !i.uploading && !i.url).length;
   useEffect(() => {
@@ -127,7 +158,7 @@ export default function ImageUploader({
     });
   };
 
-  const tryUpload = async (file: File): Promise<UploadResult> => {
+  const tryUpload = async (file: File, asProtected = false): Promise<UploadResult & { preview?: string }> => {
     const heic = isHeic(file);
     let resized: Blob;
     try {
@@ -140,6 +171,7 @@ export default function ImageUploader({
     try {
       const formData = new FormData();
       formData.append("files", resized, file.name || "photo.jpg");
+      if (asProtected) formData.append("protected", "1"); // 2026-10-27 브랜드 보호: 비공개 버킷으로(관리자 전용 — 서버가 경로를 돌려줌)
       // 2026-09-30: 회원 토큰 또는 관리자 키 필수 (서버가 회원 사진 한도도 토큰으로 다시 계산)
       res = await uploadFormData(formData, adminKey);
     } catch {
@@ -148,6 +180,8 @@ export default function ImageUploader({
     const data = await res.json().catch(() => ({}));
     const url: string | undefined = data.urls?.[0];
     if (res.ok && url) return { url };
+    const protectedPath: string | undefined = data.protectedPaths?.[0];
+    if (res.ok && asProtected && protectedPath) return { url: toProtectedRef(protectedPath), preview: data.protectedPreviews?.[0] ?? undefined };
     // 2026-10-26: 관리자 화면에서 401 = 세션 만료. 서버 문구("로그인이 필요합니다.") 대신 안내하고, 로그인 후 자동 재시도 대상으로 표시(로그인 창은 uploadClient가 띄움)
     if (adminKey && res.status === 401) return { error: ADMIN_PHOTO_AUTH_MESSAGE, retry: false, auth: true };
     if (heic) return { error: HEIC_MESSAGE, retry: false };
@@ -155,12 +189,13 @@ export default function ImageUploader({
   };
 
   const uploadOne = async (id: number, file: File) => {
-    let result = await tryUpload(file);
+    const asProt = protectMode && itemsRef.current.find((it) => it.id === id)?.prot === true;
+    let result = await tryUpload(file, asProt);
     if ("error" in result && result.retry) {
       // 2026-10-02 PR-B: 자동 재시도 1회 — 잠깐 쉬었다가
       await new Promise((r) => setTimeout(r, 800));
       if (!itemsRef.current.some((it) => it.id === id)) return; // 그사이 ×로 지움
-      result = await tryUpload(file);
+      result = await tryUpload(file, asProt);
     }
     if ("url" in result) patchItem(id, { url: result.url, uploading: false, error: undefined });
     else patchItem(id, { uploading: false, error: result.error, authFailed: "auth" in result && result.auth === true });
@@ -188,12 +223,13 @@ export default function ImageUploader({
     else if (photos.length < fileList.length) showToast(`${ONLY_PHOTOS_MESSAGE} — 사진만 담았어요`);
 
     // 기존 목록에 이어서 누적 (매번 초기화되지 않도록)
-    const newItems: Item[] = files.map((f) => ({
-      id: nextItemId++,
-      preview: URL.createObjectURL(f),
-      uploading: true,
-      file: f,
-    }));
+    // 보호 모드: 공개 사진이 아직 없으면 이번 묶음의 첫 장이 공개(대표), 나머지는 보호
+    let havePublic = itemsRef.current.some((it) => !it.prot);
+    const newItems: Item[] = files.map((f) => {
+      const prot = protectMode ? havePublic : false;
+      if (protectMode) havePublic = true;
+      return { id: nextItemId++, preview: URL.createObjectURL(f), uploading: true, file: f, prot };
+    });
     startBatch(newItems.map((it) => it.id));
     itemsRef.current = [...itemsRef.current, ...newItems];
     setItems((prev) => [...prev, ...newItems]);
@@ -235,6 +271,11 @@ export default function ImageUploader({
     retryFailed: () => retry(items),
     removeFailed: () => setItems((prev) => prev.filter((it) => it.uploading || it.url)),
   }));
+
+  // 공개/보호 토글 — 공개는 1장만: 어떤 사진을 공개로 하면 나머지는 보호로 내려감, 보호로 바꾸면 그 사진만
+  const setProt = (id: number, prot: boolean) => {
+    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, prot } : prot ? it : { ...it, prot: true })));
+  };
 
   const removeAt = (id: number) => {
     setItems((prev) => prev.filter((it) => it.id !== id));
@@ -387,7 +428,7 @@ export default function ImageUploader({
               <div
                 key={it.id}
                 className="relative flex-shrink-0"
-                style={{ width: 64, opacity: draggingId === it.id ? 0.4 : 1, cursor: pointerFine ? "grab" : undefined }}
+                style={{ width: protectMode ? 72 : 64, opacity: draggingId === it.id ? 0.4 : 1, cursor: pointerFine ? "grab" : undefined }}
                 draggable={pointerFine}
                 onDragStart={(e) => {
                   e.dataTransfer.setData(REORDER_TYPE, String(it.id));
@@ -419,7 +460,8 @@ export default function ImageUploader({
                           const d = downPos.current;
                           if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) >= 5) return;
                           const shown = items.filter((x) => x.uploading || x.url);
-                          onPreview(shown.map((x) => x.url || x.preview), shown.indexOf(it));
+                          // 보호 사진("protected:<경로>")은 화면에 못 그림 — 그 사진의 미리보기(서명 URL 또는 방금 고른 사진)로
+                          onPreview(shown.map((x) => (x.url && !isProtectedRef(x.url) ? x.url : x.preview)), shown.indexOf(it));
                         }
                       : undefined
                   }
@@ -431,12 +473,21 @@ export default function ImageUploader({
                     border: failed ? "1.5px solid #E5484D" : "1px solid #E4E7EB",
                   }}
                 />
-                {i === 0 && !failed && (
+                {!protectMode && i === 0 && !failed && (
                   <span
                     className="absolute left-0 right-0 text-center font-bold rounded-b-lg pointer-events-none"
                     style={{ top: 48, height: 16, fontSize: rem(10), lineHeight: "16px", color: "#fff", background: "rgba(11,37,64,0.85)" }}
                   >
                     대표 사진
+                  </span>
+                )}
+                {protectMode && !failed && (
+                  <span
+                    className="absolute text-center font-bold rounded-b-lg pointer-events-none"
+                    style={{ left: 0, width: 64, top: 48, height: 16, fontSize: rem(10), lineHeight: "16px", color: "#fff", background: it.prot ? "rgba(11,37,64,0.85)" : "rgba(226,81,0,0.9)" }}
+                    data-photo-flag={it.prot ? "protected" : "public"}
+                  >
+                    {it.prot ? "🛡 보호" : "공개 대표"}
                   </span>
                 )}
                 {/* 2026-10-02 PR-B: 실패한 사진은 자리를 지키고 [다시 시도] — 폼은 실패 장수를 보고 제출 전에 확인 창을 띄움 */}
@@ -458,12 +509,36 @@ export default function ImageUploader({
                   onClick={() => removeAt(it.id)}
                   aria-label={`첨부 사진 ${i + 1} 삭제`}
                   className="absolute top-0 right-0 flex items-start justify-end"
-                  style={{ width: 32, height: 32, padding: 3 }}
+                  style={{ width: 32, height: 32, padding: 3, ...(protectMode ? { right: 8 } : null) }}
                 >
                   <span className="w-5 h-5 rounded-full bg-gray900 text-white text-xs flex items-center justify-center" style={{ opacity: 0.88 }}>
                     ×
                   </span>
                 </button>
+                {protectMode && !failed && (
+                  <div className="flex mt-1" role="group" aria-label={`첨부 사진 ${i + 1} 공개 여부`} data-photo-vis>
+                    <button
+                      type="button"
+                      onClick={() => setProt(it.id, false)}
+                      aria-pressed={!it.prot}
+                      data-vis="public"
+                      className="flex-1 font-bold"
+                      style={{ minHeight: 40, fontSize: rem(13), border: "1px solid #E4E7EB", borderRadius: "8px 0 0 8px", background: !it.prot ? "#FF6F0F" : "#fff", color: !it.prot ? "#fff" : "#6B7480" }}
+                    >
+                      공개
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProt(it.id, true)}
+                      aria-pressed={!!it.prot}
+                      data-vis="protected"
+                      className="flex-1 font-bold"
+                      style={{ minHeight: 40, fontSize: rem(13), border: "1px solid #E4E7EB", borderLeft: 0, borderRadius: "0 8px 8px 0", background: it.prot ? "#0B2540" : "#fff", color: it.prot ? "#fff" : "#6B7480" }}
+                    >
+                      보호
+                    </button>
+                  </div>
+                )}
                 {/* 터치 기기는 끌기 대신 ◀▶ (맨 앞/맨 뒤는 해당 버튼 비활성) */}
                 {!pointerFine && items.length > 1 && (
                   <div className="flex mt-1">
@@ -494,7 +569,12 @@ export default function ImageUploader({
           })}
         </div>
       )}
-      {items.length > 1 && (
+      {protectMode && items.length > 0 && (
+        <p className="mt-1.5 font-bold" style={{ ...FORM_HINT_STYLE, color: "#0B2540" }} data-protect-hint>
+          공개 사진은 1장만 돼요(목록·푸시·공유 미리보기에 나가요) — 브랜드·로고가 안 보이는 사진으로 골라주세요. 나머지는 [보호]로 두면 가입한 회원에게만 보여요
+        </p>
+      )}
+      {!protectMode && items.length > 1 && (
         <p className="mt-1.5" style={FORM_HINT_STYLE}>
           {pointerFine ? "첫 장이 대표 사진이에요 · 끌어서 순서를 바꿀 수 있어요" : "첫 장이 대표 사진이에요 · ◀▶로 순서를 바꿀 수 있어요"}
         </p>
