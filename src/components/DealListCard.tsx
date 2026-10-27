@@ -56,6 +56,8 @@ export default function DealListCard({
         example={example}
         eager={eager}
         ratio="1/1"
+        brandProtected={d.brand_protected === true}
+        protectedCount={d.protected_image_count ?? 0}
       />
 
       {/* 2026-10-03: 운영(안드로이드 크롬)에서 긴 매물명이 한 줄로 카드 폭을 밀어 화면 밖으로 넘친 제보 — 본문·매물명을 min-w-0 블록 안에 둠 */}

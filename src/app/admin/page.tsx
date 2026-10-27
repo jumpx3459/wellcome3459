@@ -5,7 +5,8 @@ import Link from "next/link";
 import { createPortal } from "react-dom";
 import { CheckCircle } from "lucide-react";
 import { mockCategories, mockRegions, categoryIcons, quantityUnits } from "@/lib/mockData";
-import ImageUploader, { type ImageUploadStatus, type ImageUploaderHandle } from "@/components/ImageUploader";
+import ImageUploader, { type ImageUploadStatus, type ImageUploaderHandle, type PhotoRef } from "@/components/ImageUploader";
+import { BP_MESSAGES, BRAND_NAME_MAX, toProtectedRef } from "@/lib/brandProtected";
 import VideoUploader, { type VideoUploadStatus, type VideoUploaderHandle } from "@/components/VideoUploader";
 import VideoNotUploadedSheet, { PHOTO_FAILED_DESCRIPTION, uploadingLabel, videoNotUploaded } from "@/components/VideoNotUploadedSheet";
 import SellerDisplayPicker from "@/components/SellerDisplayPicker";
@@ -176,6 +177,11 @@ type ActiveDeal = {
   storage_condition?: string | null;
   pid?: string | null;
   manifest_items?: ManifestRow[] | null;
+  // 2026-10-27 브랜드 보호 — 관리자 목록 API(select *)가 줌. protected_preview_urls = 보호 사진 표시용 서명 URL(1시간, protected_images와 같은 순서)
+  brand_protected?: boolean | null;
+  brand_name?: string | null;
+  protected_images?: string[] | null;
+  protected_preview_urls?: (string | null)[] | null;
 };
 
 // 2026-09-28 (2): 목록/마감 UI 추가하며 함께 정의 — ActiveDeal과 달리 수량/가격
@@ -3279,6 +3285,17 @@ function DealForm({
   const [maxClosesLocal] = useState(() => toLocalInput(Date.now() + DEADLINE_MAX_MS)); // 달력 상한: 지금 + 60일
   const [images, setImages] = useState<string[]>(prefill?.images ?? []);
   const [videoUrl, setVideoUrl] = useState<string | null>(prefill?.videoUrl ?? null);
+  // 2026-10-27 브랜드 보호 — 켜면 공개 사진 1장 + 보호 사진(비공개 버킷)·브랜드명(회원 전용)·영상 없음. 규칙은 서버·DB 제약도 같음
+  const [brandProtected, setBrandProtected] = useState(initial?.brand_protected === true);
+  const [brandName, setBrandName] = useState(initial?.brand_name ?? "");
+  const [photoRefs, setPhotoRefs] = useState<PhotoRef[]>([]); // ImageUploader가 알려 주는 올라간 사진(화면 순서)과 공개/보호 표시
+  const protRefs = photoRefs.filter((x) => x.isProtected).map((x) => x.ref);
+  const publicRefs = photoRefs.filter((x) => !x.isProtected).map((x) => x.ref);
+  const initProtRefs = (initial?.protected_images ?? []).map(toProtectedRef);
+  // 켜기·끄기 조건(서버도 400): 켜려면 영상이 없어야 하고(기존 매물은 공개 사진도 1장 이하), 끄려면 보호 사진이 없어야 함
+  const bpBlock: string | null = brandProtected
+    ? protRefs.length > 0 ? BP_MESSAGES.clearProtectedFirst : null
+    : videoUrl ? "영상을 먼저 지워야 켤 수 있어요." : edit && images.length > 1 ? BP_MESSAGES.convertTooManyPublic : null;
   // 2026-10-02 PR-A2: 영상 올리는 중엔 등록 막고, 안 올라간 채 등록하면 시트로 확인
   const [videoStatus, setVideoStatus] = useState<VideoUploadStatus>(prefill?.videoUrl ? "done" : "idle");
   const [videoSheet, setVideoSheet] = useState<{ confirmWarnings: boolean } | null>(null);
@@ -3346,7 +3363,7 @@ function DealForm({
   const snapshot = JSON.stringify([
     title, stockType, category, region, priceMode, originalPrice, dealPrice, totalQty, quantityUnit, priceUnit, minOrderQty, location,
     closesChoice, closesCustom, remainingQty, closesAtLocal, images, videoUrl, videoStatus, photoStatus, description, packageUnit, origin, spec, storageType, expiryDate,
-    pid, manifestItems, seller, sellerPrivate,
+    pid, manifestItems, seller, sellerPrivate, brandProtected, brandName, photoRefs,
   ]);
   const [initialSnapshot] = useState(snapshot);
   const dirty = snapshot !== initialSnapshot;
@@ -3365,6 +3382,7 @@ function DealForm({
       const block = checkTitle(normalizeTitle(title, { admin: true }), { admin: true }).block;
       if (block) errs.title = block;
     }
+    if (brandProtected && !brandName.trim()) errs.brandName = BP_MESSAGES.brandNameRequired;
     if (!category) errs.category = "카테고리를 선택해주세요.";
     if (!region) errs.region = "지역을 선택해주세요.";
     if (priceMode === "fixed") {
@@ -3492,7 +3510,16 @@ function DealForm({
       if (!same(manifestItems, initial.manifest_items ?? [])) c.manifestItems = manifestItems.length ? manifestItems : null;
       if (remainingQty !== String(initial.remaining_qty)) c.remainingQty = Number(remainingQty);
       if (closesAtLocal !== toLocalInput(initial.closes_at)) c.closesAt = new Date(Date.parse(closesAtLocal)).toISOString();
-      if (!same(images, initial.images ?? [])) c.images = images;
+      // 2026-10-27 브랜드 보호: 켜기·끄기·브랜드명·사진(공개/보호 목록) — 보호 매물은 공개 목록(images)과 보호 목록(protectedImages)을 같이 보냄
+      const initBp = initial.brand_protected === true;
+      if (brandProtected !== initBp) c.brandProtected = brandProtected;
+      if (brandProtected && brandName.trim() !== (initial.brand_name ?? "")) c.brandName = brandName.trim();
+      if (brandProtected || initBp) {
+        if (!same(publicRefs, initial.images ?? []) || !same(protRefs, initProtRefs) || brandProtected !== initBp) {
+          c.images = publicRefs;
+          c.protectedImages = brandProtected ? protRefs : [];
+        }
+      } else if (!same(images, initial.images ?? [])) c.images = images;
       const videoToSend = skipVideo ? initial.video_url ?? null : videoUrl;
       if (videoToSend !== (initial.video_url ?? null)) c.videoUrl = videoToSend;
       const initSellerName = publicSellerName(initial);
@@ -3528,8 +3555,10 @@ function DealForm({
           location,
           closesAt,
           requestId,
-          images,
-          videoUrl: skipVideo ? null : videoUrl,
+          // 2026-10-27 브랜드 보호: 공개 사진은 images, 보호 사진은 protectedImages(서버가 비공개 버킷으로 정리)
+          images: brandProtected ? publicRefs : images,
+          ...(brandProtected ? { brandProtected: true, brandName: brandName.trim(), protectedImages: protRefs } : {}),
+          videoUrl: skipVideo || brandProtected ? null : videoUrl,
           description,
           packageUnit: packageUnit || null,
           origin: origin || null,
@@ -4149,11 +4178,67 @@ function DealForm({
         <section className="order-2">
           <FormSectionTitle hint={edit ? undefined : "사진이 있으면 더 빨리 연결돼요"}>사진·영상</FormSectionTitle>
           <div className="flex flex-col gap-4">
+            {/* 2026-10-27 브랜드 보호 — 공개 사진은 1장, 브랜드명·나머지 사진은 가입한 회원에게만. 켜면 영상 칸이 꺼짐 */}
+            <div
+              className="rounded-xl flex flex-col gap-2"
+              style={{ border: `2px solid ${brandProtected ? "#9FB2C8" : "#E4E7EB"}`, background: brandProtected ? "#F3F6FA" : bpBlock ? "#F1F3F5" : "#fff", padding: brandProtected || bpBlock ? 12 : "8px 12px" }}
+              data-brand-protect
+            >
+              <label className="flex items-center gap-3" style={{ cursor: bpBlock && !brandProtected ? "not-allowed" : "pointer" }}>
+                <input
+                  id="deal-brandProtected"
+                  type="checkbox"
+                  className="flex-shrink-0"
+                  style={{ width: 26, height: 26, accentColor: "#0B2540" }}
+                  checked={brandProtected}
+                  disabled={!!bpBlock}
+                  onChange={(e) => {
+                    setBrandProtected(e.target.checked);
+                    clearErr("brandName");
+                  }}
+                />
+                <span className="min-w-0 flex flex-wrap items-baseline gap-x-2">
+                  <b style={{ fontSize: rem(16), color: bpBlock && !brandProtected ? "#6B7480" : "#1a1f26" }}>🛡 브랜드 보호{edit ? (initial?.brand_protected === true ? "" : "로 바꾸기") : "로 등록"}</b>
+                  <span className={brandProtected || bpBlock ? "basis-full" : ""} style={{ fontSize: rem(13), color: "#6B7480" }}>
+                    {brandProtected || bpBlock ? "공개 사진은 1장만 나가고, 브랜드명과 나머지 사진은 가입한 회원에게만 보여요." : "공개 1장 · 브랜드명·나머지는 회원 전용"}
+                  </span>
+                </span>
+              </label>
+              {bpBlock && (
+                <p className="font-bold" style={{ fontSize: rem(14), color: "#7A3E00" }} data-brand-protect-block>
+                  {bpBlock}
+                </p>
+              )}
+              {edit && brandProtected && initial?.brand_protected !== true && (
+                <p className="rounded-lg" style={{ fontSize: rem(13), background: "#FFF4E0", border: "1px solid #F5D9A8", color: "#7A3E00", padding: "8px 10px" }}>
+                  이미 공개된 사진은 보호로 바꿔도 이미 퍼진 곳(검색 결과·공유 미리보기 등)에서 바로 사라지지 않을 수 있어요.
+                </p>
+              )}
+              {brandProtected && (
+                <DealFormField label="브랜드명 (회원 전용)" required error={fieldErrors.brandName} htmlFor="deal-brandName">
+                  <input
+                    id="deal-brandName"
+                    className={inputCls("brandName")}
+                    value={brandName}
+                    maxLength={BRAND_NAME_MAX}
+                    onChange={(e) => {
+                      setBrandName(e.target.value);
+                      clearErr("brandName");
+                    }}
+                    placeholder="예: ○○제약"
+                  />
+                  <p style={{ fontSize: rem(13), color: "#6B7480", marginTop: 4 }}>비회원에게는 보이지 않아요. 매물명·설명에는 브랜드명을 쓰지 마세요.</p>
+                </DealFormField>
+              )}
+            </div>
             <div id="deal-photos">
             <ImageUploader
               ref={imageUploaderRef}
               adminKey={adminKey}
               onChange={setImages}
+              onPhotosChange={setPhotoRefs}
+              protectMode={brandProtected}
+              initialProtected={(initial?.protected_images ?? []).map((path, i) => ({ path, preview: initial?.protected_preview_urls?.[i] ?? null }))}
               onStatusChange={setPhotoStatus}
               label="매물 사진"
               // 2026-10-12: 관리자 한도 25장(판매신청은 12장까지 오고 관리자가 더 붙일 수 있음) — src/lib/photoLimit.ts
@@ -4164,16 +4249,25 @@ function DealForm({
             />
             </div>
             <div id="deal-video">
-              <VideoUploader
-                ref={videoUploaderRef}
-                adminKey={adminKey}
-                onChange={setVideoUrl}
-                initialUrl={prefill?.videoUrl}
-                onStatusChange={setVideoStatus}
-                inlinePlayer
-                hint={edit ? "" : undefined}
-                onPreview={openVideoPreview}
-              />
+              {brandProtected ? (
+                <div className="rounded-xl" style={{ border: "2px dashed #C9CED4", background: "#F1F3F5", padding: 12, color: "#6B7480" }} data-video-disabled>
+                  <b style={{ color: "#4B5563", fontSize: rem(15) }}>🚫 브랜드 보호 매물은 영상을 올릴 수 없어요</b>
+                  <p style={{ fontSize: rem(13), marginTop: 2 }}>
+                    영상에 브랜드가 그대로 나오기 때문이에요. 회원 전용 영상은 준비 중입니다. 영상이 필요하면 브랜드 보호를 끄고 등록해 주세요.
+                  </p>
+                </div>
+              ) : (
+                <VideoUploader
+                  ref={videoUploaderRef}
+                  adminKey={adminKey}
+                  onChange={setVideoUrl}
+                  initialUrl={prefill?.videoUrl}
+                  onStatusChange={setVideoStatus}
+                  inlinePlayer
+                  hint={edit ? "" : undefined}
+                  onPreview={openVideoPreview}
+                />
+              )}
             </div>
           </div>
         </section>
@@ -4301,9 +4395,9 @@ function requestPrefill(r: SellerRequest) {
   };
 }
 
-type DealField = "title" | "category" | "region" | "originalPrice" | "dealPrice" | "totalQty" | "remainingQty" | "closesAt" | "minOrderQty" | "expiryDate" | "sellerPrivateCompany" | "sellerPrivatePhone" | "sellerPrivateName" | "businessCheckId" | "sourcedBy";
+type DealField = "title" | "brandName" | "category" | "region" | "originalPrice" | "dealPrice" | "totalQty" | "remainingQty" | "closesAt" | "minOrderQty" | "expiryDate" | "sellerPrivateCompany" | "sellerPrivatePhone" | "sellerPrivateName" | "businessCheckId" | "sourcedBy";
 // 화면 위→아래 순서 (첫 누락 칸 포커스용) — 2026-10-01 2차: ① 매물명·판매/정상 단가·재고 총수량·지역 → 제품 상세(MOQ·소비기한) → 거래 조건(카테고리)
-const DEAL_FIELD_ORDER: DealField[] = ["title", "dealPrice", "originalPrice", "totalQty", "remainingQty", "closesAt", "region", "minOrderQty", "expiryDate", "category", "sellerPrivateCompany", "sellerPrivatePhone", "sellerPrivateName", "businessCheckId", "sourcedBy"];
+const DEAL_FIELD_ORDER: DealField[] = ["title", "brandName", "dealPrice", "originalPrice", "totalQty", "remainingQty", "closesAt", "region", "minOrderQty", "expiryDate", "category", "sellerPrivateCompany", "sellerPrivatePhone", "sellerPrivateName", "businessCheckId", "sourcedBy"];
 
 // 붙인 입력 그룹(한 테두리) — [입력 | 원 / 단위] (2026-10-01 2차)
 const GROUP_INPUT_CLS = "flex-1 min-w-0 px-3 py-2.5 text-[0.8889rem] outline-none bg-transparent";

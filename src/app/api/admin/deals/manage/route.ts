@@ -10,6 +10,10 @@ import { storageSummary, isStorageType } from "@/lib/dealFields";
 import { sanitizeManifest, sanitizePid } from "@/lib/parseCsv";
 import { DEAL_EDIT_KEYS, validateDealEdit, dealEditWarnings, effectivePriceMode, type DealEditInput } from "@/lib/dealEdit";
 import { ADMIN_PHOTO_LIMIT, ADMIN_PHOTO_LIMIT_ERROR } from "@/lib/photoLimit";
+import {
+  BP_MESSAGES, ADMIN_PREVIEW_TTL_SECONDS, cleanBrandName, brandNameInText, brandNameWarning, checkBrandProtectedRules, isBrandRuleViolation,
+  isProtectedRef, removeProtectedObjects, resolvePhotos, signProtectedPaths, type PhotoSplit,
+} from "@/lib/brandProtected";
 
 function getAdminClient() {
   return createClient(
@@ -40,7 +44,15 @@ export async function GET(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ items: data });
+  // 2026-10-27 브랜드 보호: 보호 사진은 경로만 저장돼 있어 관리자 화면 표시용 서명 URL(1시간)을 같은 순서로 붙임(protected_preview_urls)
+  const rows = (data ?? []) as Array<Record<string, unknown> & { protected_images?: string[] | null }>;
+  const allPaths = rows.flatMap((d) => d.protected_images ?? []);
+  if (allPaths.length > 0) {
+    const signed = await signProtectedPaths(supabaseAdmin, allPaths, ADMIN_PREVIEW_TTL_SECONDS);
+    const byPath = new Map(allPaths.map((pth, i) => [pth, signed[i]] as const));
+    for (const d of rows) if ((d.protected_images ?? []).length > 0) d.protected_preview_urls = (d.protected_images ?? []).map((pth) => byPath.get(pth) ?? null);
+  }
+  return NextResponse.json({ items: rows });
 }
 
 // 재고 수량 수정, 마감시간 연장/단축, 조기 마감 처리
@@ -53,7 +65,7 @@ export async function PATCH(req: NextRequest) {
   if (denied) return denied;
 
   const body = await req.json();
-  const { id, status, images, videoUrl, sellerPublic, sellerCompanyName, confirmWarnings } = body;
+  const { id, status, images, videoUrl, sellerPublic, sellerCompanyName, confirmWarnings, brandProtected, brandName: brandNameIn, protectedImages } = body;
   if (!id) return NextResponse.json({ error: "id가 필요합니다." }, { status: 400 });
   // DB check 제약(deals_status_check)과 같은 값만 허용 — sold_out은 사용처가 없어 제외
   if (status !== undefined && !DEAL_STATUSES.includes(status)) {
@@ -73,6 +85,62 @@ export async function PATCH(req: NextRequest) {
     const { data: current } = await supabaseAdmin.from("deals").select("video_url").eq("id", id).maybeSingle();
     const videoCheck = await checkDealVideoUrl(supabaseAdmin, videoUrl, { unchanged: current?.video_url ?? null });
     if (!videoCheck.ok) return NextResponse.json({ error: videoCheck.error, field: "video" }, { status: videoCheck.status });
+  }
+  // 2026-10-27 브랜드 보호: 최종 상태(저장 뒤 값) 기준으로 규칙 검사 — 켜기는 공개 사진 ≤ 1장·영상 없음일 때만, 끄기는 보호 사진이 없을 때만(서버 400)
+  //   사진 목록은 images(공개 URL 또는 "protected:<경로>")·protectedImages(경로 또는 공개 URL)로 오고, 공개↔보호로 옮길 사진은 새 버킷에 먼저 복사 → DB 저장 → 성공 뒤 옛 원본 삭제
+  const touchesBp =
+    brandProtected !== undefined || brandNameIn !== undefined || protectedImages !== undefined || images !== undefined || videoUrl !== undefined;
+  let photos: PhotoSplit | null = null;
+  let bpCtx: { finalBp: boolean; finalName: string; curTitle: string; curDescription: string | null; update: Record<string, unknown>; oldProtected: string[] } | null = null;
+  if (touchesBp) {
+    const { data: cur, error: curErr } = await supabaseAdmin
+      .from("deals")
+      .select("title, description, brand_protected, brand_name, images, protected_images, video_url")
+      .eq("id", id)
+      .maybeSingle();
+    if (curErr) return NextResponse.json({ error: "매물을 확인하지 못했어요. 잠시 후 다시 시도해주세요." }, { status: 500 });
+    if (!cur) return NextResponse.json({ error: "매물을 찾을 수 없어요." }, { status: 404 });
+    const curBp = cur.brand_protected === true;
+    const curPaths: string[] = cur.protected_images ?? [];
+    const finalBp = brandProtected === undefined ? curBp : brandProtected === true;
+    const finalName = brandNameIn !== undefined ? cleanBrandName(brandNameIn) : cleanBrandName(cur.brand_name);
+    const finalVideo: string | null = videoUrl !== undefined ? (typeof videoUrl === "string" && videoUrl ? videoUrl : null) : cur.video_url ?? null;
+    const photosGiven = images !== undefined || protectedImages !== undefined;
+    const involvesProtected =
+      finalBp || curPaths.length > 0 || (Array.isArray(protectedImages) && protectedImages.length > 0) ||
+      (Array.isArray(images) && images.some((v: unknown) => isProtectedRef(v)));
+    if (photosGiven && involvesProtected) {
+      const r = await resolvePhotos(supabaseAdmin, process.env.NEXT_PUBLIC_SUPABASE_URL as string, {
+        images: images !== undefined ? images : cur.images ?? [],
+        protectedImages: protectedImages !== undefined ? protectedImages : curPaths,
+      });
+      if (!r.ok) return NextResponse.json({ error: r.error, field: r.field }, { status: r.status });
+      photos = r.split;
+    }
+    const finalImages: string[] = photos ? photos.images : images !== undefined ? images : cur.images ?? [];
+    const finalProtected: string[] = photos ? photos.protectedPaths : curPaths;
+    const rule = checkBrandProtectedRules({
+      brandProtected: finalBp,
+      brandName: finalName,
+      publicImageCount: Array.isArray(finalImages) ? finalImages.length : 0,
+      videoUrl: finalVideo,
+      protectedCount: finalProtected.length,
+      turningOn: !curBp && finalBp,
+    });
+    if (rule) {
+      await photos?.discard();
+      return NextResponse.json(rule, { status: 400 });
+    }
+    // 기존 매물(보호 아님)·보호와 무관한 수정은 아래 update에 아무것도 더하지 않음(응답·동작 변화 0)
+    const bpUpdate: Record<string, unknown> = {};
+    if (finalBp !== curBp) bpUpdate.brand_protected = finalBp;
+    const nameAfter = finalBp ? finalName : null;
+    if (nameAfter !== (cur.brand_name ?? null) && (finalBp || cur.brand_name != null)) bpUpdate.brand_name = nameAfter;
+    if (photos) {
+      bpUpdate.images = photos.images;
+      if (JSON.stringify(photos.protectedPaths) !== JSON.stringify(curPaths)) bpUpdate.protected_images = photos.protectedPaths;
+    }
+    bpCtx = { finalBp, finalName, curTitle: cur.title, curDescription: cur.description ?? null, update: bpUpdate, oldProtected: curPaths };
   }
   const update: Record<string, unknown> = {};
   const edit: DealEditInput = {};
@@ -107,7 +175,15 @@ export async function PATCH(req: NextRequest) {
         const { count } = await dup;
         if ((count ?? 0) > 0) w.title.push(DUPLICATE_TITLE_WARNING);
       }
+      // 2026-10-27 브랜드 보호: 매물명·설명에 브랜드명이 들어 있으면 경고(비회원에게 보이고 푸시에도 나감)
+      if (bpCtx?.finalBp) {
+        const t = cleanTitle !== undefined ? cleanTitle : current.title;
+        const d = edit.description !== undefined ? edit.description : current.description;
+        if (brandNameInText(bpCtx.finalName, t)) w.title.push(brandNameWarning(bpCtx.finalName, "title"));
+        if (brandNameInText(bpCtx.finalName, d)) w.description.push(brandNameWarning(bpCtx.finalName, "description"));
+      }
       if (w.title.length || w.description.length || w.price.length) {
+        await photos?.discard();
         return NextResponse.json(
           { needsConfirm: true, field: w.title.length ? "title" : w.price.length ? "originalPrice" : "description", warnings: w },
           { status: 422 }
@@ -162,15 +238,34 @@ export async function PATCH(req: NextRequest) {
     if (edit.description !== undefined) update.description = edit.description || null;
     if (edit.closesAt !== undefined) update.closes_at = edit.closesAt;
   }
+  if (Object.keys(edit).length === 0 && bpCtx?.finalBp && confirmWarnings !== true && (brandProtected !== undefined || brandNameIn !== undefined)) {
+    const wt = brandNameInText(bpCtx.finalName, bpCtx.curTitle) ? [brandNameWarning(bpCtx.finalName, "title")] : [];
+    const wd = brandNameInText(bpCtx.finalName, bpCtx.curDescription) ? [brandNameWarning(bpCtx.finalName, "description")] : [];
+    if (wt.length || wd.length) {
+      await photos?.discard();
+      return NextResponse.json({ needsConfirm: true, field: wt.length ? "title" : "description", warnings: { title: wt, description: wd, price: [] } }, { status: 422 });
+    }
+  }
   if (edit.remainingQty !== undefined) update.remaining_qty = edit.remainingQty;
   if (status !== undefined) update.status = status;
-  if (images !== undefined) update.images = images;
+  if (images !== undefined && !photos) update.images = images;
+  if (bpCtx) Object.assign(update, bpCtx.update);
   if (videoUrl !== undefined) update.video_url = videoUrl;
   // 2026-09-30: 판매자 표시 수정 — 공개면 상호, 아니면 "비공개 판매자" (sellerDisplay.ts)
   if (sellerPublic !== undefined) Object.assign(update, resolveSellerDisplay(sellerPublic === true, sellerCompanyName));
 
   const { error } = await supabaseAdmin.from("deals").update(update).eq("id", id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    await photos?.discard();
+    if (isBrandRuleViolation(error)) return NextResponse.json({ error: BP_MESSAGES.ruleViolation }, { status: 400 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  // 2026-10-27: 저장이 확정됐으니 옮긴 사진의 옛 원본을 지우고, 폼에서 지운 보호 사진 객체도 정리
+  if (photos) {
+    await photos.finalize();
+    const gone = (bpCtx?.oldProtected ?? []).filter((pth) => !photos!.protectedPaths.includes(pth));
+    await removeProtectedObjects(supabaseAdmin, gone);
+  }
   // 2026-10-10: 매물 수정 감사 — 바뀐 칸 이름만(값은 넣지 않음). 마감만 한 경우는 아래 deal_close 하나
   const changedKeys = Object.keys(update).filter((k) => k !== "status");
   if (changedKeys.length > 0) {
@@ -202,13 +297,15 @@ export async function DELETE(req: NextRequest) {
   if (!id) return NextResponse.json({ error: "id가 필요합니다." }, { status: 400 });
 
   const supabaseAdmin = getAdminClient();
-  const { data: before } = await supabaseAdmin.from("deals").select("title, status").eq("id", id).maybeSingle();
+  const { data: before } = await supabaseAdmin.from("deals").select("title, status, protected_images").eq("id", id).maybeSingle();
   const { error } = await supabaseAdmin.from("deals").delete().eq("id", id);
   // 2026-10-01 F-2: deal_connections.deal_id가 on delete restrict — 거래 연결 기록이 있는 매물은 삭제 대신 마감
   if (error?.code === "23503") {
     return NextResponse.json({ error: "거래 연결 기록이 있는 매물은 삭제할 수 없어요. 마감 처리해 주세요." }, { status: 409 });
   }
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // 2026-10-27 브랜드 보호: 삭제된 매물의 보호 사진 객체 정리(비공개 버킷)
+  await removeProtectedObjects(supabaseAdmin, (before?.protected_images as string[] | null | undefined) ?? []);
   await writeAudit(supabaseAdmin, req, {
     admin: auth.admin,
     action: "deal_delete",

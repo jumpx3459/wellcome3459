@@ -56,8 +56,9 @@ export function priceWarnings(original: number | null | undefined, deal: number 
 }
 
 // 공개 화면 조회에 붙이는 새 컬럼 — SQL 실행 전(컬럼 없음)이면 빼고 다시 조회
-export const DEAL_NEW_COLS = ", expiry_date, storage_type";
-const NEW_COL_NAMES = ["expiry_date", "storage_type", "original_price"];
+// 2026-10-27 브랜드 보호: brand_protected·protected_image_count(공개 플래그·보호 사진 장수)만 — protected_images·brand_name은 권한이 없어 브라우저에서 select 금지(서버 전용)
+export const DEAL_NEW_COLS = ", expiry_date, storage_type, brand_protected, protected_image_count";
+const NEW_COL_NAMES = ["expiry_date", "storage_type", "original_price", "brand_protected", "protected_image_count"];
 export function isMissingNewColumn(error: { message?: string } | null | undefined): boolean {
   const m = error?.message ?? "";
   return NEW_COL_NAMES.some((c) => m.includes(c));

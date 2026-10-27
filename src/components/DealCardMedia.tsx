@@ -2,6 +2,7 @@ import type { MouseEvent, KeyboardEvent } from "react";
 import CountdownBadge from "@/components/CountdownBadge";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 import { rem } from "@/lib/rem";
+import { ShieldBadge, ProtectedCount, ProtectedTile } from "@/components/BrandProtectedUI";
 
 // 매물 카드 이미지 영역 — /deals 목록·회원 홈(넓은 카드)의 실매물·예시 카드 공용 (2026-09-29).
 // 배지 위치 고정: 할인율 왼쪽 위, 남은 시간(또는 "마감됨") 오른쪽 위.
@@ -22,6 +23,8 @@ export default function DealCardMedia({
   eager = false,
   ratio = "4/3",
   tag = null,
+  brandProtected = false,
+  protectedCount = 0,
 }: {
   image?: string | null;
   alt: string;
@@ -37,12 +40,14 @@ export default function DealCardMedia({
   eager?: boolean; // 첫 화면에 보이는 카드만 바로 불러오기 — 나머지는 스크롤할 때(lazy)
   ratio?: string; // 사진이 있을 때 가로:세로 — 기본 4/3, /deals 카드는 1/1(2026-10-04 v2)
   tag?: string | null; // 사진 위 왼쪽 아래 오버레이(카테고리·시즌 태그) — 반투명 네이비 바탕 흰 글자
+  brandProtected?: boolean; // 2026-10-27 브랜드 보호 — 🛡 배지·"보호 사진 N장"·공개 사진 없으면 🛡 타일
+  protectedCount?: number;
 }) {
   const clickable = !!image && !!onMediaClick;
   return (
     <div
       className={`relative w-full overflow-hidden ${className}`}
-      style={{ aspectRatio: image ? ratio : "3/1" }}
+      style={{ aspectRatio: image || brandProtected ? ratio : "3/1" }}
       {...(clickable
         ? {
             role: "button",
@@ -63,6 +68,8 @@ export default function DealCardMedia({
           className="w-full h-full object-cover"
           style={{ filter: closed ? "grayscale(40%)" : example ? "grayscale(30%)" : "none" }}
         />
+      ) : brandProtected ? (
+        <ProtectedTile count={protectedCount} />
       ) : (
         <NoPhotoPlaceholder category={category} muted={closed || example} />
       )}
@@ -73,7 +80,7 @@ export default function DealCardMedia({
       )}
       {/* 아래 줄: 왼쪽 태그 · 오른쪽 사진 장수 — 한 줄(flex)에 두어 큰 글자·긴 태그에서도 겹치지 않음(태그가 말줄임으로 줄어듦).
           2026-10-08 4b-1: 장수는 "1/N" 대신 "📷 N장", 2장 이상일 때만 */}
-      {(tag || (image && imageCount > 1)) && (
+      {(tag || (image && imageCount > 1) || (image && brandProtected && protectedCount > 0)) && (
         <div className="absolute bottom-2 left-2 right-2 flex items-end gap-2 pointer-events-none">
           {tag && (
             <div
@@ -93,14 +100,24 @@ export default function DealCardMedia({
               📷 {imageCount}장
             </span>
           )}
+          {image && brandProtected && protectedCount > 0 && (
+            <span className="ml-auto flex-shrink-0">
+              <ProtectedCount count={protectedCount} />
+            </span>
+          )}
         </div>
       )}
-      {!closed && discountPct > 0 && (
-        <div
-          className="absolute top-2 left-2 font-black text-white rounded-full pointer-events-none"
-          style={{ background: example ? "rgba(107,116,128,0.78)" : "rgba(226,81,0,0.78)", fontSize: rem(20), lineHeight: 1.2, padding: "2px 10px" }}
-        >
-          -{discountPct}%
+      {((!closed && discountPct > 0) || brandProtected) && (
+        <div className="absolute top-2 left-2 flex flex-col items-start gap-1 pointer-events-none">
+          {!closed && discountPct > 0 && (
+            <div
+              className="font-black text-white rounded-full"
+              style={{ background: example ? "rgba(107,116,128,0.78)" : "rgba(226,81,0,0.78)", fontSize: rem(20), lineHeight: 1.2, padding: "2px 10px" }}
+            >
+              -{discountPct}%
+            </div>
+          )}
+          {brandProtected && <ShieldBadge />}
         </div>
       )}
       <div className="absolute top-2 right-2 pointer-events-none">

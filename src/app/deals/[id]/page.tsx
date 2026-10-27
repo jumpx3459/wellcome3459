@@ -28,6 +28,7 @@ import PriceText from "@/components/PriceText";
 import { selectWithPriceAccess, dealPriceFields, hasMemberSession, cardDiscountPct } from "@/lib/dealPriceAccess";
 import PhotoCarousel, { type PhotoCarouselHandle } from "@/components/PhotoCarousel";
 import PhotoViewer from "@/components/PhotoViewer";
+import { ProtectedTile, PROTECTED_LOCK_TITLE, PROTECTED_LOCK_MESSAGE, PROTECTED_JOIN_CTA } from "@/components/BrandProtectedUI";
 import { formatMoq } from "@/lib/moq";
 import ZoomTip from "@/components/ZoomTip";
 import { PRIVATE_SELLER_NAME, PRIVATE_SELLER_NOTE, publicSellerName } from "@/lib/sellerDisplay";
@@ -84,6 +85,11 @@ function DealDetailPageInner() {
   const [isMember, setIsMember] = useState(false);
   // 2026-10-04 4.5: 세션 확인이 끝났는지 — 확인 전엔 하단 버튼을 그리지 않음(회원이 가입 버튼을 잠깐 보는 깜빡임 방지)
   const [authKnown, setAuthKnown] = useState(!isSupabaseConfigured);
+  // 2026-10-27 브랜드 보호: 회원에게만 보호 사진(서명 URL 10분)·브랜드명 — POST /api/deal-protected. 만료 전(80% 지점)에 자동으로 다시 받음
+  // (비회원 응답·화면 어디에도 보호 사진 주소·브랜드명이 없음. denied = 서버가 회원으로 확인하지 못함 → 잠금 화면)
+  const [bp, setBp] = useState<{ brandName: string | null; photos: string[] }>({ brandName: null, photos: [] });
+  const [bpState, setBpState] = useState<"idle" | "ok" | "denied" | "error">("idle");
+  const [bpRetry, setBpRetry] = useState(0);
   const [jumpxSheetOpen, setJumpxSheetOpen] = useState(false);
   const [showMessageForm, setShowMessageForm] = useState(false);
   const [messageBody, setMessageBody] = useState("");
@@ -188,6 +194,8 @@ function DealDetailPageInner() {
           remaining_qty: data.remaining_qty,
           closes_at: data.closes_at,
           images: data.images ?? [],
+          brand_protected: data.brand_protected === true,
+          protected_image_count: data.protected_image_count ?? 0,
           video_url: data.video_url ?? null,
           description: data.description ?? "",
           status: data.status ?? "active",
@@ -215,9 +223,44 @@ function DealDetailPageInner() {
     })();
   }, [params.id, isExampleId]);
 
-  const images = deal.images ?? [];
+  const publicImages = deal.images ?? [];
+  // 2026-10-27: 회원이 받은 보호 사진은 공개 사진 뒤에 이어 붙임(카루셀·전체 화면 보기 같이)
+  const images = bp.photos.length > 0 ? [...publicImages, ...bp.photos] : publicImages;
   const hasPhotos = images.length > 0;
+  const showProtectedLock = deal.brand_protected === true && !isExampleId && ((authKnown && !isMember) || bpState === "denied");
   const hasManifest = Boolean(deal.manifest_items?.length && Object.keys(deal.manifest_items[0] ?? {}).length > 0);
+
+  useEffect(() => {
+    if (!deal.brand_protected || !isMember || isExampleId) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const load = async () => {
+      try {
+        const res = await authFetch("/api/deal-protected", { json: { dealId: deal.id } });
+        if (cancelled) return;
+        if (res.status === 401) {
+          setBpState("denied");
+          return;
+        }
+        const data = await res.json().catch(() => null);
+        if (cancelled) return;
+        if (!res.ok || !data) {
+          setBpState("error");
+          return;
+        }
+        setBp({ brandName: data.brandName ?? null, photos: ((data.photos ?? []) as { url: string }[]).map((p) => p.url) });
+        setBpState("ok");
+        timer = setTimeout(load, Math.max(30, (data.expiresInSeconds ?? 600) * 0.8) * 1000);
+      } catch {
+        if (!cancelled) setBpState("error"); // 연결 문제 등 — 화면에 [다시 시도]
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [deal.id, deal.brand_protected, isMember, isExampleId, bpRetry]);
 
   const remainPct = Math.round((deal.remaining_qty / deal.total_qty) * 100);
   const hasDiscount = deal.original_price != null && deal.deal_price != null && deal.original_price > deal.deal_price;
@@ -525,6 +568,15 @@ function DealDetailPageInner() {
                     <img src="/images/logo.png" alt="덤핑점핑" className="h-6 w-auto flex-shrink-0" />
                   </TabLink>
                 </div>
+                {bp.photos.length > 0 && photoIndex >= publicImages.length && (
+                  <div
+                    className="absolute left-2.5 bottom-2.5 rounded-lg font-bold text-white pointer-events-none"
+                    style={{ background: "rgba(11,37,64,0.92)", fontSize: rem(13), padding: "3px 9px" }}
+                    data-protected-photo-flag
+                  >
+                    🛡 회원 전용 사진
+                  </div>
+                )}
                 <div className="absolute top-2.5 right-2.5 flex flex-col items-end gap-1.5 pointer-events-none">
                   {deal.status === "closed" ? (
                     <span className="font-bold text-white bg-gray500 rounded-full shadow" style={{ fontSize: rem(16), padding: "2px 10px" }}>마감됨</span>
@@ -545,8 +597,12 @@ function DealDetailPageInner() {
         </div>
       ) : (
         <div className="px-5 pt-4">
-          <div className="relative rounded-2xl overflow-hidden" style={{ aspectRatio: "3/1" }}>
-            <NoPhotoPlaceholder category={deal.category} muted={deal.status === "closed"} />
+          <div className="relative rounded-2xl overflow-hidden" style={{ aspectRatio: deal.brand_protected && !isExampleId ? "2/1" : "3/1" }}>
+            {deal.brand_protected && !isExampleId ? (
+              <ProtectedTile count={deal.protected_image_count ?? 0} />
+            ) : (
+              <NoPhotoPlaceholder category={deal.category} muted={deal.status === "closed"} />
+            )}
             <div className="absolute top-2.5 right-2.5">
               {deal.status === "closed" ? (
                 <span className="font-bold text-white bg-gray500 rounded-full shadow" style={{ fontSize: rem(16), padding: "2px 10px" }}>마감됨</span>
@@ -568,6 +624,46 @@ function DealDetailPageInner() {
           {isExampleId && <span style={{ color: "#E25100" }}> · 예시 미리보기</span>}
         </div>
         <h1 className="font-display text-navy text-2xl leading-snug" data-deal-title>{deal.title}</h1>
+        {bpState === "ok" && bp.brandName && (
+          <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-xl font-bold text-navy" style={{ background: "#EAF0F7", fontSize: rem(16), padding: "6px 12px" }} data-brand-name>
+            🛡 브랜드: {bp.brandName}
+          </div>
+        )}
+        {showProtectedLock && (
+          <div className="mt-3 rounded-2xl" style={{ border: "2px dashed #9FB2C8", background: "#F3F6FA", padding: 14 }} data-protected-lock>
+            {(deal.protected_image_count ?? 0) > 0 && (
+              <div className="flex gap-1.5 mb-2.5" aria-hidden>
+                {Array.from({ length: Math.min(4, deal.protected_image_count ?? 0) }, (_, i) => (
+                  <div key={i} className="flex-1 flex items-center justify-center rounded-lg text-white" style={{ aspectRatio: "1/1", background: "linear-gradient(135deg,#AAB8C8,#8FA1B6)", fontSize: 20 }}>
+                    🔒
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="font-extrabold text-navy" style={{ fontSize: rem(17) }}>🛡 {PROTECTED_LOCK_TITLE}</p>
+            <p style={{ fontSize: rem(15), color: "#3B4A5C", marginTop: 2 }}>{PROTECTED_LOCK_MESSAGE}</p>
+            {(deal.protected_image_count ?? 0) > 0 && (
+              <p className="font-bold text-gray500" style={{ fontSize: rem(14), marginTop: 6 }}>보호 사진 {deal.protected_image_count}장</p>
+            )}
+            {!isMember && (
+              <Link
+                href={withReturnTo("/signup", `/deals/${params.id}`, ref ? `ref=${ref}` : "")}
+                className="block w-full text-center text-white font-extrabold rounded-xl mt-3"
+                style={{ background: "#FF6F0F", fontSize: rem(17), padding: "14px 0" }}
+              >
+                {PROTECTED_JOIN_CTA}
+              </Link>
+            )}
+          </div>
+        )}
+        {deal.brand_protected && isMember && bpState === "error" && (
+          <div className="mt-3 rounded-xl text-sm" style={{ background: "#FFF4E0", border: "1px solid #F5D9A8", color: "#7A3E00", padding: "10px 12px" }}>
+            보호 사진을 불러오지 못했어요.{" "}
+            <button type="button" className="font-bold underline" onClick={() => setBpRetry((n) => n + 1)}>
+              다시 시도
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 확대 안내(처음 1번)는 매물명 아래로 — 예전엔 머리줄과 사진 사이에 있어 첫 화면을 밀어냈음 */}
