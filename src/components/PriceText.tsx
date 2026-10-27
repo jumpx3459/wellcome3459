@@ -5,6 +5,10 @@
 //   금액 안에서는 억·만 사이 띄어쓰기에서만 줄바꿈 허용(숫자 중간은 안 끊김). 한 줄에 들어가면 한 줄.
 import { Fragment } from "react";
 
+// 2026-10-27: 덩어리는 끊기지 않게(keep-all — 숫자와 "원" 사이도 안 끊김). 한 덩어리만으로 칸보다 넓을 때(글자 200%·8자리 금액)에만 마지막 수단으로 끊음 —
+//   whitespace-nowrap이면 카드·화면 밖으로 잘렸음.
+const CHUNK = "[word-break:keep-all] [overflow-wrap:anywhere]";
+
 export function splitPriceText(text: string): { amount: string[]; unit: string } | null {
   const i = text.indexOf("원");
   if (i <= 0) return null;
@@ -13,19 +17,19 @@ export function splitPriceText(text: string): { amount: string[]; unit: string }
 
 export default function PriceText({ text }: { text: string }) {
   const parts = splitPriceText(text);
-  if (!parts) return <span className="whitespace-nowrap">{text}</span>;
+  if (!parts) return <span className={CHUNK}>{text}</span>;
   return (
     <>
       {parts.amount.map((g, k) => (
         <Fragment key={k}>
           {k > 0 && " "}
-          <span className="whitespace-nowrap">{g}</span>
+          <span className={CHUNK}>{g}</span>
         </Fragment>
       ))}
       {parts.unit && (
         <>
           <wbr />
-          <span className="whitespace-nowrap">{parts.unit}</span>
+          <span className={CHUNK}>{parts.unit}</span>
         </>
       )}
     </>

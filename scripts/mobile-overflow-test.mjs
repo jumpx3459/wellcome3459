@@ -17,6 +17,7 @@ const PROT_ID = "cccccccc-0000-4000-8000-000000000002"; // 보호 매물(공개 
 const TILE_ID = "cccccccc-0000-4000-8000-000000000003"; // 보호 매물(공개 사진 없음 → 🛡 타일)
 const ROUTES = ["/buy", "/buy/new", "/sell", "/sell?buyRef=11111111-1111-4111-8111-111111111111", "/deals", "/", "/mypage", `/deals/${PROT_ID}`, `/deals/${TILE_ID}`];
 const WIDTHS = [360, 390, 412];
+// 일부 경로만 빠르게: ONLY="/deals,/" node scripts/mobile-overflow-test.mjs
 // 글자 크기 배율(루트 112.5% 기준). 200%는 안드로이드 "가장 크게" 근처 — 아래 STRICT_AT_200 경로만 요구.
 const SCALES = [{ label: "기본", f: 1 }, { label: "130%", f: 1.3 }, { label: "200%", f: 2 }];
 // 200% 글자에서 넘침 0을 요구하는 경로. /mypage만 기본·130%까지(10/27: 홈·/deals 카드 가격 줄·보호 매물 상세 추가).
@@ -94,11 +95,12 @@ const DEALS = [
 ];
 const PNG1 = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
 
+const ONLY = process.env.ONLY?.split(",");
 const browser = await chromium.launch();
 for (const member of [true, false]) {
   for (const sc of SCALES) {
     for (const W of WIDTHS) {
-      for (const route of ROUTES) {
+      for (const route of ROUTES.filter((r) => !ONLY || ONLY.some((o) => r.startsWith(o) && (o !== "/" || r === "/")))) {
         const ctx = await browser.newContext({ viewport: { width: W, height: 800 }, isMobile: true, hasTouch: true });
         const page = await ctx.newPage();
         // 앱 밖(구글 폰트 등)·가짜 Supabase 주소는 막고, 필요한 응답만 가짜로
