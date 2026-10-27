@@ -11,6 +11,9 @@ import { normalizeTitle, checkTitle, checkDescription, DUPLICATE_TITLE_WARNING }
 import { isStorageType, isValidExpiryDate, storageSummary, priceWarnings, isMissingNewColumn, EXPIRY_REQUIRED_MESSAGE } from "@/lib/dealFields";
 import { isPassingCheck, NOT_CHECKED_MESSAGE, ALREADY_HANDLED_MESSAGE } from "@/lib/businessCheck";
 import { ADMIN_PHOTO_LIMIT, ADMIN_PHOTO_LIMIT_ERROR } from "@/lib/photoLimit";
+import {
+  BP_MESSAGES, cleanBrandName, brandNameInText, brandNameWarning, checkBrandProtectedRules, isBrandRuleViolation, resolvePhotos, type PhotoSplit,
+} from "@/lib/brandProtected";
 import { ntsStatus } from "@/lib/nts";
 import { checkClosesAt } from "@/lib/dealDeadline";
 import { isPriceMode } from "@/lib/priceMode";
@@ -58,6 +61,9 @@ export async function POST(req: NextRequest) {
     closesAt,
     requestId, // 판매자 신청에서 승인해서 넘어온 경우
     images,
+    protectedImages, // 2026-10-27 브랜드 보호: 보호 사진 목록("protected:<경로>" 또는 공개 URL — 서버가 비공개 버킷으로 옮김)
+    brandProtected,
+    brandName: brandNameIn,
     videoUrl,
     description,
     packageUnit,
@@ -121,6 +127,21 @@ export async function POST(req: NextRequest) {
   if (!closesAt || Number.isNaN(Date.parse(closesAt))) return bad("마감 시간이 올바르지 않아요.", "closesAt");
   // 2026-10-12: 사진 장수(관리자 25장, src/lib/photoLimit.ts) — 판매 신청 승인도 이 경로
   if (Array.isArray(images) && images.length > ADMIN_PHOTO_LIMIT) return bad(ADMIN_PHOTO_LIMIT_ERROR, "images");
+  // 2026-10-27 브랜드 보호 — 최종 상태 기준 규칙(공개 사진 ≤ 1·영상 없음·브랜드명 필수). 보호 사진은 아래에서 비공개 버킷으로 정리
+  const bp = brandProtected === true;
+  const brandName = cleanBrandName(brandNameIn);
+  if (Array.isArray(protectedImages) && protectedImages.length > ADMIN_PHOTO_LIMIT) return bad(ADMIN_PHOTO_LIMIT_ERROR, "images");
+  if (!bp && Array.isArray(protectedImages) && protectedImages.length > 0) return bad(BP_MESSAGES.clearProtectedFirst, "brandProtected");
+  {
+    const rule = checkBrandProtectedRules({
+      brandProtected: bp,
+      brandName,
+      publicImageCount: Array.isArray(images) ? images.length : 0,
+      videoUrl: typeof videoUrl === "string" && videoUrl ? videoUrl : null,
+      protectedCount: Array.isArray(protectedImages) ? protectedImages.length : 0,
+    });
+    if (rule) return bad(rule.error, rule.field);
+  }
   // 2026-09-29: 재고 유형 — 10개 값만 (DB check와 같음), 안 보내면 general
   if (stockType != null && !isStockType(stockType)) return bad("재고 유형이 올바르지 않아요.", "stockType");
   // 2026-10-01 PR-B: 보관 조건·소비기한 (src/lib/dealFields.ts)
@@ -213,6 +234,18 @@ export async function POST(req: NextRequest) {
     directCheck = c;
   }
 
+  // 2026-10-27 사진 정리: 공개 URL/보호 경로를 저장 형태로(공개↔보호로 옮길 사진은 새 버킷에 먼저 복사 — 저장 실패 시 복사본 삭제, 성공하면 옛 원본 삭제)
+  let photos: PhotoSplit | null = null;
+  if (bp || (Array.isArray(images) && images.some((v) => typeof v === "string" && v.startsWith("protected:")))) {
+    const r = await resolvePhotos(supabaseAdmin, process.env.NEXT_PUBLIC_SUPABASE_URL, { images: images ?? [], protectedImages: bp ? protectedImages ?? [] : [] });
+    if (!r.ok) return NextResponse.json({ error: r.error, field: r.field }, { status: r.status });
+    photos = r.split;
+    if (photos.images.length > (bp ? 1 : ADMIN_PHOTO_LIMIT)) {
+      await photos.discard();
+      return bad(bp ? BP_MESSAGES.tooManyPublic : ADMIN_PHOTO_LIMIT_ERROR, "images");
+    }
+  }
+
   // 확인 후 저장 경고 — 같은 판매자(판매 신청 승인이면 그 회원, 직접 등록이면 판매자 없는 매물)의 같은 이름 진행 중 매물
   if (confirmWarnings !== true) {
     let dup = supabaseAdmin.from("deals").select("id", { count: "exact", head: true }).eq("status", "active").eq("title", cleanTitle);
@@ -220,8 +253,12 @@ export async function POST(req: NextRequest) {
     const { count: dupCount } = await dup;
     const titleWarnings = [...titleCheck.warnings, ...((dupCount ?? 0) > 0 ? [DUPLICATE_TITLE_WARNING] : [])];
     const descriptionWarnings = checkDescription(description);
+    // 2026-10-27 브랜드 보호: 매물명·설명에 브랜드명이 들어 있으면 경고(비회원에게 보이고 푸시에도 나감)
+    if (bp && brandNameInText(brandName, cleanTitle)) titleWarnings.push(brandNameWarning(brandName, "title"));
+    if (bp && brandNameInText(brandName, description)) descriptionWarnings.push(brandNameWarning(brandName, "description"));
     const priceWarns = negotiable ? [] : priceWarnings(originalPrice, dealPrice); // 할인율 80% 이상
     if (titleWarnings.length || descriptionWarnings.length || priceWarns.length) {
+      await photos?.discard(); // 경고 응답 — 이번에 만든 복사본은 지움(확인 후 다시 저장하면 다시 만듦)
       return NextResponse.json(
         {
           needsConfirm: true,
@@ -249,8 +286,10 @@ export async function POST(req: NextRequest) {
     location,
     closes_at: closesAt,
     status: "active",
-    images: images ?? [],
+    images: photos ? photos.images : images ?? [],
     video_url: videoUrl ?? null,
+    // 2026-10-27 브랜드 보호 — 보호가 아니면 칸을 보내지 않아(SQL 전에도 등록됨) 기존 매물·등록 경로와 같음
+    ...(bp ? { brand_protected: true, brand_name: brandName, protected_images: photos?.protectedPaths ?? [] } : {}),
     description: description || null,
     package_unit: packageUnit || null,
     origin: origin || null,
@@ -279,12 +318,17 @@ export async function POST(req: NextRequest) {
     error = retry.error;
   }
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    await photos?.discard();
+    if (isBrandRuleViolation(error)) return NextResponse.json({ error: BP_MESSAGES.ruleViolation }, { status: 400 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   // 2026-10-04: 실제 판매자 정보 저장 — 알림 발송 전에, 실패하면 방금 만든 매물을 되돌림(deal_seller_private는 매물 삭제 시 함께 지워짐)
   const rollbackDeal = async (why: string) => {
     const { error: delErr } = await supabaseAdmin.from("deals").delete().eq("id", deal.id);
     if (delErr) console.error("[admin/deals] 판매자 정보 저장 실패 후 매물 되돌리기 실패", why, deal.id, delErr.code);
+    else await photos?.discard(); // 매물이 지워졌을 때만 이번에 만든 사진 복사본도 지움(옛 원본은 그대로 남아 있음)
   };
   const via: SellerPrivateVia = requestId ? "seller_request_approve" : "deal_create";
   const privateValue = (requestId ? requestSellerValue : directValue) as SellerPrivateValue;
@@ -318,6 +362,7 @@ export async function POST(req: NextRequest) {
     if (srUpdErr || !approved?.length) {
       const { error: delErr } = await supabaseAdmin.from("deals").delete().eq("id", deal.id);
       if (delErr) console.error("[admin/deals] 승인 실패 후 매물 되돌리기 실패", deal.id, delErr.code);
+      else await photos?.discard();
       return srUpdErr
         ? NextResponse.json({ error: "판매 신청 상태를 바꾸지 못했어요. 다시 시도해주세요." }, { status: 500 })
         : NextResponse.json({ error: ALREADY_HANDLED_MESSAGE }, { status: 409 });
@@ -350,6 +395,9 @@ export async function POST(req: NextRequest) {
     targetId: deal.id,
     detail: { via, title: deal.title ?? null, seller_request_id: requestId ?? null, sourced_by: sourcedBy },
   });
+
+  // 2026-10-27: 저장이 확정됐으니 옮긴 사진의 옛 원본(공개↔보호)을 지움
+  await photos?.finalize();
 
   // 매물 등록이 확정되는 즉시, 해당 카테고리 구독자에게 자동으로 알림을 보냅니다(지역은 조건이 아님).
   const pushResult = await sendDealPush(deal.id);
