@@ -9,6 +9,7 @@ import { formatPrice, formatDealPrice } from "@/lib/format";
 import { selectWithPriceAccess, dealPriceFields, cardDiscountPct, memberPriceTeaser } from "@/lib/dealPriceAccess";
 import { dealPriceLabel, isNegotiable } from "@/lib/priceMode";
 import NegotiablePrice from "@/components/NegotiablePrice";
+import { ProtectedTile } from "@/components/BrandProtectedUI";
 import { withReturnTo } from "@/lib/safeReturnTo";
 import { getPartner } from "@/lib/partners";
 import { formatDealLocation } from "@/lib/formatDealLocation";
@@ -35,7 +36,7 @@ export default function PartnerDemoPage() {
         supabase!
           .from("deals")
           .select(
-            `id, title, ${cols}, total_qty, remaining_qty, quantity_unit, price_unit, closes_at, location, images, stock_type, categories(name), regions(name)`
+            `id, title, ${cols}, total_qty, remaining_qty, quantity_unit, price_unit, closes_at, location, images, stock_type, brand_protected, protected_image_count, categories(name), regions(name)`
           )
           .eq("status", "active")
           .gt("closes_at", new Date().toISOString())
@@ -111,6 +112,8 @@ export default function PartnerDemoPage() {
                 <div className="relative flex-shrink-0" style={{ width: 92, height: 92 }}>
                   {d.images && d.images.length > 0 ? (
                     <img src={d.images[0]} alt={d.title} className="w-full h-full object-cover" />
+                  ) : d.brand_protected ? (
+                    <ProtectedTile compact count={d.protected_image_count ?? 0} />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-3xl" style={{ background: color.bg }}>
                       {categoryIcons[d.category] ?? "🗂️"}

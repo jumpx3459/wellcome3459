@@ -18,6 +18,7 @@ import AlertInboxHome from "@/components/AlertInboxHome";
 import BuyNoticeBoard from "@/components/BuyNoticeBoard";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
+import { ShieldBadge, ProtectedCount, ProtectedTile } from "@/components/BrandProtectedUI";
 import { GUEST_PRICE_COLS, dealPriceFields, cardDiscountPct, MEMBER_PRICE_CTA } from "@/lib/dealPriceAccess";
 import { isNegotiable } from "@/lib/priceMode";
 import NegotiablePrice from "@/components/NegotiablePrice";
@@ -171,6 +172,8 @@ export default function Home() {
             remaining_qty: d.remaining_qty,
             closes_at: d.closes_at,
             created_at: d.created_at,
+            brand_protected: d.brand_protected === true, // 2026-10-27 브랜드 보호(공개 플래그·보호 사진 장수만 — 보호 경로·브랜드명은 서버 전용)
+            protected_image_count: d.protected_image_count ?? 0,
             images: d.images ?? [],
             package_unit: d.package_unit ?? null,
             min_order_qty: d.min_order_qty ?? null,
@@ -384,8 +387,20 @@ export default function Home() {
                         loading={idx === 0 ? "eager" : "lazy"}
                         className="w-full h-full object-cover"
                       />
+                    ) : d.brand_protected ? (
+                      <ProtectedTile compact count={d.protected_image_count ?? 0} />
                     ) : (
                       <NoPhotoPlaceholder category={d.category} size="sm" />
+                    )}
+                    {d.brand_protected && (
+                      <span className="absolute" style={{ left: 6, top: 6 }}>
+                        <ShieldBadge compact />
+                      </span>
+                    )}
+                    {d.brand_protected && d.images && d.images.length > 0 && (d.protected_image_count ?? 0) > 0 && (
+                      <span className="absolute" style={{ right: 6, bottom: 6 }}>
+                        <ProtectedCount compact count={d.protected_image_count ?? 0} />
+                      </span>
                     )}
                   </div>
                   {/* 할인 배지가 사진 위로 옮겨가서 본문 오른쪽 배지 자리(pr) 없음 — 글자 칸 최대 */}

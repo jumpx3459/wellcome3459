@@ -7,6 +7,7 @@ import { dealPriceLabel, isNegotiable } from "@/lib/priceMode";
 import { isTimerRed, regionQtyText } from "@/lib/homeCard";
 import { rem } from "@/lib/rem";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
+import { ShieldBadge, ProtectedCount, ProtectedTile } from "@/components/BrandProtectedUI";
 import StockTypeBadge from "@/components/StockTypeBadge";
 import PriceText from "@/components/PriceText";
 import MemberPriceTeaser from "@/components/MemberPriceTeaser";
@@ -33,6 +34,7 @@ export default function HomeDealCard({
   const pct = cardDiscountPct(d);
   const images = d.images ?? [];
   const hasPhoto = images.length > 0;
+  const bp = d.brand_protected === true; // 2026-10-27 브랜드 보호
   const openable = hasPhoto && !!onOpenPhotos;
 
   return (
@@ -76,8 +78,20 @@ export default function HomeDealCard({
                 className="w-full h-full"
                 style={{ objectFit: "cover", filter: example ? "grayscale(30%)" : undefined }}
               />
+            ) : bp ? (
+              <ProtectedTile compact count={d.protected_image_count ?? 0} />
             ) : (
               <NoPhotoPlaceholder category={d.category} size="sm" muted={example} />
+            )}
+            {bp && (
+              <span className="absolute" style={{ left: 6, top: 6 }}>
+                <ShieldBadge compact />
+              </span>
+            )}
+            {bp && hasPhoto && (d.protected_image_count ?? 0) > 0 && (
+              <span className="absolute" style={{ right: 6, bottom: 6 }}>
+                <ProtectedCount compact count={d.protected_image_count ?? 0} />
+              </span>
             )}
             {hasPhoto && d.video_url && (
               <span className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ background: "rgba(0,0,0,.25)" }}>

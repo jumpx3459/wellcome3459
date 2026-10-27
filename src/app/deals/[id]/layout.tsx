@@ -21,14 +21,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // DB 할인율(deals.discount_pct)만. 제목 = "매물명 · N% ↓"(할인율 없으면 매물명만)
   let discountPct: number | null = null;
   let image: string | null = null;
+  let brandProtected = false;
 
   if (isSupabaseConfigured && supabase) {
-    const { data } = await supabase
-      .from("deals")
-      .select("title, description, discount_pct, images")
-      .eq("id", id)
-      .single();
+    // 2026-10-27 브랜드 보호: brand_protected 매물은 noindex — 칸이 아직 없으면(SQL 전) 빼고 다시 조회. 미리보기 이미지는 images(= 공개 사진뿐)만
+    const first = await supabase.from("deals").select("title, description, discount_pct, images, brand_protected").eq("id", id).single();
+    const data = first.error ? (await supabase.from("deals").select("title, description, discount_pct, images").eq("id", id).single()).data : first.data;
     if (data) {
+      brandProtected = (data as { brand_protected?: boolean }).brand_protected === true;
       name = data.title;
       description = data.description || GUEST_DESCRIPTION;
       discountPct = data.discount_pct ?? null;
@@ -52,6 +52,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description,
+    ...(brandProtected ? { robots: { index: false, follow: false } } : {}),
     // 2026-10-09 PR 4a: 공통 칸을 펼친 뒤 덮어씀 — 예전엔 og:url·og:type·siteName이 비었음. url = 이 매물의 정식 절대 주소
     openGraph: {
       ...BASE_OPEN_GRAPH,

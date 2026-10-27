@@ -116,7 +116,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
         let q = supabase!
           .from("deals")
           .select<string, DealRowLoose>(
-            `id, title, ${cols}, total_qty, remaining_qty, quantity_unit, price_unit, closes_at, created_at, location, images, video_url, origin, min_order_qty, category_id, region_id, stock_type, categories(name), regions(name)`,
+            `id, title, ${cols}, total_qty, remaining_qty, quantity_unit, price_unit, closes_at, created_at, location, images, video_url, origin, min_order_qty, category_id, region_id, stock_type, brand_protected, protected_image_count, categories(name), regions(name)`,
             { count: "exact" }
           )
           .eq("status", "active")
@@ -151,6 +151,8 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
           price_unit: d.price_unit ?? null,
           closes_at: d.closes_at,
           created_at: d.created_at,
+          brand_protected: d.brand_protected === true, // 2026-10-27 브랜드 보호(공개 플래그·보호 사진 장수만 — 보호 경로·브랜드명은 서버 전용)
+          protected_image_count: d.protected_image_count ?? 0,
           images: d.images ?? [],
           video_url: d.video_url ?? null,
           origin: d.origin ?? null,

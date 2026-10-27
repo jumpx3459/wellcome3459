@@ -18,11 +18,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   if (!isSupabaseConfigured || !supabase) return staticRoutes;
 
-  const { data } = await supabase
-    .from("deals")
-    .select("id, created_at")
-    .eq("status", "active")
-    .gt("closes_at", new Date().toISOString());
+  // 2026-10-27 브랜드 보호 매물(brand_protected)은 sitemap 제외 — 칸이 아직 없으면(SQL 전) 조건 없이 다시 조회
+  const nowIso = new Date().toISOString();
+  const first = await supabase.from("deals").select("id, created_at").eq("status", "active").gt("closes_at", nowIso).eq("brand_protected", false);
+  const { data } = first.error ? await supabase.from("deals").select("id, created_at").eq("status", "active").gt("closes_at", nowIso) : first;
 
   const dealRoutes: MetadataRoute.Sitemap = (data ?? []).map((d) => ({
     url: `${BASE_URL}/deals/${d.id}`,
