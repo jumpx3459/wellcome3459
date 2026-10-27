@@ -55,6 +55,12 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
+## 최근 작업 (2026-10-27) — 푸시 알림 클릭 무반응 수정 (브랜치 `fix/push-click`)
+- **증상**: 양배추환 푸시 → 상단 알림 "지금 확인하기" 클릭 → 화면 이동 없음.
+- **원인**(`public/sw.js` notificationclick): 열린 창의 주소에 알림 주소가 부분 일치하면 `focus()`만 하고 이동 안 함(같은 매물이 이미 열려 있거나 기본값 `/deals`) · `focus`·`openWindow`가 실패해도 대체 동작 없음 · `includes` 부분일치(`/deals/abc`≈`/deals/abcd`). 버튼(`view`)과 본문 클릭은 같은 경로라 버튼 문제 아님.
+- **수정**: 절대 주소(`new URL(url, origin)`) · `matchAll({includeUncontrolled:true})` · 경로 정확 비교 · 같은 매물 창은 focus만, 다른 화면 창은 focus + `navigate` · 실패 시 `openWindow` · dismiss·클릭 기록(`logClick`)·vercel.app 정식 주소 처리 유지. install `skipWaiting`·activate `clients.claim` 이미 있음(새 sw 즉시 적용). 서버·push 핸들러 변경 없음.
+- **미확인**: 실기기(안드로이드 설치 앱 WebAPK)에서의 실제 동작. 배포 후 대표 확인 = 앱·탭을 한 번 완전히 닫았다 열고 → 다음 푸시에서 본문·[지금 확인하기] 각각 클릭.
+
 ## 최근 작업 (2026-10-26) — 관리자 세션 만료 대응 (브랜치 `fix/admin-session-expiry`)
 - **배경**: 10/26 새 매물 등록 중 세션 6시간 만료 → `/api/upload` 401 → 사진 8장 실패 + "로그인이 필요합니다"(10/14 확정안 미구현, 2회째). 원인 = 관리자 화면에 401을 받아 처리하는 공통 길이 없었음(401 분기는 `load()`의 seller-requests 하나, 그것도 대시보드 전체를 "다시 입력하기" 화면으로 바꿔 입력이 사라짐).
 - **세션 구조(변화 없음)**: 토큰 서버 `exp` 6시간 고정(`adminAuth.ts` SESSION_TTL_MS) · 브라우저 `sessionStorage` `jumpingbid_admin_session`(탭 단위, 쿠키 없음) · `x-admin-key` 헤더. 연장·갱신 API 없음 — **새 토큰이 나오는 곳은 기존 `/api/admin/login` 하나**(이번에도 안 만듦). 서버 변경 없음.
@@ -68,6 +74,7 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - **남은 직접 fetch(후속, 401이 나면 조용히 실패/오류 문구만 — 로그인 창은 다음 `adminFetch` 401·배너로)**: `admin/page.tsx` 21곳(admins·buy-requests·interests·business-license·change-password·deals/manage(마감·삭제 등)·export·members phone·partner-requests·seller-requests 승인/거절·business-checks 목록 등), `BusinessCheckSection`(3), `ConnectionBoard`(6), `DealSellerPrivateEditor`(2), `MemberDetailView`(1), `ReuseCandidate`(2), `SellerPrivateFields`(1).
 - **이번 PR에서 제외(PR 2 — 관리자 작은 개선)**: 관심 표시한 회원 기본 필터 `pending`(limit 5 유지) · 공식 점핑파트너 신청 0건이면 기본 접힘 · [+ 긴급 공지 등록] 문구("(부동산·설비)"는 폼 제목) · (선택) 접힌 사업자 조회 카드 아래 여백 · 대리 등록 반복 입력 줄이기(7b [같은 판매자로 다음 매물 등록] → 7a 최근 확인된 판매자 칩, 매니저는 담당 아닌 매물이면 상호만·대표자명 응답 금지·최근 1년·재사용과 값 조회 분리·감사 `seller_private_view` via `check_prefill`) · 상단 바로가기 칩 개선(높이 44px·아이콘·숫자 배지·옅은 남색 띠, scrollspy 보류). 200% 글자 nowrap은 그 뒤 별도 작은 PR.
 - 시험: 새 시험(fake DB + 실제 서버 401·실제 로그인·실제 업로드) 61건(번호 고정 7건 포함) — 사진 8장 401→문구→창→로그인→8장 자동 재업로드, 등록 확정 401→로그인→입력 유지→자동 재제출 0→직접 재확정 1건, `load()` 401, 10분 배너·[연장]·만료 배너, 역할 3종, 360·PC. 기존 관리자 시험·tsc·lint 신규 0.
+- **#118 병합 기록**(관리자 세션 만료 대응): squash 병합 `0efb62a`(10/27) · PR CI `build` run 40425971632 성공 · Deploy to Vercel run 40426321758 성공 · 운영 /admin 200(비로그인 응답 코드만).
 
 ## 최근 작업 (2026-10-26) — 찾습니다 공급 제안 A안 (브랜치 `feat/buy-supply-proposal`)
 - **무엇**: /buy 카드 [공급 가능해요] → `/sell?buyRef=<찾습니다 id>` = "공급 제안" 모드. 일반 판매 신청과 같은 API(`/api/seller-requests`, 판매 신청 행 + 판매자 확인 동의 기록)로 들어가되 `seller_requests.buy_request_id`로 요청과 연결. 공개 매물 체크 없음(공개 전환은 관리자 등록).
