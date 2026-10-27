@@ -76,6 +76,7 @@ export function AdminLoginFields({
   busy,
   onSubmit,
   autoFocusPassword = false,
+  phoneLocked = false,
 }: {
   phone: string;
   onPhone: (v: string) => void;
@@ -86,6 +87,8 @@ export function AdminLoginFields({
   onSubmit: () => void;
   /** 번호가 미리 채워져 있으면 비밀번호 칸에 바로 커서 */
   autoFocusPassword?: boolean;
+  /** 다시 로그인 창: 세션에 보관한 번호로 고정(읽기 전용) — 다른 사람이 입력 중이던 폼을 이어받지 못하게 */
+  phoneLocked?: boolean;
 }) {
   const pwRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -99,10 +102,12 @@ export function AdminLoginFields({
         autoComplete="username"
         inputMode="numeric"
         className="w-full max-w-xs border-2 border-gray200 rounded-xl px-4 text-base outline-none focus:border-orange mb-2"
-        style={{ height: "52px" }}
+        style={{ height: "52px", ...(phoneLocked ? { background: "#F1F3F5", color: "#4B5563" } : null) }}
         value={phone}
+        readOnly={phoneLocked}
         onChange={(e) => onPhone(e.target.value)}
         placeholder="관리자 휴대폰 번호"
+        data-phone-locked={phoneLocked ? "" : undefined}
       />
       <input
         ref={pwRef}
@@ -132,11 +137,14 @@ export function AdminLoginFields({
 export function AdminLoginOverlay({
   reason,
   onClose,
+  onLogout,
   ...fields
 }: {
   reason: LoginReason;
   onClose: () => void;
-} & Parameters<typeof AdminLoginFields>[0]) {
+  /** 다른 계정으로 로그인 = 기존 로그아웃(세션·번호 삭제, 대시보드·패널·입력 비움) */
+  onLogout: () => void;
+} &Parameters<typeof AdminLoginFields>[0]) {
   const rootRef = useRef<HTMLDivElement>(null);
   // 열려 있는 동안 Esc = 이 창만 닫기 — 캡처 단계에서 가로채 AdminFullscreenPanel의 Esc(닫기·"저장 안 하고 닫기" 확인)가 안 불리게 함. Tab은 창 안에서만 돎
   useEffect(() => {
@@ -192,6 +200,14 @@ export function AdminLoginOverlay({
         <button type="button" onClick={onClose} className="mt-3 text-sm font-bold text-gray500 underline" data-relogin-close>
           닫기
         </button>
+        <p className="mt-3 text-center text-gray500" style={{ fontSize: rem(13), lineHeight: 1.5 }}>
+          다른 계정으로 로그인하려면{" "}
+          <button type="button" onClick={onLogout} className="font-bold text-navy underline" data-relogin-logout>
+            로그아웃
+          </button>
+          <br />
+          (작성 중인 내용은 지워져요)
+        </p>
       </div>
     </div>
   );

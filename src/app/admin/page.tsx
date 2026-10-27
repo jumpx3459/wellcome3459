@@ -288,6 +288,8 @@ export default function AdminPage() {
   // 2026-10-26 세션 만료 대응: key를 비우지 않고(대시보드·등록 패널·입력 유지) 그 위에 로그인 창만 띄움. 성공하면 key만 새 토큰으로 바뀜
   const [loginReason, setLoginReason] = useState<LoginReason | null>(null);
   const [restoreTick, setRestoreTick] = useState(0);
+  // 세션에 번호가 보관돼 있으면(이전 형식 세션이 아니면) 다시 로그인 창의 번호 칸을 그 번호로 고정 — 로그인 입력 중인 loginPhone과는 별개
+  const [lockedPhone, setLockedPhone] = useState(false);
   const keyRef = useRef<string | null>(null);
   useEffect(() => {
     keyRef.current = key;
@@ -318,7 +320,10 @@ export default function AdminPage() {
           setAdminName(session.name ?? null);
           setAdminRole(session.role ?? null);
           setSessionExpiresAt(session.ts + ADMIN_SESSION_TTL_MS);
-          if (typeof session.phone === "string") setLoginPhone(session.phone); // 다시 로그인 창 번호 미리 채움(탭 세션에만 저장)
+          if (typeof session.phone === "string" && session.phone.trim() !== "") {
+            setLoginPhone(session.phone); // 다시 로그인 창 번호(탭 세션에만 저장) — 창에서는 고정
+            setLockedPhone(true);
+          }
         } else {
           sessionStorage.removeItem("jumpingbid_admin_session");
         }
@@ -348,6 +353,7 @@ export default function AdminPage() {
       sessionStorage.setItem("jumpingbid_admin_session", JSON.stringify(session));
       const relogin = keyRef.current !== null;
       setKey(data.token);
+      setLockedPhone(true);
       setAdminName(data.admin.name);
       setAdminRole(data.admin.role);
       setSessionExpiresAt(ts + ADMIN_SESSION_TTL_MS);
@@ -367,6 +373,7 @@ export default function AdminPage() {
     setSessionExpiresAt(null);
     setLoginReason(null);
     setLoginPhone("");
+    setLockedPhone(false);
     setInput("");
     setLoginError(null);
   };
@@ -410,6 +417,8 @@ export default function AdminPage() {
         <AdminLoginOverlay
           reason={loginReason}
           onClose={() => setLoginReason(null)}
+          onLogout={logout}
+          phoneLocked={lockedPhone}
           phone={loginPhone}
           onPhone={(v) => setLoginPhone(formatPhoneTyping(v))}
           password={input}
@@ -417,7 +426,7 @@ export default function AdminPage() {
           error={loginError}
           busy={loggingIn}
           onSubmit={login}
-          autoFocusPassword={loginPhone.trim() !== ""}
+          autoFocusPassword={lockedPhone}
         />
       )}
     </AdminSessionProvider>
