@@ -82,7 +82,7 @@ export default function DealListCard({
               {MEMBER_PRICE_CTA} ›
             </span>
           ) : (
-            <span className="text-lg whitespace-nowrap" style={{ color: ink, fontWeight: 800 }} data-price>
+            <span className="text-lg min-w-0 [overflow-wrap:anywhere]" style={{ color: ink, fontWeight: 800 }} data-price>
               <PriceText text={dealPriceLabel(d)} />
             </span>
           )}

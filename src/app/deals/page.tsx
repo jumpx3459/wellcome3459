@@ -60,7 +60,8 @@ function DealsPageInner() {
     initialCat && mockCategories.includes(initialCat) ? initialCat : "전체"
   );
   const [activeRegion, setActiveRegion] = useState<string>("전체");
-  const [sort, setSort] = useState<"urgent" | "disc">("urgent");
+  // 2026-10-27: 기본 정렬 = 최신 등록순(새로 올라온 매물이 위). 버튼으로 마감 임박순·할인율순 전환(선택은 저장하지 않음 — 기존 그대로)
+  const [sort, setSort] = useState<"latest" | "urgent" | "disc">("latest");
   // 2026-09-27: native <select>는 접힌 필박스만 커스텀 스타일이 먹고, 펼친 옵션
   // 목록은 브라우저/OS 기본 스타일이 강제돼(웹 표준 한계) 다크 헤더 안에서 흰
   // 목록이 이질적으로 튀어나오는 문제 — 버튼+커스텀 드롭다운 패널로 교체.
@@ -98,7 +99,7 @@ function DealsPageInner() {
       const run = (priceCols: string, extra: string) => supabase!
         .from("deals")
         .select<string, DealRowLoose>(
-          `id, title, ${priceCols}, total_qty, remaining_qty, quantity_unit, price_unit, closes_at, location, images, video_url, origin, min_order_qty, interest_count, stock_type, categories(name), regions(name)${extra}`
+          `id, title, ${priceCols}, total_qty, remaining_qty, quantity_unit, price_unit, closes_at, created_at, location, images, video_url, origin, min_order_qty, interest_count, stock_type, categories(name), regions(name)${extra}`
         )
         .eq("status", "active")
         .gt("closes_at", new Date().toISOString()) // 마감 지난 매물은 애초에 가져오지 않음
@@ -132,6 +133,7 @@ function DealsPageInner() {
             quantity_unit: d.quantity_unit ?? "개",
             price_unit: d.price_unit ?? null,
             closes_at: d.closes_at,
+            created_at: d.created_at ?? undefined,
             brand_protected: d.brand_protected === true, // 2026-10-27 브랜드 보호(공개 플래그·보호 사진 장수만 — 보호 경로·브랜드명은 서버 전용)
             protected_image_count: d.protected_image_count ?? 0,
             images: d.images ?? [],
@@ -164,7 +166,7 @@ function DealsPageInner() {
       const run = (priceCols: string, extra: string) => supabase!
         .from("deals")
         .select<string, DealRowLoose>(
-          `id, title, ${priceCols}, total_qty, remaining_qty, quantity_unit, price_unit, closes_at, location, images, video_url, origin, min_order_qty, interest_count, stock_type, categories(name), regions(name)${extra}`
+          `id, title, ${priceCols}, total_qty, remaining_qty, quantity_unit, price_unit, closes_at, created_at, location, images, video_url, origin, min_order_qty, interest_count, stock_type, categories(name), regions(name)${extra}`
         )
         .or(`status.eq.closed,closes_at.lte.${new Date().toISOString()}`)
         .order("closes_at", { ascending: false })
@@ -189,6 +191,7 @@ function DealsPageInner() {
             quantity_unit: d.quantity_unit ?? "개",
             price_unit: d.price_unit ?? null,
             closes_at: d.closes_at,
+            created_at: d.created_at ?? undefined,
             brand_protected: d.brand_protected === true, // 2026-10-27 브랜드 보호(공개 플래그·보호 사진 장수만 — 보호 경로·브랜드명은 서버 전용)
             protected_image_count: d.protected_image_count ?? 0,
             images: d.images ?? [],
@@ -249,15 +252,16 @@ function DealsPageInner() {
 
   const notExpired = deals.filter((d) => new Date(d.closes_at).getTime() > now);
   // 2026-10-13: 진행 중 매물이 15건 미만이면(불러오는 중 포함) 고르기·정렬 줄 숨김 — 진행중·지난 매물 탭 같은 값.
-  //   숨김 동안 지역은 "전체", 정렬은 마감 임박순 고정(상태값은 그대로 둠). 카테고리는 ?category= 진입만 알약으로 표시·해제
+  //   숨김 동안 지역은 "전체", 정렬은 최신 등록순 고정(10/27 전엔 마감 임박순)(상태값은 그대로 둠). 카테고리는 ?category= 진입만 알약으로 표시·해제
   const compact = isDealsCompact(notExpired.length);
   const region = compact ? "전체" : activeRegion;
-  const sortKey = compact ? "urgent" : sort;
+  const sortKey = compact ? "latest" : sort;
   const sourceList = view === "active" ? notExpired : closedDeals;
   const byCategory = activeCat === "전체" ? sourceList : sourceList.filter((d) => d.category === activeCat);
   const byRegion = region === "전체" ? byCategory : byCategory.filter((d) => d.region === region);
   const filtered = [...byRegion].sort((a, b) => {
     if (sortKey === "urgent") return new Date(a.closes_at).getTime() - new Date(b.closes_at).getTime();
+    if (sortKey === "latest") return (b.created_at ? Date.parse(b.created_at) : 0) - (a.created_at ? Date.parse(a.created_at) : 0);
     return discountSortKey(b) - discountSortKey(a);
   });
 
@@ -491,10 +495,10 @@ function DealsPageInner() {
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-gray500">{filtered.length}건</span>
             <button
-              onClick={() => setSort(sort === "urgent" ? "disc" : "urgent")}
+              onClick={() => setSort(sort === "latest" ? "urgent" : sort === "urgent" ? "disc" : "latest")}
               className="text-xs font-bold text-navy bg-white border border-gray200 rounded-full px-3 py-1.5"
             >
-              {sort === "urgent" ? "마감 임박순" : "할인율순"} ⇅
+              {sort === "latest" ? "최신 등록순" : sort === "urgent" ? "마감 임박순" : "할인율순"} ⇅
             </button>
           </div>
         )}
