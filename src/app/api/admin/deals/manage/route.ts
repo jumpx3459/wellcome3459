@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
   if (allPaths.length > 0) {
     const signed = await signProtectedPaths(supabaseAdmin, allPaths, ADMIN_PREVIEW_TTL_SECONDS);
     const byPath = new Map(allPaths.map((pth, i) => [pth, signed[i]] as const));
-    for (const d of rows) d.protected_preview_urls = (d.protected_images ?? []).map((pth) => byPath.get(pth) ?? null);
+    for (const d of rows) if ((d.protected_images ?? []).length > 0) d.protected_preview_urls = (d.protected_images ?? []).map((pth) => byPath.get(pth) ?? null);
   }
   return NextResponse.json({ items: rows });
 }

@@ -59,6 +59,15 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - **#119 병합 기록**(푸시 클릭 무반응 수정): squash 병합 `386c23f`(10/27) · PR CI `build` run 40427834732 성공 · Deploy to Vercel run 40429097690 성공.
 - **푸시 원인 구분 결과(대표 운영 DB 조회)**: 양배추환 09:22 발송분에 대표 계정 구독 5개(Windows PC 크롬 4 + Android 폰 1) 모두 로그 행 sent·clicked 전부 NULL, 전체 클릭 기록 265/17건으로 기능은 정상 → 폰에서 클릭이 서비스워커에 도달하지 못한 것(삼성 배터리 절전·앱 동결 추정, 기기 쪽). #119는 별도 실제 결함(열린 창 focus만·대체 없음·부분일치) 수정. 대표가 폰 배터리 '제한 없음'+앱 완전 종료 후 재시험 예정.
 - **sw 버전 표시(MY·관리자 하단 1줄 / 푸시·클릭 시 버전 전송) = 보류**. 재개 기준: 배터리 설정·알림 재구독 후에도 클릭 기록이 안 남을 때. 등록 URL 버전 쿼리(`/sw.js?v=`)는 쓰지 않음(별도 서비스워커로 취급돼 구독 스코프가 꼬일 수 있음).
+- **브랜드 보호 1단계(PR 1)**: 켜면(`deals.brand_protected`) 공개 사진은 대표 1장(`images`)만, 나머지 사진(`protected_images` = 비공개 버킷 `deal-images-protected` 경로)·브랜드명(`brand_name`)은 로그인 회원에게만(가격 공개와 같은 기준). 문구 "가입한 회원에게만 보여요"·"회원 전용 사진"·"보호 사진 N장"(금지: 완전 차단·유출 불가·사업자 회원·인증 바이어).
+  - **DB(운영 적용 10/27, `supabase/migrations/20261027_brand_protected.sql`)**: deals 4칸(+`protected_image_count` generated) · 제약 `deals_brand_protected_chk`(보호 행만: images ≤ 1·video_url null·brand_name 필수) · grant select는 `brand_protected`·`protected_image_count`만(anon·authenticated) · 비공개 버킷. seller_requests 칸은 PR 2.
+  - **⚠ 브라우저(supabase 클라이언트)는 `protected_images`·`brand_name`을 절대 select하지 말 것** — 권한이 없어 요청 전체가 42501. 서버(service role) 전용: 회원은 `POST /api/deal-protected`(회원 확인 → brand_name + 서명 URL 10분, private·no-store, 회원 60회/IP 200회 per 10분), 관리자는 관리자 API 응답(목록은 미리보기 서명 URL 1시간).
+  - **서버**: `src/lib/brandProtected.ts`(규칙·문구·복사·서명) · `/api/upload` protected=1(관리자 전용, 비공개 버킷에 올리고 경로 반환, 영상 불가) · 등록·수정 저장 API 검증(켜기 = 공개 사진 ≤ 1·영상 없음·브랜드명, 끄기 = 보호 사진이 없을 때만, 제약 위반 23514는 같은 문구) · 사진 공개↔보호 이전 순서 = 새 버킷 복사 → DB 저장 → 성공 뒤 옛 객체 삭제(실패·경고·되돌리기 땐 복사본 삭제) · 매물 삭제 시 보호 객체 정리 · 제목·설명에 브랜드명이 있으면 확인 후 저장 경고.
+  - **화면**: 목록·홈 카드 🛡 배지·"보호 사진 N장"·공개 사진 없으면 🛡 타일(`BrandProtectedUI.tsx`) · 상세 = 비회원 잠금 영역 + [가입하고 보기], 회원 = 제목 아래 "🛡 브랜드: ○○" + 보호 사진을 공개 사진 뒤에 이어 붙임(서명 URL 80% 지점 자동 갱신) · 보호 매물 상세 noindex·sitemap 제외 · OG·푸시 이미지는 `images`(공개 사진뿐) 그대로.
+  - **관리자 폼**: 🛡 체크·브랜드명 칸·사진별 [공개]/[보호](공개 1장만, 새 사진은 첫 장 공개·나머지 비공개 버킷)·영상 칸 비활성. 켜기 조건(영상 없음·기존 매물은 공개 사진 ≤ 1)·끄기 조건(보호 사진 없음)은 버튼 비활성 + 안내, 서버도 400.
+  - **시험(저장소 밖 scratchpad)**: 서버 pw22 47건(fakedb3 = 상태 있는 가짜 Supabase·칸 권한 42501 재현) · 공개 화면 pw23 35건 · 관리자 폼 pw24 34건. 기존 pw2~15·17~21 모두 통과.
+  - **알려 둘 것**: sitemap은 빌드(배포) 때 만들어지는 정적 파일이라(기존 동작) 이미 올라간 매물을 보호로 바꿔도 다음 배포 전까지 sitemap에 남음(noindex 메타는 즉시) · 이미 공개된 사진은 보호로 바꿔도 이미 퍼진 곳에서 사라지지 않을 수 있음(그래서 전환은 공개 사진 ≤ 1장 매물만) · 관리자 사진 칸은 64px 썸네일 + 버튼(시안의 큰 카드가 아님) · 판매 신청 승인에서 신청서 사진을 보호로 옮기면 신청서 쪽 `images`의 옛 공개 URL은 깨짐(승인된 신청이라 영향 작음).
+  - **PR 2 이후**: /sell(판매자 신청의 체크·브랜드명·보호 업로드, seller_requests 칸) · 보호 영상(회원 전용) · 운영 anon 프로브(protected_images select → 42501 1회, 대표 승인 후).
 
 ## 최근 작업 (2026-10-27) — 푸시 알림 클릭 무반응 수정 (브랜치 `fix/push-click`)
 - **증상**: 양배추환 푸시 → 상단 알림 "지금 확인하기" 클릭 → 화면 이동 없음.

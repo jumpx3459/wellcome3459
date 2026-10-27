@@ -4181,14 +4181,14 @@ function DealForm({
             {/* 2026-10-27 브랜드 보호 — 공개 사진은 1장, 브랜드명·나머지 사진은 가입한 회원에게만. 켜면 영상 칸이 꺼짐 */}
             <div
               className="rounded-xl flex flex-col gap-2"
-              style={{ border: `2px solid ${brandProtected ? "#9FB2C8" : "#E4E7EB"}`, background: brandProtected ? "#F3F6FA" : bpBlock ? "#F1F3F5" : "#fff", padding: 12 }}
+              style={{ border: `2px solid ${brandProtected ? "#9FB2C8" : "#E4E7EB"}`, background: brandProtected ? "#F3F6FA" : bpBlock ? "#F1F3F5" : "#fff", padding: brandProtected || bpBlock ? 12 : "8px 12px" }}
               data-brand-protect
             >
-              <label className="flex items-start gap-3" style={{ cursor: bpBlock && !brandProtected ? "not-allowed" : "pointer" }}>
+              <label className="flex items-center gap-3" style={{ cursor: bpBlock && !brandProtected ? "not-allowed" : "pointer" }}>
                 <input
                   id="deal-brandProtected"
                   type="checkbox"
-                  className="mt-0.5 flex-shrink-0"
+                  className="flex-shrink-0"
                   style={{ width: 26, height: 26, accentColor: "#0B2540" }}
                   checked={brandProtected}
                   disabled={!!bpBlock}
@@ -4197,10 +4197,10 @@ function DealForm({
                     clearErr("brandName");
                   }}
                 />
-                <span className="min-w-0">
-                  <b style={{ fontSize: rem(16), color: bpBlock && !brandProtected ? "#6B7480" : "#1a1f26" }}>🛡 브랜드 보호로 {edit ? "바꾸기" : "등록"}</b>
-                  <span className="block" style={{ fontSize: rem(13), color: "#6B7480" }}>
-                    공개 사진은 1장만 나가고, 브랜드명과 나머지 사진은 가입한 회원에게만 보여요.
+                <span className="min-w-0 flex flex-wrap items-baseline gap-x-2">
+                  <b style={{ fontSize: rem(16), color: bpBlock && !brandProtected ? "#6B7480" : "#1a1f26" }}>🛡 브랜드 보호{edit ? (initial?.brand_protected === true ? "" : "로 바꾸기") : "로 등록"}</b>
+                  <span className={brandProtected || bpBlock ? "basis-full" : ""} style={{ fontSize: rem(13), color: "#6B7480" }}>
+                    {brandProtected || bpBlock ? "공개 사진은 1장만 나가고, 브랜드명과 나머지 사진은 가입한 회원에게만 보여요." : "공개 1장 · 브랜드명·나머지는 회원 전용"}
                   </span>
                 </span>
               </label>
