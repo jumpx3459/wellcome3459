@@ -55,6 +55,9 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
+## 최근 작업 (2026-10-28) — 관리자 최근 판매자 칩 7a (브랜치 `feat/admin-seller-chips`)
+- **#122 병합 기록**(관리자 작은 개선 v2): squash 병합 `1af09bb3a91acb48e3196cb5a92afefe7070feb1`(10/28) · PR CI `build` run 40616326913 성공 · Deploy to Vercel run 40616434516 성공 · 운영 `/admin` 200. 접힌 카드 여백 통일은 다음 좌측 메뉴 PR에서 정리(이번엔 사업자 조회만).
+
 ## 최근 작업 (2026-10-28) — 관리자 작은 개선 v2 (브랜치 `feat/admin-small-v2`)
 - **#121 병합 기록**(회원 화면 작은 수정): squash 병합 `8b02e8a8638c079c9efbd669b9a060199034cd9b`(10/28) · PR CI `build` run 40478676963 성공 · Deploy to Vercel run 40604235193 성공 · 운영 `/deals`·보호 매물 상세(비회원) 200.
 
