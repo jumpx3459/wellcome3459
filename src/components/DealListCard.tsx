@@ -8,6 +8,7 @@ import NegotiablePrice from "@/components/NegotiablePrice";
 import { heartToShow } from "@/lib/heartCount";
 import { qtyRegionText } from "@/lib/homeCard";
 import { rem } from "@/lib/rem";
+import { ProtectedGateNote } from "@/components/BrandProtectedUI";
 
 // /deals 목록 카드 — 실매물·예시 공용 (2026-09-29, 예전엔 예시 카드가 따로 있어서 배지 위치가 달랐음).
 // 예시는 레이아웃 동일, 회색 톤으로만 구분(회색 줄 앞 "예시 ·" + 목록 위 "예시" 표시).
@@ -58,6 +59,8 @@ export default function DealListCard({
         ratio="1/1"
         brandProtected={d.brand_protected === true}
         protectedCount={d.protected_image_count ?? 0}
+        member={!priceHidden}
+        imageCount={(d.images?.length ?? 0) + (d.brand_protected === true && !priceHidden ? d.protected_image_count ?? 0 : 0)}
       />
 
       {/* 2026-10-03: 운영(안드로이드 크롬)에서 긴 매물명이 한 줄로 카드 폭을 밀어 화면 밖으로 넘친 제보 — 본문·매물명을 min-w-0 블록 안에 둠 */}
@@ -98,6 +101,7 @@ export default function DealListCard({
             <span className="flex-shrink-0 whitespace-nowrap font-bold" style={{ color: "#C2410C" }}>· ❤️ {heartToShow(d.heart_count)}</span>
           )}
         </div>
+        {d.brand_protected === true && priceHidden && !example && <ProtectedGateNote />}
         {closed && (
           <div className="text-sm text-gray500 mt-1.5">
             {new Date(d.closes_at).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })} 마감

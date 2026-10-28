@@ -7,7 +7,7 @@ import { dealPriceLabel, isNegotiable } from "@/lib/priceMode";
 import { isTimerRed, regionQtyText } from "@/lib/homeCard";
 import { rem } from "@/lib/rem";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
-import { ShieldBadge, ProtectedCount, ProtectedTile } from "@/components/BrandProtectedUI";
+import { ShieldBadge, ProtectedTile } from "@/components/BrandProtectedUI";
 import StockTypeBadge from "@/components/StockTypeBadge";
 import PriceText from "@/components/PriceText";
 import MemberPriceTeaser from "@/components/MemberPriceTeaser";
@@ -36,6 +36,7 @@ export default function HomeDealCard({
   const hasPhoto = images.length > 0;
   const bp = d.brand_protected === true; // 2026-10-27 브랜드 보호
   const openable = hasPhoto && !!onOpenPhotos;
+  const photoTotal = images.length + (bp ? d.protected_image_count ?? 0 : 0); // 2026-10-29 PR-C H: 회원은 공개+보호 합계
 
   return (
     <Link
@@ -88,23 +89,18 @@ export default function HomeDealCard({
                 <ShieldBadge compact />
               </span>
             )}
-            {bp && hasPhoto && (d.protected_image_count ?? 0) > 0 && (
-              <span className="absolute" style={{ right: 6, bottom: 6 }}>
-                <ProtectedCount compact count={d.protected_image_count ?? 0} />
-              </span>
-            )}
             {hasPhoto && d.video_url && (
               <span className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ background: "rgba(0,0,0,.25)" }}>
                 <span style={{ fontSize: rem(22), color: "#fff" }}>▶</span>
               </span>
             )}
-            {images.length > 1 && (
+            {photoTotal > 1 && (
               <span
                 className="absolute rounded font-bold text-white whitespace-nowrap pointer-events-none"
                 style={{ right: 6, bottom: 6, fontSize: rem(13), lineHeight: 1.3, padding: "2px 6px", background: "rgba(0,0,0,.5)" }}
                 data-photo-count
               >
-                📷 {images.length}장
+                📷 {photoTotal}장
               </span>
             )}
           </div>

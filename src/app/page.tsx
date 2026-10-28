@@ -18,7 +18,7 @@ import AlertInboxHome from "@/components/AlertInboxHome";
 import BuyNoticeBoard from "@/components/BuyNoticeBoard";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
-import { ShieldBadge, ProtectedCount, ProtectedTile } from "@/components/BrandProtectedUI";
+import { ShieldBadge, ProtectedGateNote, ProtectedTile } from "@/components/BrandProtectedUI";
 import { GUEST_PRICE_COLS, dealPriceFields, cardDiscountPct, MEMBER_PRICE_CTA } from "@/lib/dealPriceAccess";
 import { isNegotiable } from "@/lib/priceMode";
 import NegotiablePrice from "@/components/NegotiablePrice";
@@ -397,11 +397,6 @@ export default function Home() {
                         <ShieldBadge compact />
                       </span>
                     )}
-                    {d.brand_protected && d.images && d.images.length > 0 && (d.protected_image_count ?? 0) > 0 && (
-                      <span className="absolute" style={{ right: 6, bottom: 6 }}>
-                        <ProtectedCount compact count={d.protected_image_count ?? 0} />
-                      </span>
-                    )}
                   </div>
                   {/* 할인 배지가 사진 위로 옮겨가서 본문 오른쪽 배지 자리(pr) 없음 — 글자 칸 최대 */}
                   <div className="flex-1 min-w-0" style={{ overflowX: "clip", overflowWrap: "anywhere" }}>
@@ -434,6 +429,7 @@ export default function Home() {
                         </>
                       )}
                     </div>
+                    {d.brand_protected && !isExample && <ProtectedGateNote compact count={d.protected_image_count ?? 0} />}
                   </div>
                 </Link>
               );
