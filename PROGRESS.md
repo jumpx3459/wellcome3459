@@ -57,6 +57,11 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 
 ## 최근 작업 (2026-10-28) — 관리자 등록 폼 v2 PR-A (브랜치 `feat/admin-dealform-v2`)
 - **#123 병합 기록**(관리자 최근 판매자 칩 7a): squash 병합 `2d1ead5782ee88c726c4260cf215a560bcc3235a`(10/28) · PR CI `build` run 40621535034 성공 · Deploy to Vercel run 40621647995 성공 · 운영 `/admin` 200.
+- **PR-A 구현(관리자 등록 폼 v2)**:
+  - **A 배송비 안내**: `deals.shipping_fee_type`('separate' 기본|'included'|'negotiable')·`shipping_note`(≤60자). 공용 상수·검증 `src/lib/shippingFee.ts`(서버·폼 같은 길이·문구). 등록 API는 기본값(별도)·메모 없음이면 칸을 보내지 않음(price_mode 선례), 수정 PATCH는 `DEAL_EDIT_KEYS`에 `shippingFeeType`·`shippingNote`. 상세(`/deals/[id]`)는 상세 전용 칸 상수 `DEAL_DETAIL_SHIPPING_COLS`로만 읽고(목록·홈 상수는 그대로) **회원에게만** 표시 — 고정가·가격 협의 모두, 비회원은 표시 없음(현행). separate = 예전 문구 "창고 출고가 기준이에요 (배송비 별도).", included = "배송비 포함 가격이에요", negotiable = "배송비는 협의해요", 메모는 아래 한 줄. 관리자 폼: 배송비 안내 라디오 3개 + 배송 메모(60자·글자 수)·가격 힌트 문구가 선택값을 따라감. /sell(seller_requests)은 이번 범위 밖.
+  - **I 보조 연락처**: `deal_seller_private.contact_phone_2`(서버 전용, grant 없음). `parseSellerPrivateFields`에 `contactPhone2`(주 연락처와 같은 숫자 8~11자리, 선택; 칸을 안 보낸 요청은 건드리지 않음). 등록·수정(PUT)·거래 연결 보드·7a prefill(full일 때만) 반영, 감사는 `changed`에 칸 이름 + `phoneTail`(끝 4자리)만. 화면: `SellerPrivateFields`·`DealSellerPrivateEditor`·`ConnectionBoard`·7b 이월·칩 prefill. 7a 칩 목록·reuse 비교는 주 연락처만.
+  - **J 단위 일치**: 새 등록에서 판매 단가 단위를 바꾸면 총수량 단위를 직접 안 골랐을 때 같이 맞춤(기존 반대 방향 규칙 유지). 서로 다르면 노란 경고 "가격은 ○, 수량은 ○예요"('일괄' 제외). MOQ 라벨은 이미 수량 단위(`moqUnit(quantityUnit)`)를 따름. **G** 총수량 아래 "소수점은 작은 단위로 적어주세요 (1.5톤 → 1,500kg)"(새 등록만). **L** 포장 단위 칩에 "1세트 = 2박스"·"1카톤 = 5박스"(관리자 폼만, /sell 칩은 그대로). **D** 관리자 DealForm 사진 업로더 `globalPaste`(Ctrl+V). **B** 관리자 사진 칸 힌트 "정사각형(1080×1080) 권장"(/sell 문구는 그대로).
+  - 보류: C 복사 등록·E 패널 사업자 조회·F 임시저장은 PR-B, B 상세 사진 contain·H 카드 표시는 PR-C.
 - **SQL 운영 적용(대표 실행 완료, 10/28)**: `supabase/migrations/20261028_deal_shipping_phone2.sql` — `deals.shipping_fee_type`(기본 'separate')·`shipping_note`(≤60자) + anon·authenticated 칸 grant, `deal_seller_private.contact_phone_2`(서버 전용). 확인 조회 결과 2 / t / t / 0 / 1 / f / f / 3 일치.
 
 ## 최근 작업 (2026-10-28) — 관리자 최근 판매자 칩 7a (브랜치 `feat/admin-seller-chips`)
