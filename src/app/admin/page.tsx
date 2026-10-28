@@ -18,6 +18,9 @@ import DealSellerPrivateEditor from "@/components/admin/DealSellerPrivateEditor"
 import AdminFullscreenPanel from "@/components/admin/AdminFullscreenPanel";
 import { formatMoq, moqUnit } from "@/lib/moq";
 import {
+  SHIPPING_FEE_TYPES, SHIPPING_FEE_LABELS, SHIPPING_NOTE_MAX, SHIPPING_NOTE_ERROR, DEFAULT_SHIPPING_FEE_TYPE, shippingFeeTypeOf, type ShippingFeeType,
+} from "@/lib/shippingFee";
+import {
   DEADLINE_CHOOSE_MESSAGE, DEADLINE_CUSTOM, DEADLINE_DEFAULT, DEADLINE_MAX_MESSAGE, DEADLINE_MAX_MS, DEADLINE_OPTIONS,
   checkClosesAt, closesAfterExpiryMessage, expiryLimitMs, mapHopeHoursToChoice,
 } from "@/lib/dealDeadline";
@@ -30,7 +33,7 @@ import { normalizeTitle, checkTitle, checkDescription } from "@/lib/titleGuard";
 import ConfirmWarnings, { BLOCK_COLOR, WARN_COLOR } from "@/components/ConfirmWarnings";
 import {
   isStorageType, discountPercent, priceWarnings, HIGH_DISCOUNT_PCT, storageSummary, formatExpiry, EXPIRY_REQUIRED_MESSAGE,
-  PACKAGE_UNIT_EXAMPLES, SPEC_EXAMPLES, ORIGIN_EXAMPLES, type StorageType,
+  PACKAGE_UNIT_ADMIN_EXAMPLES, SPEC_EXAMPLES, ORIGIN_EXAMPLES, type StorageType,
 } from "@/lib/dealFields";
 import { SuggestInput, StorageTypeButtons } from "@/components/DealFormInputs";
 import ManifestUploader from "@/components/ManifestUploader";
@@ -161,6 +164,8 @@ type ActiveDeal = {
   quick_lead_count: number | null;
   is_anonymous?: boolean | null;
   seller_display_name?: string | null;
+  shipping_fee_type?: string | null; // 2026-10-28 배송비 안내(목록 API가 select * 로 이미 줌)
+  shipping_note?: string | null;
   // 2026-10-03 feat/admin-deal-edit: 카드에서 수정하는 칸 (목록 API가 select * 로 이미 줌)
   original_price?: number | null;
   min_order_qty?: number | null;
@@ -2909,6 +2914,8 @@ function dealToPrefill(d: ActiveDeal) {
     quantityUnit: d.quantity_unit ?? undefined,
     priceUnit: d.price_unit ?? undefined,
     minOrderQty: d.min_order_qty ?? undefined,
+    shippingFeeType: d.shipping_fee_type ?? undefined,
+    shippingNote: d.shipping_note ?? undefined,
     images: d.images ?? [],
     videoUrl: d.video_url ?? undefined,
     description: d.description ?? undefined,
@@ -3251,6 +3258,8 @@ function DealForm({
     quantityUnit?: string;
     priceUnit?: string;
     minOrderQty?: number;
+    shippingFeeType?: string;
+    shippingNote?: string;
     images?: string[];
     videoUrl?: string;
     description?: string;
@@ -3291,6 +3300,11 @@ function DealForm({
   const [priceMode, setPriceMode] = useState<PriceMode>(prefill?.priceMode === "negotiable" ? "negotiable" : "fixed"); // 2026-10-04 가격 방식 — 가격 협의면 판매·정상 단가 없이 등록 (2026-10-05: 협의 신청이면 협의로 시작)
   const [totalQty, setTotalQty] = useState(prefill?.totalQty ? String(prefill.totalQty) : "");
   const [quantityUnit, setQuantityUnit] = useState(prefill?.quantityUnit || quantityUnits[0]);
+  // 2026-10-28 J: 총수량 단위를 직접 고르기 전(신청서·수정 값이 아닐 때)에는 판매 단가 단위를 따라감
+  const [quantityUnitTouched, setQuantityUnitTouched] = useState(!!prefill?.quantityUnit);
+  // 2026-10-28 A: 배송비 안내(기본 별도) · 배송 메모(선택, 60자)
+  const [shippingFeeType, setShippingFeeType] = useState<ShippingFeeType>(shippingFeeTypeOf(prefill?.shippingFeeType));
+  const [shippingNote, setShippingNote] = useState(prefill?.shippingNote ?? "");
   // 2026-09-29: 단가 단위 — 신청서 값 이어받기, 없으면 수량 단위를 따라감(직접 고르면 유지). 정상가·판매가 공통
   const [priceUnit, setPriceUnit] = useState<string>(
     isDealPriceUnit(prefill?.priceUnit) ? prefill!.priceUnit! : prefill?.quantityUnit || quantityUnits[0]
@@ -3419,6 +3433,7 @@ function DealForm({
       else if (!deal || deal <= 0) errs.dealPrice = "판매가는 0보다 커야 해요.";
       if (originalPrice.trim() && (!orig || orig <= 0)) errs.originalPrice = "정상가는 0보다 커야 해요.";
     }
+    if (shippingNote.trim().length > SHIPPING_NOTE_MAX) errs.shippingNote = SHIPPING_NOTE_ERROR;
     if (!totalQty.trim()) errs.totalQty = "재고 총수량을 입력해주세요.";
     else if (!Number.isFinite(qty) || qty <= 0) errs.totalQty = "재고 총수량은 0보다 커야 해요.";
     if (!lumpSum && minOrderQty.trim() && !(Number(minOrderQty) > 0 && Number.isInteger(Number(minOrderQty)))) errs.minOrderQty = "최소 주문량은 1 이상의 정수로 입력해주세요.";
@@ -3530,6 +3545,8 @@ function DealForm({
       if (location !== (initial.location ?? "")) c.location = location || null;
       if (stockType !== (initial.stock_type ?? "general")) c.stockType = stockType;
       if (packageUnit !== (initial.package_unit ?? "")) c.packageUnit = packageUnit || null;
+      if (shippingFeeType !== shippingFeeTypeOf(initial.shipping_fee_type)) c.shippingFeeType = shippingFeeType;
+      if (shippingNote.trim() !== (initial.shipping_note ?? "")) c.shippingNote = shippingNote.trim() || null;
       if (spec !== (initial.spec ?? "")) c.spec = spec || null;
       if (origin !== (initial.origin ?? "")) c.origin = origin || null;
       if (storageType !== (initial.storage_type ?? "")) c.storageType = storageType || null;
@@ -3590,6 +3607,9 @@ function DealForm({
           videoUrl: skipVideo || brandProtected ? null : videoUrl,
           description,
           packageUnit: packageUnit || null,
+          // 2026-10-28 배송비 안내 — 기본(별도)·메모 없음이면 보내지 않음(price_mode 선례)
+          ...(shippingFeeType !== DEFAULT_SHIPPING_FEE_TYPE ? { shippingFeeType } : {}),
+          ...(shippingNote.trim() ? { shippingNote: shippingNote.trim() } : {}),
           origin: origin || null,
           spec: spec || null,
           storageType: storageType || null,
@@ -3912,6 +3932,8 @@ function DealForm({
                       setPriceUnit(e.target.value);
                       setPriceUnitTouched(true);
                       if (e.target.value === LUMP_SUM) setMinOrderQty("");
+                      // 2026-10-28 J: 총수량 단위를 직접 고르지 않았으면 같은 값으로 맞춤(새 등록만, 일괄 제외)
+                      else if (!edit && !quantityUnitTouched && quantityUnits.includes(e.target.value)) setQuantityUnit(e.target.value);
                     }}
                   >
                     {DEAL_PRICE_UNITS.map((u) => (
@@ -3923,7 +3945,7 @@ function DealForm({
                 </div>
                 {!edit && (
                 <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }}>
-                  목록에 &quot;{formatDealPrice(30000, quantityUnit, priceUnit, { exact: true })}&quot;처럼 보여요 · 창고 출고가(배송비 별도)
+                  목록에 &quot;{formatDealPrice(30000, quantityUnit, priceUnit, { exact: true })}&quot;처럼 보여요 · {shippingFeeType === "included" ? "배송비 포함 가격" : shippingFeeType === "negotiable" ? "배송비 협의" : "창고 출고가(배송비 별도)"}
                 </p>
                 )}
               </DealFormField>
@@ -3959,6 +3981,36 @@ function DealForm({
             </div>
             )}
 
+            {/* 2026-10-28 A 배송비 안내 — 상세(회원)에 "창고 출고가 기준이에요 (배송비 별도)" 대신 이 선택대로 보임. 가격 협의 매물도 같음 */}
+            <div className="min-w-0" data-shipping-fee>
+              <div className="font-bold mb-1" style={{ fontSize: rem(15), color: "#374151" }}>배송비 안내</div>
+              <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="배송비 안내">
+                {SHIPPING_FEE_TYPES.map((t) => (
+                  <label
+                    key={t}
+                    className="flex-1 min-w-[7.5rem] flex items-center gap-2 rounded-xl cursor-pointer"
+                    style={{ border: `2px solid ${shippingFeeType === t ? "#0B2540" : "#E4E7EB"}`, padding: "10px 12px", background: "#fff" }}
+                  >
+                    <input type="radio" name="deal-shippingFeeType" className="w-4 h-4 accent-navy flex-shrink-0" checked={shippingFeeType === t} onChange={() => setShippingFeeType(t)} />
+                    <span className="font-bold text-navy" style={{ fontSize: rem(14) }}>{SHIPPING_FEE_LABELS[t]}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="mt-2">
+                <label htmlFor="deal-shippingNote" className="font-bold mb-1 block" style={{ fontSize: rem(15), color: "#374151" }}>배송 메모 (선택)</label>
+                <input
+                  id="deal-shippingNote"
+                  className={inputCls("shippingNote")}
+                  maxLength={SHIPPING_NOTE_MAX}
+                  placeholder="예: 500kg 이상 배송 지원"
+                  value={shippingNote}
+                  onChange={(e) => { setShippingNote(e.target.value); clearErr("shippingNote"); }}
+                />
+                <p className="mt-1 text-gray500 text-right" style={{ fontSize: rem(14) }} data-shipping-count>{shippingNote.length}/{SHIPPING_NOTE_MAX}</p>
+                {fieldErrors.shippingNote && <p className="font-medium" style={{ fontSize: rem(14), color: BLOCK_COLOR }}>{fieldErrors.shippingNote}</p>}
+              </div>
+            </div>
+
             {/* 재고 총수량+단위(한 덩어리) · 재고 위치 · 지역 상세 */}
             <div className={FORM_ROW3}>
               <DealFormField label="재고 총수량" required error={fieldErrors.totalQty} htmlFor="deal-totalQty">
@@ -3983,6 +4035,7 @@ function DealForm({
                     value={quantityUnit}
                     onChange={(e) => {
                       setQuantityUnit(e.target.value);
+                      setQuantityUnitTouched(true);
                       if (!priceUnitTouched && isDealPriceUnit(e.target.value)) setPriceUnit(e.target.value);
                     }}
                   >
@@ -3993,6 +4046,12 @@ function DealForm({
                     ))}
                   </select>
                 </div>
+                {!edit && <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }} data-qty-hint>소수점은 작은 단위로 적어주세요 (1.5톤 → 1,500kg)</p>}
+                {priceMode === "fixed" && !lumpSum && priceUnit !== quantityUnit && (
+                  <p className="mt-1 rounded-lg font-bold" role="status" data-unit-warn style={{ fontSize: rem(14), background: "#FFF8E1", border: "1.5px solid #F2D36B", color: "#7A5B00", padding: "6px 10px" }}>
+                    가격은 {priceUnit}, 수량은 {quantityUnit}예요
+                  </p>
+                )}
               </DealFormField>
               <DealFormField label="재고 위치(지역)" required error={fieldErrors.region} htmlFor="deal-region">
                 <select
@@ -4195,7 +4254,7 @@ function DealForm({
 
               <div className={FORM_ROW3}>
                 <DealFormField label="포장 단위" htmlFor="deal-packageUnit">
-                  <SuggestInput id="deal-packageUnit" className={inputCls()} value={packageUnit} onChange={setPackageUnit} examples={edit ? [] : PACKAGE_UNIT_EXAMPLES} placeholder="예: 5kg 박스" />
+                  <SuggestInput id="deal-packageUnit" className={inputCls()} value={packageUnit} onChange={setPackageUnit} examples={edit ? [] : PACKAGE_UNIT_ADMIN_EXAMPLES} placeholder="예: 5kg 박스" />
                 </DealFormField>
                 <DealFormField label="규격/사이즈" htmlFor="deal-spec">
                   <SuggestInput id="deal-spec" className={inputCls()} value={spec} onChange={setSpec} examples={edit ? [] : SPEC_EXAMPLES} placeholder="예: 대 / 30cm" />
@@ -4297,7 +4356,8 @@ function DealForm({
               label="매물 사진"
               // 2026-10-12: 관리자 한도 25장(판매신청은 12장까지 오고 관리자가 더 붙일 수 있음) — src/lib/photoLimit.ts
               max={ADMIN_PHOTO_LIMIT}
-              hint={edit ? "" : `최대 ${ADMIN_PHOTO_LIMIT}장 (신청서에 첨부된 사진 포함)`}
+              hint={edit ? "정사각형(1080×1080) 권장" : `최대 ${ADMIN_PHOTO_LIMIT}장 (신청서에 첨부된 사진 포함) · 정사각형(1080×1080) 권장`}
+              globalPaste // 2026-10-28 D: 폼 어디에서든 Ctrl+V로 사진 붙여넣기
               initialUrls={prefill?.images ?? []}
               onPreview={openPhotoPreview}
             />
@@ -4449,9 +4509,9 @@ function requestPrefill(r: SellerRequest) {
   };
 }
 
-type DealField = "title" | "brandName" | "category" | "region" | "originalPrice" | "dealPrice" | "totalQty" | "remainingQty" | "closesAt" | "minOrderQty" | "expiryDate" | "sellerPrivateCompany" | "sellerPrivatePhone" | "sellerPrivateName" | "businessCheckId" | "sourcedBy";
+type DealField = "title" | "brandName" | "category" | "region" | "originalPrice" | "dealPrice" | "totalQty" | "remainingQty" | "closesAt" | "minOrderQty" | "expiryDate" | "sellerPrivateCompany" | "sellerPrivatePhone" | "sellerPrivateName" | "businessCheckId" | "sourcedBy" | "shippingNote";
 // 화면 위→아래 순서 (첫 누락 칸 포커스용) — 2026-10-01 2차: ① 매물명·판매/정상 단가·재고 총수량·지역 → 제품 상세(MOQ·소비기한) → 거래 조건(카테고리)
-const DEAL_FIELD_ORDER: DealField[] = ["title", "brandName", "dealPrice", "originalPrice", "totalQty", "remainingQty", "closesAt", "region", "minOrderQty", "expiryDate", "category", "sellerPrivateCompany", "sellerPrivatePhone", "sellerPrivateName", "businessCheckId", "sourcedBy"];
+const DEAL_FIELD_ORDER: DealField[] = ["title", "brandName", "dealPrice", "originalPrice", "shippingNote", "totalQty", "remainingQty", "closesAt", "region", "minOrderQty", "expiryDate", "category", "sellerPrivateCompany", "sellerPrivatePhone", "sellerPrivateName", "businessCheckId", "sourcedBy"];
 
 // 붙인 입력 그룹(한 테두리) — [입력 | 원 / 단위] (2026-10-01 2차)
 const GROUP_INPUT_CLS = "flex-1 min-w-0 px-3 py-2.5 text-[0.8889rem] outline-none bg-transparent";

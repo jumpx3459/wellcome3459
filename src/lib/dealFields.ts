@@ -13,6 +13,8 @@ export function isStorageType(v: unknown): v is StorageType {
 
 // 입력 예시 (칸 아래 칩 + datalist) — 여기만 고치면 두 폼에 같이 반영
 export const PACKAGE_UNIT_EXAMPLES = ["1kg 팩", "5kg 박스", "10kg 박스", "20kg 박스", "낱개", "묶음(10개)", "파렛트"];
+// 2026-10-28 관리자 등록 폼 전용 — 세트·카톤 구성(/sell 칩은 그대로)
+export const PACKAGE_UNIT_ADMIN_EXAMPLES = [...PACKAGE_UNIT_EXAMPLES, "1세트 = 2박스", "1카톤 = 5박스"];
 export const SPEC_EXAMPLES = ["소", "중", "대", "특대", "500ml", "1L", "S~L 혼합"];
 export const ORIGIN_EXAMPLES = ["국내산", "중국산", "베트남산", "미국산", "호주산", "칠레산", "수입산(혼합)"];
 
