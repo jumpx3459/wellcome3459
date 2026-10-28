@@ -556,7 +556,8 @@ function AdminDashboard({
   const [licenseLoadingId, setLicenseLoadingId] = useState<string | null>(null);
   const [memberSearch, setMemberSearch] = useState("");
   const [memberFilter, setMemberFilter] = useState<"all" | "business" | "subscribed" | "unsubscribed">("all");
-  const [leadFilter, setLeadFilter] = useState<"all" | "uncontacted" | "pending" | "completed" | "no_deal">("all");
+  // 2026-10-28: 기본 = 진행중(pending) — 끝난(성사·불발) 건과 아직 안 시작한 건이 섞여 길어지던 목록을 줄임. [전체] 칩으로 해제
+  const [leadFilter, setLeadFilter] = useState<"all" | "uncontacted" | "pending" | "completed" | "no_deal">("pending");
   const [leadSearch, setLeadSearch] = useState("");
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const [bulkProcessing, setBulkProcessing] = useState(false);
@@ -1397,6 +1398,8 @@ function AdminDashboard({
           !loading && (
             leadFilter === "uncontacted" ? (
               <ActionFilterEmpty text="미연락 건이 없어요" onShowAll={() => setLeadFilter("all")} />
+            ) : leadFilter === "pending" && interests.length > 0 && !leadSearch.trim() ? (
+              <ActionFilterEmpty text="진행중 건이 없어요" onShowAll={() => setLeadFilter("all")} />
             ) : (
               <div className="text-center text-gray500 py-6 text-sm">
                 {interests.length === 0 ? "아직 관심 표시가 없어요." : "검색/필터 결과가 없어요."}
