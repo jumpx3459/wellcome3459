@@ -55,6 +55,10 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
+## 최근 작업 (2026-10-28) — 관리자 등록 폼 v2 PR-B (브랜치 `feat/admin-deal-workflow`)
+- **#124 병합 기록**(관리자 등록 폼 v2 PR-A): squash 병합 `889df4dc538a401e0784b17700be83cf96c3dff8`(10/28) · PR CI `build` run 40647501316 성공 · Deploy to Vercel run 40647632973 성공 · 운영 `/admin`·`/deals` 200. 원격 브랜치 삭제.
+- PR-B 범위: C 복사해서 새로 등록 · E 등록 패널 안 사업자 조회 · F 임시저장(새 등록 폼만). B 상세 사진 contain·H 카드 표시는 PR-C.
+
 ## 최근 작업 (2026-10-28) — 관리자 등록 폼 v2 PR-A (브랜치 `feat/admin-dealform-v2`)
 - **#123 병합 기록**(관리자 최근 판매자 칩 7a): squash 병합 `2d1ead5782ee88c726c4260cf215a560bcc3235a`(10/28) · PR CI `build` run 40621535034 성공 · Deploy to Vercel run 40621647995 성공 · 운영 `/admin` 200.
 - **PR-A 구현(관리자 등록 폼 v2)**:
