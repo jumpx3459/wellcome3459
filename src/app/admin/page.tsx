@@ -15,6 +15,7 @@ import AdminJumpBar from "@/components/admin/AdminJumpBar";
 import { NEGOTIABLE_LABEL, NEGOTIABLE_TEXT, isNegotiable, type PriceMode } from "@/lib/priceMode";
 import SellerPrivateFields, { EMPTY_SELLER_PRIVATE, type SellerPrivateDraft } from "@/components/admin/SellerPrivateFields";
 import { fetchCopySeller, COPY_PROTECTED_NOTE } from "@/lib/dealCopy";
+import { clearDealDraft, dealDraftKey, DEAL_DRAFT_DEBOUNCE_MS, draftSavedLabel, readDealDraft, sanitizeDraft, writeDealDraft, type DealDraftFields, type StoredDealDraft } from "@/lib/dealDraft";
 import DealSellerPrivateEditor from "@/components/admin/DealSellerPrivateEditor";
 import AdminFullscreenPanel from "@/components/admin/AdminFullscreenPanel";
 import { formatMoq, moqUnit } from "@/lib/moq";
@@ -1643,7 +1644,7 @@ function AdminDashboard({
         </div>
       )}
       {openFormFor === "new" && (
-        <DealForm key={`new-${copy?.nonce ?? sameSeller?.nonce ?? 0}`} copied={!!copy} adminRole={role} prefill={copy?.prefill} carry={copy ? copy.carry : sameSeller?.carry ?? null} onRegistered={load} onNextSame={(c) => { setCopy(null); setSameSeller({ nonce: Date.now(), carry: c }); }} adminKey={adminKey} wide={isDesktop} footerSlot={isDesktop ? panelFooterEl : undefined} onDirtyChange={setDealFormDirty} onGoBizCheck={isDesktop ? goBizFromFormPanel : goToBizCheck} sourcedOptions={sourcedOptions} onDone={() => { setOpenFormFor(null); load(); }} />
+        <DealForm key={`new-${copy?.nonce ?? sameSeller?.nonce ?? 0}`} copied={!!copy} adminRole={role} draftKey={me?.id && !copy ? dealDraftKey(me.id) : null} prefill={copy?.prefill} carry={copy ? copy.carry : sameSeller?.carry ?? null} onRegistered={load} onNextSame={(c) => { setCopy(null); setSameSeller({ nonce: Date.now(), carry: c }); }} adminKey={adminKey} wide={isDesktop} footerSlot={isDesktop ? panelFooterEl : undefined} onDirtyChange={setDealFormDirty} onGoBizCheck={isDesktop ? goBizFromFormPanel : goToBizCheck} sourcedOptions={sourcedOptions} onDone={() => { setOpenFormFor(null); load(); }} />
       )}
       {formRequest && (
         <DealForm
@@ -3277,7 +3278,105 @@ function ActiveDealCard({
 // 2026-10-28 7b: 다음 매물 폼으로 이월하는 값 — 판매자 3칸·방금 쓴 사업자 조회 기록 id(다시 붙일 순 없어서 재사용의 원본으로만 씀)·지역. 상품 칸은 이월하지 않음
 type SameSellerCarry = { company: string; name: string; phone: string; phone2: string; checkId: string; region: string };
 
-function DealForm({
+// 2026-10-28 PR-B F: 새 등록 폼 임시저장 문 — 저장본이 있으면 폼 대신 [이어쓰기][버리기]를 먼저 묻고, 고른 뒤에 폼을 띄움(사진·영상 업로더가 처음 값으로만 채워져서 폼이 뜨기 전에 정해야 함).
+// 대상은 새 직접 등록만(수정·판매 신청 승인·복사해서 새로 등록은 건드리지 않음 — 복사 폼은 저장본을 읽지도 지우지도 않아 [버리기]를 누르기 전까지 저장본이 남음).
+// 저장본 삭제: 등록 성공(폼이 직접)·[버리기]·폼이 닫힐 때(취소·다른 폼으로 바꿈). 새로고침은 폼이 닫히는 게 아니라 사라지는 것이라 저장본이 남음.
+const draftNum = (s: string) => {
+  const n = Number(s.replace(/[^0-9.]/g, ""));
+  return Number.isFinite(n) && n > 0 ? n : undefined;
+};
+function draftToPrefill(f: DealDraftFields): NonNullable<React.ComponentProps<typeof DealFormInner>["prefill"]> {
+  return {
+    title: f.title,
+    category: f.category,
+    region: f.region,
+    dealPrice: draftNum(f.dealPrice),
+    originalPrice: draftNum(f.originalPrice),
+    priceMode: f.priceMode === "negotiable" ? "negotiable" : "fixed",
+    totalQty: draftNum(f.totalQty),
+    quantityUnit: f.quantityUnit || undefined,
+    priceUnit: f.priceUnit || undefined,
+    minOrderQty: draftNum(f.minOrderQty),
+    shippingFeeType: f.shippingFeeType || undefined,
+    shippingNote: f.shippingNote || undefined,
+    images: f.images,
+    videoUrl: f.videoUrl ?? undefined,
+    description: f.description || undefined,
+    packageUnit: f.packageUnit || undefined,
+    origin: f.origin || undefined,
+    spec: f.spec || undefined,
+    storageType: f.storageType || undefined,
+    expiryDate: f.expiryDate || undefined,
+    pid: f.pid || undefined,
+    manifestItems: f.manifestItems as ManifestRow[],
+    stockType: f.stockType || undefined,
+    sellerPublic: f.sellerPublic,
+    sellerCompanyName: f.sellerCompanyName,
+  };
+}
+
+function DealForm(props: React.ComponentProps<typeof DealFormInner> & { draftKey?: string | null }) {
+  const { draftKey = null, ...rest } = props;
+  const draftable = !!draftKey && props.mode !== "edit" && !props.requestId && !props.copied;
+  const [gate, setGate] = useState<{ state: "ask" | "go"; draft: StoredDealDraft | null }>(() => {
+    const d = draftable ? readDealDraft(draftKey) : null;
+    return d ? { state: "ask", draft: d } : { state: "go", draft: null };
+  });
+  const aliveRef = useRef(true);
+  const goRef = useRef(false);
+  goRef.current = gate.state === "go";
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+      if (!draftable) return;
+      // 개발 모드(StrictMode)의 가짜 닫힘과 구분: 바로 다시 붙으면(alive) 지우지 않음. 묻는 중(ask)에 닫힌 건 아직 정하지 않은 것이라 남김
+      setTimeout(() => {
+        if (!aliveRef.current && goRef.current) clearDealDraft(draftKey);
+      }, 0);
+    };
+  }, [draftable, draftKey]);
+
+  if (gate.state === "ask" && gate.draft) {
+    const when = draftSavedLabel(gate.draft.savedAt);
+    return (
+      <div className="mt-3 rounded-2xl flex flex-col gap-3" style={{ border: "2px solid #C7D2E0", background: "#F4F7FB", padding: 16 }} data-draft-prompt>
+        <div className="font-extrabold" style={{ fontSize: rem(17), color: "#0B2540" }}>작성하던 내용이 있어요</div>
+        <p style={{ fontSize: rem(14), color: "#4B5563", lineHeight: 1.5 }}>
+          {when ? `${when}에 ` : ""}이 탭에 임시저장된 새 매물이에요. 판매자 정보(상호·연락처·담당자)·사업자 조회 기록은 저장되지 않아서 다시 입력해야 해요.
+        </p>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button type="button" onClick={() => setGate({ state: "go", draft: gate.draft })} className={`w-full ${BTN_CLASS}`} style={btnStyle("primary")} data-draft-resume>
+            이어쓰기
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              clearDealDraft(draftKey);
+              setGate({ state: "go", draft: null });
+            }}
+            className={`w-full ${BTN_CLASS}`}
+            style={btnStyle("secondary")}
+            data-draft-discard
+          >
+            버리기
+          </button>
+        </div>
+      </div>
+    );
+  }
+  const d = gate.draft?.fields ?? null;
+  return (
+    <DealFormInner
+      {...rest}
+      prefill={d ? draftToPrefill(d) : rest.prefill}
+      restore={d ? { closesChoice: d.closesChoice, closesCustom: d.closesCustom, sourcedBy: d.sourcedBy } : undefined}
+      draftKey={draftable ? draftKey : null}
+    />
+  );
+}
+
+function DealFormInner({
   adminKey,
   prefill,
   carry = null,
@@ -3296,8 +3395,14 @@ function DealForm({
   onToast,
   copied = false,
   adminRole = null,
+  restore,
+  draftKey = null,
 }: {
   adminKey: string;
+  /** 2026-10-28 PR-B F: 이어쓰기로 복원한 값 중 prefill에 없는 칸(마감 기간·발굴 매니저). 있으면 처음부터 "입력 중"으로 침 */
+  restore?: { closesChoice: string; closesCustom: string; sourcedBy: string };
+  /** 2026-10-28 PR-B F: 있으면 입력이 멈춘 뒤 이 키로 sessionStorage에 임시저장(새 직접 등록 폼만 — 문(DealForm)이 정함) */
+  draftKey?: string | null;
   /** 폼 안 사업자 조회(예외 확인 버튼·이력 권한)용 */
   adminRole?: string | null;
   /** 2026-10-28 PR-B C: [복사해서 새로 등록]으로 연 폼 — 마감은 미선택으로 시작(새로 고르게), 판매자 정보는 펼쳐서 시작 */
@@ -3393,8 +3498,8 @@ function DealForm({
   const [initialPriceUnit] = useState(priceUnit);
   // 2026-10-24 마감 기간: 24시간·3일·7일(기본)·14일·30일·날짜 직접 선택(src/lib/dealDeadline.ts). 판매 신청의 희망 기간은 가장 가까운 큰 값으로(3·12시간 → 24시간),
   // 협의(희망 기간 없음)는 미선택("") + 필수 선택. 직접 등록은 7일이 기본
-  const [closesChoice, setClosesChoice] = useState(() => (requestId ? mapHopeHoursToChoice(prefill?.closesInHours ?? null) : copied ? "" : DEADLINE_DEFAULT));
-  const [closesCustom, setClosesCustom] = useState(""); // closesChoice === "custom"일 때의 날짜·시각(datetime-local)
+  const [closesChoice, setClosesChoice] = useState(() => (requestId ? mapHopeHoursToChoice(prefill?.closesInHours ?? null) : restore ? restore.closesChoice : copied ? "" : DEADLINE_DEFAULT));
+  const [closesCustom, setClosesCustom] = useState(restore?.closesCustom ?? ""); // closesChoice === "custom"일 때의 날짜·시각(datetime-local)
   const [maxClosesLocal] = useState(() => toLocalInput(Date.now() + DEADLINE_MAX_MS)); // 달력 상한: 지금 + 60일
   const [images, setImages] = useState<string[]>(prefill?.images ?? []);
   const [videoUrl, setVideoUrl] = useState<string | null>(prefill?.videoUrl ?? null);
@@ -3453,7 +3558,7 @@ function DealForm({
     setCheckRefresh((k) => k + 1);
     setCheckedNote(`${item.b_no_masked ?? "사업자"} 조회 결과를 이 매물의 조회 기록으로 선택했어요.`);
   };
-  const [sourcedBy, setSourcedBy] = useState(""); // 2026-10-10 [발굴 매니저] 관리자 id("" = 없음)
+  const [sourcedBy, setSourcedBy] = useState(restore?.sourcedBy ?? ""); // 2026-10-10 [발굴 매니저] 관리자 id("" = 없음)
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<DealField, string>>>({});
@@ -3495,11 +3600,32 @@ function DealForm({
     pid, manifestItems, seller, sellerPrivate, brandProtected, brandName, photoRefs,
   ]);
   const [initialSnapshot] = useState(snapshot);
-  const dirty = snapshot !== initialSnapshot;
+  const dirty = snapshot !== initialSnapshot || !!restore; // 이어쓰기로 복원한 폼은 처음부터 입력 중(닫으면 확인)
   useEffect(() => {
     onDirtyChange?.(dirty && !posted); // 등록이 끝난 완료 카드는 "작성 중" 아님
   }, [dirty, posted, onDirtyChange]);
   useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
+  // 2026-10-28 PR-B F: 임시저장 — 입력이 멈춘 뒤(디바운스) 저장. 판매자 비공개(상호·연락처·보조 연락처·담당자)·조회 기록 선택·브랜드 보호·올리는 중/실패 사진은 담지 않음(올라간 주소만).
+  // 처음 상태와 같으면(아무것도 안 쓴 폼) 저장본을 만들지 않고, 이어쓰기로 연 폼은 처음 상태와 비교하지 않고 계속 저장
+  const draftJson = JSON.stringify({
+    title, stockType, category, region, priceMode, originalPrice, dealPrice, totalQty, quantityUnit, priceUnit, minOrderQty, closesChoice, closesCustom,
+    images: brandProtected ? publicRefs : images, videoUrl: brandProtected ? null : videoUrl, description, packageUnit, origin, spec, storageType, expiryDate, pid, manifestItems,
+    sellerPublic: seller.isPublic, sellerCompanyName: seller.companyName, shippingFeeType, shippingNote, sourcedBy,
+  });
+  const [draftBaseJson] = useState<string | null>(restore ? null : draftJson);
+  const draftDoneRef = useRef(false); // 등록 성공 뒤엔 저장하지 않음
+  useEffect(() => {
+    if (!draftKey || posted) return;
+    const t = setTimeout(() => {
+      if (draftDoneRef.current) return;
+      if (draftBaseJson !== null && draftJson === draftBaseJson) clearDealDraft(draftKey);
+      else {
+        const f = sanitizeDraft(JSON.parse(draftJson));
+        if (f) writeDealDraft(draftKey, f);
+      }
+    }, DEAL_DRAFT_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [draftKey, draftJson, draftBaseJson, posted]);
 
   const validate = (): Partial<Record<DealField, string>> => {
     const errs: Partial<Record<DealField, string>> = {};
@@ -3743,6 +3869,8 @@ function DealForm({
         onDone(); // 저장 성공 — 닫기·토스트·목록 다시 읽기는 부르는 쪽(ActiveDealCard)
         return;
       }
+      draftDoneRef.current = true; // 2026-10-28 PR-B F: 등록 성공 — 임시저장 삭제
+      clearDealDraft(draftKey);
       const sent = data.push?.sentCount ?? 0;
       alert(
         data.push?.held
