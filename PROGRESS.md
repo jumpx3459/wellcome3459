@@ -55,6 +55,10 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
+## 최근 작업 (2026-10-28) — 관리자 등록 폼 v2 PR-A (브랜치 `feat/admin-dealform-v2`)
+- **#123 병합 기록**(관리자 최근 판매자 칩 7a): squash 병합 `2d1ead5782ee88c726c4260cf215a560bcc3235a`(10/28) · PR CI `build` run 40621535034 성공 · Deploy to Vercel run 40621647995 성공 · 운영 `/admin` 200.
+- **SQL 운영 적용(대표 실행 완료, 10/28)**: `supabase/migrations/20261028_deal_shipping_phone2.sql` — `deals.shipping_fee_type`(기본 'separate')·`shipping_note`(≤60자) + anon·authenticated 칸 grant, `deal_seller_private.contact_phone_2`(서버 전용). 확인 조회 결과 2 / t / t / 0 / 1 / f / f / 3 일치.
+
 ## 최근 작업 (2026-10-28) — 관리자 최근 판매자 칩 7a (브랜치 `feat/admin-seller-chips`)
 - **#122 병합 기록**(관리자 작은 개선 v2): squash 병합 `1af09bb3a91acb48e3196cb5a92afefe7070feb1`(10/28) · PR CI `build` run 40616326913 성공 · Deploy to Vercel run 40616434516 성공 · 운영 `/admin` 200. 접힌 카드 여백 통일은 다음 좌측 메뉴 PR에서 정리(이번엔 사업자 조회만).
 - **7a 최근 확인된 판매자 칩(구현)**: 등록 폼 "실제 판매자" 칸 위에 칩 줄(최대 5, 높이 40px). 칩을 누르면 ① `GET /api/admin/business-checks/prefill?rootCheckId=`로 **빈 칸만** 채움(이미 적은 칸은 그대로) ② 이어서 기존 `POST /business-checks/reuse`(sourceCheckId = root, 지금 칸의 상호·연락처)를 자동 1회 → 새 재사용 행을 선택(7b와 같은 방식, 별도 재사용 버튼 없음). 재사용 실패(409·403)면 안내만 — 채운 칸은 유지, 목록에서 직접 선택.
