@@ -286,7 +286,7 @@ export default function SellerPrivateFields({
             </div>
           )}
           {errText(errors?.checkId)}
-          <p className="mt-1" style={DEAL_HINT_STYLE}>이 매물의 판매자로 조회한 기록을 직접 골라주세요. 자동으로 고르지 않아요.</p>
+          {carryNote?.state !== "ok" && <p className="mt-1" style={DEAL_HINT_STYLE}>이 매물의 판매자로 조회한 기록을 직접 골라주세요. 자동으로 고르지 않아요.</p>}
         </div>
       ) : null}
     </div>
