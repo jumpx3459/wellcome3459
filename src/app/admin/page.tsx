@@ -528,6 +528,11 @@ function AdminDashboard({
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [openFormFor, setOpenFormFor] = useState<string | "new" | null>(null);
+  // 2026-10-28 7b: [같은 판매자로 다음 매물 등록] — 방금 등록한 매물의 판매자 3칸·조회 기록 id·지역만 새 폼으로 이월(클라이언트 값, 서버 조회 없음). 새 폼은 key로 다시 만듦
+  const [sameSeller, setSameSeller] = useState<{ nonce: number; carry: SameSellerCarry } | null>(null);
+  useEffect(() => {
+    if (openFormFor !== "new") setSameSeller(null);
+  }, [openFormFor]);
   // 2026-10-03 PR-D: 매물 등록 폼(새 매물·판매자 신청)은 한 자리에 하나만 — 작성 중이면 바꾸기 전에 확인
   const dealFormDirtyRef = useRef(false);
   const [dealFormDirtyState, setDealFormDirtyState] = useState(false); // PC 패널의 "저장하지 않은 변경" 확인 바용(인라인은 ref + confirm 그대로)
@@ -1589,7 +1594,7 @@ function AdminDashboard({
   const dealFormEls = (
     <>
       {openFormFor === "new" && (
-        <DealForm key="new" adminKey={adminKey} wide={isDesktop} footerSlot={isDesktop ? panelFooterEl : undefined} onDirtyChange={setDealFormDirty} onGoBizCheck={isDesktop ? goBizFromFormPanel : goToBizCheck} sourcedOptions={sourcedOptions} onDone={() => { setOpenFormFor(null); load(); }} />
+        <DealForm key={`new-${sameSeller?.nonce ?? 0}`} carry={sameSeller?.carry ?? null} onRegistered={load} onNextSame={(c) => setSameSeller({ nonce: Date.now(), carry: c })} adminKey={adminKey} wide={isDesktop} footerSlot={isDesktop ? panelFooterEl : undefined} onDirtyChange={setDealFormDirty} onGoBizCheck={isDesktop ? goBizFromFormPanel : goToBizCheck} sourcedOptions={sourcedOptions} onDone={() => { setOpenFormFor(null); load(); }} />
       )}
       {formRequest && (
         <DealForm
@@ -3196,9 +3201,15 @@ function ActiveDealCard({
   );
 }
 
+// 2026-10-28 7b: 다음 매물 폼으로 이월하는 값 — 판매자 3칸·방금 쓴 사업자 조회 기록 id(다시 붙일 순 없어서 재사용의 원본으로만 씀)·지역. 상품 칸은 이월하지 않음
+type SameSellerCarry = { company: string; name: string; phone: string; checkId: string; region: string };
+
 function DealForm({
   adminKey,
   prefill,
+  carry = null,
+  onRegistered,
+  onNextSame,
   requestId,
   onDone,
   wide = false,
@@ -3214,6 +3225,12 @@ function DealForm({
   adminKey: string;
   /** 2026-10-23 "edit" = 진행 중 매물 수정(initialDeal로 채움, 저장은 PATCH /api/admin/deals/manage — 등록 API·알림 발송은 절대 부르지 않음) */
   mode?: "create" | "edit";
+  /** 7b: 이전 매물에서 이월한 판매자·지역(있으면 판매자 정보를 펼쳐 열고 조회 기록은 재사용으로 이어받음) */
+  carry?: SameSellerCarry | null;
+  /** 7b: 등록 직후 부르는 쪽이 목록만 다시 읽음(폼은 안 닫음) */
+  onRegistered?: () => void;
+  /** 7b: 주면 직접 등록 성공 뒤 [같은 판매자로 다음 매물 등록] 버튼이 있는 완료 카드를 보여 줌 */
+  onNextSame?: (carry: SameSellerCarry) => void;
   initialDeal?: ActiveDeal;
   /** edit의 [조기 마감] */
   onCloseDeal?: () => void;
@@ -3267,7 +3284,7 @@ function DealForm({
   // prefill이 없으면 비워둬서 관리자가 직접 고르게 함 (예전엔 첫 항목이 미리 선택돼 있어
   // 카테고리·지역을 안 고르고 그대로 등록되는 실수가 가능했음)
   const [category, setCategory] = useState(prefill?.category ?? "");
-  const [region, setRegion] = useState(prefill?.region ?? "");
+  const [region, setRegion] = useState(carry?.region ?? prefill?.region ?? "");
   const [originalPrice, setOriginalPrice] = useState(prefill?.originalPrice ? String(prefill.originalPrice) : "");
   const [dealPrice, setDealPrice] = useState(prefill?.dealPrice ? String(prefill.dealPrice) : "");
   const [priceMode, setPriceMode] = useState<PriceMode>(prefill?.priceMode === "negotiable" ? "negotiable" : "fixed"); // 2026-10-04 가격 방식 — 가격 협의면 판매·정상 단가 없이 등록 (2026-10-05: 협의 신청이면 협의로 시작)
@@ -3335,7 +3352,8 @@ function DealForm({
   // 2026-09-30: 판매자 표시 — 기본 대리 게시(비공개)
   const [seller, setSeller] = useState({ isPublic: prefill?.sellerPublic ?? false, companyName: prefill?.sellerCompanyName ?? "" });
   // 2026-10-04: 직접 등록(판매 신청 아님)의 실제 판매자(내부 전용)·연결할 사업자 조회 — 판매 신청 승인은 신청 정보를 쓰므로 칸을 숨김
-  const [sellerPrivate, setSellerPrivate] = useState<SellerPrivateDraft>(EMPTY_SELLER_PRIVATE);
+  const [sellerPrivate, setSellerPrivate] = useState<SellerPrivateDraft>(carry ? { company: carry.company, name: carry.name, phone: carry.phone, checkId: "" } : EMPTY_SELLER_PRIVATE);
+  const [posted, setPosted] = useState<{ title: string; carry: SameSellerCarry } | null>(null); // 7b 등록 완료 카드
   const [sourcedBy, setSourcedBy] = useState(""); // 2026-10-10 [발굴 매니저] 관리자 id("" = 없음)
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -3350,7 +3368,7 @@ function DealForm({
   // 2026-10-01 2차: 묶음 펼침 — 제품 상세·거래 조건·판매자 정보 모두 기본 접힘. 접힌 칸이면 펼친 뒤(다음 렌더) 스크롤
   const [openDeal, setOpenDeal] = useState(edit); // edit: 제품 상세·거래 조건은 펼쳐서 시작(판매자 정보는 접힘)
   const [openDetail, setOpenDetail] = useState(edit);
-  const [openSeller, setOpenSeller] = useState(false);
+  const [openSeller, setOpenSeller] = useState(!!carry);
   const focusField = (field: DealField | "description") => {
     if (field === "category") setOpenDeal(true); // 거래 조건
     if (field === "minOrderQty" || field === "expiryDate" || field === "description" || (field === "closesAt" && !edit)) setOpenDetail(true); // 제품 상세
@@ -3378,8 +3396,8 @@ function DealForm({
   const [initialSnapshot] = useState(snapshot);
   const dirty = snapshot !== initialSnapshot;
   useEffect(() => {
-    onDirtyChange?.(dirty);
-  }, [dirty, onDirtyChange]);
+    onDirtyChange?.(dirty && !posted); // 등록이 끝난 완료 카드는 "작성 중" 아님
+  }, [dirty, posted, onDirtyChange]);
   useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
 
   const validate = (): Partial<Record<DealField, string>> => {
@@ -3620,6 +3638,12 @@ function DealForm({
           ? "매물이 등록됐어요. 밤 9시~아침 8시라 알림은 아침 8시에 발송돼요."
           : `매물이 등록됐어요. 구독자 ${sent}명에게 알림을 발송했어요.`
       );
+      if (onNextSame && !requestId && sellerPrivate.checkId) {
+        // 7b: 폼을 닫지 않고 완료 카드 — [같은 판매자로 다음 매물 등록] / [닫기]. 목록은 지금 다시 읽음
+        onRegistered?.();
+        setPosted({ title: title.trim(), carry: { company: sellerPrivate.company, name: sellerPrivate.name, phone: sellerPrivate.phone, checkId: sellerPrivate.checkId, region } });
+        return;
+      }
       onDone();
     } catch {
       setError(edit ? "저장에 실패했어요." : "등록에 실패했어요.");
@@ -3734,6 +3758,7 @@ function DealForm({
               showCheckPicker
               onGoBizCheck={onGoBizCheck}
               disabled={submitting}
+              reuseFromCheckId={carry?.checkId}
             />
           </div>
         )}
@@ -3764,6 +3789,24 @@ function DealForm({
         )}
       </FormAccordion>
   );
+
+  if (posted) {
+    return (
+      <div className="rounded-2xl flex flex-col gap-3" style={{ border: "2px solid #BFE6CB", background: "#F3FBF6", padding: 16 }} data-posted-card>
+        <div className="font-extrabold" style={{ fontSize: rem(17), color: "#1D8A44" }}>✓ 매물이 등록됐어요</div>
+        <div className="break-words" style={{ fontSize: rem(15), color: "#374151" }}>{posted.title}</div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button type="button" onClick={() => onNextSame?.(posted.carry)} className={`w-full ${BTN_CLASS}`} style={btnStyle("primary")} data-next-same>
+            같은 판매자로 다음 매물 등록
+          </button>
+          <button type="button" onClick={onDone} className={`w-full ${BTN_CLASS}`} style={btnStyle("secondary")} data-posted-close>
+            닫기
+          </button>
+        </div>
+        <p style={{ fontSize: rem(14), color: "#6B7280" }}>판매자 정보(상호·연락처·담당자)와 지역만 이어져요. 상품 칸은 비어 있어요.</p>
+      </div>
+    );
+  }
 
   return (
     // 2026-10-03 PR-D: PC 보기(wide)면 2단 — 왼쪽(필수 정보·접는 묶음 3개) / 오른쪽(사진·영상·안내·등록 버튼 sticky).

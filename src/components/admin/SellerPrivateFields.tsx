@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { rem } from "@/lib/rem";
 import { DEAL_LABEL_STYLE, DEAL_HINT_STYLE } from "@/components/FormField";
 import { NOT_CHECKED_MESSAGE, normCompany, type BusinessCheck } from "@/lib/businessCheck";
 import ReuseCandidate from "@/components/admin/ReuseCandidate";
+import type { ReuseWarning } from "@/lib/businessReuse";
 
 // 2026-10-04 feat/deal-seller-private — 관리자 매물 등록·수정의 "실제 판매자"(내부 전용) 칸 + "사업자 조회 기록" 선택.
 // 회사가 대신 올리는 매물도 실제 판매자(상호·연락처·담당자)를 deal_seller_private에 남기려는 칸 — 구매자에게는 보이지 않음.
@@ -47,6 +48,7 @@ export default function SellerPrivateFields({
   onGoBizCheck,
   disabled,
   adminRole,
+  reuseFromCheckId,
 }: {
   adminKey: string;
   idPrefix: string;
@@ -61,6 +63,9 @@ export default function SellerPrivateFields({
   disabled?: boolean;
   /** 2026-10-21: 예외 확인 건 재사용 버튼 미리 막기용(없으면 서버가 403으로 막음) */
   adminRole?: string | null;
+  /** 2026-10-28 [같은 판매자로 다음 매물 등록] — 방금 등록한 매물에 쓴 조회 기록 id. 열릴 때 1번 기존 재사용(POST /business-checks/reuse)으로 새 기록을 만들어 선택해 둠
+   *  (이미 매물에 붙은 기록은 다시 붙일 수 없어서 — 서버 규칙 그대로). 실패하면 아래 목록에서 직접 고름 */
+  reuseFromCheckId?: string;
 }) {
   const [checks, setChecks] = useState<BusinessCheck[] | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -85,6 +90,37 @@ export default function SellerPrivateFields({
     if (!showCheckPicker) return;
     void load();
   }, [showCheckPicker, load]);
+
+  // 이전 매물 조회 기록 이어받기(재사용 1회). 값·onChange는 ref로 최신을 읽음
+  const [carryNote, setCarryNote] = useState<{ state: "busy" | "ok" | "fail"; warnings: ReuseWarning[]; error?: string } | null>(reuseFromCheckId ? { state: "busy", warnings: [] } : null);
+  const valueRef = useRef(value);
+  valueRef.current = value;
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const carryRan = useRef(false);
+  useEffect(() => {
+    if (!reuseFromCheckId || !showCheckPicker || carryRan.current) return;
+    carryRan.current = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/business-checks/reuse", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+          body: JSON.stringify({ sourceCheckId: reuseFromCheckId, company: valueRef.current.company, phone: valueRef.current.phone }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setCarryNote({ state: "fail", warnings: [], error: res.status === 403 ? "예외 확인 건은 최고관리자·관리자만 이어받을 수 있어요." : data.error ?? "이어받지 못했어요." });
+          return;
+        }
+        await load();
+        onChangeRef.current({ ...valueRef.current, checkId: (data.item as BusinessCheck).id });
+        setCarryNote({ state: "ok", warnings: (data.warnings ?? []) as ReuseWarning[] });
+      } catch {
+        setCarryNote({ state: "fail", warnings: [], error: "이어받지 못했어요." });
+      }
+    })();
+  }, [reuseFromCheckId, showCheckPicker, adminKey, load]);
 
   // 고른(또는 이미 연결된) 조회의 입력 상호와 실제 판매자 상호가 다르면 노란 경고 — 등록은 막지 않음(상호가 서로 다르게 불리는 경우가 있어서)
   const checkedCompany = linkedCheck ? linkedCheck.input_company_name : checks?.find((c) => c.id === value.checkId)?.input_company_name;
@@ -229,6 +265,24 @@ export default function SellerPrivateFields({
                 </label>
               ))}
               {checks === null && !loading && <p style={DEAL_HINT_STYLE}>불러오는 중…</p>}
+            </div>
+          )}
+          {carryNote && (
+            <div className="mb-2 flex flex-col gap-1.5" data-carry-note={carryNote.state}>
+              {carryNote.state === "busy" && <p style={DEAL_HINT_STYLE}>이전 매물의 사업자 조회 기록을 이어받는 중…</p>}
+              {carryNote.state === "ok" && (
+                <p className="font-bold" style={{ fontSize: rem(14), color: "#1D8A44" }}>✓ 같은 판매자 — 이전 매물의 사업자 조회 기록을 이어받아 선택했어요(재사용 기록 1건 추가).</p>
+              )}
+              {carryNote.state === "fail" && (
+                <p className="rounded-lg" style={{ background: "#FFF8DB", color: "#7A5B00", fontSize: rem(14), padding: "8px 12px", lineHeight: 1.5 }}>
+                  {carryNote.error} 아래에서 조회 기록을 직접 골라주세요.
+                </p>
+              )}
+              {carryNote.warnings.map((w) => (
+                <div key={w.code} className="rounded-lg" style={{ background: "#FFF8DB", color: "#7A5B00", fontSize: rem(14), padding: "8px 12px", lineHeight: 1.5 }} data-reuse-warning={w.code}>
+                  ⚠ {w.text}
+                </div>
+              ))}
             </div>
           )}
           {errText(errors?.checkId)}
