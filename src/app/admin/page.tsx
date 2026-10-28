@@ -3324,7 +3324,9 @@ function DealForm(props: React.ComponentProps<typeof DealFormInner> & { draftKey
   });
   const aliveRef = useRef(true);
   const goRef = useRef(false);
-  goRef.current = gate.state === "go";
+  useEffect(() => {
+    goRef.current = gate.state === "go";
+  }, [gate.state]);
   useEffect(() => {
     aliveRef.current = true;
     return () => {
@@ -3548,16 +3550,6 @@ function DealFormInner({
   // 2026-10-28 PR-B E: 폼 안 사업자 조회가 끝나면 통과 건을 조회 기록으로 자동 선택하고, 선택 목록·7a 칩 목록을 다시 읽음(refreshKey)
   const [checkRefresh, setCheckRefresh] = useState(0);
   const [checkedNote, setCheckedNote] = useState<string | null>(null);
-  const onInlineChecked = (item: BusinessCheck) => {
-    if (!isPassingCheck(item)) {
-      setCheckedNote(null);
-      return;
-    }
-    setSellerPrivate((prev) => ({ ...prev, checkId: item.id }));
-    setFieldErrors((prev) => ({ ...prev, businessCheckId: undefined }));
-    setCheckRefresh((k) => k + 1);
-    setCheckedNote(`${item.b_no_masked ?? "사업자"} 조회 결과를 이 매물의 조회 기록으로 선택했어요.`);
-  };
   const [sourcedBy, setSourcedBy] = useState(restore?.sourcedBy ?? ""); // 2026-10-10 [발굴 매니저] 관리자 id("" = 없음)
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -3566,6 +3558,16 @@ function DealFormInner({
   const [titleWarnings, setTitleWarnings] = useState<string[]>([]);
   const [descWarnings, setDescWarnings] = useState<string[]>([]);
   const [priceWarns, setPriceWarns] = useState<string[]>([]); // [12] 할인율 80% 이상
+  const onInlineChecked = useCallback((item: BusinessCheck) => {
+    if (!isPassingCheck(item)) {
+      setCheckedNote(null);
+      return;
+    }
+    setSellerPrivate((prev) => ({ ...prev, checkId: item.id }));
+    setFieldErrors((prev) => ({ ...prev, businessCheckId: undefined }));
+    setCheckRefresh((k) => k + 1);
+    setCheckedNote(`${item.b_no_masked ?? "사업자"} 조회 결과를 이 매물의 조회 기록으로 선택했어요.`);
+  }, []);
 
   // 2026-09-28: 필수 = 매물명·카테고리·지역·판매가·수량. 서버(/api/admin/deals)도 같은 규칙으로
   // 400 { error, field }를 돌려준다. 제출 시 첫 누락 칸으로 스크롤·포커스.
