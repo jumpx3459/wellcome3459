@@ -4,6 +4,7 @@ import { isLumpSum, isDealPriceUnit } from "@/lib/priceUnit";
 import { isStockType } from "@/lib/stockType";
 import { DEADLINE_MAX_MESSAGE, DEADLINE_MAX_MS, closesAfterExpiryMessage, expiryLimitMs } from "@/lib/dealDeadline";
 import { isPriceMode, type PriceMode } from "@/lib/priceMode";
+import { validateShipping } from "@/lib/shippingFee";
 
 // 진행 중 매물 수정 (2026-10-03 feat/admin-deal-edit) — 관리자 카드(ActiveDealCard)와 서버(/api/admin/deals/manage PATCH)가 같이 쓰는 검증.
 // 규칙·문구는 등록(/api/admin/deals POST·DealForm)과 같음. 보낸 칸만 검사하고, 다른 칸이 필요한 규칙(MOQ ≤ 총수량, 마감 ≤ 소비기한)은
@@ -34,6 +35,8 @@ export type DealEditInput = {
   spec?: string | null;
   pid?: string | null;
   manifestItems?: unknown;
+  shippingFeeType?: string; // 2026-10-28 배송비 안내 — separate|included|negotiable
+  shippingNote?: string | null; // 배송 메모(≤60자, 빈 값 = 지움)
 };
 
 export type DealEditCurrent = {
@@ -51,12 +54,12 @@ export type DealEditCurrent = {
 export type DealEditField =
   | "priceMode" | "title" | "dealPrice" | "originalPrice" | "minOrderQty" | "expiryDate" | "description" | "closesAt"
   | "remainingQty" | "totalQty" | "category" | "region" | "location" | "quantityUnit" | "priceUnit" | "stockType" | "storageType"
-  | "packageUnit" | "origin" | "spec" | "pid" | "manifestItems";
+  | "packageUnit" | "origin" | "spec" | "pid" | "manifestItems" | "shippingFeeType" | "shippingNote";
 
 export const DEAL_EDIT_KEYS = [
   "priceMode", "title", "dealPrice", "originalPrice", "minOrderQty", "expiryDate", "description", "closesAt",
   "remainingQty", "totalQty", "category", "region", "location", "quantityUnit", "priceUnit", "stockType", "storageType",
-  "packageUnit", "origin", "spec", "pid", "manifestItems",
+  "packageUnit", "origin", "spec", "pid", "manifestItems", "shippingFeeType", "shippingNote",
 ] as const;
 
 export const MOQ_INT_MESSAGE = "최소 주문량은 1 이상의 정수로 입력해주세요.";
@@ -133,6 +136,8 @@ export function validateDealEdit(
     const expiry = input.expiryDate !== undefined ? input.expiryDate : current.expiry_date;
     if (stock === "near_expiry" && !expiry) return bad(EXPIRY_REQUIRED_MESSAGE, "expiryDate");
   }
+  const shipBad = validateShipping(input.shippingFeeType, input.shippingNote);
+  if (shipBad) return bad(shipBad.error, shipBad.field);
   if (input.description !== undefined && input.description != null && typeof input.description !== "string") {
     return bad("추가 설명이 올바르지 않아요.", "description");
   }

@@ -17,6 +17,7 @@ import {
 import { ntsStatus } from "@/lib/nts";
 import { checkClosesAt } from "@/lib/dealDeadline";
 import { isPriceMode } from "@/lib/priceMode";
+import { cleanShippingNote, DEFAULT_SHIPPING_FEE_TYPE, validateShipping } from "@/lib/shippingFee";
 import { writeAudit, phoneTail } from "@/lib/adminAudit";
 import { UUID_RE } from "@/lib/rateLimit";
 import { ADMIN_ROLES, ownOnly } from "@/lib/adminPerms";
@@ -74,6 +75,8 @@ export async function POST(req: NextRequest) {
     expiryDate, // 2026-10-01 PR-B: 소비기한 "YYYY-MM-DD" — 재고 유형 "소비기한 임박"이면 필수
     pid,
     manifestItems,
+    shippingFeeType, // 2026-10-28 배송비 안내: separate(기본)|included|negotiable — 기본값이면 칸을 보내지 않음(SQL 전에도 등록됨)
+    shippingNote, // 배송 메모(선택, ≤60자)
     stockType,
     priceUnit,
     confirmWarnings, // 2026-10-01: 매물명·설명 경고를 확인하고 "그대로 저장"
@@ -110,6 +113,10 @@ export async function POST(req: NextRequest) {
   // 2026-10-04 가격 협의: negotiable이면 가격 칸은 받지 않음(보내도 무시 — DB CHECK도 두 가격 null만 허용)
   if (priceMode != null && !isPriceMode(priceMode)) return bad("가격 방식이 올바르지 않아요.", "priceMode");
   const negotiable = priceMode === "negotiable";
+  const shipBad = validateShipping(shippingFeeType, shippingNote);
+  if (shipBad) return bad(shipBad.error, shipBad.field);
+  const shipNote = cleanShippingNote(shippingNote);
+  const shipType = shippingFeeType ?? DEFAULT_SHIPPING_FEE_TYPE;
   const dealPrice = negotiable ? null : dealPriceIn;
   const originalPrice = negotiable ? null : originalPriceIn;
   if (!negotiable) {
@@ -278,6 +285,9 @@ export async function POST(req: NextRequest) {
     original_price: negotiable ? null : originalPrice || dealPrice,
     deal_price: negotiable ? null : dealPrice,
     ...(negotiable ? { price_mode: "negotiable" } : {}),
+    // 2026-10-28 배송비 안내 — 기본(별도)·메모 없음이면 칸을 보내지 않음
+    ...(shipType !== DEFAULT_SHIPPING_FEE_TYPE ? { shipping_fee_type: shipType } : {}),
+    ...(shipNote ? { shipping_note: shipNote } : {}),
     total_qty: totalQty,
     remaining_qty: remainingQty ?? totalQty,
     quantity_unit: quantityUnit || "개",
