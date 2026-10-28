@@ -58,6 +58,9 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 ## 최근 작업 (2026-10-28) — 관리자 작은 개선 v2 (브랜치 `feat/admin-small-v2`)
 - **#121 병합 기록**(회원 화면 작은 수정): squash 병합 `8b02e8a8638c079c9efbd669b9a060199034cd9b`(10/28) · PR CI `build` run 40478676963 성공 · Deploy to Vercel run 40604235193 성공 · 운영 `/deals`·보호 매물 상세(비회원) 200.
 
+- **관리자 작은 개선(카드 안에서만 — 배치·상단 칩은 다음 PR의 좌측 메뉴 레이아웃에서)**: ① 관심 표시한 회원 기본 필터 = 진행중(`pending`, limit 5 유지·[전체] 칩으로 해제, 진행중 0건·끝난 건 있음이면 "진행중 건이 없어요"+[전체 보기]) ② 공식 점핑파트너 신청: 심사중 0건이면 기본 접힘·1건 이상 펼침(불러온 뒤 한 번만 — 판매 신청 카드와 같은 방식) ③ 버튼 "+ 긴급 공지 등록", "(부동산·설비)"는 폼 띠 제목 ④ 접힌 사업자 조회 카드 아래 여백 PC 19→11px·모바일 pb-6→pb-3(접힘일 때만, 다른 접힌 카드는 그대로) ⑤ **7b [같은 판매자로 다음 매물 등록]**: 직접 등록 성공 뒤 폼 대신 완료 카드([같은 판매자로 다음 매물 등록]·[닫기]) → 누르면 새 폼(key 재생성)에 판매자 3칸(상호·연락처·담당자)·지역만 이월(클라이언트 값, 서버 조회 없음, 상품 칸 빈칸). **조회 기록은 이월 불가**(서버가 한 조회를 두 매물에 못 붙임 — `linkDirectCheck`) → 열릴 때 기존 `POST /business-checks/reuse`를 1번 불러(sourceCheckId = 방금 쓴 기록, company·phone 같이) 새 재사용 행을 만들어 선택해 둠(국세청 상태 조회 1회·재사용 감사 `business_check_reuse` — 기존 [이 기록 재사용]과 같은 동작, 경고는 노란 상자로 표시). 실패(409·예외 확인 403 등)하면 안내하고 목록에서 직접 고르게 함. 판매 신청 승인 폼은 그대로(완료 카드 없음). 매니저도 같은 화면 — 방금 자기가 쓴 값만 이월하므로 다른 매물의 판매자 정보를 서버에서 읽지 않음. 서버·SQL 변경 없음. 시험(저장소 밖) pw26 45건.
+- **7a "최근 확인된 판매자 칩" 설계(조사만, 미구현)**: 새 GET 2개(목록 `GET /api/admin/business-checks/recent-sellers` 칩용 값 없음 / 값 `GET /api/admin/business-checks/prefill?rootCheckId=` 칩 클릭 1건) · 감사 `seller_private_view` + `detail.via:"check_prefill"`(값 없이) · SQL 없음 · 예상 커밋 4~5개. 상세는 PR 보고.
+
 ## 최근 작업 (2026-10-27) — 회원 화면 작은 수정 (브랜치 `fix/member-ui-small`)
 - **#120 병합 기록**(브랜드 보호 1단계 PR 1): squash 병합 `c7a208bfff03981776d93a98a001639264081dc7`(10/27) · PR CI `build` run 40464383488 성공 · Deploy to Vercel run 40464855183 성공.
 - **운영 확인(10/27)**: anon 프로브 `protected_images`·`brand_name` select → 42501(정상)·`brand_protected`·`protected_image_count` → 200 ✓ · 대표 실기기: 목록 🛡 배지·"보호 사진 2장" ✓ · 회원 상세 브랜드명 ✓ · 비회원 상세 잠금·[가입하고 보기] ✓.
