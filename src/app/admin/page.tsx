@@ -1979,10 +1979,11 @@ function AdminDashboard({
         preselect={bizPreselect}
         open={bizOpen}
         onToggle={() => setBizOpen((v) => !v)}
+        // 2026-10-28: 접혀 있을 땐 띠 아래 빈 여백을 줄임(PC 19→11px·모바일 pb-6→pb-3) — 펼치면 그대로
         className={
           isDesktop
-            ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
-            : "px-5 pb-6 flex flex-col gap-3"
+            ? `bg-white border border-gray200 rounded-2xl px-4 pt-4 ${bizOpen ? "pb-4" : "pb-2"} flex flex-col gap-3`
+            : `px-5 ${bizOpen ? "pb-6" : "pb-3"} flex flex-col gap-3`
         }
         onChanged={() => loadBizChecks(requests.map((r) => r.id))}
       />
