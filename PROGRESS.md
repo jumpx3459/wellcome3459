@@ -58,6 +58,11 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 ## 최근 작업 (2026-10-28) — 관리자 등록 폼 v2 PR-B (브랜치 `feat/admin-deal-workflow`)
 - **#124 병합 기록**(관리자 등록 폼 v2 PR-A): squash 병합 `889df4dc538a401e0784b17700be83cf96c3dff8`(10/28) · PR CI `build` run 40647501316 성공 · Deploy to Vercel run 40647632973 성공 · 운영 `/admin`·`/deals` 200. 원격 브랜치 삭제.
 - PR-B 범위: C 복사해서 새로 등록 · E 등록 패널 안 사업자 조회 · F 임시저장(새 등록 폼만). B 상세 사진 contain·H 카드 표시는 PR-C.
+- **PR-B 구현**(SQL 없음):
+  - **C 복사해서 새로 등록**: ⋯ 메뉴를 canDelete 밖으로 — [복사해서 새로 등록]은 등록 권한자 모두, [삭제]는 최고관리자만. 이월 = 상품 칸·배송비 2칸·공개 사진/영상(같은 주소 공유)·판매자 3칸+보조 연락처, 비움 = 총수량·남은 수량·마감(미선택). 판매자 비공개는 `GET deals/manage/seller`(감사 `seller_private_view` 1행, 점핑매니저는 담당 매물만 — 비담당이면 판매자 칸 비우고 안내). 조회 기록은 `linkedCheck.id` → 기존 `carry`/`reuseFromCheckId` 경로로 `POST /business-checks/reuse` 자동 1회(실패 시 안내 + 직접 선택). 보호 사진·브랜드 보호는 복사 안 함(체크 꺼짐 + "보호 사진·브랜드 보호는 복사되지 않아요. 다시 올려주세요"). 폼 위 "'○○' 매물을 복사했어요" 띠(`data-copy-banner`). 작성 중인 폼이 열려 있으면 덮어쓰지 않고 안내만(확인 창 없음). 신규 `src/lib/dealCopy.ts`.
+  - **E 패널 안 사업자 조회**: `BusinessCheckSection`에 `compact`·`onChecked`·`id` — 판매자 정보 안에 접힌 판(id `business-check-inline`, 신청 선택·재사용 후보 없음, 이력은 [조회 이력 보기]로 접힘·점핑매니저는 이력 권한 없음 그대로). 통과(진위 일치·예외 확인) 시 조회 기록 자동 선택 + `SellerPrivateFields.refreshKey`로 선택 목록·7a 칩 새로고침. 대시보드 카드는 그대로. "사업자 조회 바로가기"는 등록 폼에서 **제거**(수정 화면 편집기는 유지).
+  - **F 임시저장**(새 직접 등록 폼만): `DealForm` 문(wrapper) + `DealFormInner`. sessionStorage `dj_admin_deal_draft:<관리자 id>`, 입력 멈춘 뒤 800ms 저장, 처음 상태와 같으면 저장 안 함. 제외 = 판매자 비공개 4칸·조회 기록 선택·브랜드 보호·올리는 중/실패 사진(blob/data 주소). 폼을 열 때 저장본이 있으면 폼 대신 "작성하던 내용이 있어요 [이어쓰기][버리기]". 삭제 = 등록 성공·[버리기]·폼 닫힘(취소). 복사 폼은 저장본을 읽지도 쓰지도 지우지도 않음(별도 처리). 신규 `src/lib/dealDraft.ts`.
+  - **시험(저장소 밖)**: pw31 112건(C·E·F, 1280·360) · 회귀 pw7 37 · pw29 35 · pw30 81 · pw22 47 · pw23 35 · pw24 34 · pw25 6 · pw26 45 · pw27 26 · pw28 24 · pw6 13 · overflow 384, tsc 0, lint 기존 2.
 
 ## 최근 작업 (2026-10-28) — 관리자 등록 폼 v2 PR-A (브랜치 `feat/admin-dealform-v2`)
 - **#123 병합 기록**(관리자 최근 판매자 칩 7a): squash 병합 `2d1ead5782ee88c726c4260cf215a560bcc3235a`(10/28) · PR CI `build` run 40621535034 성공 · Deploy to Vercel run 40621647995 성공 · 운영 `/admin` 200.
