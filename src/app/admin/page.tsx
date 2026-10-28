@@ -639,7 +639,14 @@ function AdminDashboard({
     sellerAutoRef.current = true;
     setSellerReqOpen(requests.some(sellerRequestNeedsAction));
   }, [loading, requests]);
-  const [partnerReqOpen, setPartnerReqOpen] = useState(true);
+  // 2026-10-28: 심사중 0건이면 기본 접힘(1건 이상이면 펼침) — 불러온 뒤 한 번만 정함(판매 신청 카드와 같은 방식). 바로가기·알림 이동은 그대로 펼침
+  const [partnerReqOpen, setPartnerReqOpen] = useState(false);
+  const partnerAutoRef = useRef(false);
+  useEffect(() => {
+    if (loading || partnerAutoRef.current) return;
+    partnerAutoRef.current = true;
+    setPartnerReqOpen(partnerRequests.some(partnerRequestNeedsAction));
+  }, [loading, partnerRequests]);
   const [buyReqOpen, setBuyReqOpen] = useState(true);
   // 2026-10-20: 카드별 "미연락만/대기만/심사중만" 필터(관심·연결은 leadFilter === "uncontacted"가 같은 역할) + 이동 직후 테두리 강조
   const [buyOnly, setBuyOnly] = useState(false);
