@@ -14,6 +14,8 @@ import { scrollToBizCheck } from "@/lib/bizCheckJump";
 import AdminJumpBar from "@/components/admin/AdminJumpBar";
 import { NEGOTIABLE_LABEL, NEGOTIABLE_TEXT, isNegotiable, type PriceMode } from "@/lib/priceMode";
 import SellerPrivateFields, { EMPTY_SELLER_PRIVATE, type SellerPrivateDraft } from "@/components/admin/SellerPrivateFields";
+import { fetchCopySeller, COPY_PROTECTED_NOTE } from "@/lib/dealCopy";
+import { clearDealDraft, dealDraftKey, DEAL_DRAFT_DEBOUNCE_MS, draftSavedLabel, readDealDraft, sanitizeDraft, writeDealDraft, type DealDraftFields, type StoredDealDraft } from "@/lib/dealDraft";
 import DealSellerPrivateEditor from "@/components/admin/DealSellerPrivateEditor";
 import AdminFullscreenPanel from "@/components/admin/AdminFullscreenPanel";
 import { formatMoq, moqUnit } from "@/lib/moq";
@@ -535,8 +537,14 @@ function AdminDashboard({
   const [openFormFor, setOpenFormFor] = useState<string | "new" | null>(null);
   // 2026-10-28 7b: [같은 판매자로 다음 매물 등록] — 방금 등록한 매물의 판매자 3칸·조회 기록 id·지역만 새 폼으로 이월(클라이언트 값, 서버 조회 없음). 새 폼은 key로 다시 만듦
   const [sameSeller, setSameSeller] = useState<{ nonce: number; carry: SameSellerCarry } | null>(null);
+  // 2026-10-28 PR-B C: [복사해서 새로 등록] — 고른 매물의 상품 칸(prefill)·판매자 비공개 3칸+조회 기록(carry)·안내 문구. 7b 이월과 같은 새 폼 자리·같은 이월 경로(carry)를 씀
+  const [copy, setCopy] = useState<{ nonce: number; title: string; prefill: NonNullable<React.ComponentProps<typeof DealForm>["prefill"]>; carry: SameSellerCarry | null; notes: string[] } | null>(null);
+  const [copyingId, setCopyingId] = useState<string | null>(null);
   useEffect(() => {
-    if (openFormFor !== "new") setSameSeller(null);
+    if (openFormFor !== "new") {
+      setSameSeller(null);
+      setCopy(null);
+    }
   }, [openFormFor]);
   // 2026-10-03 PR-D: 매물 등록 폼(새 매물·판매자 신청)은 한 자리에 하나만 — 작성 중이면 바꾸기 전에 확인
   const dealFormDirtyRef = useRef(false);
@@ -560,6 +568,34 @@ function AdminDashboard({
     if (next !== "new" && next !== "notice" && !isDesktop) {
       // 판매자 신청 → 새 매물 자리로 스크롤 (폼이 그려진 다음)
       setTimeout(() => document.getElementById("deal-form-slot")?.scrollIntoView({ behavior: "smooth", block: "start" }), 30);
+    }
+  };
+  // 2026-10-28 PR-B C: 이월 = 보고한 목록(상품 칸·배송비 2칸·공개 사진/영상 같은 주소 공유·판매자 3칸+보조 연락처·조회 기록). 비움 = 총수량·남은 수량·마감. 보호 사진·브랜드 보호는 복사 안 함(체크 꺼짐).
+  // 판매자 비공개는 manage/seller GET 1번(서버가 감사 1행·점핑매니저는 담당 매물만 — 비담당이면 판매자 칸 비움 + 안내). 작성 중인 폼이 열려 있으면 덮어쓰지 않고 안내만(확인 창 없음)
+  const startCopy = async (d: ActiveDeal) => {
+    if (copyingId) return;
+    if (openFormFor !== null && openFormFor !== "notice" && dealFormDirtyRef.current) {
+      showDashToast("작성 중인 등록 폼이 있어요. 먼저 등록하거나 닫은 뒤 복사해 주세요.");
+      return;
+    }
+    setCopyingId(d.id);
+    try {
+      const seller = await fetchCopySeller(adminKey, d.id);
+      const protectedSrc = d.brand_protected === true || (d.protected_images?.length ?? 0) > 0;
+      const notes = [seller.note, protectedSrc ? COPY_PROTECTED_NOTE : null].filter((x): x is string => !!x);
+      setCopy({
+        nonce: Date.now(),
+        title: d.title,
+        prefill: { ...dealToPrefill(d), totalQty: undefined },
+        carry: seller.carry ? { ...seller.carry, region: d.regions?.name ?? "" } : null,
+        notes,
+      });
+      setSameSeller(null);
+      setFormPanelMin(false);
+      setOpenFormFor("new");
+      if (!isDesktop) setTimeout(() => document.getElementById("deal-form-slot")?.scrollIntoView({ behavior: "smooth", block: "start" }), 30);
+    } finally {
+      setCopyingId(null);
     }
   };
   const [authError, setAuthError] = useState<string | null>(null);
@@ -1598,8 +1634,17 @@ function AdminDashboard({
   // 2026-10-23: PC(isDesktop)는 새 매물·판매 신청 [매물로 등록하기] 폼을 전체 화면 패널에서 연다(모바일·📱는 지금 인라인 그대로)
   const dealFormEls = (
     <>
+      {openFormFor === "new" && copy && (
+        <div className="rounded-xl flex flex-col gap-1" style={{ background: "#EEF2F7", padding: "10px 14px", marginBottom: 12 }} data-copy-banner>
+          <div className="font-bold break-words" style={{ fontSize: rem(15), color: "#0B2540" }}>&apos;{copy.title}&apos; 매물을 복사했어요</div>
+          <p style={{ fontSize: rem(14), color: "#4B5563", lineHeight: 1.5 }}>총수량·마감은 비워 뒀어요. 새로 입력해 주세요.</p>
+          {copy.notes.map((n) => (
+            <p key={n} style={{ fontSize: rem(14), color: "#7A5B00", lineHeight: 1.5 }} data-copy-note>{n}</p>
+          ))}
+        </div>
+      )}
       {openFormFor === "new" && (
-        <DealForm key={`new-${sameSeller?.nonce ?? 0}`} carry={sameSeller?.carry ?? null} onRegistered={load} onNextSame={(c) => setSameSeller({ nonce: Date.now(), carry: c })} adminKey={adminKey} wide={isDesktop} footerSlot={isDesktop ? panelFooterEl : undefined} onDirtyChange={setDealFormDirty} onGoBizCheck={isDesktop ? goBizFromFormPanel : goToBizCheck} sourcedOptions={sourcedOptions} onDone={() => { setOpenFormFor(null); load(); }} />
+        <DealForm key={`new-${copy?.nonce ?? sameSeller?.nonce ?? 0}`} copied={!!copy} adminRole={role} draftKey={me?.id && !copy ? dealDraftKey(me.id) : null} prefill={copy?.prefill} carry={copy ? copy.carry : sameSeller?.carry ?? null} onRegistered={load} onNextSame={(c) => { setCopy(null); setSameSeller({ nonce: Date.now(), carry: c }); }} adminKey={adminKey} wide={isDesktop} footerSlot={isDesktop ? panelFooterEl : undefined} onDirtyChange={setDealFormDirty} onGoBizCheck={isDesktop ? goBizFromFormPanel : goToBizCheck} sourcedOptions={sourcedOptions} onDone={() => { setOpenFormFor(null); load(); }} />
       )}
       {formRequest && (
         <DealForm
@@ -1669,7 +1714,7 @@ function AdminDashboard({
           <AdminFullscreenPanel
             open={openFormFor === "new" || !!formRequest}
             minimized={formPanelMin}
-            title={formRequest ? `매물 등록 — 판매자 신청 '${formRequest.product_name}'` : "새 매물 직접 등록"}
+            title={formRequest ? `매물 등록 — 판매자 신청 '${formRequest.product_name}'` : copy ? "복사해서 새로 등록" : "새 매물 직접 등록"}
             columns={1}
             dirty={dealFormDirtyState}
             onClose={() => {
@@ -1782,6 +1827,8 @@ function AdminDashboard({
             adminKey={adminKey}
             onChanged={load}
             canDelete={role === "최고관리자"}
+            onCopy={startCopy}
+            copying={copyingId === d.id}
             onGoBizCheck={goToBizCheck}
             panel={isDesktop}
             onClosed={(title) => showDashToast(`"${title}" 마감했어요 · 매물 상세에서 "마감됨"으로 볼 수 있어요`)}
@@ -2945,7 +2992,12 @@ function ActiveDealCard({
   soonLabel = null,
   passedLabel = null,
   panel = false,
+  onCopy,
+  copying = false,
 }: {
+  /** 2026-10-28 PR-B C: ⋯ 메뉴의 [복사해서 새로 등록] — 등록 권한자 모두(삭제는 최고관리자만). 없으면 이 버튼 없음 */
+  onCopy?: (deal: ActiveDeal) => void;
+  copying?: boolean;
   passedLabel?: string | null; // 마감 지남이면 칩 문구("마감 지남") — 판정은 needsAction.ts isDeadlinePassed 한 곳, 회색 강조
   soonLabel?: string | null; // 마감임박(6h)이면 칩 문구("마감 3시간") — 판정은 needsAction.ts isDeadlineSoon 한 곳
   /** PC 보기(isDesktop): 수정을 인라인 대신 전체 화면 패널로 연다 — 모바일·📱는 같은 폼을 인라인으로 */
@@ -3110,7 +3162,7 @@ function ActiveDealCard({
           >
             ⏹ 마감
           </button>
-          {canDelete && (
+          {(canDelete || onCopy) && (
             <button
               type="button"
               onClick={() => setMoreOpen((v) => !v)}
@@ -3125,17 +3177,31 @@ function ActiveDealCard({
           )}
         </div>
       )}
-      {canDelete && moreOpen && (!expanded || panel) && (
-        <div className="mt-2 flex justify-end" data-deal-more-menu>
-          <button
-            type="button"
-            onClick={() => { setMoreOpen(false); void deleteDeal(); }}
-            disabled={deleting}
-            className="font-bold rounded-lg px-4 disabled:opacity-50"
-            style={{ color: "#C2410C", border: "2px solid #FDEEE8", background: "#FFF9F7", minHeight: 44, fontSize: rem(14) }}
-          >
-            {deleting ? "삭제 중..." : "🗑️ 삭제"}
-          </button>
+      {(canDelete || onCopy) && moreOpen && (!expanded || panel) && (
+        <div className="mt-2 flex flex-wrap justify-end gap-2" data-deal-more-menu>
+          {onCopy && (
+            <button
+              type="button"
+              onClick={() => { setMoreOpen(false); onCopy(deal); }}
+              disabled={copying}
+              className="font-bold rounded-lg px-4 disabled:opacity-50"
+              style={{ color: "#0B2540", border: "2px solid #E4E7EB", background: "#fff", minHeight: 44, fontSize: rem(14) }}
+              data-deal-copy
+            >
+              {copying ? "복사 중..." : "📋 복사해서 새로 등록"}
+            </button>
+          )}
+          {canDelete && (
+            <button
+              type="button"
+              onClick={() => { setMoreOpen(false); void deleteDeal(); }}
+              disabled={deleting}
+              className="font-bold rounded-lg px-4 disabled:opacity-50"
+              style={{ color: "#C2410C", border: "2px solid #FDEEE8", background: "#FFF9F7", minHeight: 44, fontSize: rem(14) }}
+            >
+              {deleting ? "삭제 중..." : "🗑️ 삭제"}
+            </button>
+          )}
         </div>
       )}
 
@@ -3212,7 +3278,108 @@ function ActiveDealCard({
 // 2026-10-28 7b: 다음 매물 폼으로 이월하는 값 — 판매자 3칸·방금 쓴 사업자 조회 기록 id(다시 붙일 순 없어서 재사용의 원본으로만 씀)·지역. 상품 칸은 이월하지 않음
 type SameSellerCarry = { company: string; name: string; phone: string; phone2: string; checkId: string; region: string };
 
-function DealForm({
+// 2026-10-28 PR-B F: 새 등록 폼 임시저장 문 — 저장본이 있으면 폼 대신 [이어쓰기][버리기]를 먼저 묻고, 고른 뒤에 폼을 띄움(사진·영상 업로더가 처음 값으로만 채워져서 폼이 뜨기 전에 정해야 함).
+// 대상은 새 직접 등록만(수정·판매 신청 승인·복사해서 새로 등록은 건드리지 않음 — 복사 폼은 저장본을 읽지도 지우지도 않아 [버리기]를 누르기 전까지 저장본이 남음).
+// 저장본 삭제: 등록 성공(폼이 직접)·[버리기]·폼이 닫힐 때(취소·다른 폼으로 바꿈). 새로고침은 폼이 닫히는 게 아니라 사라지는 것이라 저장본이 남음.
+const draftNum = (s: string) => {
+  const n = Number(s.replace(/[^0-9.]/g, ""));
+  return Number.isFinite(n) && n > 0 ? n : undefined;
+};
+function draftToPrefill(f: DealDraftFields): NonNullable<React.ComponentProps<typeof DealFormInner>["prefill"]> {
+  return {
+    title: f.title,
+    category: f.category,
+    region: f.region,
+    dealPrice: draftNum(f.dealPrice),
+    originalPrice: draftNum(f.originalPrice),
+    priceMode: f.priceMode === "negotiable" ? "negotiable" : "fixed",
+    totalQty: draftNum(f.totalQty),
+    quantityUnit: f.quantityUnit || undefined,
+    priceUnit: f.priceUnit || undefined,
+    minOrderQty: draftNum(f.minOrderQty),
+    shippingFeeType: f.shippingFeeType || undefined,
+    shippingNote: f.shippingNote || undefined,
+    images: f.images,
+    videoUrl: f.videoUrl ?? undefined,
+    description: f.description || undefined,
+    packageUnit: f.packageUnit || undefined,
+    origin: f.origin || undefined,
+    spec: f.spec || undefined,
+    storageType: f.storageType || undefined,
+    expiryDate: f.expiryDate || undefined,
+    pid: f.pid || undefined,
+    manifestItems: f.manifestItems as ManifestRow[],
+    stockType: f.stockType || undefined,
+    sellerPublic: f.sellerPublic,
+    sellerCompanyName: f.sellerCompanyName,
+  };
+}
+
+function DealForm(props: React.ComponentProps<typeof DealFormInner> & { draftKey?: string | null }) {
+  const { draftKey = null, ...rest } = props;
+  const draftable = !!draftKey && props.mode !== "edit" && !props.requestId && !props.copied;
+  const [gate, setGate] = useState<{ state: "ask" | "go"; draft: StoredDealDraft | null }>(() => {
+    const d = draftable ? readDealDraft(draftKey) : null;
+    return d ? { state: "ask", draft: d } : { state: "go", draft: null };
+  });
+  const aliveRef = useRef(true);
+  const goRef = useRef(false);
+  useEffect(() => {
+    goRef.current = gate.state === "go";
+  }, [gate.state]);
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+      if (!draftable) return;
+      // 개발 모드(StrictMode)의 가짜 닫힘과 구분: 바로 다시 붙으면(alive) 지우지 않음. 묻는 중(ask)에 닫힌 건 아직 정하지 않은 것이라 남김
+      setTimeout(() => {
+        if (!aliveRef.current && goRef.current) clearDealDraft(draftKey);
+      }, 0);
+    };
+  }, [draftable, draftKey]);
+
+  if (gate.state === "ask" && gate.draft) {
+    const when = draftSavedLabel(gate.draft.savedAt);
+    return (
+      <div className="mt-3 rounded-2xl flex flex-col gap-3" style={{ border: "2px solid #C7D2E0", background: "#F4F7FB", padding: 16 }} data-draft-prompt>
+        <div className="font-extrabold" style={{ fontSize: rem(17), color: "#0B2540" }}>작성하던 내용이 있어요</div>
+        <p style={{ fontSize: rem(14), color: "#4B5563", lineHeight: 1.5 }}>
+          {when ? `${when}에 ` : ""}이 탭에 임시저장된 새 매물이에요. 판매자 정보(상호·연락처·담당자)·사업자 조회 기록은 저장되지 않아서 다시 입력해야 해요.
+        </p>
+        <p style={{ fontSize: rem(14), color: "#7A5B00", lineHeight: 1.5 }} data-draft-protect-note>브랜드 보호·보호 사진은 저장되지 않아요. 이어쓴 뒤 다시 설정해주세요</p>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button type="button" onClick={() => setGate({ state: "go", draft: gate.draft })} className={`w-full ${BTN_CLASS}`} style={btnStyle("primary")} data-draft-resume>
+            이어쓰기
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              clearDealDraft(draftKey);
+              setGate({ state: "go", draft: null });
+            }}
+            className={`w-full ${BTN_CLASS}`}
+            style={btnStyle("secondary")}
+            data-draft-discard
+          >
+            버리기
+          </button>
+        </div>
+      </div>
+    );
+  }
+  const d = gate.draft?.fields ?? null;
+  return (
+    <DealFormInner
+      {...rest}
+      prefill={d ? draftToPrefill(d) : rest.prefill}
+      restore={d ? { closesChoice: d.closesChoice, closesCustom: d.closesCustom, sourcedBy: d.sourcedBy } : undefined}
+      draftKey={draftable ? draftKey : null}
+    />
+  );
+}
+
+function DealFormInner({
   adminKey,
   prefill,
   carry = null,
@@ -3229,8 +3396,20 @@ function DealForm({
   initialDeal,
   onCloseDeal,
   onToast,
+  copied = false,
+  adminRole = null,
+  restore,
+  draftKey = null,
 }: {
   adminKey: string;
+  /** 2026-10-28 PR-B F: 이어쓰기로 복원한 값 중 prefill에 없는 칸(마감 기간·발굴 매니저). 있으면 처음부터 "입력 중"으로 침 */
+  restore?: { closesChoice: string; closesCustom: string; sourcedBy: string };
+  /** 2026-10-28 PR-B F: 있으면 입력이 멈춘 뒤 이 키로 sessionStorage에 임시저장(새 직접 등록 폼만 — 문(DealForm)이 정함) */
+  draftKey?: string | null;
+  /** 폼 안 사업자 조회(예외 확인 버튼·이력 권한)용 */
+  adminRole?: string | null;
+  /** 2026-10-28 PR-B C: [복사해서 새로 등록]으로 연 폼 — 마감은 미선택으로 시작(새로 고르게), 판매자 정보는 펼쳐서 시작 */
+  copied?: boolean;
   /** 2026-10-23 "edit" = 진행 중 매물 수정(initialDeal로 채움, 저장은 PATCH /api/admin/deals/manage — 등록 API·알림 발송은 절대 부르지 않음) */
   mode?: "create" | "edit";
   /** 7b: 이전 매물에서 이월한 판매자·지역(있으면 판매자 정보를 펼쳐 열고 조회 기록은 재사용으로 이어받음) */
@@ -3322,8 +3501,8 @@ function DealForm({
   const [initialPriceUnit] = useState(priceUnit);
   // 2026-10-24 마감 기간: 24시간·3일·7일(기본)·14일·30일·날짜 직접 선택(src/lib/dealDeadline.ts). 판매 신청의 희망 기간은 가장 가까운 큰 값으로(3·12시간 → 24시간),
   // 협의(희망 기간 없음)는 미선택("") + 필수 선택. 직접 등록은 7일이 기본
-  const [closesChoice, setClosesChoice] = useState(() => (requestId ? mapHopeHoursToChoice(prefill?.closesInHours ?? null) : DEADLINE_DEFAULT));
-  const [closesCustom, setClosesCustom] = useState(""); // closesChoice === "custom"일 때의 날짜·시각(datetime-local)
+  const [closesChoice, setClosesChoice] = useState(() => (requestId ? mapHopeHoursToChoice(prefill?.closesInHours ?? null) : restore ? restore.closesChoice : copied ? "" : DEADLINE_DEFAULT));
+  const [closesCustom, setClosesCustom] = useState(restore?.closesCustom ?? ""); // closesChoice === "custom"일 때의 날짜·시각(datetime-local)
   const [maxClosesLocal] = useState(() => toLocalInput(Date.now() + DEADLINE_MAX_MS)); // 달력 상한: 지금 + 60일
   const [images, setImages] = useState<string[]>(prefill?.images ?? []);
   const [videoUrl, setVideoUrl] = useState<string | null>(prefill?.videoUrl ?? null);
@@ -3369,7 +3548,10 @@ function DealForm({
   // 2026-10-04: 직접 등록(판매 신청 아님)의 실제 판매자(내부 전용)·연결할 사업자 조회 — 판매 신청 승인은 신청 정보를 쓰므로 칸을 숨김
   const [sellerPrivate, setSellerPrivate] = useState<SellerPrivateDraft>(carry ? { company: carry.company, name: carry.name, phone: carry.phone, phone2: carry.phone2, checkId: "" } : EMPTY_SELLER_PRIVATE);
   const [posted, setPosted] = useState<{ title: string; carry: SameSellerCarry } | null>(null); // 7b 등록 완료 카드
-  const [sourcedBy, setSourcedBy] = useState(""); // 2026-10-10 [발굴 매니저] 관리자 id("" = 없음)
+  // 2026-10-28 PR-B E: 폼 안 사업자 조회가 끝나면 통과 건을 조회 기록으로 자동 선택하고, 선택 목록·7a 칩 목록을 다시 읽음(refreshKey)
+  const [checkRefresh, setCheckRefresh] = useState(0);
+  const [checkedNote, setCheckedNote] = useState<string | null>(null);
+  const [sourcedBy, setSourcedBy] = useState(restore?.sourcedBy ?? ""); // 2026-10-10 [발굴 매니저] 관리자 id("" = 없음)
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<DealField, string>>>({});
@@ -3377,6 +3559,16 @@ function DealForm({
   const [titleWarnings, setTitleWarnings] = useState<string[]>([]);
   const [descWarnings, setDescWarnings] = useState<string[]>([]);
   const [priceWarns, setPriceWarns] = useState<string[]>([]); // [12] 할인율 80% 이상
+  const onInlineChecked = useCallback((item: BusinessCheck) => {
+    if (!isPassingCheck(item)) {
+      setCheckedNote(null);
+      return;
+    }
+    setSellerPrivate((prev) => ({ ...prev, checkId: item.id }));
+    setFieldErrors((prev) => ({ ...prev, businessCheckId: undefined }));
+    setCheckRefresh((k) => k + 1);
+    setCheckedNote(`${item.b_no_masked ?? "사업자"} 조회 결과를 이 매물의 조회 기록으로 선택했어요.`);
+  }, []);
 
   // 2026-09-28: 필수 = 매물명·카테고리·지역·판매가·수량. 서버(/api/admin/deals)도 같은 규칙으로
   // 400 { error, field }를 돌려준다. 제출 시 첫 누락 칸으로 스크롤·포커스.
@@ -3384,7 +3576,7 @@ function DealForm({
   const [shipOpen, setShipOpen] = useState(false); // 배송비 안내 펼침(거래 조건 안, 기본 접힘)
   const [openDeal, setOpenDeal] = useState(edit); // edit: 제품 상세·거래 조건은 펼쳐서 시작(판매자 정보는 접힘)
   const [openDetail, setOpenDetail] = useState(edit);
-  const [openSeller, setOpenSeller] = useState(!!carry);
+  const [openSeller, setOpenSeller] = useState(!!carry || copied);
   const focusField = (field: DealField | "description") => {
     if (field === "category" || field === "shippingNote") setOpenDeal(true); // 거래 조건
     if (field === "shippingNote") setShipOpen(true);
@@ -3411,11 +3603,32 @@ function DealForm({
     pid, manifestItems, seller, sellerPrivate, brandProtected, brandName, photoRefs,
   ]);
   const [initialSnapshot] = useState(snapshot);
-  const dirty = snapshot !== initialSnapshot;
+  const dirty = snapshot !== initialSnapshot || !!restore; // 이어쓰기로 복원한 폼은 처음부터 입력 중(닫으면 확인)
   useEffect(() => {
     onDirtyChange?.(dirty && !posted); // 등록이 끝난 완료 카드는 "작성 중" 아님
   }, [dirty, posted, onDirtyChange]);
   useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
+  // 2026-10-28 PR-B F: 임시저장 — 입력이 멈춘 뒤(디바운스) 저장. 판매자 비공개(상호·연락처·보조 연락처·담당자)·조회 기록 선택·브랜드 보호·올리는 중/실패 사진은 담지 않음(올라간 주소만).
+  // 처음 상태와 같으면(아무것도 안 쓴 폼) 저장본을 만들지 않고, 이어쓰기로 연 폼은 처음 상태와 비교하지 않고 계속 저장
+  const draftJson = JSON.stringify({
+    title, stockType, category, region, priceMode, originalPrice, dealPrice, totalQty, quantityUnit, priceUnit, minOrderQty, closesChoice, closesCustom,
+    images: brandProtected ? publicRefs : images, videoUrl: brandProtected ? null : videoUrl, description, packageUnit, origin, spec, storageType, expiryDate, pid, manifestItems,
+    sellerPublic: seller.isPublic, sellerCompanyName: seller.companyName, shippingFeeType, shippingNote, sourcedBy,
+  });
+  const [draftBaseJson] = useState<string | null>(restore ? null : draftJson);
+  const draftDoneRef = useRef(false); // 등록 성공 뒤엔 저장하지 않음
+  useEffect(() => {
+    if (!draftKey || posted) return;
+    const t = setTimeout(() => {
+      if (draftDoneRef.current) return;
+      if (draftBaseJson !== null && draftJson === draftBaseJson) clearDealDraft(draftKey);
+      else {
+        const f = sanitizeDraft(JSON.parse(draftJson));
+        if (f) writeDealDraft(draftKey, f);
+      }
+    }, DEAL_DRAFT_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [draftKey, draftJson, draftBaseJson, posted]);
 
   const validate = (): Partial<Record<DealField, string>> => {
     const errs: Partial<Record<DealField, string>> = {};
@@ -3659,6 +3872,8 @@ function DealForm({
         onDone(); // 저장 성공 — 닫기·토스트·목록 다시 읽기는 부르는 쪽(ActiveDealCard)
         return;
       }
+      draftDoneRef.current = true; // 2026-10-28 PR-B F: 등록 성공 — 임시저장 삭제
+      clearDealDraft(draftKey);
       const sent = data.push?.sentCount ?? 0;
       alert(
         data.push?.held
@@ -3831,10 +4046,30 @@ function DealForm({
               }}
               errors={{ company: fieldErrors.sellerPrivateCompany, phone: fieldErrors.sellerPrivatePhone, phone2: fieldErrors.sellerPrivatePhone2, name: fieldErrors.sellerPrivateName, checkId: fieldErrors.businessCheckId }}
               showCheckPicker
-              onGoBizCheck={onGoBizCheck}
               disabled={submitting}
               reuseFromCheckId={carry?.checkId}
+              refreshKey={checkRefresh}
             />
+            {/* 2026-10-28 PR-B E: 패널 안에서 바로 조회 — "사업자 조회 바로가기"(패널을 숨기고 나감)는 이 조회가 생겨 등록 폼에서는 뺌(수정 화면은 그대로) */}
+            <div className="mt-3 rounded-xl border border-gray200 bg-white" style={{ padding: "0 12px" }}>
+              <BusinessCheckSection
+                compact
+                id="business-check-inline"
+                adminKey={adminKey}
+                adminRole={adminRole}
+                requests={[]}
+                phoneMatch={{}}
+                preselect={null}
+                className="flex flex-col gap-3 pb-3"
+                onChanged={() => {}}
+                onChecked={onInlineChecked}
+              />
+            </div>
+            {checkedNote && (
+              <p className="mt-2 font-medium" style={{ fontSize: rem(14), color: "#1D8A44" }} data-biz-inline-note>
+                ✓ {checkedNote}
+              </p>
+            )}
           </div>
         )}
         {/* 2026-10-10 매니저 실적: 이 판매자를 찾아온 관리자(새 판매자 발굴). 직접 등록·판매 신청 승인 공통, 기본 "없음" */}
