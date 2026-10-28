@@ -7,14 +7,15 @@ import { rem } from "@/lib/rem";
 // 사진을 누르면 onOpen(index) → PhotoViewer 전체 화면. 첫 장만 바로 불러오고 나머지는 lazy.
 // 2026-10-09 PR 4a(상세 첫 화면 B안): 비율을 ratio로(상세는 3:2), 사진 아래 점(현재 장 표시·누르면 그 장으로) — 썸네일 줄 대신.
 //   오른쪽 아래 칩은 "1/N"(띄어쓰기 없음), 1장이면 예전처럼 "🔍 확대". 점은 사진 안 아래 가운데(흰 점 — 첫 화면 세로 공간 절약)
+// 2026-10-29 PR-C B: contain=true(상세)면 사진을 자르지 않고 3:2 칸 안에 통째로(세로 사진 위아래 잘림 방지), 남는 칸은 연회색 #F3F4F6
 // 2026-10-12 feat/photo12-video30: 10장 넘으면(관리자 최대 25장) 점은 숨기고 "1/N" 칩만 — 점이 사진 폭을 넘음
 const MAX_DOTS = 10;
 export type PhotoCarouselHandle = { scrollToIndex: (i: number) => void };
 
 const PhotoCarousel = forwardRef<
   PhotoCarouselHandle,
-  { images: string[]; alt: string; index: number; onIndexChange: (i: number) => void; onOpen: (i: number) => void; overlay?: ReactNode; ratio?: string }
->(function PhotoCarousel({ images, alt, index, onIndexChange, onOpen, overlay, ratio = "1/1" }, ref) {
+  { images: string[]; alt: string; index: number; onIndexChange: (i: number) => void; onOpen: (i: number) => void; overlay?: ReactNode; ratio?: string; contain?: boolean }
+>(function PhotoCarousel({ images, alt, index, onIndexChange, onOpen, overlay, ratio = "1/1", contain = false }, ref) {
   const trackRef = useRef<HTMLDivElement>(null);
   const scrollToIndex = (i: number) => {
     const tr = trackRef.current;
@@ -42,14 +43,14 @@ const PhotoCarousel = forwardRef<
             onClick={() => onOpen(i)}
             aria-label={`사진 ${i + 1} 크게 보기`}
             className="relative flex-shrink-0 w-full h-full"
-            style={{ scrollSnapAlign: "center" }}
+            style={{ scrollSnapAlign: "center", background: contain ? "#F3F4F6" : undefined }}
           >
             <img
               src={src}
               alt={i === 0 ? alt : `${alt} 사진 ${i + 1}`}
               loading={i === 0 ? "eager" : "lazy"}
               decoding="async"
-              className="absolute inset-0 w-full h-full object-cover"
+              className={`absolute inset-0 w-full h-full ${contain ? "object-contain" : "object-cover"}`}
             />
           </button>
         ))}
