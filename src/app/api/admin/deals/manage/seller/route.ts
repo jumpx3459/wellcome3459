@@ -25,6 +25,7 @@ const FIELD_NAME: Record<SellerPrivateField, string> = {
   companyName: "sellerPrivateCompany",
   contactName: "sellerPrivateName",
   contactPhone: "sellerPrivatePhone",
+  contactPhone2: "sellerPrivatePhone2",
   memo: "sellerPrivateName",
 };
 
@@ -52,7 +53,7 @@ export async function GET(req: NextRequest) {
   if (scoped) return scoped;
 
   const [{ data: item, error: privError }, { check, error: chkError }, request] = await Promise.all([
-    db.from("deal_seller_private").select("company_name, contact_name, contact_phone, source").eq("deal_id", dealId).maybeSingle(),
+    db.from("deal_seller_private").select("company_name, contact_name, contact_phone, contact_phone_2, source").eq("deal_id", dealId).maybeSingle(),
     linkedValidateCheck(db, dealId),
     linkedSellerRequest(db, dealId),
   ]);
@@ -93,7 +94,7 @@ export async function PUT(req: NextRequest) {
   const dealId = typeof body?.dealId === "string" ? body.dealId : "";
   if (!UUID_RE.test(dealId)) return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });
   const parsed = parseSellerPrivateFields(
-    { companyName: body?.sellerPrivateCompany, contactName: body?.sellerPrivateName, contactPhone: body?.sellerPrivatePhone },
+    { companyName: body?.sellerPrivateCompany, contactName: body?.sellerPrivateName, contactPhone: body?.sellerPrivatePhone, contactPhone2: body?.sellerPrivatePhone2 },
     { requireCompany: true, requirePhone: true, withMemo: false }
   );
   if (!parsed.ok) return NextResponse.json({ error: parsed.error, field: FIELD_NAME[parsed.field] }, { status: 400 });
@@ -120,8 +121,13 @@ export async function PUT(req: NextRequest) {
     if (!c) return NextResponse.json({ error: NOT_CHECKED_MESSAGE, field: "businessCheckId" }, { status: 409 });
   }
 
-  const { data: before } = await db.from("deal_seller_private").select("company_name, contact_name, contact_phone").eq("deal_id", dealId).maybeSingle();
-  const next = { company_name: parsed.value.company_name, contact_name: parsed.value.contact_name, contact_phone: parsed.value.contact_phone };
+  const { data: before } = await db.from("deal_seller_private").select("company_name, contact_name, contact_phone, contact_phone_2").eq("deal_id", dealId).maybeSingle();
+  const next = {
+    company_name: parsed.value.company_name,
+    contact_name: parsed.value.contact_name,
+    contact_phone: parsed.value.contact_phone,
+    ...(parsed.value.contact_phone_2 !== undefined ? { contact_phone_2: parsed.value.contact_phone_2 } : {}), // 칸을 안 보낸 요청은 보조 연락처를 그대로 둠
+  };
   const saved = await saveSellerPrivate(db, dealId, auth.admin.id, next);
   if (!saved.ok) {
     console.error("[admin/deals/manage/seller] 저장 실패", saved.message);
@@ -147,6 +153,7 @@ export async function PUT(req: NextRequest) {
       created: saved.created,
       changed,
       contact_phone: phoneTail(next.contact_phone),
+      ...(next.contact_phone_2 ? { contact_phone_2: phoneTail(next.contact_phone_2) } : {}),
       ...(linkedCheckId ? { linked_check_id: linkedCheckId } : {}),
       ...(linkFailed ? { link_failed: linkFailed } : {}),
     },

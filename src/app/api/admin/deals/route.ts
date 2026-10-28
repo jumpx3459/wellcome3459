@@ -37,6 +37,7 @@ const PRIVATE_FIELD_NAME: Record<SellerPrivateField, string> = {
   companyName: "sellerPrivateCompany",
   contactName: "sellerPrivateName",
   contactPhone: "sellerPrivatePhone",
+  contactPhone2: "sellerPrivatePhone2",
   memo: "sellerPrivateName",
 };
 
@@ -85,6 +86,7 @@ export async function POST(req: NextRequest) {
     sellerPrivateCompany, // 2026-10-04: 직접 등록(판매 신청 아님) — 실제 판매자 상호(필수)·담당자(선택)·연락처(필수), 구매자에게 보이지 않음
     sellerPrivateName,
     sellerPrivatePhone,
+    sellerPrivatePhone2, // 2026-10-28 보조 연락처(선택, 주 연락처와 같은 형식)
     businessCheckId, // 직접 등록(판매 신청 아님) — 연결할 통과한 사업자 조회 행 id(필수, 자동 선택 없음)
     sourcedById, // 2026-10-10: [발굴 매니저] — 이 판매자를 찾아온 관리자 id(선택, 없으면 null). 매니저 실적(새 판매자 발굴)
   } = body;
@@ -165,7 +167,7 @@ export async function POST(req: NextRequest) {
   let directValue: SellerPrivateValue | null = null;
   if (!requestId) {
     const p = parseSellerPrivateFields(
-      { companyName: sellerPrivateCompany, contactName: sellerPrivateName, contactPhone: sellerPrivatePhone },
+      { companyName: sellerPrivateCompany, contactName: sellerPrivateName, contactPhone: sellerPrivatePhone, contactPhone2: sellerPrivatePhone2 },
       { requireCompany: true, requirePhone: true, withMemo: false }
     );
     if (!p.ok) return bad(p.error, PRIVATE_FIELD_NAME[p.field]);
@@ -390,8 +392,9 @@ export async function POST(req: NextRequest) {
     detail: {
       via,
       created: savedPrivate.created,
-      changed: (["company_name", "contact_name", "contact_phone"] as const).filter((k) => privateValue[k]),
+      changed: (["company_name", "contact_name", "contact_phone", "contact_phone_2"] as const).filter((k) => privateValue[k]),
       contact_phone: phoneTail(privateValue.contact_phone),
+      ...(privateValue.contact_phone_2 ? { contact_phone_2: phoneTail(privateValue.contact_phone_2) } : {}),
       ...(directCheck ? { linked_check_id: directCheck.id } : {}),
       ...(passCheck ? { linked_check_id: passCheck.id } : {}),
     },

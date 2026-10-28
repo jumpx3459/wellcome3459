@@ -31,7 +31,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/admin/connec
   const [{ data: item, error: privError }, request] = await Promise.all([
     db
       .from("deal_seller_private")
-      .select("company_name, contact_name, contact_phone, memo, source, name_disclosure_ok, name_disclosure_at, updated_at")
+      .select("company_name, contact_name, contact_phone, contact_phone_2, memo, source, name_disclosure_ok, name_disclosure_at, updated_at")
       .eq("deal_id", deal.deal_id)
       .maybeSingle(),
     linkedSellerRequest(db, deal.deal_id),
@@ -72,7 +72,7 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/admin/connec
 
   const { data: before } = await db
     .from("deal_seller_private")
-    .select("company_name, contact_name, contact_phone, memo")
+    .select("company_name, contact_name, contact_phone, contact_phone_2, memo")
     .eq("deal_id", deal.deal_id)
     .maybeSingle();
   const next = { ...parsed.value, memo: parsed.value.memo ?? null };
@@ -87,7 +87,7 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/admin/connec
     action: "seller_private_save",
     targetType: "deal",
     targetId: deal.deal_id,
-    detail: { via: "connection_board" satisfies SellerPrivateVia, connection_id: id, created: saved.created, changed, contact_phone: phoneTail(next.contact_phone) },
+    detail: { via: "connection_board" satisfies SellerPrivateVia, connection_id: id, created: saved.created, changed, contact_phone: phoneTail(next.contact_phone), ...(next.contact_phone_2 ? { contact_phone_2: phoneTail(next.contact_phone_2) } : {}) },
   });
   return NextResponse.json({ ok: true });
 }
