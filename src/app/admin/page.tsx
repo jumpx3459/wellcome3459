@@ -3347,6 +3347,7 @@ function DealForm(props: React.ComponentProps<typeof DealFormInner> & { draftKey
         <p style={{ fontSize: rem(14), color: "#4B5563", lineHeight: 1.5 }}>
           {when ? `${when}에 ` : ""}이 탭에 임시저장된 새 매물이에요. 판매자 정보(상호·연락처·담당자)·사업자 조회 기록은 저장되지 않아서 다시 입력해야 해요.
         </p>
+        <p style={{ fontSize: rem(14), color: "#7A5B00", lineHeight: 1.5 }} data-draft-protect-note>브랜드 보호·보호 사진은 저장되지 않아요. 이어쓴 뒤 다시 설정해주세요</p>
         <div className="flex flex-col gap-2 sm:flex-row">
           <button type="button" onClick={() => setGate({ state: "go", draft: gate.draft })} className={`w-full ${BTN_CLASS}`} style={btnStyle("primary")} data-draft-resume>
             이어쓰기
