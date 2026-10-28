@@ -1689,14 +1689,14 @@ function AdminDashboard({
             2026-10-06: 등록(= 푸시 발송) 버튼·폼은 최고관리자만(서버 /api/admin/notices POST도 최고관리자만). 아래 목록·[마감]은 그대로 */}
         {!isSuperAdmin ? null : openFormFor === "notice" ? (
           <div className={`flex items-center justify-between gap-2 rounded-xl px-3 py-2 ${isDesktop ? "col-span-2" : "mt-3"}`} style={{ background: LIST_CARD_BAND_BG }} data-card-band-x>
-            <span {...LIST_CARD_TITLE_PROPS}>긴급 공지 등록</span>
+            <span {...LIST_CARD_TITLE_PROPS}>긴급 공지 등록 (부동산·설비)</span>
             <button type="button" onClick={() => setOpenFormFor(null)} className={BTN_CLASS} style={{ ...btnStyle("secondary"), minHeight: 40, fontSize: rem(15), padding: "0 16px" }}>
               닫기
             </button>
           </div>
         ) : (
           <button onClick={() => switchForm("notice")} className={`w-full ${isDesktop ? "" : "mt-2"} ${BTN_CLASS}`} style={isDesktop ? { ...btnStyle("secondary"), order: -1 } : btnStyle("secondary")}>
-            + 긴급 공지 등록 (부동산·설비)
+            + 긴급 공지 등록
           </button>
         )}
         {isSuperAdmin && openFormFor === "notice" && (
