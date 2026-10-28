@@ -27,13 +27,13 @@ export async function GET(req: NextRequest) {
   const full = await canSeeDealPrivate(db, auth.admin, s.dealId);
   if (full === "error") return NextResponse.json({ error: "권한을 확인하지 못했어요. 잠시 후 다시 시도해주세요." }, { status: 500 });
 
-  let body: { companyName: string | null; contactName: string | null; contactPhone: string | null; full: boolean };
+  let body: { companyName: string | null; contactName: string | null; contactPhone: string | null; contactPhone2: string | null; full: boolean };
   if (full) {
-    const { data, error } = await db.from("deal_seller_private").select("company_name, contact_name, contact_phone").eq("deal_id", s.dealId).maybeSingle();
+    const { data, error } = await db.from("deal_seller_private").select("company_name, contact_name, contact_phone, contact_phone_2").eq("deal_id", s.dealId).maybeSingle();
     if (error) return NextResponse.json({ error: "판매자 정보를 불러오지 못했어요." }, { status: 500 });
-    body = { companyName: (data?.company_name as string | null) ?? s.rootCompany, contactName: (data?.contact_name as string | null) ?? null, contactPhone: (data?.contact_phone as string | null) ?? null, full: true };
+    body = { companyName: (data?.company_name as string | null) ?? s.rootCompany, contactName: (data?.contact_name as string | null) ?? null, contactPhone: (data?.contact_phone as string | null) ?? null, contactPhone2: (data?.contact_phone_2 as string | null) ?? null, full: true };
   } else {
-    body = { companyName: s.rootCompany, contactName: null, contactPhone: null, full: false };
+    body = { companyName: s.rootCompany, contactName: null, contactPhone: null, contactPhone2: null, full: false };
   }
 
   await writeAudit(db, req, {

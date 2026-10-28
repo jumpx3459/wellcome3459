@@ -15,7 +15,8 @@ const { chromium } = require("playwright");
 const BASE = process.env.BASE_URL ?? "http://127.0.0.1:3198";
 const PROT_ID = "cccccccc-0000-4000-8000-000000000002"; // 보호 매물(공개 사진 1장 + 보호 사진 3장)
 const TILE_ID = "cccccccc-0000-4000-8000-000000000003"; // 보호 매물(공개 사진 없음 → 🛡 타일)
-const ROUTES = ["/buy", "/buy/new", "/sell", "/sell?buyRef=11111111-1111-4111-8111-111111111111", "/deals", "/", "/mypage", `/deals/${PROT_ID}`, `/deals/${TILE_ID}`];
+const SHIP_ID = "cccccccc-0000-4000-8000-000000000007"; // 배송비 포함 + 60자 메모(공백 없는 긴 글자 — 회원 상세에서만 보임)
+const ROUTES = ["/buy", "/buy/new", "/sell", "/sell?buyRef=11111111-1111-4111-8111-111111111111", "/deals", "/", "/mypage", `/deals/${PROT_ID}`, `/deals/${TILE_ID}`, `/deals/${SHIP_ID}`];
 const WIDTHS = [360, 390, 412];
 // 일부 경로만 빠르게: ONLY="/deals,/" node scripts/mobile-overflow-test.mjs
 // 글자 크기 배율(루트 112.5% 기준). 200%는 안드로이드 "가장 크게" 근처 — 아래 STRICT_AT_200 경로만 요구.
@@ -92,6 +93,7 @@ const DEALS = [
   mkDeal({}),
   mkDeal({ id: PROT_ID, title: "보호 매물 양배추환", brand_protected: true, protected_image_count: 3, created_at: ago(0.5) }),
   mkDeal({ id: TILE_ID, title: "보호 매물 닭가슴살", images: [], brand_protected: true, protected_image_count: 2, created_at: ago(0.2) }),
+  mkDeal({ id: SHIP_ID, title: "배송비 포함 감귤", shipping_fee_type: "included", shipping_note: "500kg이상배송지원-제주도서산간지역제외-착불가능-택배불가-화물만가능-문의는연락처로-감사합니다", created_at: ago(0.1) }),
 ];
 const PNG1 = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
 

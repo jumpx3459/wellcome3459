@@ -6,6 +6,7 @@ import { resolveSellerDisplay } from "@/lib/sellerDisplay";
 import { checkDealVideoUrl } from "@/lib/videoUploadServer";
 import { normalizeTitle, DUPLICATE_TITLE_WARNING } from "@/lib/titleGuard";
 import { isLumpSum } from "@/lib/priceUnit";
+import { cleanShippingNote } from "@/lib/shippingFee";
 import { storageSummary, isStorageType } from "@/lib/dealFields";
 import { sanitizeManifest, sanitizePid } from "@/lib/parseCsv";
 import { DEAL_EDIT_KEYS, validateDealEdit, dealEditWarnings, effectivePriceMode, type DealEditInput } from "@/lib/dealEdit";
@@ -224,6 +225,8 @@ export async function PATCH(req: NextRequest) {
     if (edit.packageUnit !== undefined) update.package_unit = edit.packageUnit || null;
     if (edit.origin !== undefined) update.origin = edit.origin || null;
     if (edit.spec !== undefined) update.spec = edit.spec || null;
+    if (edit.shippingFeeType !== undefined) update.shipping_fee_type = edit.shippingFeeType;
+    if (edit.shippingNote !== undefined) update.shipping_note = cleanShippingNote(edit.shippingNote);
     if (edit.pid !== undefined) update.pid = sanitizePid(edit.pid);
     if (edit.manifestItems !== undefined) update.manifest_items = sanitizeManifest(edit.manifestItems);
     if (edit.expiryDate !== undefined || edit.storageType !== undefined) {

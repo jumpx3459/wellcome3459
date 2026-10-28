@@ -13,6 +13,8 @@ export function isStorageType(v: unknown): v is StorageType {
 
 // 입력 예시 (칸 아래 칩 + datalist) — 여기만 고치면 두 폼에 같이 반영
 export const PACKAGE_UNIT_EXAMPLES = ["1kg 팩", "5kg 박스", "10kg 박스", "20kg 박스", "낱개", "묶음(10개)", "파렛트"];
+// 2026-10-28 관리자 등록 폼 전용 — 세트·카톤 구성(/sell 칩은 그대로)
+export const PACKAGE_UNIT_ADMIN_EXAMPLES = [...PACKAGE_UNIT_EXAMPLES, "1세트 = 2박스", "1카톤 = 5박스"];
 export const SPEC_EXAMPLES = ["소", "중", "대", "특대", "500ml", "1L", "S~L 혼합"];
 export const ORIGIN_EXAMPLES = ["국내산", "중국산", "베트남산", "미국산", "호주산", "칠레산", "수입산(혼합)"];
 
@@ -57,8 +59,10 @@ export function priceWarnings(original: number | null | undefined, deal: number 
 
 // 공개 화면 조회에 붙이는 새 컬럼 — SQL 실행 전(컬럼 없음)이면 빼고 다시 조회
 // 2026-10-27 브랜드 보호: brand_protected·protected_image_count(공개 플래그·보호 사진 장수)만 — protected_images·brand_name은 권한이 없어 브라우저에서 select 금지(서버 전용)
+// 2026-10-28 배송비 안내 칸 — 상세 화면만 읽음(목록·홈은 안 읽음). 칸이 없는 DB(SQL 전)면 isMissingNewColumn이 알아보고 빼고 다시 조회
+export const DEAL_DETAIL_SHIPPING_COLS = ", shipping_fee_type, shipping_note";
 export const DEAL_NEW_COLS = ", expiry_date, storage_type, brand_protected, protected_image_count";
-const NEW_COL_NAMES = ["expiry_date", "storage_type", "original_price", "brand_protected", "protected_image_count"];
+const NEW_COL_NAMES = ["expiry_date", "storage_type", "original_price", "brand_protected", "protected_image_count", "shipping_fee_type", "shipping_note"];
 export function isMissingNewColumn(error: { message?: string } | null | undefined): boolean {
   const m = error?.message ?? "";
   return NEW_COL_NAMES.some((c) => m.includes(c));

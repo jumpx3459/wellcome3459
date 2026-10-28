@@ -1,6 +1,6 @@
 "use client";
 
-import { DEAL_NEW_COLS, isMissingNewColumn, type DealRowLoose, isStorageType, STORAGE_ICONS, formatExpiry } from "@/lib/dealFields";
+import { DEAL_NEW_COLS, DEAL_DETAIL_SHIPPING_COLS, isMissingNewColumn, type DealRowLoose, isStorageType, STORAGE_ICONS, formatExpiry } from "@/lib/dealFields";
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import TabLink from "@/components/TabLink";
@@ -37,6 +37,7 @@ import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 import { heartToShow } from "@/lib/heartCount";
 import { ctaState, isDealClosed } from "@/lib/dealCta";
 import { fetchHeartCounts } from "@/lib/heartCountClient";
+import { SHIPPING_FEE_NOTICE, shippingFeeTypeOf } from "@/lib/shippingFee";
 
 // 값이 없거나 공백뿐이면 섹션/행 자체를 그리지 않는다 (빈 공간 방지)
 function hasText(v: string | null | undefined): boolean {
@@ -176,7 +177,7 @@ function DealDetailPageInner() {
           .eq("id", params.id)
           .single();
       const { data, priceHidden: hidden } = await selectWithPriceAccess(async (cols) => {
-        const r = await run(cols, DEAL_NEW_COLS);
+        const r = await run(cols, DEAL_NEW_COLS + DEAL_DETAIL_SHIPPING_COLS);
         return isMissingNewColumn(r.error) ? run(cols, "") : r;
       });
 
@@ -196,6 +197,8 @@ function DealDetailPageInner() {
           images: data.images ?? [],
           brand_protected: data.brand_protected === true,
           protected_image_count: data.protected_image_count ?? 0,
+          shipping_fee_type: data.shipping_fee_type ?? null,
+          shipping_note: data.shipping_note ?? null,
           video_url: data.video_url ?? null,
           description: data.description ?? "",
           status: data.status ?? "active",
@@ -228,6 +231,13 @@ function DealDetailPageInner() {
   const images = bp.photos.length > 0 ? [...publicImages, ...bp.photos] : publicImages;
   const hasPhotos = images.length > 0;
   const showProtectedLock = deal.brand_protected === true && !isExampleId && ((authKnown && !isMember) || bpState === "denied");
+  // 2026-10-28 배송비 안내 — 가격이 보이는 회원 화면(고정가·가격 협의)에만. 비회원(priceHidden)은 표시 없음. separate는 예전 고정 문구와 같음
+  const shippingNotice = priceHidden ? null : (
+    <div className="text-xs text-gray500 [overflow-wrap:anywhere]" data-shipping-notice={shippingFeeTypeOf(deal.shipping_fee_type)}>
+      <p>{SHIPPING_FEE_NOTICE[shippingFeeTypeOf(deal.shipping_fee_type)]}</p>
+      {hasText(deal.shipping_note) && <p className="mt-0.5" data-shipping-note>{deal.shipping_note!.trim()}</p>}
+    </div>
+  );
   const hasManifest = Boolean(deal.manifest_items?.length && Object.keys(deal.manifest_items[0] ?? {}).length > 0);
 
   useEffect(() => {
@@ -704,6 +714,7 @@ function DealDetailPageInner() {
                 {shareCopied ? "링크 복사됨 ✓" : "공유 ↗"}
               </button>
             </div>
+            {shippingNotice && <div className="mt-2">{shippingNotice}</div>}
           </div>
         ) : priceHidden ? (
           // 2026-10-03 A안: 비회원 — 가격 상자 대신 가입 안내. 가입 버튼은 하단 고정 버튼 하나(4.5) — returnTo(이 매물)·ref만, autoInterest 같은 자동 관심은 붙이지 않음
@@ -788,7 +799,7 @@ function DealDetailPageInner() {
               </button>
             </div>
           </div>
-          <p className="text-xs text-gray500 -mt-1">창고 출고가 기준이에요 (배송비 별도).</p>
+          {shippingNotice && <div className="-mt-1">{shippingNotice}</div>}
           </>
         )}
 

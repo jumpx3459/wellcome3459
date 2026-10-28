@@ -18,6 +18,9 @@ import DealSellerPrivateEditor from "@/components/admin/DealSellerPrivateEditor"
 import AdminFullscreenPanel from "@/components/admin/AdminFullscreenPanel";
 import { formatMoq, moqUnit } from "@/lib/moq";
 import {
+  SHIPPING_FEE_TYPES, SHIPPING_FEE_LABELS, SHIPPING_NOTE_MAX, SHIPPING_NOTE_ERROR, DEFAULT_SHIPPING_FEE_TYPE, shippingFeeTypeOf, type ShippingFeeType,
+} from "@/lib/shippingFee";
+import {
   DEADLINE_CHOOSE_MESSAGE, DEADLINE_CUSTOM, DEADLINE_DEFAULT, DEADLINE_MAX_MESSAGE, DEADLINE_MAX_MS, DEADLINE_OPTIONS,
   checkClosesAt, closesAfterExpiryMessage, expiryLimitMs, mapHopeHoursToChoice,
 } from "@/lib/dealDeadline";
@@ -30,7 +33,7 @@ import { normalizeTitle, checkTitle, checkDescription } from "@/lib/titleGuard";
 import ConfirmWarnings, { BLOCK_COLOR, WARN_COLOR } from "@/components/ConfirmWarnings";
 import {
   isStorageType, discountPercent, priceWarnings, HIGH_DISCOUNT_PCT, storageSummary, formatExpiry, EXPIRY_REQUIRED_MESSAGE,
-  PACKAGE_UNIT_EXAMPLES, SPEC_EXAMPLES, ORIGIN_EXAMPLES, type StorageType,
+  PACKAGE_UNIT_ADMIN_EXAMPLES, SPEC_EXAMPLES, ORIGIN_EXAMPLES, type StorageType,
 } from "@/lib/dealFields";
 import { SuggestInput, StorageTypeButtons } from "@/components/DealFormInputs";
 import ManifestUploader from "@/components/ManifestUploader";
@@ -161,6 +164,8 @@ type ActiveDeal = {
   quick_lead_count: number | null;
   is_anonymous?: boolean | null;
   seller_display_name?: string | null;
+  shipping_fee_type?: string | null; // 2026-10-28 배송비 안내(목록 API가 select * 로 이미 줌)
+  shipping_note?: string | null;
   // 2026-10-03 feat/admin-deal-edit: 카드에서 수정하는 칸 (목록 API가 select * 로 이미 줌)
   original_price?: number | null;
   min_order_qty?: number | null;
@@ -2909,6 +2914,8 @@ function dealToPrefill(d: ActiveDeal) {
     quantityUnit: d.quantity_unit ?? undefined,
     priceUnit: d.price_unit ?? undefined,
     minOrderQty: d.min_order_qty ?? undefined,
+    shippingFeeType: d.shipping_fee_type ?? undefined,
+    shippingNote: d.shipping_note ?? undefined,
     images: d.images ?? [],
     videoUrl: d.video_url ?? undefined,
     description: d.description ?? undefined,
@@ -3203,7 +3210,7 @@ function ActiveDealCard({
 }
 
 // 2026-10-28 7b: 다음 매물 폼으로 이월하는 값 — 판매자 3칸·방금 쓴 사업자 조회 기록 id(다시 붙일 순 없어서 재사용의 원본으로만 씀)·지역. 상품 칸은 이월하지 않음
-type SameSellerCarry = { company: string; name: string; phone: string; checkId: string; region: string };
+type SameSellerCarry = { company: string; name: string; phone: string; phone2: string; checkId: string; region: string };
 
 function DealForm({
   adminKey,
@@ -3251,6 +3258,8 @@ function DealForm({
     quantityUnit?: string;
     priceUnit?: string;
     minOrderQty?: number;
+    shippingFeeType?: string;
+    shippingNote?: string;
     images?: string[];
     videoUrl?: string;
     description?: string;
@@ -3291,6 +3300,11 @@ function DealForm({
   const [priceMode, setPriceMode] = useState<PriceMode>(prefill?.priceMode === "negotiable" ? "negotiable" : "fixed"); // 2026-10-04 가격 방식 — 가격 협의면 판매·정상 단가 없이 등록 (2026-10-05: 협의 신청이면 협의로 시작)
   const [totalQty, setTotalQty] = useState(prefill?.totalQty ? String(prefill.totalQty) : "");
   const [quantityUnit, setQuantityUnit] = useState(prefill?.quantityUnit || quantityUnits[0]);
+  // 2026-10-28 J: 총수량 단위를 직접 고르기 전(신청서·수정 값이 아닐 때)에는 판매 단가 단위를 따라감
+  const [quantityUnitTouched, setQuantityUnitTouched] = useState(!!prefill?.quantityUnit);
+  // 2026-10-28 A: 배송비 안내(기본 별도) · 배송 메모(선택, 60자)
+  const [shippingFeeType, setShippingFeeType] = useState<ShippingFeeType>(shippingFeeTypeOf(prefill?.shippingFeeType));
+  const [shippingNote, setShippingNote] = useState(prefill?.shippingNote ?? "");
   // 2026-09-29: 단가 단위 — 신청서 값 이어받기, 없으면 수량 단위를 따라감(직접 고르면 유지). 정상가·판매가 공통
   const [priceUnit, setPriceUnit] = useState<string>(
     isDealPriceUnit(prefill?.priceUnit) ? prefill!.priceUnit! : prefill?.quantityUnit || quantityUnits[0]
@@ -3353,7 +3367,7 @@ function DealForm({
   // 2026-09-30: 판매자 표시 — 기본 대리 게시(비공개)
   const [seller, setSeller] = useState({ isPublic: prefill?.sellerPublic ?? false, companyName: prefill?.sellerCompanyName ?? "" });
   // 2026-10-04: 직접 등록(판매 신청 아님)의 실제 판매자(내부 전용)·연결할 사업자 조회 — 판매 신청 승인은 신청 정보를 쓰므로 칸을 숨김
-  const [sellerPrivate, setSellerPrivate] = useState<SellerPrivateDraft>(carry ? { company: carry.company, name: carry.name, phone: carry.phone, checkId: "" } : EMPTY_SELLER_PRIVATE);
+  const [sellerPrivate, setSellerPrivate] = useState<SellerPrivateDraft>(carry ? { company: carry.company, name: carry.name, phone: carry.phone, phone2: carry.phone2, checkId: "" } : EMPTY_SELLER_PRIVATE);
   const [posted, setPosted] = useState<{ title: string; carry: SameSellerCarry } | null>(null); // 7b 등록 완료 카드
   const [sourcedBy, setSourcedBy] = useState(""); // 2026-10-10 [발굴 매니저] 관리자 id("" = 없음)
   const [submitting, setSubmitting] = useState(false);
@@ -3367,13 +3381,15 @@ function DealForm({
   // 2026-09-28: 필수 = 매물명·카테고리·지역·판매가·수량. 서버(/api/admin/deals)도 같은 규칙으로
   // 400 { error, field }를 돌려준다. 제출 시 첫 누락 칸으로 스크롤·포커스.
   // 2026-10-01 2차: 묶음 펼침 — 제품 상세·거래 조건·판매자 정보 모두 기본 접힘. 접힌 칸이면 펼친 뒤(다음 렌더) 스크롤
+  const [shipOpen, setShipOpen] = useState(false); // 배송비 안내 펼침(거래 조건 안, 기본 접힘)
   const [openDeal, setOpenDeal] = useState(edit); // edit: 제품 상세·거래 조건은 펼쳐서 시작(판매자 정보는 접힘)
   const [openDetail, setOpenDetail] = useState(edit);
   const [openSeller, setOpenSeller] = useState(!!carry);
   const focusField = (field: DealField | "description") => {
-    if (field === "category") setOpenDeal(true); // 거래 조건
+    if (field === "category" || field === "shippingNote") setOpenDeal(true); // 거래 조건
+    if (field === "shippingNote") setShipOpen(true);
     if (field === "minOrderQty" || field === "expiryDate" || field === "description" || (field === "closesAt" && !edit)) setOpenDetail(true); // 제품 상세
-    if (field === "sellerPrivateCompany" || field === "sellerPrivatePhone" || field === "sellerPrivateName" || field === "businessCheckId" || field === "sourcedBy") setOpenSeller(true); // 판매자 정보
+    if (field === "sellerPrivateCompany" || field === "sellerPrivatePhone" || field === "sellerPrivatePhone2" || field === "sellerPrivateName" || field === "businessCheckId" || field === "sourcedBy") setOpenSeller(true); // 판매자 정보
     setTimeout(() => {
       const el = document.getElementById(field === "closesAt" && !edit ? "deal-closesIn" : `deal-${field}`);
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -3419,6 +3435,7 @@ function DealForm({
       else if (!deal || deal <= 0) errs.dealPrice = "판매가는 0보다 커야 해요.";
       if (originalPrice.trim() && (!orig || orig <= 0)) errs.originalPrice = "정상가는 0보다 커야 해요.";
     }
+    if (shippingNote.trim().length > SHIPPING_NOTE_MAX) errs.shippingNote = SHIPPING_NOTE_ERROR;
     if (!totalQty.trim()) errs.totalQty = "재고 총수량을 입력해주세요.";
     else if (!Number.isFinite(qty) || qty <= 0) errs.totalQty = "재고 총수량은 0보다 커야 해요.";
     if (!lumpSum && minOrderQty.trim() && !(Number(minOrderQty) > 0 && Number.isInteger(Number(minOrderQty)))) errs.minOrderQty = "최소 주문량은 1 이상의 정수로 입력해주세요.";
@@ -3453,6 +3470,9 @@ function DealForm({
       const sellerPhone = normalizePhone(sellerPrivate.phone);
       if (!sellerPhone) errs.sellerPrivatePhone = "실제 판매자 연락처를 입력해주세요.";
       else if (!/^[0-9]{8,11}$/.test(sellerPhone)) errs.sellerPrivatePhone = "연락처는 숫자 8~11자리로 적어주세요.";
+      // 보조 연락처(선택) — 있으면 주 연락처와 같은 형식
+      const sellerPhone2 = normalizePhone(sellerPrivate.phone2);
+      if (sellerPhone2 && !/^[0-9]{8,11}$/.test(sellerPhone2)) errs.sellerPrivatePhone2 = "보조 연락처는 숫자 8~11자리로 적어주세요.";
       if (!sellerPrivate.checkId) errs.businessCheckId = NOT_CHECKED_MESSAGE;
     }
     return errs;
@@ -3530,6 +3550,8 @@ function DealForm({
       if (location !== (initial.location ?? "")) c.location = location || null;
       if (stockType !== (initial.stock_type ?? "general")) c.stockType = stockType;
       if (packageUnit !== (initial.package_unit ?? "")) c.packageUnit = packageUnit || null;
+      if (shippingFeeType !== shippingFeeTypeOf(initial.shipping_fee_type)) c.shippingFeeType = shippingFeeType;
+      if (shippingNote.trim() !== (initial.shipping_note ?? "")) c.shippingNote = shippingNote.trim() || null;
       if (spec !== (initial.spec ?? "")) c.spec = spec || null;
       if (origin !== (initial.origin ?? "")) c.origin = origin || null;
       if (storageType !== (initial.storage_type ?? "")) c.storageType = storageType || null;
@@ -3590,6 +3612,9 @@ function DealForm({
           videoUrl: skipVideo || brandProtected ? null : videoUrl,
           description,
           packageUnit: packageUnit || null,
+          // 2026-10-28 배송비 안내 — 기본(별도)·메모 없음이면 보내지 않음(price_mode 선례)
+          ...(shippingFeeType !== DEFAULT_SHIPPING_FEE_TYPE ? { shippingFeeType } : {}),
+          ...(shippingNote.trim() ? { shippingNote: shippingNote.trim() } : {}),
           origin: origin || null,
           spec: spec || null,
           storageType: storageType || null,
@@ -3606,6 +3631,7 @@ function DealForm({
                 sellerPrivateCompany: sellerPrivate.company,
                 sellerPrivateName: sellerPrivate.name,
                 sellerPrivatePhone: sellerPrivate.phone,
+                ...(sellerPrivate.phone2.trim() ? { sellerPrivatePhone2: sellerPrivate.phone2 } : {}),
                 businessCheckId: sellerPrivate.checkId,
               }),
         }),
@@ -3642,7 +3668,7 @@ function DealForm({
       if (onNextSame && !requestId && sellerPrivate.checkId) {
         // 7b: 폼을 닫지 않고 완료 카드 — [같은 판매자로 다음 매물 등록] / [닫기]. 목록은 지금 다시 읽음
         onRegistered?.();
-        setPosted({ title: title.trim(), carry: { company: sellerPrivate.company, name: sellerPrivate.name, phone: sellerPrivate.phone, checkId: sellerPrivate.checkId, region } });
+        setPosted({ title: title.trim(), carry: { company: sellerPrivate.company, name: sellerPrivate.name, phone: sellerPrivate.phone, phone2: sellerPrivate.phone2, checkId: sellerPrivate.checkId, region } });
         return;
       }
       onDone();
@@ -3675,8 +3701,56 @@ function DealForm({
       field && fieldErrors[field] ? "border-[#DC2626]" : "border-gray200"
     }`;
 
+  // edit + wide(PC 패널)는 3열 — 3열은 1920×950에서 스크롤 없이 꽉 차 있어 배송비 행은 여유가 있는 2열(제품 상세 위)에 둠(그 외에는 거래 조건 안)
+  const editWide = edit && wide;
+  const shippingEl = (
+      <div className="min-w-0" data-shipping-fee>
+        {/* 1920×950 수정 패널은 3열 모두 스크롤 없이 맞춰 둔 높이라 한 줄로 접어 둠([변경]·행을 누르면 펼침) */}
+        <button
+          type="button"
+          id="deal-shipping-head"
+          aria-expanded={shipOpen}
+          aria-controls="deal-shipping-body"
+          onClick={() => setShipOpen((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 rounded-xl text-left"
+          style={{ minHeight: 44, padding: "0 12px", border: "1.5px solid #E4E7EB", background: "#fff" }}
+        >
+          <span className="font-bold min-w-0" style={{ fontSize: rem(15), color: "#374151" }}>
+            배송비 안내 <span style={{ color: "#0B2540" }}>· {SHIPPING_FEE_LABELS[shippingFeeType]}{shippingNote.trim() ? " · 메모 있음" : ""}</span>
+          </span>
+          <span aria-hidden className="flex-shrink-0 font-bold" style={{ fontSize: rem(15), color: "#6B7480" }}>{shipOpen ? "접기 ▴" : "펼치기 ▾"}</span>
+        </button>
+        <div id="deal-shipping-body" hidden={!shipOpen} className="mt-2">
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="배송비 안내">
+          {SHIPPING_FEE_TYPES.map((t) => (
+            <label
+              key={t}
+              className="flex-1 min-w-[7.5rem] flex items-center gap-2 rounded-xl cursor-pointer"
+              style={{ border: `2px solid ${shippingFeeType === t ? "#0B2540" : "#E4E7EB"}`, padding: "10px 12px", background: "#fff" }}
+            >
+              <input id={t === "separate" ? "deal-shippingFeeType" : undefined} type="radio" name="deal-shippingFeeType" className="w-4 h-4 accent-navy flex-shrink-0" checked={shippingFeeType === t} onChange={() => setShippingFeeType(t)} />
+              <span className="font-bold text-navy" style={{ fontSize: rem(14) }}>{SHIPPING_FEE_LABELS[t]}</span>
+            </label>
+          ))}
+        </div>
+        <div className="mt-2">
+          <label htmlFor="deal-shippingNote" className="font-bold mb-1 block" style={{ fontSize: rem(15), color: "#374151" }}>배송 메모 (선택)</label>
+          <input
+            id="deal-shippingNote"
+            className={inputCls("shippingNote")}
+            maxLength={SHIPPING_NOTE_MAX}
+            placeholder="예: 500kg 이상 배송 지원"
+            value={shippingNote}
+            onChange={(e) => { setShippingNote(e.target.value); clearErr("shippingNote"); }}
+          />
+          <p className="mt-1 text-gray500 text-right" style={{ fontSize: rem(14) }} data-shipping-count>{shippingNote.length}/{SHIPPING_NOTE_MAX}</p>
+          {fieldErrors.shippingNote && <p className="font-medium" style={{ fontSize: rem(14), color: BLOCK_COLOR }}>{fieldErrors.shippingNote}</p>}
+        </div>
+        </div>
+      </div>
+  );
   const dealAccordionEl = (
-      <FormAccordion id="deal-sec-deal" title="거래 조건" count={dealCount} requiredCount={1} open={openDeal} onToggle={() => setOpenDeal((v) => !v)}>
+      <FormAccordion id="deal-sec-deal" title="거래 조건" summary={SHIPPING_FEE_LABELS[shippingFeeType]} count={dealCount} requiredCount={1} open={openDeal} onToggle={() => setOpenDeal((v) => !v)}>
         <div className="flex flex-col gap-3">
           <div className={FORM_ROW2}>
             <DealFormField label="카테고리" required error={fieldErrors.category} htmlFor="deal-category">
@@ -3730,11 +3804,11 @@ function DealForm({
             />
           </DealFormField>
           <ManifestUploader onChange={setManifestItems} initialRows={prefill?.manifestItems} />
+          {!editWide && shippingEl}
         </div>
       </FormAccordion>
   );
   // edit + wide(PC 패널)는 3열: ① 필수 정보+재고·마감 ② 제품 상세+판매자 정보 ③ 사진·영상+거래 조건 — 거래 조건 묶음이 오른쪽 열로 가서 따로 그림
-  const editWide = edit && wide;
   const sellerAccordionEl = (
       <FormAccordion id="deal-sec-seller" title="판매자 정보" count={(seller.isPublic ? 1 : 0) + (!requestId ? [sellerPrivate.company, sellerPrivate.phone, sellerPrivate.name, sellerPrivate.checkId].filter(Boolean).length : 0)} open={openSeller} onToggle={() => setOpenSeller((v) => !v)}>
         <SellerDisplayPicker idPrefix={edit ? `deal-${initial!.id}` : "deal-new"} isPublic={seller.isPublic} companyName={seller.companyName} onChange={setSeller} />
@@ -3753,9 +3827,9 @@ function DealForm({
               value={sellerPrivate}
               onChange={(n) => {
                 setSellerPrivate(n);
-                setFieldErrors((prev) => ({ ...prev, sellerPrivateCompany: undefined, sellerPrivatePhone: undefined, sellerPrivateName: undefined, businessCheckId: undefined }));
+                setFieldErrors((prev) => ({ ...prev, sellerPrivateCompany: undefined, sellerPrivatePhone: undefined, sellerPrivateName: undefined, sellerPrivatePhone2: undefined, businessCheckId: undefined }));
               }}
-              errors={{ company: fieldErrors.sellerPrivateCompany, phone: fieldErrors.sellerPrivatePhone, name: fieldErrors.sellerPrivateName, checkId: fieldErrors.businessCheckId }}
+              errors={{ company: fieldErrors.sellerPrivateCompany, phone: fieldErrors.sellerPrivatePhone, phone2: fieldErrors.sellerPrivatePhone2, name: fieldErrors.sellerPrivateName, checkId: fieldErrors.businessCheckId }}
               showCheckPicker
               onGoBizCheck={onGoBizCheck}
               disabled={submitting}
@@ -3912,6 +3986,8 @@ function DealForm({
                       setPriceUnit(e.target.value);
                       setPriceUnitTouched(true);
                       if (e.target.value === LUMP_SUM) setMinOrderQty("");
+                      // 2026-10-28 J: 총수량 단위를 직접 고르지 않았으면 같은 값으로 맞춤(새 등록만, 일괄 제외)
+                      else if (!edit && !quantityUnitTouched && quantityUnits.includes(e.target.value)) setQuantityUnit(e.target.value);
                     }}
                   >
                     {DEAL_PRICE_UNITS.map((u) => (
@@ -3923,7 +3999,8 @@ function DealForm({
                 </div>
                 {!edit && (
                 <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }}>
-                  목록에 &quot;{formatDealPrice(30000, quantityUnit, priceUnit, { exact: true })}&quot;처럼 보여요 · 창고 출고가(배송비 별도)
+                  목록에 &quot;{formatDealPrice(30000, quantityUnit, priceUnit, { exact: true })}&quot;처럼 보여요 · {shippingFeeType === "included" ? "배송비 포함 가격" : shippingFeeType === "negotiable" ? "배송비 협의" : "창고 출고가(배송비 별도)"}{" "}
+                  <button type="button" className="font-bold underline text-navy" data-shipping-change onClick={() => { setOpenDeal(true); setShipOpen(true); setTimeout(() => { const el = document.getElementById("deal-shippingFeeType"); el?.scrollIntoView({ behavior: "smooth", block: "center" }); el?.focus({ preventScroll: true }); }, 60); }}>변경</button>
                 </p>
                 )}
               </DealFormField>
@@ -3983,6 +4060,7 @@ function DealForm({
                     value={quantityUnit}
                     onChange={(e) => {
                       setQuantityUnit(e.target.value);
+                      setQuantityUnitTouched(true);
                       if (!priceUnitTouched && isDealPriceUnit(e.target.value)) setPriceUnit(e.target.value);
                     }}
                   >
@@ -3993,6 +4071,12 @@ function DealForm({
                     ))}
                   </select>
                 </div>
+                {!edit && <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }} data-qty-hint>소수점은 작은 단위로 적어주세요 (1.5톤 → 1,500kg)</p>}
+                {priceMode === "fixed" && !lumpSum && priceUnit !== quantityUnit && (
+                  <p className="mt-1 rounded-lg font-bold" role="status" data-unit-warn style={{ fontSize: rem(14), background: "#FFF8E1", border: "1.5px solid #F2D36B", color: "#7A5B00", padding: "6px 10px" }}>
+                    가격은 {priceUnit}, 수량은 {quantityUnit}예요
+                  </p>
+                )}
               </DealFormField>
               <DealFormField label="재고 위치(지역)" required error={fieldErrors.region} htmlFor="deal-region">
                 <select
@@ -4103,6 +4187,7 @@ function DealForm({
         </div>
 
         <div className={editWide ? "@container flex flex-col gap-3 min-w-0 min-h-0 overflow-y-auto" : "order-3 flex flex-col gap-3"} data-col={editWide ? "2" : undefined}>
+          {editWide && shippingEl}
           <FormAccordion id="deal-sec-detail" title="제품 상세" count={detailCount} open={openDetail} onToggle={() => setOpenDetail((v) => !v)}>
             <div className="flex flex-col gap-3">
               <div className={FORM_ROW2}>
@@ -4195,7 +4280,7 @@ function DealForm({
 
               <div className={FORM_ROW3}>
                 <DealFormField label="포장 단위" htmlFor="deal-packageUnit">
-                  <SuggestInput id="deal-packageUnit" className={inputCls()} value={packageUnit} onChange={setPackageUnit} examples={edit ? [] : PACKAGE_UNIT_EXAMPLES} placeholder="예: 5kg 박스" />
+                  <SuggestInput id="deal-packageUnit" className={inputCls()} value={packageUnit} onChange={setPackageUnit} examples={edit ? [] : PACKAGE_UNIT_ADMIN_EXAMPLES} placeholder="예: 5kg 박스" />
                 </DealFormField>
                 <DealFormField label="규격/사이즈" htmlFor="deal-spec">
                   <SuggestInput id="deal-spec" className={inputCls()} value={spec} onChange={setSpec} examples={edit ? [] : SPEC_EXAMPLES} placeholder="예: 대 / 30cm" />
@@ -4297,7 +4382,8 @@ function DealForm({
               label="매물 사진"
               // 2026-10-12: 관리자 한도 25장(판매신청은 12장까지 오고 관리자가 더 붙일 수 있음) — src/lib/photoLimit.ts
               max={ADMIN_PHOTO_LIMIT}
-              hint={edit ? "" : `최대 ${ADMIN_PHOTO_LIMIT}장 (신청서에 첨부된 사진 포함)`}
+              hint={edit ? "" : `최대 ${ADMIN_PHOTO_LIMIT}장 (신청서에 첨부된 사진 포함) · 정사각형(1080×1080) 권장`}
+              globalPaste // 2026-10-28 D: 폼 어디에서든 Ctrl+V로 사진 붙여넣기
               initialUrls={prefill?.images ?? []}
               onPreview={openPhotoPreview}
             />
@@ -4449,9 +4535,9 @@ function requestPrefill(r: SellerRequest) {
   };
 }
 
-type DealField = "title" | "brandName" | "category" | "region" | "originalPrice" | "dealPrice" | "totalQty" | "remainingQty" | "closesAt" | "minOrderQty" | "expiryDate" | "sellerPrivateCompany" | "sellerPrivatePhone" | "sellerPrivateName" | "businessCheckId" | "sourcedBy";
+type DealField = "title" | "brandName" | "category" | "region" | "originalPrice" | "dealPrice" | "totalQty" | "remainingQty" | "closesAt" | "minOrderQty" | "expiryDate" | "sellerPrivateCompany" | "sellerPrivatePhone" | "sellerPrivatePhone2" | "sellerPrivateName" | "businessCheckId" | "sourcedBy" | "shippingNote";
 // 화면 위→아래 순서 (첫 누락 칸 포커스용) — 2026-10-01 2차: ① 매물명·판매/정상 단가·재고 총수량·지역 → 제품 상세(MOQ·소비기한) → 거래 조건(카테고리)
-const DEAL_FIELD_ORDER: DealField[] = ["title", "brandName", "dealPrice", "originalPrice", "totalQty", "remainingQty", "closesAt", "region", "minOrderQty", "expiryDate", "category", "sellerPrivateCompany", "sellerPrivatePhone", "sellerPrivateName", "businessCheckId", "sourcedBy"];
+const DEAL_FIELD_ORDER: DealField[] = ["title", "brandName", "dealPrice", "originalPrice", "shippingNote", "totalQty", "remainingQty", "closesAt", "region", "minOrderQty", "expiryDate", "category", "sellerPrivateCompany", "sellerPrivatePhone", "sellerPrivatePhone2", "sellerPrivateName", "businessCheckId", "sourcedBy"];
 
 // 붙인 입력 그룹(한 테두리) — [입력 | 원 / 단위] (2026-10-01 2차)
 const GROUP_INPUT_CLS = "flex-1 min-w-0 px-3 py-2.5 text-[0.8889rem] outline-none bg-transparent";

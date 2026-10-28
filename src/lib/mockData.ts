@@ -20,6 +20,8 @@ export type Deal = {
   video_url?: string | null;
   brand_protected?: boolean; // 2026-10-27 브랜드 보호 — 공개 사진은 대표 1장(images), 나머지·브랜드명은 가입 회원만(서버 API)
   protected_image_count?: number; // 보호 사진 장수(비회원에게도 보임)
+  shipping_fee_type?: string | null; // 2026-10-28 배송비 안내(separate|included|negotiable) — 상세만 읽음, 회원에게만 표시
+  shipping_note?: string | null;
   seller_member_id?: string | null;
   seller_display_name?: string | null;
   is_anonymous?: boolean | null;

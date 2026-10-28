@@ -28,14 +28,15 @@ export type SellerPrivateValue = {
   company_name: string | null;
   contact_name: string | null;
   contact_phone: string | null;
+  contact_phone_2?: string | null; // 2026-10-28 보조 연락처(선택) — 요청에 칸이 없으면(undefined) 값에도 없어 저장 때 건드리지 않음
   memo?: string | null;
 };
-export type SellerPrivateField = "companyName" | "contactName" | "contactPhone" | "memo";
+export type SellerPrivateField = "companyName" | "contactName" | "contactPhone" | "contactPhone2" | "memo";
 export type SellerPrivateParse = { ok: true; value: SellerPrivateValue } | { ok: false; error: string; field: SellerPrivateField };
 
 /** 판매자 비공개 입력 검증 — 연결 보드 PUT·매물 등록·매물 수정이 같은 규칙. 연락처는 normalizePhone 뒤 숫자 8~11자리 */
 export function parseSellerPrivateFields(
-  raw: { companyName?: unknown; contactName?: unknown; contactPhone?: unknown; memo?: unknown } | null | undefined,
+  raw: { companyName?: unknown; contactName?: unknown; contactPhone?: unknown; contactPhone2?: unknown; memo?: unknown } | null | undefined,
   opts: { requireCompany: boolean; requirePhone: boolean; withMemo: boolean }
 ): SellerPrivateParse {
   const text = (v: unknown) => (typeof v === "string" ? v.trim() : "");
@@ -54,7 +55,11 @@ export function parseSellerPrivateFields(
   const phone = normalizePhone(typeof raw?.contactPhone === "string" ? raw.contactPhone : "");
   if (opts.requirePhone && !phone) return { ok: false, error: "실제 판매자 연락처를 입력해주세요.", field: "contactPhone" };
   if (phone && !SELLER_PHONE_RE.test(phone)) return { ok: false, error: "연락처는 숫자 8~11자리로 적어주세요.", field: "contactPhone" };
+  // 보조 연락처 — 주 연락처와 같은 형식(숫자 8~11자리), 선택. 칸을 안 보냈으면(undefined) 값에 넣지 않음
+  const phone2 = raw?.contactPhone2 === undefined ? undefined : normalizePhone(typeof raw.contactPhone2 === "string" ? raw.contactPhone2 : "");
+  if (phone2 && !SELLER_PHONE_RE.test(phone2)) return { ok: false, error: "보조 연락처는 숫자 8~11자리로 적어주세요.", field: "contactPhone2" };
   const value: SellerPrivateValue = { company_name: companyName || null, contact_name: contactName || null, contact_phone: phone || null };
+  if (phone2 !== undefined) value.contact_phone_2 = phone2 || null;
   if (opts.withMemo) value.memo = memo || null;
   return { ok: true, value };
 }
