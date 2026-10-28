@@ -98,15 +98,15 @@ export default function SellerPrivateFields({
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const carryRan = useRef(false);
-  useEffect(() => {
-    if (!reuseFromCheckId || !showCheckPicker || carryRan.current) return;
-    carryRan.current = true;
-    (async () => {
+  // 기존 재사용(POST /business-checks/reuse) 1회 → 새 행을 선택. 실패하면 안내만(칸 값은 그대로, 목록에서 직접 선택)
+  const runReuse = useCallback(
+    async (sourceCheckId: string, company: string, phone: string) => {
+      setCarryNote({ state: "busy", warnings: [] });
       try {
         const res = await fetch("/api/admin/business-checks/reuse", {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
-          body: JSON.stringify({ sourceCheckId: reuseFromCheckId, company: valueRef.current.company, phone: valueRef.current.phone }),
+          body: JSON.stringify({ sourceCheckId, company, phone }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -119,8 +119,67 @@ export default function SellerPrivateFields({
       } catch {
         setCarryNote({ state: "fail", warnings: [], error: "이어받지 못했어요." });
       }
-    })();
-  }, [reuseFromCheckId, showCheckPicker, adminKey, load]);
+    },
+    [adminKey, load]
+  );
+  useEffect(() => {
+    if (!reuseFromCheckId || !showCheckPicker || carryRan.current) return;
+    carryRan.current = true;
+    void runReuse(reuseFromCheckId, valueRef.current.company, valueRef.current.phone);
+  }, [reuseFromCheckId, showCheckPicker, runReuse]);
+
+  // 2026-10-28 7a 최근 확인된 판매자 칩 — 폼이 열릴 때 목록 1번(값 없음). 누르면 prefill(빈 칸만 채움) → 같은 판매자 조회 기록을 재사용 1회로 이어받아 선택
+  type Chip = { rootCheckId: string; companyName: string | null; bNoMasked: string; lastDealAt: string; exception?: boolean };
+  const [chips, setChips] = useState<Chip[]>([]);
+  const [chipBusy, setChipBusy] = useState<string | null>(null);
+  const [chipPicked, setChipPicked] = useState<string | null>(null);
+  const [chipNote, setChipNote] = useState<{ ok: boolean; text: string } | null>(null);
+  useEffect(() => {
+    if (!showCheckPicker) return;
+    let cancelled = false;
+    fetch("/api/admin/business-checks/recent-sellers", { headers: { "x-admin-key": adminKey } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d && Array.isArray(d.items)) setChips(d.items as Chip[]);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [showCheckPicker, adminKey]);
+  const pickChip = async (chip: Chip) => {
+    if (chipBusy || disabled) return;
+    setChipBusy(chip.rootCheckId);
+    setChipNote(null);
+    try {
+      const res = await fetch(`/api/admin/business-checks/prefill?rootCheckId=${chip.rootCheckId}`, { headers: { "x-admin-key": adminKey } });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setChipNote({ ok: false, text: data.error ?? "판매자 정보를 불러오지 못했어요." });
+        return;
+      }
+      // 빈 칸만 채움 — 이미 적은 칸은 그대로
+      const cur = valueRef.current;
+      const next = {
+        ...cur,
+        company: cur.company.trim() ? cur.company : (data.companyName as string | null) ?? "",
+        phone: cur.phone.trim() ? cur.phone : (data.contactPhone as string | null) ?? "",
+        name: cur.name.trim() ? cur.name : (data.contactName as string | null) ?? "",
+      };
+      onChangeRef.current(next);
+      valueRef.current = next;
+      setChipPicked(chip.rootCheckId);
+      setChipNote({
+        ok: true,
+        text: data.full ? "비어 있던 칸만 채웠어요. 이미 적은 칸은 그대로예요." : "상호만 채웠어요. 담당 매물이 아니라 연락처·담당자는 가져오지 않아요.",
+      });
+      await runReuse(chip.rootCheckId, next.company, next.phone);
+    } catch {
+      setChipNote({ ok: false, text: "판매자 정보를 불러오지 못했어요." });
+    } finally {
+      setChipBusy(null);
+    }
+  };
 
   // 고른(또는 이미 연결된) 조회의 입력 상호와 실제 판매자 상호가 다르면 노란 경고 — 등록은 막지 않음(상호가 서로 다르게 불리는 경우가 있어서)
   const checkedCompany = linkedCheck ? linkedCheck.input_company_name : checks?.find((c) => c.id === value.checkId)?.input_company_name;
@@ -148,6 +207,39 @@ export default function SellerPrivateFields({
         <p style={DEAL_HINT_STYLE}>구매자에게 보이지 않아요. 거래 연결에 쓰이고 매물 마감 후 1년 보관돼요.</p>
       </div>
 
+      {showCheckPicker && chips.length > 0 && (
+        <div className="min-w-0" data-recent-sellers>
+          <div style={DEAL_LABEL_STYLE}>최근 확인된 판매자</div>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {chips.map((c) => (
+              <button
+                key={c.rootCheckId}
+                type="button"
+                disabled={!!chipBusy || disabled}
+                onClick={() => void pickChip(c)}
+                aria-pressed={chipPicked === c.rootCheckId}
+                className="rounded-full font-bold disabled:opacity-60 min-w-0 max-w-full"
+                style={{
+                  minHeight: 40,
+                  padding: "0 14px",
+                  fontSize: rem(14),
+                  border: "2px solid " + (chipPicked === c.rootCheckId ? "#0B2540" : "#D5DAE0"),
+                  background: chipPicked === c.rootCheckId ? "#0B2540" : "#fff",
+                  color: chipPicked === c.rootCheckId ? "#fff" : "#0B2540",
+                }}
+                data-recent-chip={c.rootCheckId}
+              >
+                <span className="break-words">{chipBusy === c.rootCheckId ? "불러오는 중…" : `${c.companyName || "상호 미입력"} · ${dotDate(c.lastDealAt).slice(5)}`}</span>
+              </button>
+            ))}
+          </div>
+          {chipNote && (
+            <p className="mt-1.5" style={{ fontSize: rem(14), color: chipNote.ok ? "#1D8A44" : "#C2282D" }} data-chip-note={chipNote.ok ? "ok" : "fail"}>
+              {chipNote.text}
+            </p>
+          )}
+        </div>
+      )}
       <div className="min-w-0">
         {label(`${idPrefix}-sellerPrivateCompany`, "상호", true)}
         <input
