@@ -662,7 +662,7 @@ function SellerPrivatePanel({ connectionId, adminKey, autoLoad = false }: { conn
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ text: string; error: boolean } | null>(null);
-  const [form, setForm] = useState({ companyName: "", contactName: "", contactPhone: "", memo: "" });
+  const [form, setForm] = useState({ companyName: "", contactName: "", contactPhone: "", contactPhone2: "", memo: "" });
   const [hint, setHint] = useState<string | null>(null);
 
   const load = async () => {
@@ -681,6 +681,7 @@ function SellerPrivatePanel({ connectionId, adminKey, autoLoad = false }: { conn
         companyName: it?.company_name ?? sg?.company_name ?? "",
         contactName: it?.contact_name ?? sg?.contact_name ?? "",
         contactPhone: it?.contact_phone ? formatPhone(it.contact_phone) : sg?.contact_phone ? formatPhone(sg.contact_phone) : "",
+        contactPhone2: it?.contact_phone_2 ? formatPhone(it.contact_phone_2) : "",
         memo: it?.memo ?? "",
       });
       setHint(sg ? "판매 신청 정보를 채워 뒀어요 · 저장해야 반영돼요" : !it?.company_name && !it?.contact_name && !it?.contact_phone ? "아직 저장된 정보가 없어요" : null);
@@ -749,6 +750,7 @@ function SellerPrivatePanel({ connectionId, adminKey, autoLoad = false }: { conn
           {field("companyName", "상호", 100)}
           {field("contactName", "담당자", 50)}
           {field("contactPhone", "연락처", 20, { inputMode: "tel", placeholder: "예: 010-1234-5678 · 02-123-4567" })}
+          {field("contactPhone2", "보조 연락처 (선택)", 20, { inputMode: "tel", placeholder: "예: 010-1234-5678" })}
           {field("memo", "메모", MEMO_MAX)}
           {hint && <p style={LABEL}>{hint}</p>}
           <button

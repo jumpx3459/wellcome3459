@@ -12,7 +12,7 @@ import type { ReuseWarning } from "@/lib/businessReuse";
 // 사업자 조회 기록: 신청 없이 조회했고 아직 매물에 안 붙은 통과 행만(서버가 거름), 자동 선택 없음.
 // 입력 칸 id는 `${idPrefix}-sellerPrivateCompany|Phone|Name|businessCheckId` — 등록 폼의 첫 오류 칸 포커스가 이 id를 씀.
 
-export type SellerPrivateDraft = { company: string; name: string; phone: string; checkId: string };
+export type SellerPrivateDraft = { company: string; name: string; phone: string; phone2: string; checkId: string }; // phone2 = 보조 연락처(선택, 2026-10-28)
 export type SellerPrivateErrors = Partial<Record<keyof SellerPrivateDraft, string>>;
 export type LinkedCheck = {
   id: string;
@@ -23,7 +23,7 @@ export type LinkedCheck = {
   exception_ok: boolean;
 };
 
-export const EMPTY_SELLER_PRIVATE: SellerPrivateDraft = { company: "", name: "", phone: "", checkId: "" };
+export const EMPTY_SELLER_PRIVATE: SellerPrivateDraft = { company: "", name: "", phone: "", phone2: "", checkId: "" };
 
 const kst = (iso: string) =>
   new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
@@ -165,6 +165,7 @@ export default function SellerPrivateFields({
         company: cur.company.trim() ? cur.company : (data.companyName as string | null) ?? "",
         phone: cur.phone.trim() ? cur.phone : (data.contactPhone as string | null) ?? "",
         name: cur.name.trim() ? cur.name : (data.contactName as string | null) ?? "",
+        phone2: cur.phone2.trim() ? cur.phone2 : (data.contactPhone2 as string | null) ?? "", // 담당 매물(full)일 때만 값이 옴 — 비담당은 null
       };
       onChangeRef.current(next);
       valueRef.current = next;
@@ -270,6 +271,20 @@ export default function SellerPrivateFields({
           onChange={(e) => onChange({ ...value, phone: e.target.value })}
         />
         {errText(errors?.phone)}
+      </div>
+      <div className="min-w-0">
+        {label(`${idPrefix}-sellerPrivatePhone2`, "보조 연락처 (선택)")}
+        <input
+          id={`${idPrefix}-sellerPrivatePhone2`}
+          className={inputCls(errors?.phone2)}
+          inputMode="tel"
+          placeholder="숫자만 (담당자 휴대폰·사무실 등)"
+          maxLength={20}
+          disabled={disabled}
+          value={value.phone2}
+          onChange={(e) => onChange({ ...value, phone2: e.target.value })}
+        />
+        {errText(errors?.phone2)}
       </div>
       <div className="min-w-0">
         {label(`${idPrefix}-sellerPrivateName`, "담당자 이름")}

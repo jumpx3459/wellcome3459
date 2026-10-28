@@ -42,6 +42,7 @@ export default function DealSellerPrivateEditor({
           company: src?.company_name ?? "",
           name: src?.contact_name ?? "",
           phone: src?.contact_phone ? formatPhone(src.contact_phone) : "",
+          phone2: data.item?.contact_phone_2 ? formatPhone(data.item.contact_phone_2) : "",
           checkId: "",
         };
         setDraft(next);
@@ -75,13 +76,14 @@ export default function DealSellerPrivateEditor({
           sellerPrivateCompany: draft.company,
           sellerPrivateName: draft.name,
           sellerPrivatePhone: draft.phone,
+          sellerPrivatePhone2: draft.phone2,
           businessCheckId: draft.checkId || undefined,
         }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         const field = data.field as string | undefined;
-        const map: Record<string, keyof SellerPrivateDraft> = { sellerPrivateCompany: "company", sellerPrivatePhone: "phone", sellerPrivateName: "name", businessCheckId: "checkId" };
+        const map: Record<string, keyof SellerPrivateDraft> = { sellerPrivateCompany: "company", sellerPrivatePhone: "phone", sellerPrivatePhone2: "phone2", sellerPrivateName: "name", businessCheckId: "checkId" };
         if (field && map[field]) setErrors({ [map[field]]: data.error ?? "값을 확인해주세요." });
         onToast(data.error ?? "저장하지 못했어요. 다시 시도해주세요");
         if (data.saved) setReloadKey((k) => k + 1); // 판매자 정보는 저장됨 — 연결 상태를 다시 읽기
@@ -96,7 +98,7 @@ export default function DealSellerPrivateEditor({
     }
   };
 
-  const dirty = !!state && (draft.company !== state.draft.company || draft.name !== state.draft.name || draft.phone !== state.draft.phone || !!draft.checkId || state.prefilled);
+  const dirty = !!state && (draft.company !== state.draft.company || draft.name !== state.draft.name || draft.phone !== state.draft.phone || draft.phone2 !== state.draft.phone2 || !!draft.checkId || state.prefilled);
 
   if (loadError) {
     return (

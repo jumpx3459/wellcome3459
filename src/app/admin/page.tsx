@@ -3210,7 +3210,7 @@ function ActiveDealCard({
 }
 
 // 2026-10-28 7b: 다음 매물 폼으로 이월하는 값 — 판매자 3칸·방금 쓴 사업자 조회 기록 id(다시 붙일 순 없어서 재사용의 원본으로만 씀)·지역. 상품 칸은 이월하지 않음
-type SameSellerCarry = { company: string; name: string; phone: string; checkId: string; region: string };
+type SameSellerCarry = { company: string; name: string; phone: string; phone2: string; checkId: string; region: string };
 
 function DealForm({
   adminKey,
@@ -3367,7 +3367,7 @@ function DealForm({
   // 2026-09-30: 판매자 표시 — 기본 대리 게시(비공개)
   const [seller, setSeller] = useState({ isPublic: prefill?.sellerPublic ?? false, companyName: prefill?.sellerCompanyName ?? "" });
   // 2026-10-04: 직접 등록(판매 신청 아님)의 실제 판매자(내부 전용)·연결할 사업자 조회 — 판매 신청 승인은 신청 정보를 쓰므로 칸을 숨김
-  const [sellerPrivate, setSellerPrivate] = useState<SellerPrivateDraft>(carry ? { company: carry.company, name: carry.name, phone: carry.phone, checkId: "" } : EMPTY_SELLER_PRIVATE);
+  const [sellerPrivate, setSellerPrivate] = useState<SellerPrivateDraft>(carry ? { company: carry.company, name: carry.name, phone: carry.phone, phone2: carry.phone2, checkId: "" } : EMPTY_SELLER_PRIVATE);
   const [posted, setPosted] = useState<{ title: string; carry: SameSellerCarry } | null>(null); // 7b 등록 완료 카드
   const [sourcedBy, setSourcedBy] = useState(""); // 2026-10-10 [발굴 매니저] 관리자 id("" = 없음)
   const [submitting, setSubmitting] = useState(false);
@@ -3387,7 +3387,7 @@ function DealForm({
   const focusField = (field: DealField | "description") => {
     if (field === "category") setOpenDeal(true); // 거래 조건
     if (field === "minOrderQty" || field === "expiryDate" || field === "description" || (field === "closesAt" && !edit)) setOpenDetail(true); // 제품 상세
-    if (field === "sellerPrivateCompany" || field === "sellerPrivatePhone" || field === "sellerPrivateName" || field === "businessCheckId" || field === "sourcedBy") setOpenSeller(true); // 판매자 정보
+    if (field === "sellerPrivateCompany" || field === "sellerPrivatePhone" || field === "sellerPrivatePhone2" || field === "sellerPrivateName" || field === "businessCheckId" || field === "sourcedBy") setOpenSeller(true); // 판매자 정보
     setTimeout(() => {
       const el = document.getElementById(field === "closesAt" && !edit ? "deal-closesIn" : `deal-${field}`);
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -3468,6 +3468,9 @@ function DealForm({
       const sellerPhone = normalizePhone(sellerPrivate.phone);
       if (!sellerPhone) errs.sellerPrivatePhone = "실제 판매자 연락처를 입력해주세요.";
       else if (!/^[0-9]{8,11}$/.test(sellerPhone)) errs.sellerPrivatePhone = "연락처는 숫자 8~11자리로 적어주세요.";
+      // 보조 연락처(선택) — 있으면 주 연락처와 같은 형식
+      const sellerPhone2 = normalizePhone(sellerPrivate.phone2);
+      if (sellerPhone2 && !/^[0-9]{8,11}$/.test(sellerPhone2)) errs.sellerPrivatePhone2 = "보조 연락처는 숫자 8~11자리로 적어주세요.";
       if (!sellerPrivate.checkId) errs.businessCheckId = NOT_CHECKED_MESSAGE;
     }
     return errs;
@@ -3626,6 +3629,7 @@ function DealForm({
                 sellerPrivateCompany: sellerPrivate.company,
                 sellerPrivateName: sellerPrivate.name,
                 sellerPrivatePhone: sellerPrivate.phone,
+                ...(sellerPrivate.phone2.trim() ? { sellerPrivatePhone2: sellerPrivate.phone2 } : {}),
                 businessCheckId: sellerPrivate.checkId,
               }),
         }),
@@ -3662,7 +3666,7 @@ function DealForm({
       if (onNextSame && !requestId && sellerPrivate.checkId) {
         // 7b: 폼을 닫지 않고 완료 카드 — [같은 판매자로 다음 매물 등록] / [닫기]. 목록은 지금 다시 읽음
         onRegistered?.();
-        setPosted({ title: title.trim(), carry: { company: sellerPrivate.company, name: sellerPrivate.name, phone: sellerPrivate.phone, checkId: sellerPrivate.checkId, region } });
+        setPosted({ title: title.trim(), carry: { company: sellerPrivate.company, name: sellerPrivate.name, phone: sellerPrivate.phone, phone2: sellerPrivate.phone2, checkId: sellerPrivate.checkId, region } });
         return;
       }
       onDone();
@@ -3773,9 +3777,9 @@ function DealForm({
               value={sellerPrivate}
               onChange={(n) => {
                 setSellerPrivate(n);
-                setFieldErrors((prev) => ({ ...prev, sellerPrivateCompany: undefined, sellerPrivatePhone: undefined, sellerPrivateName: undefined, businessCheckId: undefined }));
+                setFieldErrors((prev) => ({ ...prev, sellerPrivateCompany: undefined, sellerPrivatePhone: undefined, sellerPrivateName: undefined, sellerPrivatePhone2: undefined, businessCheckId: undefined }));
               }}
-              errors={{ company: fieldErrors.sellerPrivateCompany, phone: fieldErrors.sellerPrivatePhone, name: fieldErrors.sellerPrivateName, checkId: fieldErrors.businessCheckId }}
+              errors={{ company: fieldErrors.sellerPrivateCompany, phone: fieldErrors.sellerPrivatePhone, phone2: fieldErrors.sellerPrivatePhone2, name: fieldErrors.sellerPrivateName, checkId: fieldErrors.businessCheckId }}
               showCheckPicker
               onGoBizCheck={onGoBizCheck}
               disabled={submitting}
@@ -4509,9 +4513,9 @@ function requestPrefill(r: SellerRequest) {
   };
 }
 
-type DealField = "title" | "brandName" | "category" | "region" | "originalPrice" | "dealPrice" | "totalQty" | "remainingQty" | "closesAt" | "minOrderQty" | "expiryDate" | "sellerPrivateCompany" | "sellerPrivatePhone" | "sellerPrivateName" | "businessCheckId" | "sourcedBy" | "shippingNote";
+type DealField = "title" | "brandName" | "category" | "region" | "originalPrice" | "dealPrice" | "totalQty" | "remainingQty" | "closesAt" | "minOrderQty" | "expiryDate" | "sellerPrivateCompany" | "sellerPrivatePhone" | "sellerPrivatePhone2" | "sellerPrivateName" | "businessCheckId" | "sourcedBy" | "shippingNote";
 // 화면 위→아래 순서 (첫 누락 칸 포커스용) — 2026-10-01 2차: ① 매물명·판매/정상 단가·재고 총수량·지역 → 제품 상세(MOQ·소비기한) → 거래 조건(카테고리)
-const DEAL_FIELD_ORDER: DealField[] = ["title", "brandName", "dealPrice", "originalPrice", "shippingNote", "totalQty", "remainingQty", "closesAt", "region", "minOrderQty", "expiryDate", "category", "sellerPrivateCompany", "sellerPrivatePhone", "sellerPrivateName", "businessCheckId", "sourcedBy"];
+const DEAL_FIELD_ORDER: DealField[] = ["title", "brandName", "dealPrice", "originalPrice", "shippingNote", "totalQty", "remainingQty", "closesAt", "region", "minOrderQty", "expiryDate", "category", "sellerPrivateCompany", "sellerPrivatePhone", "sellerPrivatePhone2", "sellerPrivateName", "businessCheckId", "sourcedBy"];
 
 // 붙인 입력 그룹(한 테두리) — [입력 | 원 / 단위] (2026-10-01 2차)
 const GROUP_INPUT_CLS = "flex-1 min-w-0 px-3 py-2.5 text-[0.8889rem] outline-none bg-transparent";
