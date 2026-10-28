@@ -3381,11 +3381,13 @@ function DealForm({
   // 2026-09-28: 필수 = 매물명·카테고리·지역·판매가·수량. 서버(/api/admin/deals)도 같은 규칙으로
   // 400 { error, field }를 돌려준다. 제출 시 첫 누락 칸으로 스크롤·포커스.
   // 2026-10-01 2차: 묶음 펼침 — 제품 상세·거래 조건·판매자 정보 모두 기본 접힘. 접힌 칸이면 펼친 뒤(다음 렌더) 스크롤
+  const [shipOpen, setShipOpen] = useState(false); // 배송비 안내 펼침(거래 조건 안, 기본 접힘)
   const [openDeal, setOpenDeal] = useState(edit); // edit: 제품 상세·거래 조건은 펼쳐서 시작(판매자 정보는 접힘)
   const [openDetail, setOpenDetail] = useState(edit);
   const [openSeller, setOpenSeller] = useState(!!carry);
   const focusField = (field: DealField | "description") => {
-    if (field === "category") setOpenDeal(true); // 거래 조건
+    if (field === "category" || field === "shippingNote") setOpenDeal(true); // 거래 조건
+    if (field === "shippingNote") setShipOpen(true);
     if (field === "minOrderQty" || field === "expiryDate" || field === "description" || (field === "closesAt" && !edit)) setOpenDetail(true); // 제품 상세
     if (field === "sellerPrivateCompany" || field === "sellerPrivatePhone" || field === "sellerPrivatePhone2" || field === "sellerPrivateName" || field === "businessCheckId" || field === "sourcedBy") setOpenSeller(true); // 판매자 정보
     setTimeout(() => {
@@ -3699,8 +3701,56 @@ function DealForm({
       field && fieldErrors[field] ? "border-[#DC2626]" : "border-gray200"
     }`;
 
+  // edit + wide(PC 패널)는 3열 — 3열은 1920×950에서 스크롤 없이 꽉 차 있어 배송비 행은 여유가 있는 2열(제품 상세 위)에 둠(그 외에는 거래 조건 안)
+  const editWide = edit && wide;
+  const shippingEl = (
+      <div className="min-w-0" data-shipping-fee>
+        {/* 1920×950 수정 패널은 3열 모두 스크롤 없이 맞춰 둔 높이라 한 줄로 접어 둠([변경]·행을 누르면 펼침) */}
+        <button
+          type="button"
+          id="deal-shipping-head"
+          aria-expanded={shipOpen}
+          aria-controls="deal-shipping-body"
+          onClick={() => setShipOpen((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 rounded-xl text-left"
+          style={{ minHeight: 44, padding: "0 12px", border: "1.5px solid #E4E7EB", background: "#fff" }}
+        >
+          <span className="font-bold min-w-0" style={{ fontSize: rem(15), color: "#374151" }}>
+            배송비 안내 <span style={{ color: "#0B2540" }}>· {SHIPPING_FEE_LABELS[shippingFeeType]}{shippingNote.trim() ? " · 메모 있음" : ""}</span>
+          </span>
+          <span aria-hidden className="flex-shrink-0 font-bold" style={{ fontSize: rem(15), color: "#6B7480" }}>{shipOpen ? "접기 ▴" : "펼치기 ▾"}</span>
+        </button>
+        <div id="deal-shipping-body" hidden={!shipOpen} className="mt-2">
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="배송비 안내">
+          {SHIPPING_FEE_TYPES.map((t) => (
+            <label
+              key={t}
+              className="flex-1 min-w-[7.5rem] flex items-center gap-2 rounded-xl cursor-pointer"
+              style={{ border: `2px solid ${shippingFeeType === t ? "#0B2540" : "#E4E7EB"}`, padding: "10px 12px", background: "#fff" }}
+            >
+              <input id={t === "separate" ? "deal-shippingFeeType" : undefined} type="radio" name="deal-shippingFeeType" className="w-4 h-4 accent-navy flex-shrink-0" checked={shippingFeeType === t} onChange={() => setShippingFeeType(t)} />
+              <span className="font-bold text-navy" style={{ fontSize: rem(14) }}>{SHIPPING_FEE_LABELS[t]}</span>
+            </label>
+          ))}
+        </div>
+        <div className="mt-2">
+          <label htmlFor="deal-shippingNote" className="font-bold mb-1 block" style={{ fontSize: rem(15), color: "#374151" }}>배송 메모 (선택)</label>
+          <input
+            id="deal-shippingNote"
+            className={inputCls("shippingNote")}
+            maxLength={SHIPPING_NOTE_MAX}
+            placeholder="예: 500kg 이상 배송 지원"
+            value={shippingNote}
+            onChange={(e) => { setShippingNote(e.target.value); clearErr("shippingNote"); }}
+          />
+          <p className="mt-1 text-gray500 text-right" style={{ fontSize: rem(14) }} data-shipping-count>{shippingNote.length}/{SHIPPING_NOTE_MAX}</p>
+          {fieldErrors.shippingNote && <p className="font-medium" style={{ fontSize: rem(14), color: BLOCK_COLOR }}>{fieldErrors.shippingNote}</p>}
+        </div>
+        </div>
+      </div>
+  );
   const dealAccordionEl = (
-      <FormAccordion id="deal-sec-deal" title="거래 조건" count={dealCount} requiredCount={1} open={openDeal} onToggle={() => setOpenDeal((v) => !v)}>
+      <FormAccordion id="deal-sec-deal" title="거래 조건" summary={SHIPPING_FEE_LABELS[shippingFeeType]} count={dealCount} requiredCount={1} open={openDeal} onToggle={() => setOpenDeal((v) => !v)}>
         <div className="flex flex-col gap-3">
           <div className={FORM_ROW2}>
             <DealFormField label="카테고리" required error={fieldErrors.category} htmlFor="deal-category">
@@ -3754,11 +3804,11 @@ function DealForm({
             />
           </DealFormField>
           <ManifestUploader onChange={setManifestItems} initialRows={prefill?.manifestItems} />
+          {!editWide && shippingEl}
         </div>
       </FormAccordion>
   );
   // edit + wide(PC 패널)는 3열: ① 필수 정보+재고·마감 ② 제품 상세+판매자 정보 ③ 사진·영상+거래 조건 — 거래 조건 묶음이 오른쪽 열로 가서 따로 그림
-  const editWide = edit && wide;
   const sellerAccordionEl = (
       <FormAccordion id="deal-sec-seller" title="판매자 정보" count={(seller.isPublic ? 1 : 0) + (!requestId ? [sellerPrivate.company, sellerPrivate.phone, sellerPrivate.name, sellerPrivate.checkId].filter(Boolean).length : 0)} open={openSeller} onToggle={() => setOpenSeller((v) => !v)}>
         <SellerDisplayPicker idPrefix={edit ? `deal-${initial!.id}` : "deal-new"} isPublic={seller.isPublic} companyName={seller.companyName} onChange={setSeller} />
@@ -3949,7 +3999,8 @@ function DealForm({
                 </div>
                 {!edit && (
                 <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }}>
-                  목록에 &quot;{formatDealPrice(30000, quantityUnit, priceUnit, { exact: true })}&quot;처럼 보여요 · {shippingFeeType === "included" ? "배송비 포함 가격" : shippingFeeType === "negotiable" ? "배송비 협의" : "창고 출고가(배송비 별도)"}
+                  목록에 &quot;{formatDealPrice(30000, quantityUnit, priceUnit, { exact: true })}&quot;처럼 보여요 · {shippingFeeType === "included" ? "배송비 포함 가격" : shippingFeeType === "negotiable" ? "배송비 협의" : "창고 출고가(배송비 별도)"}{" "}
+                  <button type="button" className="font-bold underline text-navy" data-shipping-change onClick={() => { setOpenDeal(true); setShipOpen(true); setTimeout(() => { const el = document.getElementById("deal-shippingFeeType"); el?.scrollIntoView({ behavior: "smooth", block: "center" }); el?.focus({ preventScroll: true }); }, 60); }}>변경</button>
                 </p>
                 )}
               </DealFormField>
@@ -3984,36 +4035,6 @@ function DealForm({
               )}
             </div>
             )}
-
-            {/* 2026-10-28 A 배송비 안내 — 상세(회원)에 "창고 출고가 기준이에요 (배송비 별도)" 대신 이 선택대로 보임. 가격 협의 매물도 같음 */}
-            <div className="min-w-0" data-shipping-fee>
-              <div className="font-bold mb-1" style={{ fontSize: rem(15), color: "#374151" }}>배송비 안내</div>
-              <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="배송비 안내">
-                {SHIPPING_FEE_TYPES.map((t) => (
-                  <label
-                    key={t}
-                    className="flex-1 min-w-[7.5rem] flex items-center gap-2 rounded-xl cursor-pointer"
-                    style={{ border: `2px solid ${shippingFeeType === t ? "#0B2540" : "#E4E7EB"}`, padding: "10px 12px", background: "#fff" }}
-                  >
-                    <input type="radio" name="deal-shippingFeeType" className="w-4 h-4 accent-navy flex-shrink-0" checked={shippingFeeType === t} onChange={() => setShippingFeeType(t)} />
-                    <span className="font-bold text-navy" style={{ fontSize: rem(14) }}>{SHIPPING_FEE_LABELS[t]}</span>
-                  </label>
-                ))}
-              </div>
-              <div className="mt-2">
-                <label htmlFor="deal-shippingNote" className="font-bold mb-1 block" style={{ fontSize: rem(15), color: "#374151" }}>배송 메모 (선택)</label>
-                <input
-                  id="deal-shippingNote"
-                  className={inputCls("shippingNote")}
-                  maxLength={SHIPPING_NOTE_MAX}
-                  placeholder="예: 500kg 이상 배송 지원"
-                  value={shippingNote}
-                  onChange={(e) => { setShippingNote(e.target.value); clearErr("shippingNote"); }}
-                />
-                <p className="mt-1 text-gray500 text-right" style={{ fontSize: rem(14) }} data-shipping-count>{shippingNote.length}/{SHIPPING_NOTE_MAX}</p>
-                {fieldErrors.shippingNote && <p className="font-medium" style={{ fontSize: rem(14), color: BLOCK_COLOR }}>{fieldErrors.shippingNote}</p>}
-              </div>
-            </div>
 
             {/* 재고 총수량+단위(한 덩어리) · 재고 위치 · 지역 상세 */}
             <div className={FORM_ROW3}>
@@ -4166,6 +4187,7 @@ function DealForm({
         </div>
 
         <div className={editWide ? "@container flex flex-col gap-3 min-w-0 min-h-0 overflow-y-auto" : "order-3 flex flex-col gap-3"} data-col={editWide ? "2" : undefined}>
+          {editWide && shippingEl}
           <FormAccordion id="deal-sec-detail" title="제품 상세" count={detailCount} open={openDetail} onToggle={() => setOpenDetail((v) => !v)}>
             <div className="flex flex-col gap-3">
               <div className={FORM_ROW2}>
@@ -4360,7 +4382,7 @@ function DealForm({
               label="매물 사진"
               // 2026-10-12: 관리자 한도 25장(판매신청은 12장까지 오고 관리자가 더 붙일 수 있음) — src/lib/photoLimit.ts
               max={ADMIN_PHOTO_LIMIT}
-              hint={edit ? "정사각형(1080×1080) 권장" : `최대 ${ADMIN_PHOTO_LIMIT}장 (신청서에 첨부된 사진 포함) · 정사각형(1080×1080) 권장`}
+              hint={edit ? "" : `최대 ${ADMIN_PHOTO_LIMIT}장 (신청서에 첨부된 사진 포함) · 정사각형(1080×1080) 권장`}
               globalPaste // 2026-10-28 D: 폼 어디에서든 Ctrl+V로 사진 붙여넣기
               initialUrls={prefill?.images ?? []}
               onPreview={openPhotoPreview}

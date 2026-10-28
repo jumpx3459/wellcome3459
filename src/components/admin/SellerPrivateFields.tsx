@@ -258,6 +258,7 @@ export default function SellerPrivateFields({
           </p>
         )}
       </div>
+      <div className="grid grid-cols-1 gap-3 min-w-0 @min-[420px]:grid-cols-2 items-start">
       <div className="min-w-0">
         {label(`${idPrefix}-sellerPrivatePhone`, "연락처", true)}
         <input
@@ -285,6 +286,7 @@ export default function SellerPrivateFields({
           onChange={(e) => onChange({ ...value, phone2: e.target.value })}
         />
         {errText(errors?.phone2)}
+      </div>
       </div>
       <div className="min-w-0">
         {label(`${idPrefix}-sellerPrivateName`, "담당자 이름")}
