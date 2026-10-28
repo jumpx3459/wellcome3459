@@ -1643,7 +1643,7 @@ function AdminDashboard({
         </div>
       )}
       {openFormFor === "new" && (
-        <DealForm key={`new-${copy?.nonce ?? sameSeller?.nonce ?? 0}`} copied={!!copy} prefill={copy?.prefill} carry={copy ? copy.carry : sameSeller?.carry ?? null} onRegistered={load} onNextSame={(c) => { setCopy(null); setSameSeller({ nonce: Date.now(), carry: c }); }} adminKey={adminKey} wide={isDesktop} footerSlot={isDesktop ? panelFooterEl : undefined} onDirtyChange={setDealFormDirty} onGoBizCheck={isDesktop ? goBizFromFormPanel : goToBizCheck} sourcedOptions={sourcedOptions} onDone={() => { setOpenFormFor(null); load(); }} />
+        <DealForm key={`new-${copy?.nonce ?? sameSeller?.nonce ?? 0}`} copied={!!copy} adminRole={role} prefill={copy?.prefill} carry={copy ? copy.carry : sameSeller?.carry ?? null} onRegistered={load} onNextSame={(c) => { setCopy(null); setSameSeller({ nonce: Date.now(), carry: c }); }} adminKey={adminKey} wide={isDesktop} footerSlot={isDesktop ? panelFooterEl : undefined} onDirtyChange={setDealFormDirty} onGoBizCheck={isDesktop ? goBizFromFormPanel : goToBizCheck} sourcedOptions={sourcedOptions} onDone={() => { setOpenFormFor(null); load(); }} />
       )}
       {formRequest && (
         <DealForm
@@ -3295,8 +3295,11 @@ function DealForm({
   onCloseDeal,
   onToast,
   copied = false,
+  adminRole = null,
 }: {
   adminKey: string;
+  /** 폼 안 사업자 조회(예외 확인 버튼·이력 권한)용 */
+  adminRole?: string | null;
   /** 2026-10-28 PR-B C: [복사해서 새로 등록]으로 연 폼 — 마감은 미선택으로 시작(새로 고르게), 판매자 정보는 펼쳐서 시작 */
   copied?: boolean;
   /** 2026-10-23 "edit" = 진행 중 매물 수정(initialDeal로 채움, 저장은 PATCH /api/admin/deals/manage — 등록 API·알림 발송은 절대 부르지 않음) */
@@ -3437,6 +3440,19 @@ function DealForm({
   // 2026-10-04: 직접 등록(판매 신청 아님)의 실제 판매자(내부 전용)·연결할 사업자 조회 — 판매 신청 승인은 신청 정보를 쓰므로 칸을 숨김
   const [sellerPrivate, setSellerPrivate] = useState<SellerPrivateDraft>(carry ? { company: carry.company, name: carry.name, phone: carry.phone, phone2: carry.phone2, checkId: "" } : EMPTY_SELLER_PRIVATE);
   const [posted, setPosted] = useState<{ title: string; carry: SameSellerCarry } | null>(null); // 7b 등록 완료 카드
+  // 2026-10-28 PR-B E: 폼 안 사업자 조회가 끝나면 통과 건을 조회 기록으로 자동 선택하고, 선택 목록·7a 칩 목록을 다시 읽음(refreshKey)
+  const [checkRefresh, setCheckRefresh] = useState(0);
+  const [checkedNote, setCheckedNote] = useState<string | null>(null);
+  const onInlineChecked = (item: BusinessCheck) => {
+    if (!isPassingCheck(item)) {
+      setCheckedNote(null);
+      return;
+    }
+    setSellerPrivate((prev) => ({ ...prev, checkId: item.id }));
+    setFieldErrors((prev) => ({ ...prev, businessCheckId: undefined }));
+    setCheckRefresh((k) => k + 1);
+    setCheckedNote(`${item.b_no_masked ?? "사업자"} 조회 결과를 이 매물의 조회 기록으로 선택했어요.`);
+  };
   const [sourcedBy, setSourcedBy] = useState(""); // 2026-10-10 [발굴 매니저] 관리자 id("" = 없음)
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -3899,10 +3915,30 @@ function DealForm({
               }}
               errors={{ company: fieldErrors.sellerPrivateCompany, phone: fieldErrors.sellerPrivatePhone, phone2: fieldErrors.sellerPrivatePhone2, name: fieldErrors.sellerPrivateName, checkId: fieldErrors.businessCheckId }}
               showCheckPicker
-              onGoBizCheck={onGoBizCheck}
               disabled={submitting}
               reuseFromCheckId={carry?.checkId}
+              refreshKey={checkRefresh}
             />
+            {/* 2026-10-28 PR-B E: 패널 안에서 바로 조회 — "사업자 조회 바로가기"(패널을 숨기고 나감)는 이 조회가 생겨 등록 폼에서는 뺌(수정 화면은 그대로) */}
+            <div className="mt-3 rounded-xl border border-gray200 bg-white" style={{ padding: "0 12px" }}>
+              <BusinessCheckSection
+                compact
+                id="business-check-inline"
+                adminKey={adminKey}
+                adminRole={adminRole}
+                requests={[]}
+                phoneMatch={{}}
+                preselect={null}
+                className="flex flex-col gap-3 pb-3"
+                onChanged={() => {}}
+                onChecked={onInlineChecked}
+              />
+            </div>
+            {checkedNote && (
+              <p className="mt-2 font-medium" style={{ fontSize: rem(14), color: "#1D8A44" }} data-biz-inline-note>
+                ✓ {checkedNote}
+              </p>
+            )}
           </div>
         )}
         {/* 2026-10-10 매니저 실적: 이 판매자를 찾아온 관리자(새 판매자 발굴). 직접 등록·판매 신청 승인 공통, 기본 "없음" */}

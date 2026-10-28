@@ -72,7 +72,16 @@ export default function BusinessCheckSection({
   open,
   onToggle,
   onChanged,
+  compact = false,
+  onChecked,
+  id = "business-check",
 }: {
+  /** 2026-10-28 PR-B E: 관리자 등록 폼 판매자 정보 안에 넣는 작은 판. 신청 선택·재사용 후보·띠 제목 없음, 접힌 채 시작, 이력은 [조회 이력 보기]로 접음 */
+  compact?: boolean;
+  /** 조회·다시 조회·예외 확인이 끝날 때마다 그 기록을 알려 줌(등록 폼이 통과 건을 조회 기록으로 자동 선택) */
+  onChecked?: (item: BusinessCheck) => void;
+  /** 맨 바깥 div id — 대시보드 카드는 "business-check"(바로가기 대상), 폼 안은 따로 줘서 중복 방지 */
+  id?: string;
   adminKey: string;
   adminRole: string | null;
   /** 대기 중인 판매 신청 */
@@ -100,6 +109,8 @@ export default function BusinessCheckSection({
   const [last, setLast] = useState<BusinessCheck | null>(null);
   const [history, setHistory] = useState<BusinessCheck[]>([]);
   const [expanded, setExpanded] = useState(false);
+  const [cOpen, setCOpen] = useState(false); // compact: 판 자체 펼침(기본 접힘)
+  const [histOpen, setHistOpen] = useState(false); // compact: 이력 목록 펼침(기본 접힘)
   const [exceptionFor, setExceptionFor] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [exceptionError, setExceptionError] = useState<string | null>(null);
@@ -119,8 +130,9 @@ export default function BusinessCheckSection({
     setHistory(data?.items ?? []);
   }, [adminKey, requestId, canSeeHistory]);
   useEffect(() => {
+    if (compact && !(cOpen && histOpen)) return; // compact는 이력을 펼칠 때만 읽음
     void loadHistory();
-  }, [loadHistory]);
+  }, [loadHistory, compact, cOpen, histOpen]);
 
   const selected = requests.find((r) => r.id === requestId) ?? null;
   const companyMismatch = !!selected && !!company.trim() && !!selected.company_name && normCompany(company) !== normCompany(selected.company_name);
@@ -145,7 +157,8 @@ export default function BusinessCheckSection({
         return;
       }
       setLast(data.item);
-      await loadHistory();
+      onChecked?.(data.item as BusinessCheck);
+      if (!compact || histOpen) await loadHistory();
       onChanged();
     } catch {
       setError("조회에 실패했어요.");
@@ -169,6 +182,8 @@ export default function BusinessCheckSection({
     setExceptionFor(null);
     setReason("");
     setLast((l) => (l && l.id === id ? { ...l, exception_ok: true, exception_reason: reason } : l));
+    const excChecked = history.find((h) => h.id === id) ?? (last && last.id === id ? last : null);
+    if (excChecked) onChecked?.({ ...excChecked, exception_ok: true, exception_reason: reason });
     await loadHistory();
     onChanged();
   };
@@ -194,7 +209,21 @@ export default function BusinessCheckSection({
   const inputClass = "w-full border-2 border-gray200 rounded-xl px-3 outline-none focus:border-orange bg-white";
 
   return (
-    <div id="business-check" className={className} style={{ scrollMarginTop: 12 }}>
+    <div id={id} className={className} style={{ scrollMarginTop: 12 }} data-biz-compact={compact ? "" : undefined}>
+      {compact && (
+        <button
+          type="button"
+          onClick={() => setCOpen((v) => !v)}
+          aria-expanded={cOpen}
+          className="w-full flex items-center justify-between gap-2 text-left font-bold"
+          style={{ minHeight: 44, fontSize: rem(15), color: "#0B2540" }}
+          data-biz-compact-toggle
+        >
+          <span>🔍 사업자 새로 조회 (국세청 진위확인)</span>
+          <span className="flex-shrink-0" style={{ fontSize: rem(14), color: "#3730A3" }}>{cOpen ? "접기 ▲" : "펼치기 ▼"}</span>
+        </button>
+      )}
+      {!compact && (<>
       <div className={`${bandBleedClass(className)} py-2`} style={{ background: LIST_CARD_BAND_BG }} data-card-band-x>
       {onToggle ? (
         <button type="button" onClick={onToggle} className="w-full flex items-center justify-between gap-2 text-left" style={{ minHeight: 44 }} data-card-toggle>
@@ -207,9 +236,11 @@ export default function BusinessCheckSection({
         <div {...LIST_CARD_TITLE_PROPS}>사업자 조회</div>
       )}
       </div>
-      {(open ?? true) && (<>
-      <p style={META}>통화로 받은 사업자번호·대표자명·개업일자로 국세청 진위확인을 해요. 판매 신청은 조회가 통과해야 매물로 등록할 수 있어요.</p>
+      </>)}
+      {(compact ? cOpen : (open ?? true)) && (<>
+      <p style={META}>{compact ? "통화로 받은 사업자번호·대표자명·개업일자로 조회해요. 통과하면 이 매물의 조회 기록으로 자동 선택돼요." : "통화로 받은 사업자번호·대표자명·개업일자로 국세청 진위확인을 해요. 판매 신청은 조회가 통과해야 매물로 등록할 수 있어요."}</p>
 
+      {!compact && (
       <label className="flex flex-col gap-1">
         <span style={DEAL_LABEL_STYLE}>판매 신청 (선택)</span>
         <select
@@ -230,6 +261,7 @@ export default function BusinessCheckSection({
           ))}
         </select>
       </label>
+      )}
       {/* 2026-10-21 확인된 판매자 재사용 — 신청을 고르면 같은 회원의 이전 신청에서 확인된 기록을 찾아 보여줌(국세청 호출 없음) */}
       {requestId && (
         <ReuseCandidate
@@ -243,7 +275,7 @@ export default function BusinessCheckSection({
           }}
         />
       )}
-      <div className="grid grid-cols-2 gap-2">
+      <div className={compact ? "grid grid-cols-1 gap-2 @min-[420px]:grid-cols-2" : "grid grid-cols-2 gap-2"}>
         <label className="flex flex-col gap-1">
           <span style={DEAL_LABEL_STYLE}>사업자등록번호</span>
           <input className={inputClass} style={inputStyle} inputMode="numeric" placeholder="123-45-67890" value={bNo} onChange={(e) => setBNo(formatBizNoTyping(e.target.value))} />
@@ -298,7 +330,12 @@ export default function BusinessCheckSection({
         </div>
       )}
 
-      {canSeeHistory && (
+      {compact && canSeeHistory && (
+        <button type="button" onClick={() => setHistOpen((v) => !v)} aria-expanded={histOpen} className={`w-full ${BTN_CLASS}`} style={{ ...btnStyle("secondary"), minHeight: 44, fontSize: rem(15) }} data-biz-hist-toggle>
+          {histOpen ? "조회 이력 접기" : "조회 이력 보기"}
+        </button>
+      )}
+      {canSeeHistory && (!compact || histOpen) && (
         <div className="flex flex-col gap-2" data-biz-history>
           <div className="font-bold" style={{ fontSize: rem(15), color: "#0B2540" }}>
             {requestId ? "이 신청의 조회 이력" : "최근 조회 이력"} ({cards.length})

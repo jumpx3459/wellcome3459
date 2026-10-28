@@ -49,7 +49,10 @@ export default function SellerPrivateFields({
   disabled,
   adminRole,
   reuseFromCheckId,
+  refreshKey = 0,
 }: {
+  /** 2026-10-28 PR-B E: 숫자가 바뀌면 조회 기록 목록과 7a 칩 목록을 다시 읽음(폼 안 사업자 조회가 끝난 직후) */
+  refreshKey?: number;
   adminKey: string;
   idPrefix: string;
   value: SellerPrivateDraft;
@@ -89,7 +92,7 @@ export default function SellerPrivateFields({
   useEffect(() => {
     if (!showCheckPicker) return;
     void load();
-  }, [showCheckPicker, load]);
+  }, [showCheckPicker, load, refreshKey]);
 
   // 이전 매물 조회 기록 이어받기(재사용 1회). 값·onChange는 ref로 최신을 읽음
   const [carryNote, setCarryNote] = useState<{ state: "busy" | "ok" | "fail"; warnings: ReuseWarning[]; error?: string } | null>(reuseFromCheckId ? { state: "busy", warnings: [] } : null);
@@ -146,7 +149,7 @@ export default function SellerPrivateFields({
     return () => {
       cancelled = true;
     };
-  }, [showCheckPicker, adminKey]);
+  }, [showCheckPicker, adminKey, refreshKey]);
   const pickChip = async (chip: Chip) => {
     if (chipBusy || disabled) return;
     setChipBusy(chip.rootCheckId);
