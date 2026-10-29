@@ -58,6 +58,8 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 ## 최근 작업 (2026-10-29) — 카테고리 0건 방지 (브랜치 `fix/category-zero-guard`) — 결정 요약
 - **#130(`feat/member-home-focus`) merge 기록:** squash `2bc1322` · CI build run 40858622082 · Deploy run 40858801028 · 운영 /·/mypage 200. 회원 홈 2칸 버튼·견적함 한 줄·곧 마감 묶음·카테고리 0개 표시(pw35 100건, 견적함 "준비 중"↔"✓ 신청함" 높이 동일 시험 포함).
 - 범위(대표 10/29 승인, DB 변경 없음): ① MY 저장 순서 — 선택 항목 upsert 먼저 → 미선택만 delete(중간 실패해도 0건 안 됨) ② MY 0개 저장 막기(저장 버튼 비활성 + 화면 안 이유 문구) ③ 가입 카테고리 저장 오류 확인 + 실패 안내(`catRows` 비면 실패 처리).
+- **구현:** `mypage/page.tsx` save — 0개면 저장 안 함(버튼 `disabled` + `[data-category-zero-notice]` 문구, window.confirm 아님) → 카테고리 조회(오류·빈 결과면 아무것도 안 지우고 실패) → upsert(`onConflict member_id,category_id`·ignoreDuplicates) → 선택 안 한 것만 `.not("category_id","in",…)` delete. `signup/page.tsx` — 조회 오류·빈 결과·upsert 오류면 "관심 카테고리를 저장하지 못했어요 … 다시 눌러주세요" 안내 + 가입 화면에 남김(members upsert는 멱등이라 재시도 안전, 푸시 구독 저장·홈 이동은 성공 뒤로).
+- **시험(fake env, 운영 호출 0):** 신규 pw36 33건 — MY 일부→추가/바꾸기/전체(upsert→delete 순서·저장 중 0건 순간 없음), 0개(버튼 비활성·이유·쓰기 0), upsert 실패(기존 선택 유지·delete 안 함), delete 실패(선택 항목 이미 반영·0건 아님), 조회 빈 결과/500(쓰기 0), 가입 정상·저장 실패 후 재시도·조회 빈 결과/500·1단계 0개 차단 / 회귀 pw35 100 · pw33 417 · pw32 108 · pw23 35 · pw26 45 · pw31 118 · pw34 29 · overflow 384 · tsc 0 · eslint(mypage·signup) 오류 0.
 - 확인: `supabase/schema.sql`의 `member_categories`는 `primary key (member_id, category_id)` → upsert 가능(마이그레이션 20개 중 이 표를 바꾸는 것 없음).
 
 ## 최근 작업 (2026-10-29) — 회원 홈 상단 개편 (브랜치 `feat/member-home-focus`) — 결정 요약
