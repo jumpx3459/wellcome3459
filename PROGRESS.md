@@ -55,6 +55,11 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
+## 최근 작업 (2026-10-29) — 회원 화면 PR-C: 상세 사진 contain · 브랜드 보호 카드 (브랜치 `fix/deal-photo-card`)
+- B 상세 사진: `PhotoCarousel`에 `contain` 옵션(상세만 사용) — 사진을 자르지 않고 3:2 칸 안에 통째로, 남는 칸 #F3F4F6. 카드 사진(1:1 cover)·`PhotoViewer`는 변경 없음.
+- H 브랜드 보호 카드(/deals 목록 `DealListCard`·회원 홈 `HomeDealCard`·비회원 홈 `page.tsx` — "관련 매물" 카드는 코드에 없음): 비회원 = 사진 위 "🔒 보호 사진 N장" 칩(목록) + 글 영역 회색 "가입하면 브랜드·실제 사진 공개"(`ProtectedGateNote`, 비회원 홈은 "🔒 보호 사진 N장" 줄도 같이), 회원 = 전체 장수 "📷 (공개+보호)장", 회원 홈 134px 카드는 🛡만. 🛡 "브랜드 보호" 칩(왼쪽 위)은 기존 그대로.
+- 시험(fake env, 운영 호출 0): pw32 96건(B·H, 비회원·회원, 1280·360·360 200%) · 회귀 pw7 37 · pw22 47 · pw23 35(회원 목록 기대값 "📷 4장"으로 갱신) · pw24 34 · pw25 6 · pw26 45 · pw27 26 · pw28 24 · pw29 35 · pw30 81 · overflow 384 · tsc 0 · lint 기존 2.
+
 ## 최근 작업 (2026-10-28) — 관리자 등록 폼 v2 PR-B (브랜치 `feat/admin-deal-workflow`)
 - **#125 병합 기록**(관리자 등록 폼 v2 PR-B): squash 병합 `70c2e1fd959bd1666e39cdbeade52e6e9f797932`(10/28) · PR CI `build` run 40662240503 성공 · Deploy to Vercel run 40662408298 성공 · 운영 `/admin`·`/deals` 200. 원격 브랜치 삭제.
 - **#124 병합 기록**(관리자 등록 폼 v2 PR-A): squash 병합 `889df4dc538a401e0784b17700be83cf96c3dff8`(10/28) · PR CI `build` run 40647501316 성공 · Deploy to Vercel run 40647632973 성공 · 운영 `/admin`·`/deals` 200. 원격 브랜치 삭제.
