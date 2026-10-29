@@ -55,6 +55,12 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
+## 최근 작업 (2026-10-29) — 회원 홈 상단 개편 (브랜치 `feat/member-home-focus`) — 결정 요약
+- **#129(`fix/share-deal-list`) merge 기록:** squash `b113a5f` · CI build run 40839441708 · Deploy run 40839615467 · 운영 /admin·/deals·/share·/ 200. 공유 매물 목록 `.limit(20)`·`.slice(0, 8)` 제거(limit 100).
+- 범위(대표 10/29 승인, 회원 홈 `AlertInboxHome` 한정 — 비회원 홈·/deals·AppShell·BottomNav 변경 금지): ① 카테고리 0개 표시(MY "선택 안 함 · 새 매물 알림이 오지 않아요" / 홈 별도 문구 + [관심 카테고리 고르기]) ② 판매 배너 → [🔍 덤핑 매물 찾기][📦 재고 판매하기] 2칸(높이 44px, FAB 숨김 기준은 새 판매 버튼의 `data-sell-banner-button`) ③ 견적함 한 줄(`QuotesTeaserCard` compact — 탭하면 기존 신청 시트, MY 카드 변경 없음·목록 끝 카드 제거) ④ "⏰ 곧 마감" 묶음(이미 불러온 내 조건 매물 중 24시간 이내 최대 2건, 시간 버킷 중복 없음, `isDeadlineSoon` 공용 lib로 이동·시간 인자 기본 6). 제외: 검색창·카테고리 칩·조건 미설정 전용 카드·새 이벤트 기록·DB 변경·"점프마켓"·협상 탭·근거 없는 할인율·상단 고정 탭.
+- 판단: 첫 화면 밀림은 (b) 버튼 높이 44px·간격 8px 이하로 최소화(전후 y값 보고) / 곧 마감 한계(최신 50건 안에서만) 수용 / 0건 차단은 별도 PR `fix/category-zero-guard`(MY 0개 저장 막기·upsert 먼저 → 미선택만 delete·가입 upsert 오류 확인).
+- 조사: `member_categories` 0건 경로 = MY 저장(`mypage/page.tsx` save: 0개 보호 없음 + delete 후 insert 비원자) · 가입 저장(`signup/page.tsx` `catRows?.length` 없으면 건너뜀, upsert 오류 미확인) · MY가 0건을 "전체 카테고리"로 표시해 설정된 것처럼 보임.
+
 ## 최근 작업 (2026-10-29) — 공유 매물 목록 전체 노출 (브랜치 `fix/share-deal-list`)
 - **#128(`fix/admin-menu-width`) merge 기록:** squash `e0e1e5d` · CI build run 40837546821 · Deploy run 40837714181 · 운영 /admin·/deals·/ 200. 구현: 구매요청·회원 ≥1280px 2열 / 거래 연결 880·사업자 조회 720·관리자 720 / 헤더 제목 = 메뉴 이름. 후속 조사: 360·글자 200% 회원 메뉴 `#leads` 카드의 전화번호 줄(`whitespace-nowrap` + `overflow-hidden`)·[불발] 버튼(`flex-1 whitespace-nowrap`)이 잘림(이전부터 있던 문제, 수정 대기).
 - **조사 요약:** 하단 [공유] 탭 "공유할 매물 선택"에 운영 활성 33건 중 8건만 보임 — `useReferralShare.ts`가 status=active·closes_at>now를 created_at 최신순 `.limit(20)`으로 가져온 뒤 [테스트] 제목 제외 → `.slice(0, 8)`. 라이타(10/23 등록)는 그보다 최근 실매물이 8건 이상이라 탈락(마감 연장은 created_at 정렬과 무관). 이 목록을 쓰는 화면은 `/share` 한 곳.
