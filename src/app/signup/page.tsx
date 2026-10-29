@@ -429,6 +429,7 @@ function SignupPageInner() {
       if (catSaveError) {
         debugLog(`[signup] member_categories save failed ${"code" in catSaveError ? catSaveError.code : catSaveError.message}`);
         setError("관심 카테고리를 저장하지 못했어요. 가입 정보는 저장됐으니 잠시 후 [동의하고 시작하기]를 다시 눌러주세요.");
+        showToast("관심 카테고리를 저장하지 못했어요. 다시 눌러주세요"); // 오류 문구는 동의 칸 아래라 화면 밖일 수 있음 — 하단 CTA 위 토스트로도 알림
         setSubmitting(false);
         return;
       }
