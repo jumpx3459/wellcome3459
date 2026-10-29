@@ -55,6 +55,15 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
+## 최근 작업 (2026-10-29) — 관리자 사이드바 (브랜치 `feat/admin-sidebar`) — 결정 요약
+- **#126(PR-C `fix/deal-photo-card`) merge 기록:** squash `69c7c03` · CI build run 40794085190 · Deploy run 40794253329 · 운영 /admin·/deals·/ 200. 커밋 0(PROGRESS #125) / B `fefbf6c` / H `5855efb` / PROGRESS `4150612`. 수용: 비회원 홈 사진 위 🛡만·안내는 글 영역 / 회원 홈 "🛡 N장" 제거·"📷 공개+보호 합계" 유지. /p/[slug]는 UI 미변경, 비회원 노출 검사 0건.
+- **결정 로그(log/2026-10-27-admin-sidebar-layout-plan)는 Claude 프로젝트에만 있어 대표가 확정본을 지시서로 전달 — 아래가 요약.**
+- 메뉴 9개(id·순서): 1 조치 필요 `actions`(조치 타일 + 핵심 지표·7일 추세·참고 현황·KPI 기록·카테고리별 현황 — 별도 지표 메뉴 없음) / 2 매물 `deals`(대기 중인 판매자 신청 → [+ 새 매물 직접 등록]·deal-form-slot → 진행 중인 매물) / 3 긴급 공지 `notice` / 4 구매요청 `buy`([+ 찾습니다 대신 등록] + 이런 재고 찾습니다) / 5 거래 연결 `connections` / 6 회원 `members`(관심 표시한 회원 + 최근 가입 회원·상세 패널) / 7 점핑파트너 `partners`(신청 + 실적) / 8 사업자 조회 `bizcheck`(배지 없음) / 9 관리자 `admins`(비밀번호 변경 전 역할 + 관리자 목록 최고관리자만). 권한 없는 블록만 있는 메뉴는 숨김.
+- 레이아웃: `isDesktop`(1024) 기준. PC = 좌측 220px sticky 사이드바 + 우측 선택 메뉴 전체 폭(진행 중 매물 2~3열 grid), 📱/💻·로그아웃은 사이드바 하단. 폰 = 상단 칩 9개(가로 스크롤·44px·활성 칩 scrollIntoView·숫자 배지), 서랍 없음. #116 3열·`col()`·`slot()` 0건 압축 제거. 모든 메뉴 블록은 마운트 유지 + 선택 안 된 메뉴 hidden(언마운트 금지), fetch 시점 변경 없음. 접힘 state 유지·기본값 펼침. 메뉴 전환 시 맨 위로.
+- 배지(목록 파생값, 0이면 숨김): 1 조치 타일 합계 / 2 판매자 신청 조치 + 마감 임박·지남 / 4 `buyRequestNeedsAction` / 5 stuck+open / 6 `leadNeedsAction` / 7 `partnerRequestNeedsAction` / 3·8·9 없음.
+- `?m=`: 메뉴 클릭 `history.pushState` + popstate 복원, 최초 정규화 `replaceState`, router.replace·useSearchParams 안 씀(마운트 후 effect에서 location 읽기). 모르는 값·권한 없는 값 → actions. 재로그인 후 URL의 m 유지, #118 오버레이 중 상태 유지.
+- 메뉴 간 이동(조치 타일·[연결 보기]·사업자 조회 바로가기·공급 제안): 메뉴 전환 → requestAnimationFrame → 기존 스크롤·필터. 푸시 알림 주소는 그대로 `/admin`(sw.js는 열린 창을 pathname만 비교해 focus만 함 — `?m=` 푸시는 별도 PR).
+
 ## 최근 작업 (2026-10-29) — 회원 화면 PR-C: 상세 사진 contain · 브랜드 보호 카드 (브랜치 `fix/deal-photo-card`)
 - B 상세 사진: `PhotoCarousel`에 `contain` 옵션(상세만 사용) — 사진을 자르지 않고 3:2 칸 안에 통째로, 남는 칸 #F3F4F6. 카드 사진(1:1 cover)·`PhotoViewer`는 변경 없음.
 - H 브랜드 보호 카드(/deals 목록 `DealListCard`·회원 홈 `HomeDealCard`·비회원 홈 `page.tsx` — "관련 매물" 카드는 코드에 없음): 비회원 = 사진 위 "🔒 보호 사진 N장" 칩(목록) + 글 영역 회색 "가입하면 브랜드·실제 사진 공개"(`ProtectedGateNote`, 비회원 홈은 "🔒 보호 사진 N장" 줄도 같이), 회원 = 전체 장수 "📷 (공개+보호)장", 회원 홈 134px 카드는 🛡만. 🛡 "브랜드 보호" 칩(왼쪽 위)은 기존 그대로.
