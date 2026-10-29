@@ -21,17 +21,30 @@ export function ShieldBadge({ compact = false }: { compact?: boolean }) {
   );
 }
 
-/** 사진 위 "🛡 보호 사진 N장" 알약(오른쪽 아래) */
-export function ProtectedCount({ count, compact = false }: { count: number; compact?: boolean }) {
+/** 사진 위 "🛡 보호 사진 N장" 알약(오른쪽 아래) — locked(비회원)면 "🔒 보호 사진 N장" */
+export function ProtectedCount({ count, compact = false, locked = false }: { count: number; compact?: boolean; locked?: boolean }) {
   if (!(count > 0)) return null;
   return (
     <span
       className="rounded font-bold text-white whitespace-nowrap pointer-events-none"
       style={{ fontSize: rem(compact ? 12 : 13), lineHeight: 1.3, padding: "2px 7px", background: "rgba(0,0,0,.55)" }}
       data-protected-count
+      data-protected-locked={locked ? "" : undefined}
     >
-      {compact ? `🛡 ${count}장` : `🛡 보호 사진 ${count}장`}
+      {compact ? `${locked ? "🔒" : "🛡"} ${count}장` : `${locked ? "🔒" : "🛡"} 보호 사진 ${count}장`}
     </span>
+  );
+}
+
+export const PROTECTED_GATE_NOTE = "가입하면 브랜드·실제 사진 공개";
+
+/** 비회원 카드 글 영역의 회색 안내 한 줄(줄바꿈 허용 — 좁은 칸·큰 글자에서 넘치지 않게). compact(홈 카드)는 "🔒 보호 사진 N장" 줄도 같이 */
+export function ProtectedGateNote({ count = 0, compact = false }: { count?: number; compact?: boolean }) {
+  return (
+    <div className="min-w-0" style={{ marginTop: 4, fontSize: rem(14), lineHeight: 1.35, color: "#6B7280", overflowWrap: "anywhere" }} data-protected-gate>
+      {compact && count > 0 && <div className="font-bold" style={{ color: "#374151" }} data-protected-gate-count>🔒 보호 사진 {count}장</div>}
+      <div data-protected-gate-note>{PROTECTED_GATE_NOTE}</div>
+    </div>
   );
 }
 

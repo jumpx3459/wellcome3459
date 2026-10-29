@@ -560,6 +560,7 @@ function DealDetailPageInner() {
             onIndexChange={setPhotoIndex}
             onOpen={(i) => setViewerIndex(i)}
             ratio="3/2"
+            contain
             overlay={
               <>
                 <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5" data-hero-head>

@@ -25,6 +25,7 @@ export default function DealCardMedia({
   tag = null,
   brandProtected = false,
   protectedCount = 0,
+  member = true,
 }: {
   image?: string | null;
   alt: string;
@@ -42,6 +43,7 @@ export default function DealCardMedia({
   tag?: string | null; // 사진 위 왼쪽 아래 오버레이(카테고리·시즌 태그) — 반투명 네이비 바탕 흰 글자
   brandProtected?: boolean; // 2026-10-27 브랜드 보호 — 🛡 배지·"보호 사진 N장"·공개 사진 없으면 🛡 타일
   protectedCount?: number;
+  member?: boolean; // 2026-10-29 PR-C H: 비회원이면 보호 사진 칩이 "🔒 보호 사진 N장", 회원이면 공개+보호 합친 "📷 N장"(imageCount에 이미 합쳐서 받음)
 }) {
   const clickable = !!image && !!onMediaClick;
   return (
@@ -80,7 +82,7 @@ export default function DealCardMedia({
       )}
       {/* 아래 줄: 왼쪽 태그 · 오른쪽 사진 장수 — 한 줄(flex)에 두어 큰 글자·긴 태그에서도 겹치지 않음(태그가 말줄임으로 줄어듦).
           2026-10-08 4b-1: 장수는 "1/N" 대신 "📷 N장", 2장 이상일 때만 */}
-      {(tag || (image && imageCount > 1) || (image && brandProtected && protectedCount > 0)) && (
+      {(tag || (image && imageCount > 1) || (image && brandProtected && !member && protectedCount > 0)) && (
         <div className="absolute bottom-2 left-2 right-2 flex items-end gap-2 pointer-events-none">
           {tag && (
             <div
@@ -100,9 +102,9 @@ export default function DealCardMedia({
               📷 {imageCount}장
             </span>
           )}
-          {image && brandProtected && protectedCount > 0 && (
+          {image && brandProtected && !member && protectedCount > 0 && (
             <span className="ml-auto flex-shrink-0">
-              <ProtectedCount count={protectedCount} />
+              <ProtectedCount count={protectedCount} locked />
             </span>
           )}
         </div>
