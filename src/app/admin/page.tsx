@@ -12,7 +12,7 @@ import VideoNotUploadedSheet, { PHOTO_FAILED_DESCRIPTION, uploadingLabel, videoN
 import SellerDisplayPicker from "@/components/SellerDisplayPicker";
 import { scrollToBizCheck } from "@/lib/bizCheckJump";
 import { AdminMenuChips, AdminSidebar, type AdminMenuItem } from "@/components/admin/AdminMenuNav";
-import { DEFAULT_ADMIN_MENU, adminMenuSearch, menuFromSearch, resolveAdminMenu, visibleAdminMenus, type AdminMenuId } from "@/lib/adminMenus";
+import { ADMIN_MENU_LABELS, DEFAULT_ADMIN_MENU, adminMenuSearch, menuFromSearch, resolveAdminMenu, visibleAdminMenus, type AdminMenuId } from "@/lib/adminMenus";
 import { NEGOTIABLE_LABEL, NEGOTIABLE_TEXT, isNegotiable, type PriceMode } from "@/lib/priceMode";
 import SellerPrivateFields, { EMPTY_SELLER_PRIVATE, type SellerPrivateDraft } from "@/components/admin/SellerPrivateFields";
 import { fetchCopySeller, COPY_PROTECTED_NOTE } from "@/lib/dealCopy";
@@ -1218,6 +1218,7 @@ function AdminDashboard({
         open={membersOpen}
         onToggle={() => setMembersOpen((v) => !v)}
         limit={null}
+        listClassName={isDesktop ? "grid grid-cols-1 min-[1280px]:grid-cols-2 gap-3 items-start" : undefined}
         toolbar={
         <>
         <input
@@ -1435,6 +1436,7 @@ function AdminDashboard({
         id="leads"
         flash={flashId === "leads"}
         limit={leadFilter === "uncontacted" ? null : 5}
+        listClassName={isDesktop ? "grid grid-cols-1 min-[1280px]:grid-cols-2 gap-3 items-start" : undefined}
         className={
           isDesktop
             ? "col-span-2 bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
@@ -2243,6 +2245,7 @@ function AdminDashboard({
         id="buy-requests"
         flash={flashId === "buy-requests"}
         limit={buyOnly ? null : 5}
+        listClassName={isDesktop ? "grid grid-cols-1 min-[1280px]:grid-cols-2 gap-3 items-start" : undefined}
         className={
           isDesktop
             ? "bg-white border border-gray200 rounded-2xl p-4 flex flex-col gap-3"
@@ -2511,6 +2514,9 @@ function AdminDashboard({
         {children}
       </div>
     );
+  // 2026-10-29 메뉴 폭: PC(사이드바)에서만 섹션 최대 폭을 왼쪽 정렬로 제한(거래 연결 880·사업자 조회 720·관리자 720). 폰은 감싸지 않음
+  const maxW = (px: number, node: React.ReactNode) =>
+    !isDesktop || !node ? node : <div className="w-full min-w-0" style={{ maxWidth: px }} data-menu-maxw={px}>{node}</div>;
   const changePasswordBtn = (
     <div className={isDesktop ? "" : "px-5 pt-4"}>
       <button
@@ -2552,7 +2558,7 @@ function AdminDashboard({
           <div className="text-xs font-bold tracking-widest" style={{ color: "#FFD166" }}>
             관리자
           </div>
-          <h1 className="font-display text-xl mt-1">매물 관리</h1>
+          <h1 className="font-display text-xl mt-1" data-header-title>{ADMIN_MENU_LABELS[activeMenu]}</h1>
           {adminName && (
             <div className="text-xs text-white/60 mt-0.5">
               {adminName} · {adminRole}
@@ -2850,11 +2856,11 @@ function AdminDashboard({
           {panelBox("deals", <>{pendingSellersBlock}{dealRegBlock}{activeDealsBlock}</>)}
           {panelBox("notice", noticeBlock)}
           {panelBox("buy", <>{buyProxyBlock}{buyRequestsBlock}</>)}
-          {panelBox("connections", connectionsBlock)}
+          {panelBox("connections", maxW(880, connectionsBlock))}
           {panelBox("members", <>{leadsBlock}{membersBlock}</>)}
           {panelBox("partners", <>{partnerReqBlock}{partnersOverviewBlock}</>)}
-          {panelBox("bizcheck", bizCheckBlock)}
-          {panelBox("admins", <>{changePasswordBtn}{adminsBlock}</>)}
+          {panelBox("bizcheck", maxW(720, bizCheckBlock))}
+          {panelBox("admins", maxW(720, <>{changePasswordBtn}{adminsBlock}</>))}
         </div>
       </div>
       {dealPanelEls}

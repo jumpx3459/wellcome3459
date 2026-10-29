@@ -55,6 +55,12 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
+## 최근 작업 (2026-10-29) — 관리자 메뉴 폭 (브랜치 `fix/admin-menu-width`) — 결정 요약
+- **#127(`feat/admin-sidebar`) merge 기록:** squash `0886838` · CI build run 40830707387 · Deploy run 40830864540 · 운영 /admin·/deals·/ 200. 확인: 점핑매니저도 관리자 메뉴로 [비밀번호 변경] 도달 / 메뉴 9개 전환 추가 API 호출 0(초기 로드 최고관리자 16·점핑매니저 4). pw2~15은 CI(build·lint만)에 없어 원본 수정 안 함.
+- 배경: 사이드바 이후 PC 우측 폭(약 900px)에 1열 카드가 그대로 늘어나 버튼·한 줄 정보가 과하게 넓음 → 메뉴별 폭 규칙(≥1024px 사이드바 레이아웃에만, 폰 화면 변화 0, 레이아웃만·로직 변경 없음).
+- 규칙: 구매요청 카드 목록 ≥1280px 2열(1024~1279 1열, [+ 찾습니다 대신 등록]·"전체 보기"는 grid 밖 전체 폭) / 회원 메뉴 관심 표시·최근 가입 카드 목록 ≥1280px 2열(검색·필터 칩·CSV 줄은 grid 밖) / 거래 연결 1열 max-width 약 880px 왼쪽 정렬 / 사업자 조회 max-width 약 720px / 관리자([비밀번호 변경]·관리자 목록) max-width 약 720px / 매물 현행 유지 / 헤더 제목 "매물 관리" 고정 → 현재 메뉴 이름(`ADMIN_MENU_LABELS` 재사용, 폰 칩 화면 포함). 카드 컴포넌트 내부 구조 변경 금지 — 감싸는 컨테이너 클래스만.
+- 시험(fake env, 운영 호출 0): pw33 417건(새 L 블록: 1440·1280 2열 / 1024·1023·360 1열 / 긴 상품명·메모 실데이터 버튼 잘림 없음 / 최대 폭 880·720 / 헤더 제목 = 메뉴 이름 9개 / 360 200% 넘침 0) · 회귀 pw21 61(헤더 문구 기대값 갱신) · pw24 34 · pw26 45 · pw27 26 · pw28 24 · pw31 118 · admin-perms 24 · connection-board 21 · member-detail 22 · admin-menus 20 · overflow 384 · tsc 0 · lint 기존 2.
+
 ## 최근 작업 (2026-10-29) — 관리자 사이드바 (브랜치 `feat/admin-sidebar`) — 결정 요약
 - **#126(PR-C `fix/deal-photo-card`) merge 기록:** squash `69c7c03` · CI build run 40794085190 · Deploy run 40794253329 · 운영 /admin·/deals·/ 200. 커밋 0(PROGRESS #125) / B `fefbf6c` / H `5855efb` / PROGRESS `4150612`. 수용: 비회원 홈 사진 위 🛡만·안내는 글 영역 / 회원 홈 "🛡 N장" 제거·"📷 공개+보호 합계" 유지. /p/[slug]는 UI 미변경, 비회원 노출 검사 0건.
 - **결정 로그(log/2026-10-27-admin-sidebar-layout-plan)는 Claude 프로젝트에만 있어 대표가 확정본을 지시서로 전달 — 아래가 요약.**
