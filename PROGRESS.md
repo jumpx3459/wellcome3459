@@ -55,6 +55,11 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
+## 최근 작업 (2026-10-29) — 공유 매물 목록 전체 노출 (브랜치 `fix/share-deal-list`)
+- **#128(`fix/admin-menu-width`) merge 기록:** squash `e0e1e5d` · CI build run 40837546821 · Deploy run 40837714181 · 운영 /admin·/deals·/ 200. 구현: 구매요청·회원 ≥1280px 2열 / 거래 연결 880·사업자 조회 720·관리자 720 / 헤더 제목 = 메뉴 이름. 후속 조사: 360·글자 200% 회원 메뉴 `#leads` 카드의 전화번호 줄(`whitespace-nowrap` + `overflow-hidden`)·[불발] 버튼(`flex-1 whitespace-nowrap`)이 잘림(이전부터 있던 문제, 수정 대기).
+- **조사 요약:** 하단 [공유] 탭 "공유할 매물 선택"에 운영 활성 33건 중 8건만 보임 — `useReferralShare.ts`가 status=active·closes_at>now를 created_at 최신순 `.limit(20)`으로 가져온 뒤 [테스트] 제목 제외 → `.slice(0, 8)`. 라이타(10/23 등록)는 그보다 최근 실매물이 8건 이상이라 탈락(마감 연장은 created_at 정렬과 무관). 이 목록을 쓰는 화면은 `/share` 한 곳.
+- **수정안 A(이 PR):** `.limit(20)` → `.limit(100)`, `.slice(0, 8)` 제거(`isTestTitle` 제외·정렬·기본 선택 = 최신 실매물·select 컬럼·공유 링크 생성은 그대로). 변경 파일 `useReferralShare.ts` 1개.
+
 ## 최근 작업 (2026-10-29) — 관리자 메뉴 폭 (브랜치 `fix/admin-menu-width`) — 결정 요약
 - **#127(`feat/admin-sidebar`) merge 기록:** squash `0886838` · CI build run 40830707387 · Deploy run 40830864540 · 운영 /admin·/deals·/ 200. 확인: 점핑매니저도 관리자 메뉴로 [비밀번호 변경] 도달 / 메뉴 9개 전환 추가 API 호출 0(초기 로드 최고관리자 16·점핑매니저 4). pw2~15은 CI(build·lint만)에 없어 원본 수정 안 함.
 - 배경: 사이드바 이후 PC 우측 폭(약 900px)에 1열 카드가 그대로 늘어나 버튼·한 줄 정보가 과하게 넓음 → 메뉴별 폭 규칙(≥1024px 사이드바 레이아웃에만, 폰 화면 변화 0, 레이아웃만·로직 변경 없음).
