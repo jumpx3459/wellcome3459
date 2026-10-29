@@ -13,15 +13,7 @@ export const sellerRequestNeedsAction = (r: object) => ((r as { status?: string 
 /** 파트너 신청: 심사중 */
 export const partnerRequestNeedsAction = (r: { status: string }) => r.status === "pending";
 
-/** 진행 중인 매물 — 마감임박: 진행 중 AND now < 마감 ≤ now + 6시간. 타일 숫자·카드 제목 건수·표시 줄·필터가 모두 이 함수 (2026-10-22).
- *  [테스트] 매물은 예전부터 타일에서 빠져 있어 그대로 제외(src/lib/categoryAvg.ts isTestTitle과 같은 기준). status가 있으면 active만 */
-export const DEADLINE_SOON_MS = 6 * 60 * 60 * 1000;
-export const isDeadlineSoon = (d: { closes_at: string; title?: string | null; status?: string | null }, now: number | Date): boolean => {
-  if (d.status != null && d.status !== "active") return false;
-  if (d.title?.includes("[테스트]")) return false;
-  const remain = new Date(d.closes_at).getTime() - (typeof now === "number" ? now : now.getTime());
-  return remain > 0 && remain <= DEADLINE_SOON_MS;
-};
+// 마감임박(6h) 판정 isDeadlineSoon·DEADLINE_SOON_MS는 2026-10-29 회원 홈과 같이 쓰려고 src/lib/dealSoon.ts로 옮김(기준 6시간 그대로, 관리자는 import 경로만 변경)
 
 /** 마감 지남 — 진행 중(active)인데 마감 시각이 지난 매물: closes_at ≤ now. [테스트] 제외. isDeadlineSoon(now < closes_at ≤ now+6h)과 겹치지 않음.
  *  (2026-10-24: 마감이 지나도 status는 자동으로 안 바뀌고 회원 화면은 closes_at 조회 조건으로 가림 → 관리자가 [마감]으로 정리하도록 조치 필요 타일로 보여 줌) */

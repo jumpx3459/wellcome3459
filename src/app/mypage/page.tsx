@@ -674,8 +674,9 @@ export default function MyPage() {
 
   if (notLoggedIn) return <LoginRequired />;
 
+  // 2026-10-29: 0개는 "전체"가 아니라 "선택 안 함" — 카테고리를 하나도 안 고르면 새 매물 알림(푸시)도 홈 매칭도 없음(전체 선택은 기존 "전체 카테고리" 그대로)
   const categorySummary =
-    categories.length === 0 || categories.length === mockCategories.length ? "전체 카테고리" : categories.join("·");
+    categories.length === 0 ? "선택 안 함 · 새 매물 알림이 오지 않아요" : categories.length === mockCategories.length ? "전체 카테고리" : categories.join("·");
   const pushCard = <PushStatusCard />;
 
   return (
@@ -971,7 +972,7 @@ export default function MyPage() {
               data="alerts"
               icon="🔔"
               label="알림 받기·조건"
-              right={categories.length === 0 || categories.length === mockCategories.length ? "전체" : `${categories.length}개`}
+              right={categories.length === 0 ? "선택 안 함" : categories.length === mockCategories.length ? "전체" : `${categories.length}개`}
               open={open === "alerts"}
               onClick={() => toggleOpen("alerts")}
             />
@@ -992,7 +993,7 @@ export default function MyPage() {
                         {categories.length === mockCategories.length ? "전체 해제" : "전체 선택"}
                       </button>
                     </div>
-                    <p className="mb-3" style={MY_META}>{categorySummary}</p>
+                    <p className="mb-3" style={categories.length === 0 ? { ...MY_META, color: "#B45309", fontWeight: 700 } : MY_META} data-category-summary={categories.length === 0 ? "none" : undefined}>{categorySummary}</p>
                     {/* 2026-09-27: 가입 카테고리 선택 화면과 같은 톤 — 흰 배경 + 선택 시 주황 테두리 */}
                     <div className="grid grid-cols-3 gap-2">
                       {mockCategories.map((c) => {

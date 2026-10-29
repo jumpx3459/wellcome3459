@@ -67,11 +67,11 @@ import {
   sellerRequestNeedsAction,
   partnerRequestNeedsAction,
   NEEDS_ACTION_ROW_STYLE,
-  isDeadlineSoon,
   isDeadlinePassed,
   deadlineChipLabel,
   NEEDS_ACTION_PASSED_ROW_STYLE,
 } from "@/lib/admin/needsAction";
+import { isDeadlineSoon } from "@/lib/dealSoon";
 import { isPassingCheck, NOT_CHECKED_MESSAGE, type BusinessCheck } from "@/lib/businessCheck";
 import { formatConsentDate } from "@/lib/consent";
 import { ADMIN_TEXT } from "@/lib/adminText";

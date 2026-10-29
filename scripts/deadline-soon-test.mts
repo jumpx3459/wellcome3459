@@ -1,10 +1,12 @@
-// 마감임박(6h) 판정 단위 시험 — src/lib/admin/needsAction.ts isDeadlineSoon·deadlineChipLabel (2026-10-22 feat/admin-deadline-soon-highlight).
+// 마감임박(6h) 판정 단위 시험 — src/lib/dealSoon.ts isDeadlineSoon(2026-10-29 공용 lib로 이동) · src/lib/admin/needsAction.ts deadlineChipLabel·isDeadlinePassed (2026-10-22 feat/admin-deadline-soon-highlight).
 // 실행: node --experimental-strip-types scripts/deadline-soon-test.mts   (Node 24 — 별도 패키지 없음, 운영 접속 없음)
 import { join, dirname } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const N = await import(pathToFileURL(join(root, "src/lib/admin/needsAction.ts")).href);
+const N0 = await import(pathToFileURL(join(root, "src/lib/admin/needsAction.ts")).href);
+const D = await import(pathToFileURL(join(root, "src/lib/dealSoon.ts")).href);
+const N = { ...N0, isDeadlineSoon: D.isDeadlineSoon };
 
 let failed = 0;
 const eq = (got: unknown, want: unknown, msg: string) => {
@@ -76,4 +78,14 @@ if (failed) {
   console.error(`\n${failed}건 실패`);
   process.exit(1);
 }
+// 2026-10-29: hours 인자 — 생략 = 6, 회원 홈 "곧 마감"은 24
+eq(D.isDeadlineSoon(deal(10 * H), now), false, "인자 없음(6h): 10시간 남음 → 제외");
+eq(D.isDeadlineSoon(deal(10 * H), now, 24), true, "24h: 10시간 남음 → 대상");
+eq(D.isDeadlineSoon(deal(24 * H), now, 24), true, "24h: 정확히 24시간 → 대상(≤)");
+eq(D.isDeadlineSoon(deal(24 * H + MIN), now, 24), false, "24h: 24시간 1분 → 제외");
+eq(D.isDeadlineSoon(deal(-MIN), now, 24), false, "24h: 이미 지남 → 제외");
+eq(D.isDeadlineSoon(deal(2 * H, { status: "closed" }), now, 24), false, "24h: 종료 매물 → 제외");
+eq(D.isDeadlineSoon(deal(2 * H, { title: "[테스트] 사과" }), now, 24), false, "24h: [테스트] → 제외");
+eq(D.DEADLINE_SOON_MS, 6 * H, "DEADLINE_SOON_MS = 6시간");
+
 console.log("\n전부 통과");
