@@ -499,18 +499,27 @@ export default function MyPage() {
       }
       const userId = userData.user.id;
 
-      const { error: delCatError } = await supabase.from("member_categories").delete().eq("member_id", userId);
-      if (delCatError) throw delCatError;
       // 2026-10-04: 지역은 알림 조건이 아님 — member_regions는 건드리지 않음(예전에 저장한 값도 지우지 않음)
 
-      const { data: catRows } = await supabase.from("categories").select("id, name").in("name", categories);
-
-      if (catRows?.length) {
-        const { error: insCatError } = await supabase
-          .from("member_categories")
-          .insert(catRows.map((c) => ({ member_id: userId, category_id: c.id })));
-        if (insCatError) throw insCatError;
+      // 2026-10-29: 0개 저장 금지 + 순서 변경 — 예전엔 "전부 지우기 → 다시 넣기"라 중간에 실패하면 0건(알림 끊김)이 됨.
+      // 이제 선택 항목을 먼저 반영(upsert, PK member_id+category_id)한 뒤 선택 안 한 것만 지움 → 어느 단계에서 실패해도 0건이 되지 않음
+      if (categories.length === 0) {
+        setSaveError("카테고리를 1개 이상 골라야 저장할 수 있어요.");
+        return;
       }
+      const { data: catRows, error: catLookupError } = await supabase.from("categories").select("id, name").in("name", categories);
+      if (catLookupError) throw catLookupError;
+      if (!catRows?.length) throw new Error("categories not found"); // 못 찾았으면 아무것도 지우지 않고 실패 처리
+      const { error: upsertCatError } = await supabase
+        .from("member_categories")
+        .upsert(catRows.map((c) => ({ member_id: userId, category_id: c.id })), { onConflict: "member_id,category_id", ignoreDuplicates: true });
+      if (upsertCatError) throw upsertCatError;
+      const { error: delCatError } = await supabase
+        .from("member_categories")
+        .delete()
+        .eq("member_id", userId)
+        .not("category_id", "in", `(${catRows.map((c) => c.id).join(",")})`);
+      if (delCatError) throw delCatError;
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch {
@@ -1021,7 +1030,14 @@ export default function MyPage() {
                       })}
                     </div>
                   </div>
-                  <button onClick={save} disabled={saving} className={`w-full ${BTN_CLASS}`} style={myBtnStyle("primary")} data-my-save>
+                  <button
+                    onClick={save}
+                    disabled={saving || categories.length === 0}
+                    aria-describedby={categories.length === 0 ? "category-zero-notice" : undefined}
+                    className={`w-full ${BTN_CLASS}`}
+                    style={categories.length === 0 ? { ...myBtnStyle("primary"), opacity: 0.45 } : myBtnStyle("primary")}
+                    data-my-save
+                  >
                     {saving ? (
                       "저장 중..."
                     ) : saved ? (
@@ -1032,6 +1048,12 @@ export default function MyPage() {
                       "설정 저장"
                     )}
                   </button>
+                  {/* 2026-10-29: 0개면 저장 막고 이유를 화면 안에 표시(window.confirm 아님) */}
+                  {categories.length === 0 && (
+                    <div id="category-zero-notice" role="status" className="font-medium" style={{ fontSize: rem(16), color: "#B45309" }} data-category-zero-notice>
+                      카테고리를 1개 이상 골라야 저장할 수 있어요. 고르지 않으면 새 매물 알림이 오지 않아요.
+                    </div>
+                  )}
                   {saveError && <div className="text-orange font-medium" style={{ fontSize: rem(16) }}>{saveError}</div>}
 
                   {alertLog.length > 0 && (
