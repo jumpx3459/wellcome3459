@@ -25,6 +25,7 @@ import { useBackToClose } from "@/lib/useBackToClose";
 import QuotesTeaserCard from "@/components/QuotesTeaserCard";
 import BuyNoticeBoard from "@/components/BuyNoticeBoard";
 import { QUOTES_ENABLED } from "@/lib/features";
+import { isDeadlineSoon } from "@/lib/dealSoon";
 
 // 헤더-콘텐츠 간격. 2026-10-09 4b-2: 헤더 고정(fixed) 해제 — 예전 실측 높이(83px) paddingTop 보정은 필요 없어짐
 const INBOX_HEADER_GAP = 14;
@@ -60,6 +61,21 @@ function bucketDeals(deals: Deal[]): FeedGroup[] {
   return Object.entries(buckets)
     .map(([label, items]) => ({ label, items }))
     .filter((g) => g.items.length > 0);
+}
+
+// 2026-10-29 "⏰ 곧 마감" 묶음: 이미 불러온 내 조건 매물(최신 INBOX_LIMIT건, status=active·closes_at>now 조회 — 종료 매물은 섞이지 않음) 중
+// 마감까지 24시간 이내인 것을 마감 임박순으로 최대 2건. 추가 조회 없음 — 최신 50건 밖의 오래된 매물은 해당 없음. 이 매물들은 아래 시간 버킷에서 뺌(중복 표시 없음)
+const SOON_HOURS = 24;
+const SOON_MAX = 2;
+function feedGroups(deals: Deal[]): FeedGroup[] {
+  const now = Date.now();
+  const soon = deals
+    .filter((d) => isDeadlineSoon(d, now, SOON_HOURS))
+    .sort((a, b) => Date.parse(a.closes_at) - Date.parse(b.closes_at))
+    .slice(0, SOON_MAX);
+  const soonIds = new Set(soon.map((d) => d.id));
+  const rest = bucketDeals(deals.filter((d) => !soonIds.has(d.id)));
+  return soon.length > 0 ? [{ label: "⏰ 곧 마감", items: soon }, ...rest] : rest;
 }
 
 export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: boolean }) {
@@ -170,7 +186,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
   // 2026-10-01 PR-C: 열려 있으면 안드로이드 뒤로가기 = 이것만 닫기 (src/lib/useBackToClose.ts)
   useBackToClose(viewer !== null, () => setViewer(null));
 
-  const groups = bucketDeals(deals);
+  const groups = feedGroups(deals);
 
   const openViewer = (e: React.MouseEvent, images: string[], video: string | null, index = 0) => {
     e.preventDefault();
