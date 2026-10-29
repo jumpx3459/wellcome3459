@@ -94,10 +94,10 @@ export function useReferralShare(memberId: string | null) {
       .eq("status", "active")
       .gt("closes_at", new Date().toISOString()) // 마감 지난 매물은 공유 목록에서 제외
       .order("created_at", { ascending: false })
-      .limit(20)
+      .limit(100) // 2026-10-29: 20 → 100 — 예전엔 최신 20건만 가져와 [테스트] 제외 뒤 8건으로 잘라 33건 중 8건만 보였음
       .then(({ data }) => {
-        // 2026-09-29: 제목에 [테스트]가 들어간 매물은 공유 목록에서 제외 (기본 선택도 실매물 중 최신)
-        const real = (data ?? []).filter((d) => !isTestTitle(d.title)).slice(0, 8);
+        // 2026-09-29: 제목에 [테스트]가 들어간 매물은 공유 목록에서 제외 (기본 선택도 실매물 중 최신). 2026-10-29: 8건 자르기(slice) 제거 — 진행 중 실매물 전부(최대 100)
+        const real = (data ?? []).filter((d) => !isTestTitle(d.title));
         setShareDeals(real);
         setSelectedShareDealId(real[0]?.id ?? "");
       });
