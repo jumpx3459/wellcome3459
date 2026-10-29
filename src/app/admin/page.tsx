@@ -11,7 +11,8 @@ import VideoUploader, { type VideoUploadStatus, type VideoUploaderHandle } from 
 import VideoNotUploadedSheet, { PHOTO_FAILED_DESCRIPTION, uploadingLabel, videoNotUploaded } from "@/components/VideoNotUploadedSheet";
 import SellerDisplayPicker from "@/components/SellerDisplayPicker";
 import { scrollToBizCheck } from "@/lib/bizCheckJump";
-import AdminJumpBar from "@/components/admin/AdminJumpBar";
+import { AdminMenuChips, AdminSidebar, type AdminMenuItem } from "@/components/admin/AdminMenuNav";
+import { DEFAULT_ADMIN_MENU, adminMenuSearch, menuFromSearch, resolveAdminMenu, visibleAdminMenus, type AdminMenuId } from "@/lib/adminMenus";
 import { NEGOTIABLE_LABEL, NEGOTIABLE_TEXT, isNegotiable, type PriceMode } from "@/lib/priceMode";
 import SellerPrivateFields, { EMPTY_SELLER_PRIVATE, type SellerPrivateDraft } from "@/components/admin/SellerPrivateFields";
 import { fetchCopySeller, COPY_PROTECTED_NOTE } from "@/lib/dealCopy";
@@ -282,6 +283,7 @@ async function fetchBizChecks(adminKey: string, ids: string[]): Promise<{ items:
 }
 
 const ADMIN_SESSION_TTL_MS = 6 * 60 * 60 * 1000; // 6시간
+const clickNonce = () => Date.now(); // 클릭 처리에서만 부름(렌더 중 호출 아님 — 메뉴 이동 함수를 거치면 린트가 렌더 중 호출로 오인해 함수로 뺌)
 // 2026-10-01: 최고관리자 전용 API(영구 삭제·공식 파트너 승인/거절·긴급 공지·데이터 내보내기)가 403이면 안내
 // (2026-10-06: 영구 삭제·긴급 공지 등록·CSV 내보내기 버튼은 최고관리자에게만 보임)
 const SUPER_ONLY_MESSAGE = "최고관리자만 할 수 있어요";
@@ -670,29 +672,77 @@ function AdminDashboard({
   }, []);
   const isDesktop = viewMode === "desktop" || (viewMode === "auto" && windowWidth >= 1024);
 
+  // 2026-10-29 관리자 사이드바(feat/admin-sidebar): 선택 메뉴 = 주소의 ?m=. 모든 메뉴 블록은 마운트를 유지하고 선택 안 된 메뉴만 hidden
+  // (jumpTo*가 요소를 찾는 전제·작성 중인 등록 폼·임시저장·거래 연결 건수(connCounts)를 보존). router.replace·useSearchParams는 쓰지 않음 —
+  // Next 16.2는 같은 화면에서 쿼리만 바뀌면 무시하므로 마운트 후 effect에서 location을 읽고 history.pushState/replaceState로 씀(Next가 이 호출을 라우터에 맞춰 줌).
+  const visibleMenus = visibleAdminMenus(perm);
+  const [activeMenu, setActiveMenu] = useState<AdminMenuId>(DEFAULT_ADMIN_MENU);
+  const writeMenuUrl = (id: AdminMenuId, mode: "push" | "replace") => {
+    try {
+      const search = adminMenuSearch(window.location.search, id);
+      if (search === window.location.search) return;
+      const url = `${window.location.pathname}${search}${window.location.hash}`;
+      if (mode === "push") window.history.pushState(null, "", url);
+      else window.history.replaceState(null, "", url);
+    } catch {
+      /* 주소 갱신만 못 할 뿐 — 메뉴 전환은 그대로 */
+    }
+  };
+  // 메뉴를 바꾸면 콘텐츠 맨 위로(위치 기억 없음) — 이미 그보다 위면 그대로. 폰은 위에 붙은 메뉴 칩 높이만큼 비움
+  const scrollToContentTop = () => {
+    const el = document.querySelector<HTMLElement>("[data-menu-content]");
+    if (!el) return;
+    const nav = document.querySelector<HTMLElement>('[data-menu-nav="chips"]');
+    const banner = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--session-banner-h")) || 0;
+    const top = el.getBoundingClientRect().top + window.scrollY - (nav?.getBoundingClientRect().height ?? 0) - banner;
+    if (window.scrollY > top) window.scrollTo({ top: Math.max(0, top) });
+  };
+  const selectMenu = (id: AdminMenuId, opts?: { scrollTop?: boolean; history?: "push" | "replace" | "none" }) => {
+    if (!visibleMenus.includes(id)) return;
+    setActiveMenu(id);
+    const h = opts?.history ?? "push";
+    if (h !== "none") writeMenuUrl(id, h);
+    if (opts?.scrollTop !== false) scrollToContentTop();
+  };
+  // 최초 한 번 붙는 effect·popstate가 항상 최신 값을 쓰도록(렌더 중 ref 쓰기 금지 → effect에서 갱신)
+  const menuApiRef = useRef({ visible: visibleMenus, writeMenuUrl, scrollToContentTop });
+  useEffect(() => {
+    menuApiRef.current = { visible: visibleMenus, writeMenuUrl, scrollToContentTop };
+  });
+  useEffect(() => {
+    // 최초: 주소의 m을 읽어 정규화(replaceState) — 없음·모르는 값·권한 없는 값은 actions. 뒤로가기(popstate)는 주소의 m으로 복원
+    const apply = (initial: boolean) => {
+      const r = resolveAdminMenu(menuFromSearch(window.location.search), menuApiRef.current.visible);
+      setActiveMenu(r.id);
+      if (initial || !r.valid) menuApiRef.current.writeMenuUrl(r.id, "replace");
+    };
+    apply(true);
+    const onPop = () => {
+      apply(false);
+      menuApiRef.current.scrollToContentTop();
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  // 역할 확인(/me) 뒤 권한이 달라져 지금 메뉴가 숨겨지면 actions로
+  const visibleKey = visibleMenus.join(",");
+  useEffect(() => {
+    if (!visibleKey.split(",").includes(activeMenu)) {
+      setActiveMenu(DEFAULT_ADMIN_MENU);
+      menuApiRef.current.writeMenuUrl(DEFAULT_ADMIN_MENU, "replace");
+    }
+  }, [visibleKey, activeMenu]);
+
   // 리스트 섹션 아코디언 — 조치가 필요한 섹션(리드/신청서)은 기본 펼침,
   // 참고용 섹션(전체 회원 목록/관리자 목록)은 기본 접힘.
-  const [membersOpen, setMembersOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(true); // 2026-10-29 사이드바: 메뉴마다 카드가 1~2개뿐이라 기본 펼침(접힘 state·직접 접기는 그대로)
   const [leadsOpen, setLeadsOpen] = useState(true);
   // 2026-10-04 F-4: 거래 연결 카드 — 건수는 ConnectionBoard가 불러온 뒤 알려줌(-1 = 아직)
   const [connectionsOpen, setConnectionsOpen] = useState(true);
   const [connCounts, setConnCounts] = useState<{ open: number; closed: number; stuck: number }>({ open: -1, closed: 0, stuck: 0 });
   const [sellerReqOpen, setSellerReqOpen] = useState(true);
-  // 2026-10-26: 처음 불러온 직후 한 번만 — 처리할 판매자 신청이 1건 이상이면 펼치고, 0건이면 접어 둠(이후 직접 펼치고 접은 상태는 그대로)
-  const sellerAutoRef = useRef(false);
-  useEffect(() => {
-    if (loading || sellerAutoRef.current) return;
-    sellerAutoRef.current = true;
-    setSellerReqOpen(requests.some(sellerRequestNeedsAction));
-  }, [loading, requests]);
-  // 2026-10-28: 심사중 0건이면 기본 접힘(1건 이상이면 펼침) — 불러온 뒤 한 번만 정함(판매 신청 카드와 같은 방식). 바로가기·알림 이동은 그대로 펼침
-  const [partnerReqOpen, setPartnerReqOpen] = useState(false);
-  const partnerAutoRef = useRef(false);
-  useEffect(() => {
-    if (loading || partnerAutoRef.current) return;
-    partnerAutoRef.current = true;
-    setPartnerReqOpen(partnerRequests.some(partnerRequestNeedsAction));
-  }, [loading, partnerRequests]);
+  // 2026-10-29 사이드바: 판매 신청·파트너 신청 카드의 불러온 직후 자동 접힘(#122)은 없앰 — 기본 펼침(직접 접고 펼친 상태는 그대로)
+  const [partnerReqOpen, setPartnerReqOpen] = useState(true);
   const [buyReqOpen, setBuyReqOpen] = useState(true);
   // 2026-10-20: 카드별 "미연락만/대기만/심사중만" 필터(관심·연결은 leadFilter === "uncontacted"가 같은 역할) + 이동 직후 테두리 강조
   const [buyOnly, setBuyOnly] = useState(false);
@@ -712,10 +762,10 @@ function AdminDashboard({
     const t = setTimeout(() => setFlash(null), 1500);
     return () => clearTimeout(t);
   }, [flash]);
-  const [adminsOpen, setAdminsOpen] = useState(false);
+  const [adminsOpen, setAdminsOpen] = useState(true);
   const [kpiAll, setKpiAll] = useState(false); // 2026-10-26: KPI 기록 표 최근 7행 + [전체 보기]
   const [categoryOpen, setCategoryOpen] = useState(false); // 카테고리별 현황 표 기본 접힘
-  const [bizOpen, setBizOpen] = useState(false); // 2026-10-26: 사업자 조회는 기본 접힘(바로가기·판매 신청 [사업자 조회]는 펼치고 이동)
+  const [bizOpen, setBizOpen] = useState(true); // 2026-10-26: 사업자 조회는 기본 접힘(바로가기·판매 신청 [사업자 조회]는 펼치고 이동)
   const [memberShowCount, setMemberShowCount] = useState(20);
   const [detailMemberId, setDetailMemberId] = useState<string | null>(null); // 회원 상세(보기 전용) — PC는 전체 화면 패널, 모바일·📱는 카드 아래 펼침
 
@@ -1110,9 +1160,19 @@ function AdminDashboard({
   // "조치 필요" 타일 클릭 시 해당 섹션을 펼치고 그 위치로 스크롤 — 섹션 컨테이너에
   // id를 달아뒀고 아코디언이 접혀있어도 컨테이너 자체는 항상 렌더되므로, 상태
   // 갱신과 스크롤 타이밍을 맞출 필요 없이 바로 scrollIntoView 호출.
+  // 2026-10-29 사이드바: 대상 카드가 다른 메뉴에 있으면 먼저 그 메뉴로 전환 → requestAnimationFrame(숨김 해제 반영 뒤) → 기존 스크롤·필터
+  const MENU_OF_ID: Record<string, AdminMenuId> = {
+    actions: "actions", metrics: "actions", "active-deals": "deals", "pending-sellers": "deals", "deal-form-slot": "deals", "buy-requests": "buy",
+    connections: "connections", leads: "members", members: "members", "partner-requests": "partners", "partners-overview": "partners", "business-check": "bizcheck", admins: "admins",
+  };
+  const goMenuOf = (id: string) => {
+    const m = MENU_OF_ID[id];
+    if (m) selectMenu(m, { scrollTop: false });
+  };
   const jumpToSection = (id: string, openSection?: () => void) => {
     openSection?.();
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    goMenuOf(id);
+    requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
 
   // 2026-10-20: "조치 필요" 타일 → 해당 카드 펼침 + 필터 ON + 스크롤 + 테두리 1.5초 강조.
@@ -1120,6 +1180,7 @@ function AdminDashboard({
   const jumpToAction = (id: string, openSection: () => void, applyFilter: () => void) => {
     applyFilter();
     openSection();
+    goMenuOf(id);
     requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }));
     setFlash((f) => ({ id, n: (f?.n ?? 0) + 1 }));
   };
@@ -1128,8 +1189,9 @@ function AdminDashboard({
   // (예전에 어떤 신청 카드에서 골라 둔 게 남아 있으면 직접 등록용 조회가 그 신청에 붙어 버림) 그 위치로 스크롤 + 잠깐 강조
   const goToBizCheck = () => {
     setBizOpen(true);
-    setBizPreselect({ id: "", nonce: Date.now() });
-    scrollToBizCheck();
+    setBizPreselect({ id: "", nonce: clickNonce() });
+    selectMenu("bizcheck", { scrollTop: false });
+    requestAnimationFrame(() => scrollToBizCheck());
   };
   // PC 패널의 등록 폼 → 사업자 조회: 패널만 숨기고(입력 유지) 섹션으로 스크롤, 아래 [작성 중인 등록 폼 다시 열기]로 돌아옴
   const goBizFromFormPanel = () => {
@@ -1662,11 +1724,11 @@ function AdminDashboard({
       )}
     </>
   );
-  const newDealBlock = (
-    <>
-      {/* 2026-10-26 admin-layout-v1: PC는 가운데 열 맨 위 — 버튼 두 개를 한 줄(2칸)로, 폼·목록은 전체 폭(col-span-2) */}
-      <div className={isDesktop ? "grid grid-cols-2 gap-2 items-stretch" : "px-5 py-4"}>
-        <div className={isDesktop && !(isSuperAdmin && openFormFor !== "notice") ? "col-span-2" : undefined} style={isDesktop ? { order: -2 } : undefined}>
+  // 2026-10-29 사이드바: 예전 newDealBlock(새 매물 등록 + 긴급 공지)을 메뉴 2 '매물'(dealRegBlock)·메뉴 3 '긴급 공지'(noticeBlock)로 나눔.
+  // PC 등록 패널·[다시 열기] 버튼은 fixed라 숨겨진 메뉴 안에 두면 같이 숨겨지므로 메뉴 밖(dealPanelEls, 화면 맨 아래)에서 그림.
+  const dealRegBlock = (
+    <div className={isDesktop ? "" : "px-5 py-4"}>
+        <div>
         {openFormFor === "new" && !isDesktop ? (
           <button type="button" onClick={closeDealForm} className={`ml-auto ${BTN_CLASS}`} style={{ ...btnStyle("secondary"), minHeight: 40, fontSize: rem(15), padding: "0 16px" }}>
             닫기
@@ -1677,8 +1739,8 @@ function AdminDashboard({
           </button>
         )}
         </div>
-        {/* 2026-10-03 PR-D: 매물 등록 폼은 한 자리에 하나만 — 새 매물이든 판매자 신청이든 여기(전체 폭)에서 열림. PC는 아래 패널 */}
-        <div id="deal-form-slot" className={isDesktop ? "col-span-2" : undefined} style={{ scrollMarginTop: 12 }}>
+        {/* 2026-10-03 PR-D: 매물 등록 폼은 한 자리에 하나만 — 새 매물이든 판매자 신청이든 여기(전체 폭)에서 열림. PC는 별도 패널 */}
+        <div id="deal-form-slot" style={{ scrollMarginTop: 12 }}>
           {!isDesktop && formRequest && (
             <div
               className="mt-3 flex items-center justify-between gap-3 rounded-xl"
@@ -1699,6 +1761,10 @@ function AdminDashboard({
           )}
           {!isDesktop && dealFormEls}
         </div>
+    </div>
+  );
+  const dealPanelEls = !isDesktop ? null : (
+    <>
         {isDesktop && formPanelMin && (openFormFor === "new" || !!formRequest) && (
           <button
             type="button"
@@ -1737,11 +1803,10 @@ function AdminDashboard({
             <div className="w-full max-w-[1400px] mx-auto">{dealFormEls}</div>
           </AdminFullscreenPanel>
         )}
-
-        {/* 2026-09-28: 긴급 공지(부동산·설비 처분) — 재고 매물과 별개 등록 경로.
-            방향성 확정 전까지는 메모만 해두기로 했던 부동산/설비 아이디어를
-            "긴급 공지"라는 가벼운 트랙으로 구현. 구인/구직은 법률 검토 전까지 제외.
-            2026-10-06: 등록(= 푸시 발송) 버튼·폼은 최고관리자만(서버 /api/admin/notices POST도 최고관리자만). 아래 목록·[마감]은 그대로 */}
+    </>
+  );
+  const noticeBlock = (
+    <div className={`flex flex-col gap-3 ${isDesktop ? "" : "px-5 py-4"}`} data-notice-block>
         {!isSuperAdmin ? null : openFormFor === "notice" ? (
           <div className={`flex items-center justify-between gap-2 rounded-xl px-3 py-2 ${isDesktop ? "col-span-2" : "mt-3"}`} style={{ background: LIST_CARD_BAND_BG }} data-card-band-x>
             <span {...LIST_CARD_TITLE_PROPS}>긴급 공지 등록 (부동산·설비)</span>
@@ -1770,8 +1835,10 @@ function AdminDashboard({
             ))}
           </div>
         )}
-      </div>
-    </>
+        {perm("noticeManage") && notices.length === 0 && (
+          <div className="bg-white border border-gray200 rounded-2xl text-center text-gray500 py-6 text-sm" data-notice-empty>등록된 긴급 공지가 없어요.</div>
+        )}
+    </div>
   );
   const soonDealCount = activeDeals.filter((d) => isDeadlineSoon(d, nowMs)).length;
   const passedDealCount = activeDeals.filter((d) => isDeadlinePassed(d, nowMs)).length;
@@ -1816,7 +1883,7 @@ function AdminDashboard({
             <div className="text-center text-gray500 py-6 text-sm">진행 중인 매물이 없어요.</div>
           ))
         }
-        listClassName="flex flex-col gap-3"
+        listClassName={isDesktop ? "grid grid-cols-2 min-[1500px]:grid-cols-3 gap-3 items-start" : "flex flex-col gap-3"}
         items={shownActiveDeals}
         renderItem={(d) => (
           <ActiveDealCard
@@ -1959,8 +2026,9 @@ function AdminDashboard({
                 type="button"
                 onClick={() => {
                   setBizOpen(true);
-                  setBizPreselect({ id: r.id, nonce: Date.now() });
-                  scrollToBizCheck();
+                  setBizPreselect({ id: r.id, nonce: clickNonce() });
+                  selectMenu("bizcheck", { scrollTop: false });
+                  requestAnimationFrame(() => scrollToBizCheck());
                 }}
                 className="flex-shrink-0 font-bold rounded-lg text-sm px-3 py-1.5 border border-gray200 text-navy"
               >
@@ -2400,9 +2468,71 @@ function AdminDashboard({
         </div>
   ) : null;
 
+  // 2026-10-29 사이드바: 조치 타일(메뉴 1 본문 + 배지 합계가 같은 값을 쓰도록 return 위로 올림)
+  const actionTiles = (() => {
+          const soonDeals = soonDealCount;
+          const actions = [
+            { label: "미연락 리드", value: interests.filter(leadNeedsAction).length, urgent: true, go: () => jumpToAction("leads", () => setLeadsOpen(true), () => setLeadFilter("uncontacted")) },
+            // 2026-10-04 F-4: 24시간 단계 변화 없는 거래 연결 (거래 연결 카드가 불러온 값)
+            { label: "멈춘 연결", value: connCounts.stuck, urgent: true, go: () => jumpToSection("connections", () => setConnectionsOpen(true)) },
+            { label: "마감임박(6h)", value: soonDeals, urgent: true, go: () => jumpToAction("active-deals", () => {}, () => { setPassedOnly(false); setSoonOnly(true); }) },
+            // 2026-10-24: 마감이 지났는데 아직 진행 중(active)인 매물 — 회색 타일(빨강 아님). 자동으로 닫히지 않아 [마감]으로 정리
+            { label: "마감 지남", value: passedDealCount, urgent: false, gray: true, go: () => jumpToAction("active-deals", () => {}, () => { setSoonOnly(false); setPassedOnly(true); }) },
+            { label: "대기 판매신청", value: requests.filter(sellerRequestNeedsAction).length, urgent: false, go: () => jumpToAction("pending-sellers", () => setSellerReqOpen(true), () => setSellerOnly(true)) },
+            { label: "재고문의 미연락", value: buyRequests.filter(buyRequestNeedsAction).length, urgent: false, go: () => jumpToAction("buy-requests", () => setBuyReqOpen(true), () => setBuyOnly(true)) },
+          ];
+          // 2026-10-10: 권한 없는 타일은 뺌(점핑매니저: 미연락 리드·재고문의 미연락 없음)
+          const tilePerm: Record<string, AdminPerm> = { "미연락 리드": "leads", "재고문의 미연락": "buyRequests" };
+          const shown = actions.filter((a) => !tilePerm[a.label] || perm(tilePerm[a.label]));
+    return shown;
+  })();
+  // 메뉴 숫자 배지 — 목록 파생값(metrics.counts 아님), 0이면 안 그림. 3 긴급 공지·8 사업자 조회·9 관리자는 배지 없음
+  const menuBadges: Partial<Record<AdminMenuId, number>> = {
+    actions: actionTiles.reduce((n, a) => n + a.value, 0),
+    deals: requests.filter(sellerRequestNeedsAction).length + soonDealCount + passedDealCount,
+    buy: buyRequests.filter(buyRequestNeedsAction).length,
+    connections: Math.max(connCounts.open, 0) + connCounts.stuck,
+    members: interests.filter(leadNeedsAction).length,
+    partners: partnerRequests.filter(partnerRequestNeedsAction).length,
+  };
+  const menuItems: AdminMenuItem[] = visibleMenus.map((id) => ({ id, badge: menuBadges[id] }));
+  const viewToggleBtns = (
+    <div className="flex rounded-lg overflow-hidden border border-gray200" data-sidebar-viewmode>
+      {([{ mode: "auto", label: "자동" }, { mode: "mobile", label: "📱" }, { mode: "desktop", label: "💻" }] as const).map(({ mode, label }) => (
+        <button key={mode} type="button" onClick={() => setViewMode(mode)} className="flex-1 font-bold" style={{ minHeight: 40, fontSize: rem(14), ...(viewMode === mode ? { background: "#0B2540", color: "#fff" } : { background: "#fff", color: "#0B2540" }) }}>
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+  const panelBox = (id: AdminMenuId, children: React.ReactNode, raw = false) =>
+    !visibleMenus.includes(id) ? null : (
+      <div key={id} data-menu-panel={id} hidden={activeMenu !== id} className={raw || !isDesktop ? "flex flex-col" : "flex flex-col gap-4 px-8 pt-5 pb-6"}>
+        {children}
+      </div>
+    );
+  const changePasswordBtn = (
+    <div className={isDesktop ? "" : "px-5 pt-4"}>
+      <button
+        type="button"
+        onClick={() => {
+          setShowChangePassword(true);
+          setChangePwError("");
+          setChangePwSuccess(false);
+        }}
+        className={`w-full ${BTN_CLASS}`}
+        style={btnStyle("secondary")}
+        data-change-password
+      >
+        비밀번호 변경
+      </button>
+    </div>
+  );
+
   return (
     <main
       data-admin-root
+      data-menu-layout={isDesktop ? "side" : "chips"}
       className={isDesktop ? `flex flex-col min-h-screen mx-auto w-full ${ADMIN_MAX_W} bg-white shadow-sm` : "flex flex-col min-h-screen mx-auto w-full max-w-md bg-white shadow-sm"}
       // 2026-10-01 (커밋 J): 맨 아래 목록이 화면 끝에 붙어 "끝난 것처럼" 보이던 문제 — 하단 여백 pb-24 + 안전 영역
       style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom, 0px))" }}
@@ -2441,6 +2571,7 @@ function AdminDashboard({
           )}
         </div>
         <div className="flex flex-col items-end gap-2 flex-shrink-0">
+          {!isDesktop && (
           <div className="flex rounded-lg overflow-hidden border border-white/25">
             {(
               [
@@ -2464,6 +2595,7 @@ function AdminDashboard({
               </button>
             ))}
           </div>
+          )}
           {/* 2026-09-27: /p/[slug] 영업 데모 링크가 어디서도 노출이 안 돼 운영자가
               직접 못 찾는다는 지적 — 관리자 헤더에 새 탭 링크로 추가. 회원용 UI가
               아니라 후보 파트너사에 보낼 때 운영자가 주소만 복사하러 오는 용도. */}
@@ -2475,50 +2607,39 @@ function AdminDashboard({
           >
             파트너 데모 보기 →
           </a>
-          <button
-            onClick={() => {
-              setShowChangePassword(true);
-              setChangePwError("");
-              setChangePwSuccess(false);
-            }}
-            className="text-xs text-white/70 font-bold underline"
-          >
-            비밀번호 변경
-          </button>
-          <button onClick={onLogout} className="text-sm text-white/70 font-bold">
-            로그아웃
-          </button>
+          {!isDesktop && (
+            <button onClick={onLogout} className="text-sm text-white/70 font-bold">
+              로그아웃
+            </button>
+          )}
         </div>
       </div>
 
-      <AdminJumpBar
-        chips={[
-          { label: "조치", targetId: "actions" },
-          { label: "매물", targetId: "active-deals" },
-          ...(perm("buyRequests") ? [{ label: "구매요청", targetId: "buy-requests" }] : []),
-          ...(perm("members") ? [{ label: "회원", targetId: "members" }] : []),
-          ...(perm("dashboard") ? [{ label: "지표", targetId: "metrics" }] : []),
-        ]}
-      />
 
+      {!isDesktop && <AdminMenuChips items={menuItems} active={activeMenu} onSelect={(id) => selectMenu(id)} />}
+      <div className={isDesktop ? "flex items-start flex-1 min-w-0" : "flex flex-col flex-1 min-w-0"}>
+        {isDesktop && (
+          <AdminSidebar
+            items={menuItems}
+            active={activeMenu}
+            onSelect={(id) => selectMenu(id)}
+            footer={
+              <>
+                {viewToggleBtns}
+                <button type="button" onClick={onLogout} className="w-full font-bold rounded-xl border-2 border-gray200 text-navy" style={{ minHeight: 44, fontSize: rem(15) }} data-sidebar-logout>
+                  로그아웃
+                </button>
+              </>
+            }
+          />
+        )}
+        <div data-menu-content className="flex-1 min-w-0 flex flex-col">
+          {panelBox("actions", <>
       {/* 2026-09-29: 시각적 위계 — ① 조치 필요 → ② 핵심 지표 → ③ 참고 현황·목록.
           색은 의미 있을 때만(조치 1건↑ 주황/빨강, 0건 회색, 일반 지표 남색 1색). 막대는 CSS만(DashboardViz). */}
-      <div className={isDesktop ? `px-8 pt-5 ${ADMIN_MAX_W} mx-auto w-full flex flex-col gap-6` : "px-5 pt-5 flex flex-col gap-6"}>
+      <div className={isDesktop ? `px-8 pt-5 pb-6 ${ADMIN_MAX_W} mx-auto w-full flex flex-col gap-6` : "px-5 pt-5 pb-6 flex flex-col gap-6"}>
         {(() => {
-          const soonDeals = soonDealCount;
-          const actions = [
-            { label: "미연락 리드", value: interests.filter(leadNeedsAction).length, urgent: true, go: () => jumpToAction("leads", () => setLeadsOpen(true), () => setLeadFilter("uncontacted")) },
-            // 2026-10-04 F-4: 24시간 단계 변화 없는 거래 연결 (거래 연결 카드가 불러온 값)
-            { label: "멈춘 연결", value: connCounts.stuck, urgent: true, go: () => jumpToSection("connections", () => setConnectionsOpen(true)) },
-            { label: "마감임박(6h)", value: soonDeals, urgent: true, go: () => jumpToAction("active-deals", () => {}, () => { setPassedOnly(false); setSoonOnly(true); }) },
-            // 2026-10-24: 마감이 지났는데 아직 진행 중(active)인 매물 — 회색 타일(빨강 아님). 자동으로 닫히지 않아 [마감]으로 정리
-            { label: "마감 지남", value: passedDealCount, urgent: false, gray: true, go: () => jumpToAction("active-deals", () => {}, () => { setSoonOnly(false); setPassedOnly(true); }) },
-            { label: "대기 판매신청", value: requests.filter(sellerRequestNeedsAction).length, urgent: false, go: () => jumpToAction("pending-sellers", () => setSellerReqOpen(true), () => setSellerOnly(true)) },
-            { label: "재고문의 미연락", value: buyRequests.filter(buyRequestNeedsAction).length, urgent: false, go: () => jumpToAction("buy-requests", () => setBuyReqOpen(true), () => setBuyOnly(true)) },
-          ];
-          // 2026-10-10: 권한 없는 타일은 뺌(점핑매니저: 미연락 리드·재고문의 미연락 없음)
-          const tilePerm: Record<string, AdminPerm> = { "미연락 리드": "leads", "재고문의 미연락": "buyRequests" };
-          const shown = actions.filter((a) => !tilePerm[a.label] || perm(tilePerm[a.label]));
+          const shown = actionTiles;
           const hot = shown.filter((a) => a.value > 0);
           const cold = shown.filter((a) => a.value === 0);
           return (
@@ -2560,59 +2681,6 @@ function AdminDashboard({
           );
         })()}
       </div>
-
-      {/* 2026-10-26 admin-layout-v1: 업무 카드는 PC 고정 3열(masonry 대신) — 높이에 따라 카드 위치가 바뀌지 않음.
-          좌 = 관심 표시한 회원 → [+ 찾습니다 대신 등록] → 이런 재고 찾습니다 → 거래 연결
-          중 = [+ 새 매물 직접 등록]·[+ 긴급 공지 등록] → 대기 중인 판매자 신청 → 진행 중인 매물
-          우 = 사업자 조회(기본 접힘) → 공식 점핑파트너 신청 → 점핑파트너 실적 → 최근 가입 회원 → 관리자 목록
-          📱·360 폭은 같은 순서(좌 → 중 → 우)로 1열 — 같은 트리라 보기를 바꿔도 등록 폼이 다시 마운트되지 않음(2026-10-03 PR-D).
-          열 높이 보정 없음. PC에서 0건 카드는 한 줄(제목 + "없어요")로 줄임. */}
-      {(() => {
-        const slot = (key: string, title: string, count: number, node: React.ReactNode) =>
-          !node ? null : !isDesktop ? (
-            <Fragment key={key}>{node}</Fragment>
-          ) : (
-            <div key={key} className="min-w-0">
-              {count === 0 ? (
-                <div id={key} className="bg-white border border-gray200 rounded-2xl flex items-center justify-between gap-2" style={{ padding: "12px 16px" }}>
-                  <span {...CARD_TITLE_PROPS}>{title}</span>
-                  <span style={LABEL}>없어요</span>
-                </div>
-              ) : (
-                node
-              )}
-            </div>
-          );
-        const col = (key: string, children: React.ReactNode) => (
-          <div className={isDesktop ? "flex flex-col gap-4 min-w-0" : "contents"} data-col={key}>
-            {children}
-          </div>
-        );
-        return (
-          <div id="work-cards" className={isDesktop ? `px-8 pb-6 ${ADMIN_MAX_W} mx-auto w-full` : "contents"}>
-            <div className={isDesktop ? "grid grid-cols-3 gap-4 items-start" : "contents"}>
-              {col("left", <>
-                {slot("leads", "관심 표시한 회원", interests.length, leadsBlock)}
-                {buyProxyBlock && (isDesktop ? <div key="buy-proxy">{buyProxyBlock}</div> : <Fragment key="buy-proxy">{buyProxyBlock}</Fragment>)}
-                {slot("buy-requests", "🔍 이런 재고 찾습니다", buyRequests.length, buyRequestsBlock)}
-                {slot("connections", "거래 연결", connCounts.open + connCounts.closed === 0 ? 0 : -1, connectionsBlock)}
-              </>)}
-              {col("middle", <>
-                <div className={isDesktop ? "" : "contents"}>{newDealBlock}</div>
-                {slot("pending-sellers", "대기 중인 판매자 신청", requests.length, pendingSellersBlock)}
-                {slot("active-deals", "진행 중인 매물", activeDeals.length, activeDealsBlock)}
-              </>)}
-              {col("right", <>
-                {slot("business-check", "사업자 조회", -1, bizCheckBlock)}
-                {slot("partner-requests", "🏅 공식 점핑파트너 신청", partnerRequests.length, partnerReqBlock)}
-                {slot("partners-overview", "📊 점핑파트너 실적", partnersOverview.length, partnersOverviewBlock)}
-                {slot("members", "최근 가입 회원", members.length, membersBlock)}
-                {slot("admins", "관리자 목록", -1, adminsBlock)}
-              </>)}
-            </div>
-          </div>
-        );
-      })()}
 
       {/* 2026-10-26 admin-layout-v1: 지표는 업무 카드 아래로(조치 필요 → 업무 카드 → 지표) */}
       {perm("dashboard") && (
@@ -2778,6 +2846,18 @@ function AdminDashboard({
         </section>
         </div>
       )}
+          </>, true)}
+          {panelBox("deals", <>{pendingSellersBlock}{dealRegBlock}{activeDealsBlock}</>)}
+          {panelBox("notice", noticeBlock)}
+          {panelBox("buy", <>{buyProxyBlock}{buyRequestsBlock}</>)}
+          {panelBox("connections", connectionsBlock)}
+          {panelBox("members", <>{leadsBlock}{membersBlock}</>)}
+          {panelBox("partners", <>{partnerReqBlock}{partnersOverviewBlock}</>)}
+          {panelBox("bizcheck", bizCheckBlock)}
+          {panelBox("admins", <>{changePasswordBtn}{adminsBlock}</>)}
+        </div>
+      </div>
+      {dealPanelEls}
 
       {appointFor && (
         <div

@@ -232,3 +232,12 @@ input[type="date"]::-webkit-datetime-edit {
    전역 토큰(:root)은 그대로 — 색만 바꾸고 크기·굵기는 그대로. 값은 src/lib/adminText.ts와 같게 */
 [data-admin-root] .text-gray500 { color: #566070; }
 [data-admin-root] .text-orange { color: #c2410c; }
+
+/* 2026-10-29 관리자 사이드바 — 메뉴 이동 뒤 scrollIntoView 대상이 위에 붙은 것에 가리지 않게.
+   폰: sticky 메뉴 칩(약 60px) + 세션 만료 배너 아래로 / PC: 사이드바는 옆이라 위쪽은 배너 높이만. inline scrollMarginTop(12·56)보다 우선 */
+[data-admin-root][data-menu-layout="chips"] [data-menu-panel] [id] {
+  scroll-margin-top: calc(var(--session-banner-h, 0px) + 72px) !important;
+}
+[data-admin-root][data-menu-layout="side"] [data-menu-panel] [id] {
+  scroll-margin-top: calc(var(--session-banner-h, 0px) + 16px) !important;
+}
