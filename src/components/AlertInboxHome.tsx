@@ -67,6 +67,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
   const [loaded, setLoaded] = useState(false);
   const [memberId, setMemberId] = useState<string | null>(null); // 내 견적함 예고 카드(신청 상태 조회·기록)용
   const [outsideCount, setOutsideCount] = useState(0); // 내 조건 밖 진행 중 매물 수
+  const [noCategories, setNoCategories] = useState(false); // 2026-10-29: 관심 카테고리를 하나도 안 고름(member_categories 0건) — 매물 조회·푸시 모두 없는 상태
   const [showInstall, setShowInstall] = useState(true);
   const { canInstall, promptInstall, hasNativePrompt } = useInstallPrompt();
   // 2026-10-06: 알림을 켠 뒤 사라지지 않는 완료 표시 — 이 기기 구독 + 매물 알림 최신 동의가 모두 있을 때만 (PushStatusCard와 같은 판정)
@@ -102,6 +103,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
 
       const { data: catRows } = await supabase.from("member_categories").select("category_id, categories(name)").eq("member_id", userId);
       const catIds = (catRows ?? []).map((r) => r.category_id as number);
+      setNoCategories(catIds.length === 0);
       const nowIso = new Date().toISOString();
 
       // 전체 진행 중 매물 수(내 조건 밖 개수 계산용)와, 조건 매칭 매물을 DB에서 바로 걸러 조회.
@@ -340,7 +342,24 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
         </div>
       )}
 
-      {loaded && groups.length === 0 && (
+      {/* 2026-10-29: 카테고리를 하나도 안 고른 경우 — "조건 매물 0건"과 다른 안내(고르기 버튼 → MY 관심 카테고리) */}
+      {loaded && groups.length === 0 && noCategories && (
+        <div className="text-center" style={{ padding: "40px 20px 28px" }} data-no-categories>
+          <p className="font-bold" style={{ fontSize: rem(15), color: "#1A1F26" }}>
+            관심 카테고리를 고르지 않았어요
+          </p>
+          <p className="mt-1" style={{ fontSize: rem(13), color: "#6B7480" }}>
+            카테고리를 고르면 맞는 새 매물을 알려드려요.
+          </p>
+          <div className="flex justify-center mt-4">
+            <TabLink href="/mypage#categories" className={`w-full ${BTN_CLASS}`} style={btnStyle("primary")} data-pick-categories>
+              관심 카테고리 고르기
+            </TabLink>
+          </div>
+        </div>
+      )}
+
+      {loaded && groups.length === 0 && !noCategories && (
         <div className="text-center" style={{ padding: "40px 20px 28px" }}>
           <p className="font-bold" style={{ fontSize: rem(15), color: "#1A1F26" }}>
             내 조건에 맞는 진행 중 매물이 없어요
