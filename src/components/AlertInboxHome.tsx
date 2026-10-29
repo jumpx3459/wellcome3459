@@ -279,27 +279,34 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
             </TabLink>
           </div>
         )}
-        {/* 2026-10-09 PR 4a: 문구를 두 덩어리("📦 잠든 재고," / "깨워서 현금으로", 각각 줄바꿈 없음)로 — 한 줄에 들어가면 한 줄,
-            안 들어가면 "재고," 뒤에서만 줄이 바뀌고 둘째 줄은 이모지 뒤로 들여씀(내어쓰기 1.6em) */}
-        <Link
-          href="/sell"
-          className="flex items-center justify-between gap-2 rounded-xl text-sm"
-          style={{ background: "#FF6F0F", padding: "13px 14px", boxShadow: "0 2px 10px rgba(255,111,15,0.35)" }}
-          data-sell-banner
-        >
-          <span className="min-w-0 font-bold text-white" style={{ paddingLeft: "1.6em", textIndent: "-1.6em" }} data-sell-banner-text>
-            <span className="inline-block whitespace-nowrap" style={{ textIndent: 0 }} data-banner-part>📦 잠든 재고,</span>{" "}
-            <span className="inline-block whitespace-nowrap" style={{ textIndent: 0 }} data-banner-part>깨워서 현금으로</span>
-          </span>
-          {/* 2026-10-10 PR 4a: 흰 바탕·#c2410c 800 — 반투명 흰 바탕보다 누를 곳이 잘 보이게 */}
-          <span
-            className="rounded-full flex-shrink-0 whitespace-nowrap"
-            style={{ background: "#ffffff", color: "#c2410c", fontWeight: 800, padding: "7px 12px", boxShadow: "0 1px 3px rgba(0,0,0,.12)", fontSize: "max(13px, 0.76em)" }}
-            data-sell-banner-button
+        {/* 2026-10-29 회원 홈 상단 개편: 주황 판매 배너 → [덤핑 매물 찾기][재고 판매하기] 2칸(한 줄, 높이 44px).
+            SellFab은 [data-sell-banner-button](새 [재고 판매하기])가 화면에 다 보이면 숨김 — fabScroll.ts 규칙은 그대로, 속성만 새 버튼에 붙임 */}
+        <div className="flex gap-2" data-home-cta>
+          <Link
+            href="/deals"
+            className="flex-1 min-w-0 flex items-center justify-center rounded-xl text-center font-bold text-white"
+            style={{ minHeight: 44, padding: "4px 8px", background: "#0d2943", fontSize: rem(15), lineHeight: 1.2, wordBreak: "keep-all" }}
+            data-find-button
           >
-            무료로 팔기 →
-          </span>
-        </Link>
+            🔍 덤핑 매물 찾기
+          </Link>
+          <Link
+            href="/sell"
+            className="flex-1 min-w-0 flex items-center justify-center rounded-xl text-center font-bold text-white"
+            style={{ minHeight: 44, padding: "4px 8px", background: "#FF6F0F", boxShadow: "0 2px 8px rgba(255,111,15,0.35)", fontSize: rem(15), lineHeight: 1.2, wordBreak: "keep-all" }}
+            data-sell-banner
+            data-sell-banner-button
+            data-sell-button
+          >
+            📦 재고 판매하기
+          </Link>
+        </div>
+        {/* 2026-10-29: 내 견적함 한 줄(예고 카드 compact — 탭하면 기존 신청 시트). 목록 맨 아래 카드(예전 ⑬)는 이쪽으로 올림. 예고 카드라 !QUOTES_ENABLED일 때만 */}
+        {!QUOTES_ENABLED && memberId && (
+          <div style={{ marginTop: 8 }} data-home-quotes>
+            <QuotesTeaserCard memberId={memberId} variant="compact" />
+          </div>
+        )}
         {/* 2026-10-20: "찾습니다" 띠 — 매물 탭과 같은 부품·같은 요약 API, 주황 배너 바로 아래(높이 44px 고정). 누르면 /buy 목록 */}
         <div style={{ marginTop: 8 }}>
           <BuyNoticeBoard />
@@ -412,13 +419,6 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
             <span style={{ fontSize: rem(13), color: "#6B7480" }}>내 조건 밖 진행 중 매물 {outsideCount}건</span>
             <span className="font-bold flex-shrink-0" style={{ fontSize: rem(13), color: "#E25100" }}>전체 매물 보기 →</span>
           </Link>
-        </div>
-      )}
-
-      {/* 2026-10-14 내 견적함 1단계: 카드 목록 맨 아래·푸터 바로 위 한 장(회원 홈만 — 비회원 홈엔 없음). 예고 카드라 MY와 같이 !QUOTES_ENABLED일 때만. 목록과 같은 바탕·바깥 여백 8px */}
-      {!QUOTES_ENABLED && loaded && memberId && (
-        <div style={{ background: HOME_LIST_BG, padding: "8px 8px 0" }} data-home-quotes>
-          <QuotesTeaserCard memberId={memberId} variant="home" />
         </div>
       )}
 

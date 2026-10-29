@@ -50,7 +50,7 @@ function AlertsHint() {
   );
 }
 
-export default function QuotesTeaserCard({ memberId, variant = "my" }: { memberId: string | null; variant?: "my" | "home" }) {
+export default function QuotesTeaserCard({ memberId, variant = "my" }: { memberId: string | null; variant?: "my" | "home" | "compact" }) {
   const [open, setOpen] = useState(false);
   const [joined, setJoined] = useState(false);
   // 2026-10-01 PR-C: 열려 있으면 안드로이드 뒤로가기 = 이것만 닫기 (src/lib/useBackToClose.ts)
@@ -58,7 +58,8 @@ export default function QuotesTeaserCard({ memberId, variant = "my" }: { memberI
   const [role, setRole] = useState<Role | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const isHome = variant === "home";
+  const isCompact = variant === "compact"; // 2026-10-29 회원 홈 상단 한 줄(약 44px) — 탭하면 같은 신청 시트
+  const isHome = variant === "home" || isCompact;
   const sheetBtn = isHome ? btnStyle : myBtnStyle;
 
   useEffect(() => {
@@ -115,6 +116,34 @@ export default function QuotesTeaserCard({ memberId, variant = "my" }: { memberI
 
   return (
     <>
+      {isCompact ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          data-quotes-card="compact"
+          className="w-full bg-white flex items-center gap-2 text-left"
+          style={{ minHeight: 44, padding: "0 12px", borderRadius: 12, border: "1px solid #e2e8f0" }}
+        >
+          <span className="leading-none flex-shrink-0" style={{ fontSize: rem(20) }} aria-hidden>
+            📋
+          </span>
+          <span className="flex-1 min-w-0 truncate" style={{ fontSize: rem(15), fontWeight: 800, color: "#0f1f3d" }}>
+            내 견적함
+          </span>
+          <span
+            className="flex-shrink-0 rounded-full font-bold whitespace-nowrap"
+            style={{ fontSize: rem(13), padding: "3px 9px", background: joined ? "#E8F8EC" : "#FDEEE8", color: joined ? "#1D8A44" : "#C2410C" }}
+            data-quotes-pill
+          >
+            {joined ? "✓ 신청함" : "준비 중"}
+          </span>
+          {!joined && (
+            <span className="flex-shrink-0 font-bold whitespace-nowrap" style={{ fontSize: rem(14), color: "#C2410C" }} data-quotes-apply>
+              신청 ›
+            </span>
+          )}
+        </button>
+      ) : (
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -142,6 +171,7 @@ export default function QuotesTeaserCard({ memberId, variant = "my" }: { memberI
           </span>
         </span>
       </button>
+      )}
 
       {open && (
         <div
