@@ -96,7 +96,7 @@ export default function AdminListCard<T>({
     <button
       type="button"
       onClick={showAll ? shrink : () => setShowAll(true)}
-      className="w-full text-sm font-bold text-navy border-2 border-gray200 rounded-xl py-2.5"
+      className="w-full col-span-full text-sm font-bold text-navy border-2 border-gray200 rounded-xl py-2.5" /* col-span-full: 진행 중 매물이 PC 2~3열 grid일 때 [전체 보기]가 한 줄 전체 폭 */
     >
       {showAll ? "줄이기 ▲" : `전체 보기 (${items.length}건)`}
     </button>
