@@ -55,6 +55,13 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
+## 최근 작업 (2026-10-29) — 카테고리 0건 방지 (브랜치 `fix/category-zero-guard`) — 결정 요약
+- **#130(`feat/member-home-focus`) merge 기록:** squash `2bc1322` · CI build run 40858622082 · Deploy run 40858801028 · 운영 /·/mypage 200. 회원 홈 2칸 버튼·견적함 한 줄·곧 마감 묶음·카테고리 0개 표시(pw35 100건, 견적함 "준비 중"↔"✓ 신청함" 높이 동일 시험 포함).
+- 범위(대표 10/29 승인, DB 변경 없음): ① MY 저장 순서 — 선택 항목 upsert 먼저 → 미선택만 delete(중간 실패해도 0건 안 됨) ② MY 0개 저장 막기(저장 버튼 비활성 + 화면 안 이유 문구) ③ 가입 카테고리 저장 오류 확인 + 실패 안내(`catRows` 비면 실패 처리).
+- **구현:** `mypage/page.tsx` save — 0개면 저장 안 함(버튼 `disabled` + `[data-category-zero-notice]` 문구, window.confirm 아님) → 카테고리 조회(오류·빈 결과면 아무것도 안 지우고 실패) → upsert(`onConflict member_id,category_id`·ignoreDuplicates) → 선택 안 한 것만 `.not("category_id","in",…)` delete. `signup/page.tsx` — 조회 오류·빈 결과·upsert 오류면 "관심 카테고리를 저장하지 못했어요 … 다시 눌러주세요" 안내(오류 문구는 동의 칸 아래라 화면 밖일 수 있어 하단 CTA 위 토스트도 함께) + 가입 화면에 남김(members upsert는 멱등이라 재시도 안전, 푸시 구독 저장·홈 이동은 성공 뒤로).
+- **시험(fake env, 운영 호출 0):** 신규 pw36 33건 — MY 일부→추가/바꾸기/전체(upsert→delete 순서·저장 중 0건 순간 없음), 0개(버튼 비활성·이유·쓰기 0), upsert 실패(기존 선택 유지·delete 안 함), delete 실패(선택 항목 이미 반영·0건 아님), 조회 빈 결과/500(쓰기 0), 가입 정상·저장 실패 후 재시도·조회 빈 결과/500·1단계 0개 차단 / 회귀 pw35 100 · pw33 417 · pw32 108 · pw23 35 · pw26 45 · pw31 118 · pw34 29 · overflow 384 · tsc 0 · eslint(mypage·signup) 오류 0.
+- 확인: `supabase/schema.sql`의 `member_categories`는 `primary key (member_id, category_id)` → upsert 가능(마이그레이션 20개 중 이 표를 바꾸는 것 없음).
+
 ## 최근 작업 (2026-10-29) — 회원 홈 상단 개편 (브랜치 `feat/member-home-focus`) — 결정 요약
 - **#129(`fix/share-deal-list`) merge 기록:** squash `b113a5f` · CI build run 40839441708 · Deploy run 40839615467 · 운영 /admin·/deals·/share·/ 200. 공유 매물 목록 `.limit(20)`·`.slice(0, 8)` 제거(limit 100).
 - 범위(대표 10/29 승인, 회원 홈 `AlertInboxHome` 한정 — 비회원 홈·/deals·AppShell·BottomNav 변경 금지): ① 카테고리 0개 표시(MY "선택 안 함 · 새 매물 알림이 오지 않아요" / 홈 별도 문구 + [관심 카테고리 고르기]) ② 판매 배너 → [🔍 덤핑 매물 찾기][📦 재고 판매하기] 2칸(높이 44px, FAB 숨김 기준은 새 판매 버튼의 `data-sell-banner-button`) ③ 견적함 한 줄(`QuotesTeaserCard` compact — 탭하면 기존 신청 시트, MY 카드 변경 없음·목록 끝 카드 제거) ④ "⏰ 곧 마감" 묶음(이미 불러온 내 조건 매물 중 24시간 이내 최대 2건, 시간 버킷 중복 없음, `isDeadlineSoon` 공용 lib로 이동·시간 인자 기본 6). 제외: 검색창·카테고리 칩·조건 미설정 전용 카드·새 이벤트 기록·DB 변경·"점프마켓"·협상 탭·근거 없는 할인율·상단 고정 탭.

@@ -413,15 +413,25 @@ function SignupPageInner() {
         else if (pushResult.status === "subscribed") setPushStatus("granted");
       }
 
-      const { data: catRows } = await supabase
+      const { data: catRows, error: catLookupError } = await supabase
         .from("categories")
         .select("id, name")
         .in("name", categories);
 
-      if (catRows?.length) {
-        await supabase.from("member_categories").upsert(
-          catRows.map((c) => ({ member_id: userId, category_id: c.id }))
-        );
+      // 2026-10-29: 카테고리 저장 오류를 확인 — 예전엔 조회·저장 실패를 조용히 넘겨 0건 회원이 생김(알림·홈 매칭 없음).
+      // 회원 행은 이미 만들어졌고 재시도는 안전(members upsert·member_categories upsert 모두 멱등) → 이 화면에 남겨 다시 누르게 함
+      const { error: catSaveError } = catRows?.length
+        ? await supabase.from("member_categories").upsert(
+            catRows.map((c) => ({ member_id: userId, category_id: c.id })),
+            { onConflict: "member_id,category_id", ignoreDuplicates: true }
+          )
+        : { error: catLookupError ?? new Error("categories not found") };
+      if (catSaveError) {
+        debugLog(`[signup] member_categories save failed ${"code" in catSaveError ? catSaveError.code : catSaveError.message}`);
+        setError("관심 카테고리를 저장하지 못했어요. 가입 정보는 저장됐으니 잠시 후 [동의하고 시작하기]를 다시 눌러주세요.");
+        showToast("관심 카테고리를 저장하지 못했어요. 다시 눌러주세요"); // 오류 문구는 동의 칸 아래라 화면 밖일 수 있음 — 하단 CTA 위 토스트로도 알림
+        setSubmitting(false);
+        return;
       }
 
       if (pushResult?.status === "subscribed" && pushResult.subscription.endpoint) {
