@@ -514,27 +514,16 @@ function ShippingMatchTeaser() {
         className="rounded-2xl px-5 py-7 text-center"
         style={{ background: "linear-gradient(135deg, #123A4A, #0B2540)" }}
       >
-        <span
-          className="inline-block text-[0.7222rem] font-bold px-3 py-1 rounded-full mb-3"
-          style={{ background: "rgba(94,234,212,0.15)", color: TEAL_LIGHT }}
-        >
-          준비중 · COMING SOON
-        </span>
         <div className="text-white font-display text-xl leading-snug">
-          운송사 매칭 · 견적 비교
+          화물 운송 견적
         </div>
         <p className="text-white/70 text-sm mt-2.5 leading-relaxed">
-          점프엑스 매물을 낙찰받은 다음, 지역·화물량에 맞는 운송사를 자동으로 매칭하고
-          견적을 비교하는 기능을 준비하고 있어요.
+          거래할 물건이 정해지면, 아래 화물 운송 플랫폼에서 지역·화물량에 맞는 견적을 받아 보실 수 있어요.
         </p>
       </div>
 
       <div className="rounded-2xl border-2 border-gray200 px-5 py-5">
-        <div className="text-sm font-bold text-navy mb-1">지금 당장 운송이 필요하다면</div>
-        <p className="text-[0.7222rem] text-gray500 leading-relaxed mb-4">
-          점핑로지스 자체 매칭 서비스가 열리기 전까지는, 검증된 화물 운송 플랫폼을 통해
-          견적을 받아보실 수 있어요.
-        </p>
+        <div className="text-sm font-bold text-navy mb-3">지금 당장 운송이 필요하다면</div>
         <a
           href="https://www.cargo-link.co.kr/"
           target="_blank"
