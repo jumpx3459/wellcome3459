@@ -55,6 +55,15 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
+## 최근 작업 (2026-11-01) — 제휴·안내 칸 PR 2 (브랜치 `feat/partner-card-slots`)
+- **#132(`feat/stats-foundation`) merge 기록:** merge 커밋 `e4002a5` · CI build run 41279870110 · Deploy run 41282146757 · 운영 /deals 200 · `deal_view_daily_deal_idx` 컬럼 대조 일치((deal_id, stat_date)) · 운영 deal_view_daily 11/1 guest_views 3건 기록 확인.
+- 범위(대표 11/1 지시): 자사 안내 카드(PartnerCard)를 4곳(connect_done·sell_done/supply_done·도구함 탭)에 놓고 노출·클릭을 PR 1 집계로 기록. 광고주 판매 전이라 자사 안내만 회전.
+- **구현:** `src/components/PartnerCard.tsx`(변형 bar·card·inline, 칩은 항목의 chip 값 — 자사 "덤핑점핑 안내"/외부 "광고", usePartnerImpression + 클릭 기록, 높이 44px 이상) · `src/lib/partnerSlots.ts`(PARTNER_ITEMS 회원 5·비회원 2, `partnerRotation`) · `src/lib/metricsCore.ts`(`nextRotationIndex` — 세션 순번) · `src/lib/features.ts`(`JUMPX_WAITLIST_SLOT_ENABLED`). 자리: deals/[id] 연결 요청 직후 한정(connect_done, 새로고침·중복 요청이면 안 보임) · sell 완료 화면(sell_done / 공급 제안은 supply_done) · /logistics 탭 아래(logistics_<탭>).
+- **시험(fake env, 운영 호출 0):** 단위 metrics-test 84건 · pw38 46건(4곳 표시 조건·50%·1초 노출 1회·화면 밖 취소·세션 재노출 0·클릭 1회·회원/비회원 회전·오픈 알림 신청·360/1280) · 회귀 pw37 31+3 / pw36 33 / pw35 100 / pw33 417 / pw32 108 / pw23 35 / pw26 45 / pw31 118 / pw34 29 / overflow 384 모두 통과, tsc 0.
+- 미시험: 플래그 off 화면(상수라 빌드를 다시 해야 함 — 단위 시험으로 목록만 확인), 엄격 모드 이중 실행.
+- **대표 11/1 검토 반영:** ① 카카오 항목은 채널 친구 추가 주소(`https://pf.kakao.com/_xcFZrX/friend`, 새 창)로 — 문구 "카카오 채널 추가 / 새 매물 소식을 카카오톡으로 받아보세요 / 채널 추가하기", 항목 id `kakao` 유지, `BUSINESS_INFO.kakaoChannel`(문의용 /chat)은 그대로 ② 도구함 운송 탭 문구 교체(11/1 결정: 경매 미오픈·점핑로지스 보류·검증 근거 없는 표현 금지) — "준비중 · COMING SOON" 칩 삭제, 제목 "화물 운송 견적", 본문 "거래할 물건이 정해지면, 아래 화물 운송 플랫폼에서 지역·화물량에 맞는 견적을 받아 보실 수 있어요.", 두 번째 칸 설명 삭제(본문으로 통합), 카고링크 비제휴 고지·Powered by JumpX 유지, 구조·링크 변경 없음.
+- **신청 출처 칸 추가 보류(결정 0):** 점프엑스 오픈 알림 신청은 지금 방식(`feature_waitlist`, feature `jumpx_open` + 클릭 기록 slot×`jumpx_waitlist`) 유지, DB 변경 없음. 재개 기준 = 오픈 알림 신청 50건 이상이고 칸별 전환율을 행 단위로 맞춰야 할 때 → `feature_waitlist.source`(값 `partner_slot:<slot>`).
+
 ## 최근 작업 (2026-10-30) — 집계 기반 PR 1 (브랜치 `feat/stats-foundation`) — 결정 요약
 - **#131(`fix/category-zero-guard`) merge 기록:** squash `83b7627` · CI build run 40983393358 · Deploy run 40983538854 · 운영 /mypage·/signup 200. MY 0개 저장 막기 · upsert 먼저→미선택만 delete · 가입 카테고리 저장 오류 안내(pw36 33건).
 - 범위(대표 10/30 지시, 화면 변화 없음): 광고·제휴 칸 노출·클릭과 매물 조회를 **일별 합계**로 쌓는 기반. 운영 DB는 대표가 SQL 적용 완료(`ad_daily_stats`·`deal_view_daily`·`track_ad_event`·`track_deal_view`, RLS on·정책 0·anon/authenticated 차단·service_role만). 광고 카드·화면은 PR 2부터.
