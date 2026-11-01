@@ -55,6 +55,11 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
+## 최근 작업 (2026-10-30) — 집계 기반 PR 1 (브랜치 `feat/stats-foundation`) — 결정 요약
+- **#131(`fix/category-zero-guard`) merge 기록:** squash `83b7627` · CI build run 40983393358 · Deploy run 40983538854 · 운영 /mypage·/signup 200. MY 0개 저장 막기 · upsert 먼저→미선택만 delete · 가입 카테고리 저장 오류 안내(pw36 33건).
+- 범위(대표 10/30 지시, 화면 변화 없음): 광고·제휴 칸 노출·클릭과 매물 조회를 **일별 합계**로 쌓는 기반. 운영 DB는 대표가 SQL 적용 완료(`ad_daily_stats`·`deal_view_daily`·`track_ad_event`·`track_deal_view`, RLS on·정책 0·anon/authenticated 차단·service_role만). 광고 카드·화면은 PR 2부터.
+- 이름 규칙: 코드·경로에 ad·banner·sponsor를 쓰지 않음(광고 차단 도구 회피) — `partnerSlots.ts`·`/api/metrics/slot`·`/api/metrics/deal-view`. 단 DB 표·함수 이름은 운영 적용본 그대로.
+
 ## 최근 작업 (2026-10-29) — 카테고리 0건 방지 (브랜치 `fix/category-zero-guard`) — 결정 요약
 - **#130(`feat/member-home-focus`) merge 기록:** squash `2bc1322` · CI build run 40858622082 · Deploy run 40858801028 · 운영 /·/mypage 200. 회원 홈 2칸 버튼·견적함 한 줄·곧 마감 묶음·카테고리 0개 표시(pw35 100건, 견적함 "준비 중"↔"✓ 신청함" 높이 동일 시험 포함).
 - 범위(대표 10/29 승인, DB 변경 없음): ① MY 저장 순서 — 선택 항목 upsert 먼저 → 미선택만 delete(중간 실패해도 0건 안 됨) ② MY 0개 저장 막기(저장 버튼 비활성 + 화면 안 이유 문구) ③ 가입 카테고리 저장 오류 확인 + 실패 안내(`catRows` 비면 실패 처리).
