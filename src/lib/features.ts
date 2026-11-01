@@ -24,3 +24,6 @@ export const JUMPX_BRIDGE_ENABLED = false;
 // 배포 확인 후 켬. JUMPX_BRIDGE_ENABLED(실제 입찰 브릿지)가 false인 동안만 보임 — 브릿지가 열리면 그쪽이 대신함.
 export const JUMPX_PREVIEW_ENABLED = true;
 export const JUMPX_SITE_URL = "https://jumpx.co.kr";
+
+// 제휴 칸(PartnerCard)의 점프엑스 "오픈 알림 받기" 항목 — 2026-11-01. 끄면 회전 목록에서 빠짐(신청 방식은 JumpxPreviewSheet와 같은 feature_waitlist).
+export const JUMPX_WAITLIST_SLOT_ENABLED = true;

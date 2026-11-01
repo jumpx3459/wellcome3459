@@ -58,3 +58,26 @@ export function parseRange(from: unknown, to: unknown): { from: string; to: stri
   if ((t - f) / 86400e3 > 91) return null;
   return { from, to };
 }
+
+// 회전 순번 (2026-11-01 feat/partner-card-slots) — 칸마다 세션당 순번을 올려 같은 화면에 다시 들어오면 다음 항목.
+export const rotationKey = (slot: string) => `pm:rot:${slot}`;
+const rotMemory = new Map<string, number>();
+export function nextRotationIndex(storage: StorageLike | null | undefined, slot: string, n: number): number {
+  if (!(n > 0)) return 0;
+  const key = rotationKey(slot);
+  let count = rotMemory.get(key) ?? 0;
+  try {
+    if (storage) {
+      const raw = Number(storage.getItem(key));
+      if (Number.isFinite(raw) && raw >= 0) count = Math.max(count, Math.floor(raw));
+      storage.setItem(key, String(count + 1));
+    }
+  } catch {
+    // 저장소 접근 불가 — 메모리 순번만 사용
+  }
+  rotMemory.set(key, count + 1);
+  return count % n;
+}
+export function _resetRotationForTest(): void {
+  rotMemory.clear();
+}

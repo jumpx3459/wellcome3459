@@ -124,5 +124,41 @@ eq(M.parseRange("2026-01-01", "2026-04-03"), null, "93일 구간(92일 차이) �
 eq(M.parseRange("2026-01-01", "2026-04-02"), { from: "2026-01-01", to: "2026-04-02" }, "92일 구간(91일 차이)까지 통과");
 eq(M.parseRange(undefined, "2026-10-30"), null, "from 없음 거부");
 
+// ── 칸 항목 · 회전 (2026-11-01 PR 2)
+{
+  const ids = P.PARTNER_ITEMS.map((i: { id: string }) => i.id);
+  eq(new Set(ids).size, ids.length, "항목 id 중복 없음");
+  eq(P.PARTNER_ITEMS.every((i: { id: string }) => P.isValidPartnerId(i.id)), true, "항목 id 모두 partnerId 규칙 통과");
+  eq(P.PARTNER_ITEMS.some((i: { id: string; title: string; desc: string; cta: string }) => /ad|banner|sponsor|track/.test(i.id)), false, "항목 id에 ad·banner·sponsor·track 없음");
+  eq(P.partnerRotation("member", true).map((i: { id: string }) => i.id), ["sell", "buy", "partner", "kakao", "jumpx_waitlist"], "회원 목록 5개(판매·찾습니다·점핑파트너·카카오·오픈 알림)");
+  eq(P.partnerRotation("guest", true).map((i: { id: string }) => i.id), ["signup", "sell_guest"], "비회원 목록 2개(가입·판매 등록)");
+  eq(P.partnerRotation("member", false).map((i: { id: string }) => i.id), ["sell", "buy", "partner", "kakao"], "플래그 off → 점프엑스 항목 없음");
+  eq(P.partnerRotation("guest", false).length, 2, "플래그 off여도 비회원 목록은 그대로");
+  eq(P.partnerRotation("member", true, ["sell"]).map((i: { id: string }) => i.id).includes("sell"), false, "excludeIds 제외");
+  const text = P.PARTNER_ITEMS.map((i: { title: string; desc: string; cta: string }) => i.title + i.desc + i.cta).join("|");
+  eq(/경매|입찰|결제|낙찰|보증|검증/.test(text), false, "항목 문구에 미오픈 기능(경매·입찰·결제·낙찰)·검증 표현 없음");
+  const jx = P.PARTNER_ITEMS.find((i: { id: string }) => i.id === "jumpx_waitlist");
+  eq(jx.cta, "오픈 알림 받기", "점프엑스 항목 = 오픈 알림 받기만");
+  eq(P.PARTNER_CHIP_LABEL, { notice: "덤핑점핑 안내", external: "광고" }, "칩 문구");
+  eq(P.PARTNER_ITEMS.every((i: { chip: string }) => i.chip === "notice"), true, "지금은 자사 안내 칩만");
+
+  const mk2 = () => {
+    const m = new Map<string, string>();
+    return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
+  };
+  M._resetRotationForTest();
+  const st = mk2();
+  eq([0, 1, 2, 3, 4, 5, 6].map(() => M.nextRotationIndex(st, "sell_done", 5)), [0, 1, 2, 3, 4, 0, 1], "세션 순번: 0..4 다음 0");
+  eq(M.nextRotationIndex(st, "connect_done", 5), 0, "칸마다 따로 센다");
+  M._resetRotationForTest();
+  eq(M.nextRotationIndex(st, "sell_done", 5), 2, "새로고침(메모리 비움)해도 저장소 순번 이어감");
+  M._resetRotationForTest();
+  eq(M.nextRotationIndex(mk2(), "sell_done", 5), 0, "새 세션 → 처음부터");
+  M._resetRotationForTest();
+  const bad2 = { getItem: () => { throw new Error("blocked"); }, setItem: () => { throw new Error("blocked"); } };
+  eq([M.nextRotationIndex(bad2, "x", 3), M.nextRotationIndex(bad2, "x", 3), M.nextRotationIndex(null, "x", 3)], [0, 1, 2], "저장소 오류·없음 → 메모리 순번");
+  eq(M.nextRotationIndex(mk2(), "y", 0), 0, "항목 0개여도 0(터지지 않음)");
+}
+
 console.log(failed === 0 ? "\nALL PASS" : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);
