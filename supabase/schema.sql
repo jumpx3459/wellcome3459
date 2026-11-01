@@ -1352,6 +1352,71 @@ create index if not exists member_active_days_date_idx on public.member_active_d
 alter table public.member_active_days enable row level security;    -- 정책 없음 = service role만
 revoke all on public.member_active_days from anon, authenticated;
 
+-- 5-2) 제휴 칸 노출·클릭 + 매물 조회 일별 합계 (2026-10-30 feat/stats-foundation) — 합계만 쌓음(개인 식별 값 없음), 한국 날짜.
+--      기록은 /api/metrics/slot · /api/metrics/deal-view(service role)가 함수로만 함. RLS 켜고 정책 0 + anon/authenticated 차단.
+--      2026-11-01 운영 대조 완료(pg_get_function_arguments): track_ad_event(p_slot text, p_ad_id text, p_kind text) · track_deal_view(p_deal_id uuid, p_is_member boolean), security definer · search_path=public.
+create table if not exists public.ad_daily_stats (
+  stat_date   date not null,               -- 한국 날짜
+  slot        text not null,               -- src/lib/partnerSlots.ts SLOT_IDS
+  ad_id       text not null,               -- 제휴사 id(partnerId)
+  impressions int  not null default 0,
+  clicks      int  not null default 0,
+  primary key (stat_date, slot, ad_id)
+);
+alter table public.ad_daily_stats enable row level security;    -- 정책 없음 = service role만
+revoke all on public.ad_daily_stats from anon, authenticated;
+
+create table if not exists public.deal_view_daily (
+  stat_date    date not null,              -- 한국 날짜
+  deal_id      uuid not null references public.deals(id) on delete cascade,
+  member_views int  not null default 0,
+  guest_views  int  not null default 0,
+  primary key (stat_date, deal_id)
+);
+create index if not exists deal_view_daily_deal_idx on public.deal_view_daily (deal_id, stat_date);
+alter table public.deal_view_daily enable row level security;   -- 정책 없음 = service role만
+revoke all on public.deal_view_daily from anon, authenticated;
+
+create or replace function public.track_ad_event(p_slot text, p_ad_id text, p_kind text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  d date := (now() at time zone 'Asia/Seoul')::date;
+begin
+  if p_kind not in ('impression', 'click') then return; end if;
+  insert into public.ad_daily_stats (stat_date, slot, ad_id, impressions, clicks)
+  values (d, p_slot, p_ad_id, case when p_kind = 'impression' then 1 else 0 end, case when p_kind = 'click' then 1 else 0 end)
+  on conflict (stat_date, slot, ad_id) do update
+    set impressions = public.ad_daily_stats.impressions + excluded.impressions,
+        clicks      = public.ad_daily_stats.clicks + excluded.clicks;
+end;
+$$;
+
+create or replace function public.track_deal_view(p_deal_id uuid, p_is_member boolean)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  d date := (now() at time zone 'Asia/Seoul')::date;
+begin
+  insert into public.deal_view_daily (stat_date, deal_id, member_views, guest_views)
+  values (d, p_deal_id, case when p_is_member then 1 else 0 end, case when p_is_member then 0 else 1 end)
+  on conflict (stat_date, deal_id) do update
+    set member_views = public.deal_view_daily.member_views + excluded.member_views,
+        guest_views  = public.deal_view_daily.guest_views + excluded.guest_views;
+end;
+$$;
+
+revoke execute on function public.track_ad_event(text, text, text) from public, anon, authenticated;
+revoke execute on function public.track_deal_view(uuid, boolean) from public, anon, authenticated;
+grant execute on function public.track_ad_event(text, text, text) to service_role;
+grant execute on function public.track_deal_view(uuid, boolean) to service_role;
+
 -- 6) 스냅샷 테이블 (정책 없음 = service role만)
 create table if not exists public.kpi_daily (
   snapshot_date              date primary key,          -- 한국 날짜 (그날 24:00 직후 상태)
