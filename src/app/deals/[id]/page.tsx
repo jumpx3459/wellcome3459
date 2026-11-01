@@ -15,6 +15,7 @@ import { SITE_URL } from "@/lib/siteUrl";
 import { withReturnTo } from "@/lib/safeReturnTo";
 import { MESSAGES_ENABLED, JUMPX_BRIDGE_ENABLED, JUMPX_PREVIEW_ENABLED } from "@/lib/features";
 import JumpxPreviewSheet from "@/components/JumpxPreviewSheet";
+import PartnerCard from "@/components/PartnerCard";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 import { rem } from "@/lib/rem";
@@ -76,6 +77,8 @@ function DealDetailPageInner() {
   // 2026-10-03 F-3a: 판매자 연결 동의(7-1) — 진행 중 연결 여부(unknown = 조회 전·실패), 동의 시트, 비회원 "이미 관심 → 연결 요청" 폼
   // 2026-10-09 PR 4a: 주 버튼 ②"✓ 연결 요청함" 판정(진행 중 또는 성사로 끝난 연결) — null = 조회 전·실패(①로 보임)
   const [requested, setRequested] = useState<boolean | null>(null);
+  // 2026-11-01 PR 2: 방금 연결 요청을 보낸 매물 id — 이 화면 수명 동안만(새로고침·다른 매물·중복 요청이면 안 보임) 안내 칸(connect_done)을 띄움
+  const [justRequestedId, setJustRequestedId] = useState<string | null>(null);
   const [connectSheet, setConnectSheet] = useState<null | "member">(null);
   const [connectBusy, setConnectBusy] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
@@ -458,6 +461,7 @@ function DealDetailPageInner() {
       setRequested(true);
       setInterested(true);
       setConnectSheet(null);
+      if (!data.duplicate) setJustRequestedId(deal.id);
       showToast(data.duplicate ? "이미 연결을 요청하셨어요" : "✓ 연결 요청을 보냈어요 · 담당 매니저가 확인 후 연락드려요", { wrap: true });
     } catch (e) {
       setConnectError(
@@ -1074,6 +1078,13 @@ function DealDetailPageInner() {
                 </button>
               )}
             </div>
+            )}
+
+            {/* 2026-11-01 PR 2: 연결 요청을 방금 보낸 직후에만 안내 칸(connect_done) — 점프엑스 버튼 바로 위 */}
+            {justRequestedId === deal.id && (
+              <div className="mt-3" data-section="connect-done-partner">
+                <PartnerCard slot="connect_done" variant="inline" />
+              </div>
             )}
 
             {/* 2026-09-29: 점프엑스 둘러보기 — 실제 입찰 브릿지(JUMPX_BRIDGE_ENABLED)가 꺼져 있는 동안의 보조 버튼.

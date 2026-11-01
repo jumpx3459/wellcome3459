@@ -39,6 +39,7 @@ import { normalizeTitle, checkTitle, checkDescription } from "@/lib/titleGuard";
 import ConfirmWarnings, { BLOCK_COLOR, WARN_COLOR } from "@/components/ConfirmWarnings";
 import { COMPANY_DISCLOSURE_TEXT, CONSENT_TEXT } from "@/lib/consent";
 import SellDraftSheet from "@/components/SellDraftSheet";
+import PartnerCard from "@/components/PartnerCard";
 import {
   readSellDraft, writeSellDraft, clearSellDraft, migrateLegacySellDraft, draftHasContent, markSellDraftResume, takeSellDraftResume,
   type SellDraft, type StoredSellDraft,
@@ -700,6 +701,11 @@ export default function SellPage() {
           >
             홈으로
           </TabLink>
+
+          {/* 2026-11-01 PR 2: 접수 완료 직후 안내 칸 — 공급 제안이면 supply_done, 판매 등록이면 sell_done(방금 한 "판매 등록하기"는 뺌) */}
+          <div className="w-full mt-4" data-section={supply ? "supply-done-partner" : "sell-done-partner"}>
+            <PartnerCard slot={supply ? "supply_done" : "sell_done"} variant="card" excludeIds={supply ? undefined : ["sell", "sell_guest"]} />
+          </div>
         </div>
       </main>
     );

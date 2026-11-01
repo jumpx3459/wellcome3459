@@ -5,6 +5,8 @@ import TabLink from "@/components/TabLink";
 import { useSearchParams } from "next/navigation";
 import { formatPriceInput, parsePriceInput } from "@/lib/format";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
+import PartnerCard from "@/components/PartnerCard";
+import type { SlotId } from "@/lib/partnerSlots";
 
 import { FX_CURRENCIES as CURRENCIES } from "@/lib/fxCurrencies";
 
@@ -119,6 +121,11 @@ function LogisticsPageInner() {
         {tab === "weather" && <WeatherWidget />}
         {tab === "pallet" && <PalletCalculator />}
         {tab === "shipping" && <ShippingMatchTeaser />}
+      </div>
+
+      {/* 2026-11-01 PR 2: 탭마다 안내 칸 — 슬롯 id = logistics_ + 탭 키(탭을 바꾸면 새로 회전) */}
+      <div className="px-5 pb-6" data-section="logistics-partner">
+        <PartnerCard key={tab} slot={`logistics_${tab}` as SlotId} variant="bar" />
       </div>
     </main>
   );
