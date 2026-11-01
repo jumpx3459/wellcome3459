@@ -1354,7 +1354,7 @@ revoke all on public.member_active_days from anon, authenticated;
 
 -- 5-2) 제휴 칸 노출·클릭 + 매물 조회 일별 합계 (2026-10-30 feat/stats-foundation) — 합계만 쌓음(개인 식별 값 없음), 한국 날짜.
 --      기록은 /api/metrics/slot · /api/metrics/deal-view(service role)가 함수로만 함. RLS 켜고 정책 0 + anon/authenticated 차단.
---      운영 적용본(대표 실행 완료)과 같은지 대조: select pg_get_functiondef('public.track_ad_event(text,text,text)'::regprocedure);
+--      2026-11-01 운영 대조 완료(pg_get_function_arguments): track_ad_event(p_slot text, p_ad_id text, p_kind text) · track_deal_view(p_deal_id uuid, p_is_member boolean), security definer · search_path=public.
 create table if not exists public.ad_daily_stats (
   stat_date   date not null,               -- 한국 날짜
   slot        text not null,               -- src/lib/partnerSlots.ts SLOT_IDS
@@ -1363,7 +1363,6 @@ create table if not exists public.ad_daily_stats (
   clicks      int  not null default 0,
   primary key (stat_date, slot, ad_id)
 );
-create index if not exists ad_daily_stats_slot_idx on public.ad_daily_stats (slot, stat_date);
 alter table public.ad_daily_stats enable row level security;    -- 정책 없음 = service role만
 revoke all on public.ad_daily_stats from anon, authenticated;
 
