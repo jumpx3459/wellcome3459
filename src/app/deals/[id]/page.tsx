@@ -38,6 +38,7 @@ import { heartToShow } from "@/lib/heartCount";
 import { ctaState, isDealClosed } from "@/lib/dealCta";
 import { fetchHeartCounts } from "@/lib/heartCountClient";
 import { SHIPPING_FEE_NOTICE, shippingFeeTypeOf } from "@/lib/shippingFee";
+import { recordDealView } from "@/lib/metrics";
 
 // 값이 없거나 공백뿐이면 섹션/행 자체를 그리지 않는다 (빈 공간 방지)
 function hasText(v: string | null | undefined): boolean {
@@ -218,6 +219,8 @@ function DealDetailPageInner() {
           is_anonymous: data.is_anonymous ?? null,
           seller_display_name: data.seller_display_name ?? null,
         });
+        // 2026-10-30: 조회 1회 일별 합계 — 실제 매물만(예시 제외), 세션당 같은 매물 1번(src/lib/metrics.ts, 엄격 모드 이중 실행도 같은 키로 막음)
+        recordDealView(data.id as string);
         // 2026-10-09 PR 4a: 공개 하트 수(deal_heart_counts — 집계 시작 이후·테스트 회원 제외). 실패하면 하트 안 그림
         const hearts = await fetchHeartCounts([data.id as string]);
         const hc = hearts[data.id as string];
