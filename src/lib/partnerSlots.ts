@@ -81,3 +81,19 @@ export function partnerRotation(audience: PartnerAudience, jumpxWaitlistEnabled:
     (it) => it.audience === audience && (jumpxWaitlistEnabled || it.action.type !== "waitlist") && !excludeIds.includes(it.id)
   );
 }
+
+// ── 알림판 회전 순서 (2026-11-02 feat/partner-board-rotation)
+// "찾습니다" 요약 알림(집계 id buy_notice)은 항목 목록(PARTNER_ITEMS)과 별개 — 알림판에서만 쓰는 0번 항목.
+export const BUY_NOTICE_ID = "buy_notice";
+export const BOARD_ROTATE_MS = 6000;
+
+/**
+ * 알림판이 돌 순서(항목 id) — "찾습니다"(buy_notice)와 안내 항목을 번갈아 끼워 넣음(찾습니다 비중 50%), 항상 buy_notice에서 시작.
+ * 안내 항목은 PR 2 목록에서 "찾습니다 등록하기"(buy — 알림판의 찾습니다와 겹침)와 점프엑스 오픈 알림(칸 한 줄에 상태를 담기 어려움)을 뺀 것.
+ * 회원: buy_notice, sell, buy_notice, partner, buy_notice, kakao / 비회원: buy_notice, signup, buy_notice, sell_guest
+ */
+export function boardSequence(audience: PartnerAudience): string[] {
+  const others = partnerRotation(audience, false, ["buy"]).map((i) => i.id);
+  if (others.length === 0) return [BUY_NOTICE_ID];
+  return others.flatMap((id) => [BUY_NOTICE_ID, id]);
+}

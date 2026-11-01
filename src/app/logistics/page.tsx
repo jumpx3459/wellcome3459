@@ -45,7 +45,7 @@ function weatherInfo(code: number): { icon: string; label: string } {
 }
 
 const TABS = [
-  { key: "shipping", label: "🚚 운송 매칭" },
+  { key: "shipping", label: "🚚 운송 견적" },
   { key: "pallet", label: "📐 파렛트 적재" },
   { key: "weather", label: "🌤 물류 날씨" },
   { key: "fx", label: "💱 환율" },
@@ -121,11 +121,10 @@ function LogisticsPageInner() {
         {tab === "weather" && <WeatherWidget />}
         {tab === "pallet" && <PalletCalculator />}
         {tab === "shipping" && <ShippingMatchTeaser />}
-      </div>
-
-      {/* 2026-11-01 PR 2: 탭마다 안내 칸 — 슬롯 id = logistics_ + 탭 키(탭을 바꾸면 새로 회전) */}
-      <div className="px-5 pb-6" data-section="logistics-partner">
-        <PartnerCard key={tab} slot={`logistics_${tab}` as SlotId} variant="bar" />
+        {/* 2026-11-01 PR 2 · 2026-11-02 PR 3: 탭마다 안내 칸 — 슬롯 id = logistics_ + 탭 키(탭을 바꾸면 새로 회전). 탭 내용 바로 아래(화면 맨 아래로 밀리지 않게 같은 영역 안) */}
+        <div className="mt-5" data-section="logistics-partner">
+          <PartnerCard key={tab} slot={`logistics_${tab}` as SlotId} variant="card" />
+        </div>
       </div>
     </main>
   );
@@ -506,7 +505,7 @@ function NumField({
   );
 }
 
-// ── 운송 매칭 (준비중 티저) ────────────────────────────────────
+// ── 운송 견적 (외부 화물 플랫폼 안내) ────────────────────────────────────
 function ShippingMatchTeaser() {
   return (
     <div className="flex flex-col gap-5">

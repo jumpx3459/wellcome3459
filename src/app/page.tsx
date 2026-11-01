@@ -15,7 +15,7 @@ import KakaoChannelButton from "@/components/KakaoChannelButton";
 import CategoryScroller from "@/components/CategoryScroller";
 import EcosystemGrid, { SECTION_TITLE_STYLE, SERVICES_ANCHOR_ID, scrollToServicesIfHash } from "@/components/EcosystemGrid";
 import AlertInboxHome from "@/components/AlertInboxHome";
-import BuyNoticeBoard from "@/components/BuyNoticeBoard";
+import PartnerBoard from "@/components/PartnerBoard";
 import { formatDealLocation } from "@/lib/formatDealLocation";
 import NoPhotoPlaceholder from "@/components/NoPhotoPlaceholder";
 import { ShieldBadge, ProtectedGateNote, ProtectedTile } from "@/components/BrandProtectedUI";
@@ -338,7 +338,7 @@ export default function Home() {
       {/* 2026-10-21: "찾습니다" 띠(같은 부품·같은 요약 API) — 판매 카드 아래에서 "최근 올라온 매물" 제목 바로 위로. 한 화면에 찾습니다 입구 1개(옛 구매 희망 카드는 10/20 삭제).
           위 간격은 아래 매물 섹션과 같은 값(카테고리 줄 pb-1을 뺀 24px)이라 칩 아래→띠, 띠→제목 간격이 같음. 등록은 /buy 목록 위 [찾는 상품 등록] */}
       <div className="px-5" style={{ paddingTop: "calc(24px - 0.25rem)" }}>
-        <BuyNoticeBoard />
+        <PartnerBoard slot="home_board_guest" />
       </div>
 
       {/* 매물 예시 — 실제 매물이 있으면 실제로, 없으면 예시로 "이런 특가가 온다"는 감을 줌 */}

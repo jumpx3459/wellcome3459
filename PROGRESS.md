@@ -55,6 +55,15 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - 관리자 "사업자 조회" 이력: 승인 시 재조회(status_recheck) 행을 부모 진위확인 카드 안 한 줄("· 승인 시 재조회 계속사업자 10/21 15:13")로 합침(부모 = 같은 deal_id → 같은 신청의 앞선 조회, 없으면 단독 카드). 기본 5카드 + [전체 보기 (N)]/[접기], N = 합친 카드 수. 합치기 규칙 `src/lib/businessCheckHistory.ts`(단위 시험 `scripts/business-history-test.mts`).
 - 점핑매니저는 이력 목록 없음: 새 권한 `businessCheckHistory`(최고관리자·관리자만), `GET /api/admin/business-checks`의 신청별·최근 50건 이력은 매니저에게 빈 목록(`historyHidden`). 신청 카드 배지(`seller_request_ids`)·매물 폼 선택 목록(`unlinked`)·[국세청 조회]·재사용·기록 저장·감사 로그는 그대로. DB 변경 없음.
 
+## 최근 작업 (2026-11-02) — 알림판 회전 PR 3 (브랜치 `feat/partner-board-rotation`)
+- **#133(`feat/partner-card-slots`) merge 기록:** merge 커밋 `ce6ac71` · CI build run 41287466827 · Deploy run 41287805416 · 운영 /deals·/logistics·/sell 200 · 운영 확인(11/1 대표 시크릿): logistics_shipping·pallet·fx 노출 기록, 회전 signup→sell_guest, 클릭 1 확인(시험분 노출 5·클릭 1이 운영 기록에 포함).
+- 범위(대표 지시): A 알림판 회전(home_board_member·home_board_guest·deals_board — 6초·첫 항목 찾습니다·화면 밖 정지·동작 줄이기면 고정) B 도구함 카드 bar→card·탭 내용 바로 아래·탭 이름 "운송 매칭"→"운송 견적"(탭 키·슬롯 유지).
+- **구현:** `src/components/PartnerBoard.tsx`(슬롯 하나만 받는 독립 알림판 — 6초 회전, 멈춤 = 화면 절반 미만·탭 숨김·누름/포커스, 움직임 줄이기면 0번 고정, 항목마다 따로 마운트해 노출 1회) · `src/components/NoticeBoard.tsx`(표시용 유지 + external·onClick) · `src/components/BuyNoticeBoard.tsx`(찾습니다 요약을 `useBuyNoticeItem` 훅으로 분리, 규칙·0건 문구 그대로) · `src/lib/partnerSlots.ts`(`boardSequence`·`BUY_NOTICE_ID`·`BOARD_ROTATE_MS`). 자리 3곳 대체(44px 유지, 띠 자리 y 변화 0): 회원 홈 `AlertInboxHome.tsx` home_board_member · 비회원 홈 `page.tsx` home_board_guest · `/deals` deals_board.
+- **회전 순서(찾습니다 buy_notice를 끼워 넣음, 비중 50%, 항상 buy_notice 시작·세션 순번 미사용):** 회원 buy_notice→sell→buy_notice→partner→buy_notice→kakao / 비회원 buy_notice→signup→buy_notice→sell_guest. 알림판에서는 buy(등록 권유)·점프엑스 오픈 알림 제외(도구함·연결 요청 직후 칸에는 유지). 0번만 초록 "찾습니다" 태그, 나머지는 "덤핑점핑 안내" 칩. `/deals`는 회원 판별 전 0번 고정·판별 뒤 회전.
+- **도구함:** 카드를 탭 내용 영역 안(내용 바로 아래 mt-5)으로, 변형 card, 탭 이름 "🚚 운송 견적"(키 shipping·슬롯 logistics_shipping 유지), 주석 정리(EcosystemGrid·logistics).
+- **시험(fake env, 운영 호출 0):** 단위 metrics-test 103건·buy-notice-test 통과 · pw39 신규 34건(page.clock: 6초 회전·끼워 넣기 순서·화면 밖/탭 숨김/누름/포커스 정지·움직임 줄이기 고정·항목별 노출 1회·클릭 1회·44px·아래 요소 y 불변·360/1280 가로 스크롤 0) · pw38 55 · pw37 31+3 · pw35 100(띠 선택자를 `[data-notice-board]`로) · pw36 33 · pw33 417 · pw32 108 · pw31 118 · pw26 45 · pw23 35 · pw34 29 · overflow 384 · pwS19 36(pw19는 예전 관리자 메뉴 구조 기준이라 main에서도 중단 — pwS19가 현행). tsc 0.
+- **재검토 기록:** 알림판 회전 목록 확대 = 알림판 노출 2~4주 데이터 확인 후 재검토(PR 4 `/partnership`는 보류 확정이라 PR 4 이후가 아님).
+
 ## 최근 작업 (2026-11-01) — 제휴·안내 칸 PR 2 (브랜치 `feat/partner-card-slots`)
 - **#132(`feat/stats-foundation`) merge 기록:** merge 커밋 `e4002a5` · CI build run 41279870110 · Deploy run 41282146757 · 운영 /deals 200 · `deal_view_daily_deal_idx` 컬럼 대조 일치((deal_id, stat_date)) · 운영 deal_view_daily 11/1 guest_views 3건 기록 확인.
 - 범위(대표 11/1 지시): 자사 안내 카드(PartnerCard)를 4곳(connect_done·sell_done/supply_done·도구함 탭)에 놓고 노출·클릭을 PR 1 집계로 기록. 광고주 판매 전이라 자사 안내만 회전.

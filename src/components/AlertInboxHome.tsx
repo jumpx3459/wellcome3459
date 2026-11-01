@@ -23,7 +23,7 @@ import { SECTION_TITLE_STYLE } from "@/components/EcosystemGrid";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 import { useBackToClose } from "@/lib/useBackToClose";
 import QuotesTeaserCard from "@/components/QuotesTeaserCard";
-import BuyNoticeBoard from "@/components/BuyNoticeBoard";
+import PartnerBoard from "@/components/PartnerBoard";
 import { QUOTES_ENABLED } from "@/lib/features";
 import { isDeadlineSoon } from "@/lib/dealSoon";
 
@@ -325,7 +325,7 @@ export default function AlertInboxHome({ logoAnimate = false }: { logoAnimate?: 
         )}
         {/* 2026-10-20: "찾습니다" 띠 — 매물 탭과 같은 부품·같은 요약 API, 주황 배너 바로 아래(높이 44px 고정). 누르면 /buy 목록 */}
         <div style={{ marginTop: 8 }}>
-          <BuyNoticeBoard />
+          <PartnerBoard slot="home_board_member" />
         </div>
       </div>
 

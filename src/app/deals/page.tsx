@@ -14,7 +14,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mockDeals, mockCategories, mockRegions, categoryIcons, categoryColors, type Deal } from "@/lib/mockData";
 import AdSlot from "@/components/AdSlot";
 import SellFab from "@/components/SellFab";
-import BuyNoticeBoard from "@/components/BuyNoticeBoard";
+import PartnerBoard from "@/components/PartnerBoard";
 import { FOOTER_BELOW_BG, LIST_BG } from "@/lib/pageBg";
 import { fetchHeartCounts } from "@/lib/heartCountClient";
 
@@ -488,8 +488,8 @@ function DealsPageInner() {
           </span>
         </Link>
 
-        {/* 2026-10-13: "찾습니다" 알림판 — 주황 배너 바로 다음, 항상 표시(높이 44px 고정) */}
-        <BuyNoticeBoard />
+        {/* 2026-10-13: "찾습니다" 알림판 — 주황 배너 바로 다음, 항상 표시(높이 44px 고정). 2026-11-02: 6초 회전 알림판(PartnerBoard)으로 대체 */}
+        <PartnerBoard slot="deals_board" />
 
         {!compact && filtered.length > 0 && activeSettled && (
           <div className="flex items-center justify-between">

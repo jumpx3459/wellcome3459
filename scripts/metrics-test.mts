@@ -164,5 +164,24 @@ eq(M.parseRange(undefined, "2026-10-30"), null, "from 없음 거부");
   eq(M.nextRotationIndex(mk2(), "y", 0), 0, "항목 0개여도 0(터지지 않음)");
 }
 
+// ── 알림판 회전 순서 (2026-11-02 PR 3)
+{
+  const idsOf = (a: "member" | "guest") => P.boardSequence(a) as string[];
+  const mem = idsOf("member"), gst = idsOf("guest");
+  eq(mem, ["buy_notice", "sell", "buy_notice", "partner", "buy_notice", "kakao"], "회원 순서: 찾습니다를 끼워 넣음");
+  eq(gst, ["buy_notice", "signup", "buy_notice", "sell_guest"], "비회원 순서: 찾습니다를 끼워 넣음");
+  for (const [name, seq] of [["회원", mem], ["비회원", gst]] as const) {
+    eq(seq[0], "buy_notice", `${name}: 항상 buy_notice에서 시작`);
+    eq(seq.filter((x) => x === "buy_notice").length / seq.length, 0.5, `${name}: 찾습니다 비중 50%`);
+    eq(seq.every((x, i) => x !== seq[(i + 1) % seq.length]), true, `${name}: 연속 중복 없음(한 바퀴 돌아 처음으로 갈 때 포함)`);
+    eq(new Set(seq.filter((x) => x !== "buy_notice")).size, seq.length / 2, `${name}: 안내 항목은 한 바퀴에 한 번씩`);
+    eq(seq.every((x) => P.isValidPartnerId(x)), true, `${name}: 모든 id가 partnerId 규칙 통과`);
+  }
+  eq(mem.includes("buy") || mem.includes("jumpx_waitlist") || gst.includes("jumpx_waitlist"), false, "알림판에서 buy(등록 권유)·점프엑스 오픈 알림 제외");
+  eq(mem.filter((x) => x !== "buy_notice").every((x) => P.PARTNER_ITEMS.some((i: { id: string }) => i.id === x)), true, "안내 항목 id는 PR 2 실제 id");
+  eq(P.BOARD_ROTATE_MS, 6000, "회전 간격 6초");
+  eq(P.BUY_NOTICE_ID, "buy_notice", "찾습니다 집계 id");
+}
+
 console.log(failed === 0 ? "\nALL PASS" : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);
