@@ -4,13 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { rem } from "@/lib/rem";
-import { BUSINESS_INFO } from "@/lib/businessInfo";
 import { JUMPX_WAITLIST_SLOT_ENABLED } from "@/lib/features";
 import { hasMemberSession } from "@/lib/dealPriceAccess";
 import { recordPartnerClick } from "@/lib/metrics";
 import { nextRotationIndex } from "@/lib/metricsCore";
 import { usePartnerImpression } from "@/lib/usePartnerImpression";
-import { PARTNER_CHIP_LABEL, partnerRotation, type PartnerItem, type SlotId } from "@/lib/partnerSlots";
+import { PARTNER_CHIP_LABEL, PARTNER_KAKAO_FRIEND_URL, partnerRotation, type PartnerItem, type SlotId } from "@/lib/partnerSlots";
 
 // 제휴·안내 칸 (2026-11-01 feat/partner-card-slots) — 지금은 자사 안내 항목만 돌림(src/lib/partnerSlots.ts PARTNER_ITEMS).
 // 노출은 절반 이상 1초(usePartnerImpression), 클릭은 누른 순간 기록(PR 1 집계). 터치 영역 44px 이상.
@@ -126,7 +125,7 @@ function PartnerCardView({ slot, variant, item }: { slot: SlotId; variant: Partn
     }
     if (item.action.type === "kakao") {
       return (
-        <a href={BUSINESS_INFO.kakaoChannel.url} target="_blank" rel="noopener noreferrer" onClick={() => recordPartnerClick(slot, item.id)} {...common}>
+        <a href={PARTNER_KAKAO_FRIEND_URL} target="_blank" rel="noopener noreferrer" onClick={() => recordPartnerClick(slot, item.id)} {...common}>
           {children}
         </a>
       );

@@ -139,6 +139,10 @@ eq(M.parseRange(undefined, "2026-10-30"), null, "from 없음 거부");
   eq(/경매|입찰|결제|낙찰|보증|검증/.test(text), false, "항목 문구에 미오픈 기능(경매·입찰·결제·낙찰)·검증 표현 없음");
   const jx = P.PARTNER_ITEMS.find((i: { id: string }) => i.id === "jumpx_waitlist");
   eq(jx.cta, "오픈 알림 받기", "점프엑스 항목 = 오픈 알림 받기만");
+  eq(P.PARTNER_KAKAO_FRIEND_URL, "https://pf.kakao.com/_xcFZrX/friend", "카카오 항목 주소 = 채널 친구 추가(/friend)");
+  const kk = P.PARTNER_ITEMS.find((i: { id: string }) => i.id === "kakao");
+  eq([kk.title, kk.desc, kk.cta], ["카카오 채널 추가", "새 매물 소식을 카카오톡으로 받아보세요", "채널 추가하기"], "카카오 항목 문구(소식 받기 성격)");
+  eq(/문의|물어/.test(kk.title + kk.desc + kk.cta), false, "카카오 항목에 문의 표현 없음");
   eq(P.PARTNER_CHIP_LABEL, { notice: "덤핑점핑 안내", external: "광고" }, "칩 문구");
   eq(P.PARTNER_ITEMS.every((i: { chip: string }) => i.chip === "notice"), true, "지금은 자사 안내 칩만");
 
