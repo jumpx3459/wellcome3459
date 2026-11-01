@@ -61,7 +61,8 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - **구현:** `src/components/PartnerCard.tsx`(변형 bar·card·inline, 칩은 항목의 chip 값 — 자사 "덤핑점핑 안내"/외부 "광고", usePartnerImpression + 클릭 기록, 높이 44px 이상) · `src/lib/partnerSlots.ts`(PARTNER_ITEMS 회원 5·비회원 2, `partnerRotation`) · `src/lib/metricsCore.ts`(`nextRotationIndex` — 세션 순번) · `src/lib/features.ts`(`JUMPX_WAITLIST_SLOT_ENABLED`). 자리: deals/[id] 연결 요청 직후 한정(connect_done, 새로고침·중복 요청이면 안 보임) · sell 완료 화면(sell_done / 공급 제안은 supply_done) · /logistics 탭 아래(logistics_<탭>).
 - **시험(fake env, 운영 호출 0):** 단위 metrics-test 84건 · pw38 46건(4곳 표시 조건·50%·1초 노출 1회·화면 밖 취소·세션 재노출 0·클릭 1회·회원/비회원 회전·오픈 알림 신청·360/1280) · 회귀 pw37 31+3 / pw36 33 / pw35 100 / pw33 417 / pw32 108 / pw23 35 / pw26 45 / pw31 118 / pw34 29 / overflow 384 모두 통과, tsc 0.
 - 미시험: 플래그 off 화면(상수라 빌드를 다시 해야 함 — 단위 시험으로 목록만 확인), 엄격 모드 이중 실행.
-- 도구함 운송 탭 문구("점프엑스 낙찰"·"점핑로지스"·"검증된")는 이번 PR에서 바꾸지 않음 — 11/1 결정(경매 미오픈·점핑로지스 보류·검증 근거 없는 표현 금지)에 따라 대체 문구는 별도 결정.
+- **대표 11/1 검토 반영:** ① 카카오 항목은 채널 친구 추가 주소(`https://pf.kakao.com/_xcFZrX/friend`, 새 창)로 — 문구 "카카오 채널 추가 / 새 매물 소식을 카카오톡으로 받아보세요 / 채널 추가하기", 항목 id `kakao` 유지, `BUSINESS_INFO.kakaoChannel`(문의용 /chat)은 그대로 ② 도구함 운송 탭 문구 교체(11/1 결정: 경매 미오픈·점핑로지스 보류·검증 근거 없는 표현 금지) — "준비중 · COMING SOON" 칩 삭제, 제목 "화물 운송 견적", 본문 "거래할 물건이 정해지면, 아래 화물 운송 플랫폼에서 지역·화물량에 맞는 견적을 받아 보실 수 있어요.", 두 번째 칸 설명 삭제(본문으로 통합), 카고링크 비제휴 고지·Powered by JumpX 유지, 구조·링크 변경 없음.
+- **신청 출처 칸 추가 보류(결정 0):** 점프엑스 오픈 알림 신청은 지금 방식(`feature_waitlist`, feature `jumpx_open` + 클릭 기록 slot×`jumpx_waitlist`) 유지, DB 변경 없음. 재개 기준 = 오픈 알림 신청 50건 이상이고 칸별 전환율을 행 단위로 맞춰야 할 때 → `feature_waitlist.source`(값 `partner_slot:<slot>`).
 
 ## 최근 작업 (2026-10-30) — 집계 기반 PR 1 (브랜치 `feat/stats-foundation`) — 결정 요약
 - **#131(`fix/category-zero-guard`) merge 기록:** squash `83b7627` · CI build run 40983393358 · Deploy run 40983538854 · 운영 /mypage·/signup 200. MY 0개 저장 막기 · upsert 먼저→미선택만 delete · 가입 카테고리 저장 오류 안내(pw36 33건).
