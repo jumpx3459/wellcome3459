@@ -29,12 +29,14 @@ export function UnitSelect({
   style?: CSSProperties;
   testId?: string;
 }) {
+  // 가장 긴 선택지("기타(직접 입력)") 때문에 상자가 넓어져 단가·수량 입력칸이 좁아지지 않게 폭을 고정 — 기타를 고르면 조금 더 넓힘(입력칸이 아래에 나타나 뜻은 분명)
+  const width = state.other ? "6.75rem" : (style?.width ?? "6rem");
   return (
     <select
       id={id}
       aria-label={ariaLabel}
       className={className}
-      style={style}
+      style={{ ...style, width, minWidth: 0 }}
       data-testid={testId}
       value={unitSelectValue(state)}
       onChange={(e) => onChange(pickUnit(e.target.value, state))}
