@@ -7,12 +7,13 @@ import { LABEL } from "@/components/admin/DashboardViz";
 import { UI_CARD_TITLE } from "@/lib/uiText";
 import { rem } from "@/lib/rem";
 import { formatPhone } from "@/lib/phone";
+import { buyerConfirmMessage, contactSentMessage, sellerStockMessage, soldOutMessage } from "@/lib/connectionMessages";
 import { formatMemberNo, formatPriceInput, parsePriceInput } from "@/lib/format";
 import { formatConsentDate } from "@/lib/consent";
 import { ADMIN_TEXT } from "@/lib/adminText";
 import {
   BOARD_STEPS, END_REASONS, MEMO_MAX, MEMO_PLACEHOLDER, RESULT_LABEL,
-  boardStep, contactMessage, resultDueAt, type ConnectionResult, type ConnectionStatus, type EndReasonKey,
+  NO_STOCK_REASON, boardStep, resultDueAt, type ConnectionResult, type ConnectionStatus, type EndReasonKey,
 } from "@/lib/connectionSteps";
 
 // 2026-10-04 F-4 거래 연결 보드 — 관리자 페이지 "거래 연결" 카드(리드 카드 바로 아래).
@@ -43,6 +44,7 @@ export type ConnectionItem = {
   name_disclosure_ok: boolean;
   stuck: boolean;
   result_due: boolean;
+  contact_expired?: boolean; // 종료 1년 경과(서버 계산) — 종료 카드의 번호·판매자 정보·품절 안내 버튼 숨김
   is_test: boolean;
 };
 
@@ -146,7 +148,7 @@ export default function ConnectionBoard({
             >
               {showClosed ? "최근 종료 접기 ▲" : `최근 종료 ${closed.length}건 보기 ▼`}
             </button>
-            {showClosed && closed.map((c) => <ClosedRow key={c.id} item={c} />)}
+            {showClosed && closed.map((c) => <ClosedRow key={c.id} item={c} adminKey={adminKey} isDesktop={isDesktop} />)}
           </div>
         )
       }
@@ -185,7 +187,6 @@ function ConnectionRow({ item, adminKey, onDone, assignees }: { item: Connection
   const [phone, setPhone] = useState<string | null>(null);
   const [phoneBusy, setPhoneBusy] = useState(false);
   const [sellerOpen, setSellerOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
   const [amount, setAmount] = useState("");
   const [endOpen, setEndOpen] = useState(false);
@@ -234,22 +235,25 @@ function ConnectionRow({ item, adminKey, onDone, assignees }: { item: Connection
       setPhoneBusy(false);
     }
   };
-  const copyMessage = async () => {
-    const p = await fetchPhone();
-    if (!p) return;
-    const text = contactMessage(item.deal_title || "(매물명 없음)", formatPhone(p));
+  // ③ [판매자용 문구 복사] — 문구에 구매자 전체 번호가 들어가므로 누를 때마다 서버에 {copy:true}(번호 보기와 같은 권한 검사·같은 감사 action, detail copy=true)
+  const contactText = async (): Promise<string | null> => {
+    setPhoneBusy(true);
+    setError(null);
     try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      ta.remove();
+      const res = await fetch(`/api/admin/connections/${item.id}/phone`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({ copy: true }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "번호를 불러오지 못했어요.");
+        return null;
+      }
+      return contactSentMessage(item.deal_title, formatPhone(data.phone));
+    } finally {
+      setPhoneBusy(false);
     }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
   };
 
   const noConsent = !item.consent_at;
@@ -257,7 +261,7 @@ function ConnectionRow({ item, adminKey, onDone, assignees }: { item: Connection
   let sentence: ReactNode = null;
   let note: ReactNode = null;
   let answers: ReactNode = null;
-  const tools: ("buyer" | "seller" | "copy")[] = [];
+  const tools: ("buyer" | "seller" | "copy" | "copyStock" | "copyBuyer")[] = [];
   if (step === 0) {
     sentence = "판매자에게 재고가 아직 있는지, 구매자에게 상호를 알려도 되는지 물어보세요.";
     answers = (
@@ -270,7 +274,7 @@ function ConnectionRow({ item, adminKey, onDone, assignees }: { item: Connection
         </AnswerButton>
       </>
     );
-    tools.push("seller");
+    tools.push("seller", "copyStock");
   } else if (step === 1) {
     sentence = "구매자에게 아직 사고 싶은지 물어보세요.";
     if (!item.name_disclosure_ok)
@@ -284,7 +288,7 @@ function ConnectionRow({ item, adminKey, onDone, assignees }: { item: Connection
         예, 계속 원해요
       </AnswerButton>
     );
-    tools.push("buyer");
+    tools.push("buyer", "copyBuyer");
   } else if (step === 2) {
     sentence = "판매자에게 구매자 번호를 보내 주세요.";
     if (noConsent) {
@@ -434,10 +438,14 @@ function ConnectionRow({ item, adminKey, onDone, assignees }: { item: Connection
                 {sellerOpen ? "판매자 정보 접기 ▲" : "판매자 정보 보기"}
               </ToolButton>
             )}
+            {tools.includes("copyStock") && (
+              <CopyMessageButton label="재고 확인 문구 복사" testId="tool-copy-stock" getText={async () => sellerStockMessage(item.deal_title)} />
+            )}
+            {tools.includes("copyBuyer") && (
+              <CopyMessageButton label="구매자 확인 문구 복사" testId="tool-copy-buyer" getText={async () => buyerConfirmMessage(item.deal_title)} />
+            )}
             {tools.includes("copy") && item.has_phone && (
-              <ToolButton onClick={copyMessage} disabled={phoneBusy} testId="tool-copy">
-                {copied ? "✓ 복사했어요" : "문구 복사"}
-              </ToolButton>
+              <CopyMessageButton label="판매자용 문구 복사" testId="tool-copy" getText={contactText} disabled={phoneBusy} />
             )}
           </div>
         )}
@@ -639,26 +647,173 @@ function AssignSelect({ item, adminKey, assignees, onDone }: { item: ConnectionI
   );
 }
 
-function ClosedRow({ item }: { item: ConnectionItem }) {
+// 문구 복사 버튼 — 눌렀을 때 getText로 문구를 받아(③은 서버 호출) 클립보드에 복사, "✓ 복사했어요"를 2초 보여 줌.
+// 클립보드가 거부되면(권한·브라우저 제한) 문구를 선택 가능한 상자로 보여 줌 — 눌러서 전체 선택 후 직접 복사.
+const COPIED_MS = 2000;
+function CopyMessageButton({ label, testId, getText, disabled }: { label: string; testId: string; getText: () => Promise<string | null>; disabled?: boolean }) {
+  const [copied, setCopied] = useState(false);
+  const [fallback, setFallback] = useState<string | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
+  const run = async () => {
+    const text = await getText();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setFallback(null);
+      setCopied(true);
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(() => setCopied(false), COPIED_MS);
+    } catch {
+      setCopied(false);
+      setFallback(text);
+    }
+  };
   return (
-    <div className="bg-white border border-gray200 rounded-2xl px-4 py-3 min-w-0" data-testid="conn-closed-row">
+    <>
+      <ToolButton onClick={run} disabled={disabled} testId={testId}>
+        {copied ? "✓ 복사했어요" : label}
+      </ToolButton>
+      {fallback !== null && (
+        <div className="w-full basis-full flex flex-col gap-1" data-testid="copy-fallback">
+          <span className="font-bold" style={{ fontSize: rem(13), color: "#B45309" }}>
+            자동 복사가 막혀 있어요 · 아래 글을 눌러 전체 선택한 뒤 복사하세요
+          </span>
+          <textarea
+            readOnly
+            value={fallback}
+            rows={9}
+            onFocus={(e) => e.currentTarget.select()}
+            onClick={(e) => e.currentTarget.select()}
+            className="w-full min-w-0 border-2 border-gray200 rounded-xl px-3 py-2 bg-white"
+            style={{ fontSize: rem(14), lineHeight: 1.5 }}
+            aria-label={`${label} — 직접 복사`}
+          />
+        </div>
+      )}
+    </>
+  );
+}
+
+// 종료 카드 — 2026-11-02: 구매자 번호 보기·판매자 정보 보기(읽기만)·품절 안내 문구 복사. 진행 중 카드와 같은 API·권한·감사 기록(서버가 검사).
+// 종료일로부터 1년이 지나면(item.contact_expired) 세 버튼 모두 숨김 — 서버도 403. 목록에는 가린 번호만, 전체 번호는 버튼을 눌렀을 때만 별도 요청.
+function ClosedRow({ item, adminKey, isDesktop }: { item: ConnectionItem; adminKey: string; isDesktop: boolean }) {
+  const [phone, setPhone] = useState<string | null>(null);
+  const [phoneBusy, setPhoneBusy] = useState(false);
+  const [sellerOpen, setSellerOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [phoneCopied, setPhoneCopied] = useState(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (copiedTimer.current) clearTimeout(copiedTimer.current);
+  }, []);
+  const expired = !!item.contact_expired;
+
+  const viewPhone = async () => {
+    setPhoneBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/connections/${item.id}/phone`, { method: "POST", headers: { "x-admin-key": adminKey } });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "번호를 불러오지 못했어요.");
+        return;
+      }
+      setPhone(data.phone);
+    } finally {
+      setPhoneBusy(false);
+    }
+  };
+  // 이미 화면에 있는 번호를 복사하는 것이라 서버 요청 없음(조회는 보기 버튼에서 감사 기록됨)
+  const copyPhone = async () => {
+    if (!phone) return;
+    try {
+      await navigator.clipboard.writeText(formatPhone(phone));
+    } catch {
+      setError("복사가 막혀 있어요. 번호를 눌러 직접 복사하세요.");
+      return;
+    }
+    setPhoneCopied(true);
+    if (copiedTimer.current) clearTimeout(copiedTimer.current);
+    copiedTimer.current = setTimeout(() => setPhoneCopied(false), COPIED_MS);
+  };
+
+  const soldOut = item.result === "failed" && item.result_reason === NO_STOCK_REASON;
+  return (
+    <div className="bg-white border border-gray200 rounded-2xl px-4 py-3 min-w-0" data-testid="conn-closed-row" data-conn-id={item.id}>
       <div className="truncate font-bold" style={{ fontSize: rem(16), color: "#1F2937" }}>
         {item.is_test && <span className="mr-1.5" style={{ ...LABEL, fontSize: rem(13) }}>[테스트]</span>}
         {item.deal_title || "(매물명 없음)"}
       </div>
-      <div className="mt-1" style={{ ...LABEL, fontVariantNumeric: "tabular-nums" }}>
-        {item.buyer_phone_masked ?? "번호 없음"} · {item.result ? RESULT_LABEL[item.result] : "종료"}
+      <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 min-w-0" style={{ ...LABEL, fontVariantNumeric: "tabular-nums" }}>
+        {phone ? (
+          isDesktop ? (
+            <span className="font-bold text-navy whitespace-nowrap" data-testid="conn-closed-phone-full">
+              {formatPhone(phone)}
+            </span>
+          ) : (
+            <a href={`tel:${phone}`} className="font-bold text-navy whitespace-nowrap" data-testid="conn-closed-phone-full">
+              {formatPhone(phone)}
+            </a>
+          )
+        ) : (
+          <span className="whitespace-nowrap" data-testid="conn-closed-phone-masked">
+            {item.buyer_phone_masked ?? "번호 없음"}
+          </span>
+        )}
+        <span className="whitespace-nowrap" data-testid="conn-closed-buyer">
+          · {item.buyer_kind === "guest" ? "비회원" : item.buyer_kind === "member" ? `회원${item.buyer_member_no != null ? ` ${formatMemberNo(item.buyer_member_no)}` : ""}` : "구매자 정보 없음"}
+        </span>
+      </div>
+      <div className="mt-0.5" style={{ ...LABEL, fontVariantNumeric: "tabular-nums" }}>
+        {item.result ? RESULT_LABEL[item.result] : "종료"}
         {item.result === "success" && item.result_amount != null && ` · ${item.result_amount.toLocaleString()}원`}
         {item.result_reason && ` · ${item.result_reason}`}
         {" · "}담당 {item.assigned_admin_name ?? "없음"} · {fmtTime(item.closed_at)}
       </div>
+
+      {expired ? (
+        <p className="mt-1.5" style={{ ...LABEL, fontSize: rem(13) }} data-testid="conn-closed-expired">
+          종료 후 1년이 지나 번호·판매자 정보는 볼 수 없어요
+        </p>
+      ) : (
+        <div className="mt-2 flex flex-wrap gap-1.5" data-testid="conn-closed-tools">
+          {item.has_phone && (
+            <ToolButton onClick={viewPhone} disabled={phoneBusy || !!phone} testId="closed-buyer-phone">
+              {phone ? "✓ 구매자 번호 보는 중" : phoneBusy ? "불러오는 중..." : "구매자 번호 보기"}
+            </ToolButton>
+          )}
+          {phone && isDesktop && (
+            <ToolButton onClick={copyPhone} testId="closed-phone-copy">
+              {phoneCopied ? "✓ 복사했어요" : "번호 복사"}
+            </ToolButton>
+          )}
+          <ToolButton onClick={() => setSellerOpen((v) => !v)} testId="closed-seller">
+            {sellerOpen ? "판매자 정보 접기 ▲" : "판매자 정보 보기"}
+          </ToolButton>
+          {soldOut && <CopyMessageButton label="품절 안내 문구 복사" testId="closed-copy-soldout" getText={async () => soldOutMessage(item.deal_title)} />}
+        </div>
+      )}
+      {!expired && sellerOpen && (
+        <div className="mt-2">
+          <SellerPrivatePanel connectionId={item.id} adminKey={adminKey} autoLoad readOnly />
+        </div>
+      )}
+      {error && (
+        <p className="mt-2 font-bold" style={{ fontSize: rem(14), color: "#B91C1C" }} role="alert">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
 
 // 판매자 비공개 정보 3칸(상호·담당자·연락처) + 메모 — 조회도 감사 로그라 [불러오기]를 눌렀을 때만 가져옴
 // 2026-10-11: 카드의 [판매자 정보 보기]로 펼치면 바로 불러옴(autoLoad — 누른 것 = 불러오기)
-function SellerPrivatePanel({ connectionId, adminKey, autoLoad = false }: { connectionId: string; adminKey: string; autoLoad?: boolean }) {
+// 종료 카드에서는 readOnly — 상호·담당자·연락처 3칸만 읽기로 보여 주고 보조 연락처·메모·저장 버튼은 없음(종료 건에서 판매자 정보 저장 불가)
+function SellerPrivatePanel({ connectionId, adminKey, autoLoad = false, readOnly = false }: { connectionId: string; adminKey: string; autoLoad?: boolean; readOnly?: boolean }) {
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ text: string; error: boolean } | null>(null);
@@ -676,7 +831,7 @@ function SellerPrivatePanel({ connectionId, adminKey, autoLoad = false }: { conn
         return;
       }
       const it = data.item;
-      const sg = data.suggest;
+      const sg = readOnly ? null : data.suggest; // 종료 카드는 저장된 값만(판매 신청 참고값은 안 채움)
       setForm({
         companyName: it?.company_name ?? sg?.company_name ?? "",
         contactName: it?.contact_name ?? sg?.contact_name ?? "",
@@ -684,7 +839,7 @@ function SellerPrivatePanel({ connectionId, adminKey, autoLoad = false }: { conn
         contactPhone2: it?.contact_phone_2 ? formatPhone(it.contact_phone_2) : "",
         memo: it?.memo ?? "",
       });
-      setHint(sg ? "판매 신청 정보를 채워 뒀어요 · 저장해야 반영돼요" : !it?.company_name && !it?.contact_name && !it?.contact_phone ? "아직 저장된 정보가 없어요" : null);
+      setHint(readOnly ? (!it?.company_name && !it?.contact_name && !it?.contact_phone ? "저장된 정보가 없어요" : null) : sg ? "판매 신청 정보를 채워 뒀어요 · 저장해야 반영돼요" : !it?.company_name && !it?.contact_name && !it?.contact_phone ? "아직 저장된 정보가 없어요" : null);
       setLoaded(true);
     } finally {
       setBusy(false);
@@ -720,6 +875,7 @@ function SellerPrivatePanel({ connectionId, adminKey, autoLoad = false }: { conn
       <input
         aria-label={label}
         value={form[key]}
+        readOnly={readOnly}
         onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value.slice(0, max) }))}
         maxLength={max}
         inputMode={extra?.inputMode}
@@ -733,7 +889,7 @@ function SellerPrivatePanel({ connectionId, adminKey, autoLoad = false }: { conn
   return (
     <div className="rounded-xl flex flex-col gap-2" style={{ background: "#F7F9FB", padding: 12 }}>
       <div className="font-bold" style={{ fontSize: rem(15), color: "#1F2937" }}>
-        판매자 비공개 정보 <span style={{ ...LABEL, fontWeight: 400 }}>(구매자에게 보이지 않음)</span>
+        판매자 비공개 정보 <span style={{ ...LABEL, fontWeight: 400 }}>{readOnly ? "(읽기만 · 구매자에게 보이지 않음)" : "(구매자에게 보이지 않음)"}</span>
       </div>
       {!loaded ? (
         <button
@@ -750,18 +906,20 @@ function SellerPrivatePanel({ connectionId, adminKey, autoLoad = false }: { conn
           {field("companyName", "상호", 100)}
           {field("contactName", "담당자", 50)}
           {field("contactPhone", "연락처", 20, { inputMode: "tel", placeholder: "예: 010-1234-5678 · 02-123-4567" })}
-          {field("contactPhone2", "보조 연락처 (선택)", 20, { inputMode: "tel", placeholder: "예: 010-1234-5678" })}
-          {field("memo", "메모", MEMO_MAX)}
+          {!readOnly && field("contactPhone2", "보조 연락처 (선택)", 20, { inputMode: "tel", placeholder: "예: 010-1234-5678" })}
+          {!readOnly && field("memo", "메모", MEMO_MAX)}
           {hint && <p style={LABEL}>{hint}</p>}
-          <button
-            type="button"
-            onClick={save}
-            disabled={busy}
-            className="w-full font-bold rounded-lg text-white disabled:opacity-60"
-            style={{ fontSize: rem(15), minHeight: 40, background: "#0B2540" }}
-          >
-            판매자 정보 저장
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={save}
+              disabled={busy}
+              className="w-full font-bold rounded-lg text-white disabled:opacity-60"
+              style={{ fontSize: rem(15), minHeight: 40, background: "#0B2540" }}
+            >
+              판매자 정보 저장
+            </button>
+          )}
         </>
       )}
       {msg && (

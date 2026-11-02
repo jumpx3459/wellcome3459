@@ -62,12 +62,7 @@ const items = [
 eq(L.sortBoard(items).map((c: { id: string }) => c.id), ["stuck-old", "stuck-new", "due-old", "due-new", "normal-old", "normal-new", "test-stuck", "test-normal"], "정렬 순서");
 eq(items[0].id, "normal-new", "원본 배열은 그대로");
 
-// ── 판매자에게 보낼 문구
-eq(
-  L.contactMessage("냉동 삼겹살 10kg", "010-1234-5678"),
-  "[덤핑점핑] 냉동 삼겹살 10kg 구매 희망 고객 연락처입니다.\n구매자 번호: 010-1234-5678\n거래 조건은 직접 협의해 주세요. 거래가 되면 덤핑점핑에 알려주세요.",
-  "문구 복사 내용"
-);
+// (안내 문구 시험은 scripts/connection-messages-test.mts — 문구는 src/lib/connectionMessages.ts 한 곳)
 
 // ── 종료 카드 번호·판매자 정보 보기 보존 기한(종료일로부터 1년)
 {

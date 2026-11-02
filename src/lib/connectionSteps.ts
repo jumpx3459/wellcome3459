@@ -116,11 +116,6 @@ export function closedContactViewExpired(status: ConnectionStatus, closedAt: str
   return !Number.isFinite(t) || now - t > CLOSED_CONTACT_VIEW_DAYS * 24 * 60 * 60 * 1000;
 }
 
-/** ③ 판매자에게 보내는 문구 */
-export function contactMessage(title: string, phone: string): string {
-  return `[덤핑점핑] ${title} 구매 희망 고객 연락처입니다.\n구매자 번호: ${phone}\n거래 조건은 직접 협의해 주세요. 거래가 되면 덤핑점핑에 알려주세요.`;
-}
-
 /** 목록 정렬 순위 — 멈춤(0) → 3일 지난 결과 확인(1) → 나머지(2) → 테스트 건 맨 아래(3). 같은 순위는 마지막 변경이 오래된 순 */
 export function boardRank(c: { stuck: boolean; result_due: boolean; is_test: boolean }): number {
   if (c.is_test) return 3;
