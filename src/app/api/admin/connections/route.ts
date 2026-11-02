@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkAdminAuth, requirePerm } from "@/lib/adminAuth";
 import { maskPhone } from "@/lib/phone";
-import { isResultDue, isStuck, sortBoard, type ConnectionStatus } from "@/lib/connectionSteps";
+import { closedContactViewExpired, isResultDue, isStuck, sortBoard, type ConnectionStatus } from "@/lib/connectionSteps";
 import { getTestBuyerLookup } from "@/lib/kpiExclusion";
 import { normalizePhone } from "@/lib/phone";
 import { ownOnly } from "@/lib/adminPerms";
@@ -113,6 +113,7 @@ export async function GET(req: NextRequest) {
       name_disclosure_ok: disclosure.get(r.deal_id) ?? false,
       stuck: isStuck(r.status, r.updated_at, now),
       result_due: isResultDue(r.status, r.contact_sent_at, now),
+      contact_expired: closedContactViewExpired(r.status, r.closed_at, r.updated_at, now), // 종료 1년 경과 — 화면이 번호·판매자 정보·품절 안내 버튼을 숨김(서버도 403)
       is_test: r.buyer_member_id ? testLookup.memberIds.has(r.buyer_member_id) : !!r.buyer_phone && testLookup.phones.has(normalizePhone(r.buyer_phone)),
     };
   };

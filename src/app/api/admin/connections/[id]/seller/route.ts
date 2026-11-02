@@ -3,6 +3,7 @@ import { checkAdminAuth, requirePerm } from "@/lib/adminAuth";
 import { phoneTail, writeAudit } from "@/lib/adminAudit";
 import { UUID_RE } from "@/lib/rateLimit";
 import { connectionScopeDenied } from "@/lib/adminScope";
+import { CLOSED_CONTACT_EXPIRED_MESSAGE, closedContactViewExpired, type ConnectionStatus } from "@/lib/connectionSteps";
 import { linkedSellerRequest, parseSellerPrivateFields, saveSellerPrivate, type SellerPrivateVia } from "@/lib/sellerPrivate";
 
 // 2026-10-04 F-4 연결 상세 — 판매자 비공개 정보(상호·담당자·연락처 + 메모). 연결 id로 받아 그 매물의 deal_seller_private 1행.
@@ -10,8 +11,8 @@ import { linkedSellerRequest, parseSellerPrivateFields, saveSellerPrivate, type 
 // 조회·저장 모두 감사 로그 — detail에 값은 넣지 않음(바뀐 칸 이름·연락처 뒤 4자리만).
 
 async function dealOf(db: import("@supabase/supabase-js").SupabaseClient, id: string) {
-  const { data, error } = await db.from("deal_connections").select("id, deal_id, assigned_admin_id").eq("id", id).maybeSingle();
-  return { deal: data as { id: string; deal_id: string; assigned_admin_id: string | null } | null, error };
+  const { data, error } = await db.from("deal_connections").select("id, deal_id, assigned_admin_id, status, closed_at, updated_at").eq("id", id).maybeSingle();
+  return { deal: data as { id: string; deal_id: string; assigned_admin_id: string | null; status: ConnectionStatus; closed_at: string | null; updated_at: string | null } | null, error };
 }
 
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/admin/connections/[id]/seller">) {
@@ -27,6 +28,10 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/admin/connec
   if (!deal) return NextResponse.json({ error: "연결 기록을 찾을 수 없어요." }, { status: 404 });
   const scoped = connectionScopeDenied(auth.admin, deal.assigned_admin_id); // 2026-10-10 점핑매니저는 배정된 건(= 담당 매물)만
   if (scoped) return scoped;
+  // 2026-11-02: 종료된 연결도 조회는 같은 권한·같은 감사 action(seller_private_view, detail closed=true) — 종료일로부터 1년이 지나면 403
+  if (closedContactViewExpired(deal.status, deal.closed_at, deal.updated_at)) {
+    return NextResponse.json({ error: CLOSED_CONTACT_EXPIRED_MESSAGE, scope: "retention" }, { status: 403 });
+  }
 
   const [{ data: item, error: privError }, request] = await Promise.all([
     db
@@ -43,7 +48,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/admin/connec
     action: "seller_private_view",
     targetType: "deal",
     targetId: deal.deal_id,
-    detail: { connection_id: id, has_row: !!item },
+    detail: { connection_id: id, has_row: !!item, ...(deal.status === "closed" ? { closed: true } : {}) },
   });
   return NextResponse.json({
     item: item ?? null,
@@ -69,6 +74,8 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/admin/connec
   if (!deal) return NextResponse.json({ error: "연결 기록을 찾을 수 없어요." }, { status: 404 });
   const scoped = connectionScopeDenied(auth.admin, deal.assigned_admin_id); // 2026-10-10 점핑매니저는 배정된 건(= 담당 매물)만
   if (scoped) return scoped;
+  // 2026-11-02: 종료된 연결은 판매자 정보를 저장할 수 없음(화면도 읽기만) — 진행 중 건은 현행 그대로
+  if (deal.status === "closed") return NextResponse.json({ error: "종료된 거래라 판매자 정보를 저장할 수 없어요.", scope: "closed" }, { status: 403 });
 
   const { data: before } = await db
     .from("deal_seller_private")
