@@ -28,7 +28,8 @@ const eq = (got: unknown, want: unknown, msg: string) => {
 // ── 목록
 eq(U.SELL_QUANTITY_UNITS, ["개", "박스", "kg", "톤", "파렛트", "세트", "L", "톤백", "드럼", "평", "㎡"], "총수량 단위 목록: 기존 7종 + 톤백·드럼·평·㎡");
 eq(U.SELL_PRICE_UNITS, ["개", "박스", "kg", "톤", "파렛트", "세트", "L", "일괄", "톤백", "드럼", "평", "㎡"], "단가 단위 목록: 기존 8종(…일괄) 끝에 톤백·드럼·평·㎡");
-eq(U.CUSTOM_UNIT_LABEL, "기타(직접 입력)", "맨 끝 선택지 이름");
+eq(U.CUSTOM_UNIT_LABEL, "기타(직접 입력)", "맨 끝 선택지 내부 값(바뀌지 않음)");
+eq(U.CUSTOM_UNIT_TEXT, "직접 입력", "맨 끝 선택지 보이는 글자");
 eq(P.DEAL_PRICE_UNITS, U.SELL_PRICE_UNITS, "priceUnit.ts 목록 = units.ts 한 곳");
 eq(F.PRICE_UNITS, ["개", "박스", "kg", "톤", "파렛트", "세트", "L", "일괄"], "찾습니다 단가 단위 목록은 값 변화 없음(8종)");
 eq(P.LUMP_SUM, "일괄", "일괄 값");

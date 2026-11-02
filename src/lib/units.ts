@@ -19,7 +19,8 @@ export const SELL_QUANTITY_UNITS: readonly string[] = [...BASE_QUANTITY_UNITS, .
 export const SELL_PRICE_UNITS: readonly string[] = [...BASE_QUANTITY_UNITS, LUMP_SUM_UNIT, ...ADDED_UNITS];
 
 /** 목록 맨 끝 선택지 — 고르면 글 입력칸이 나타남 */
-export const CUSTOM_UNIT_LABEL = "기타(직접 입력)";
+export const CUSTOM_UNIT_LABEL = "기타(직접 입력)"; // 선택 상자 내부 값(바꾸지 않음) — 보이는 글자는 CUSTOM_UNIT_TEXT
+export const CUSTOM_UNIT_TEXT = "직접 입력";
 export const CUSTOM_UNIT_MAX = 6;
 
 export type UnitCheck = { ok: true; value: string } | { ok: false; error: string };

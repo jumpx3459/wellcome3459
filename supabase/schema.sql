@@ -1032,10 +1032,10 @@ alter table public.deals add column if not exists price_unit text
 -- Supabase SQL Editor 실행 완료(대표, 2026-11-02): 4개 제약 모두 validate 완료(convalidated=true).
 alter table public.deals drop constraint if exists deals_price_unit_check;
 alter table public.seller_requests drop constraint if exists seller_requests_price_unit_check;
-alter table public.deals add constraint deals_price_unit_len check (price_unit is null or char_length(price_unit) between 1 and 6);
-alter table public.deals add constraint deals_quantity_unit_len check (quantity_unit is null or char_length(quantity_unit) between 1 and 6);
-alter table public.seller_requests add constraint seller_requests_price_unit_len check (price_unit is null or char_length(price_unit) between 1 and 6);
-alter table public.seller_requests add constraint seller_requests_quantity_unit_len check (quantity_unit is null or char_length(quantity_unit) between 1 and 6);
+alter table public.deals add constraint deals_price_unit_len check ((price_unit is null) or ((char_length(price_unit) >= 1) and (char_length(price_unit) <= 6)));
+alter table public.deals add constraint deals_quantity_unit_len check ((char_length(quantity_unit) >= 1) and (char_length(quantity_unit) <= 6));
+alter table public.seller_requests add constraint seller_requests_price_unit_len check ((price_unit is null) or ((char_length(price_unit) >= 1) and (char_length(price_unit) <= 6)));
+alter table public.seller_requests add constraint seller_requests_quantity_unit_len check ((char_length(quantity_unit) >= 1) and (char_length(quantity_unit) <= 6));
 
 -- 2026-09-30: 매물 상태 값 제한 — 코드가 쓰는 값은 active(진행)·closed(마감) 둘뿐이고 sold_out은 사용처 없음.
 -- /api/admin/deals/manage PATCH도 같은 두 값만 허용(그 외 400 field: "status").
