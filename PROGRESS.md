@@ -63,6 +63,8 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - **도구함:** 카드를 탭 내용 영역 안(내용 바로 아래 mt-5)으로, 변형 card, 탭 이름 "🚚 운송 견적"(키 shipping·슬롯 logistics_shipping 유지), 주석 정리(EcosystemGrid·logistics).
 - **시험(fake env, 운영 호출 0):** 단위 metrics-test 103건·buy-notice-test 통과 · pw39 신규 34건(page.clock: 6초 회전·끼워 넣기 순서·화면 밖/탭 숨김/누름/포커스 정지·움직임 줄이기 고정·항목별 노출 1회·클릭 1회·44px·아래 요소 y 불변·360/1280 가로 스크롤 0) · pw38 55 · pw37 31+3 · pw35 100(띠 선택자를 `[data-notice-board]`로) · pw36 33 · pw33 417 · pw32 108 · pw31 118 · pw26 45 · pw23 35 · pw34 29 · overflow 384 · pwS19 36(pw19는 예전 관리자 메뉴 구조 기준이라 main에서도 중단 — pwS19가 현행). tsc 0.
 - **재검토 기록:** 알림판 회전 목록 확대 = 알림판 노출 2~4주 데이터 확인 후 재검토(PR 4 `/partnership`는 보류 확정이라 PR 4 이후가 아님).
+- **#134(`feat/partner-board-rotation`) merge 기록:** merge 커밋 `505c2a0` · CI build run 41291712125 · Deploy run 41363881128 · 운영 / · /deals · /logistics 200 · 운영 확인: 회원 홈 회전·비회원 노출 기록 확인.
+- **시험 정리 메모:** pw19 = 옛 관리자 구조 기준, 현행은 pwS19. 시험 정리 때 폐기 표시.
 
 ## 최근 작업 (2026-11-01) — 제휴·안내 칸 PR 2 (브랜치 `feat/partner-card-slots`)
 - **#132(`feat/stats-foundation`) merge 기록:** merge 커밋 `e4002a5` · CI build run 41279870110 · Deploy run 41282146757 · 운영 /deals 200 · `deal_view_daily_deal_idx` 컬럼 대조 일치((deal_id, stat_date)) · 운영 deal_view_daily 11/1 guest_views 3건 기록 확인.
