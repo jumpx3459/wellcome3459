@@ -53,6 +53,7 @@ export type PartnerAction = { type: "link"; href: string } | { type: "kakao" } |
 export type PartnerItem = {
   id: string; // partnerId(집계 키) — isValidPartnerId 규칙
   chip: "notice" | "external"; // 칩 문구는 항목에서 결정
+  icon: string; // 제목 앞 이모지(알림판·카드 공통, 2026-11-02)
   title: string;
   desc: string;
   cta: string;
@@ -66,13 +67,13 @@ export const PARTNER_KAKAO_FRIEND_URL = "https://pf.kakao.com/_xcFZrX/friend";
 
 // 점프엑스 항목은 "오픈 알림 받기"만 — 경매·결제 등 아직 열리지 않은 기능은 적지 않는다.
 export const PARTNER_ITEMS: readonly PartnerItem[] = [
-  { id: "sell", chip: "notice", audience: "member", action: { type: "link", href: "/sell" }, title: "팔고 싶은 재고가 있으세요?", desc: "등록하면 점핑매니저가 검토 후 연락드려요", cta: "판매 등록하기" },
-  { id: "buy", chip: "notice", audience: "member", action: { type: "link", href: "/buy" }, title: "찾는 상품이 있으세요?", desc: "구매 요청을 남기면 공급 제안을 점핑매니저가 전해 드려요", cta: "찾습니다 등록하기" },
-  { id: "partner", chip: "notice", audience: "member", action: { type: "link", href: "/share" }, title: "점핑파트너", desc: "추천 링크를 공유하고 공식 점핑파트너도 신청할 수 있어요", cta: "자세히 보기" },
-  { id: "kakao", chip: "notice", audience: "member", action: { type: "kakao" }, title: "카카오 채널 추가", desc: "새 매물 소식을 카카오톡으로 받아보세요", cta: "채널 추가하기" },
-  { id: JUMPX_WAITLIST_ID, chip: "notice", audience: "member", action: { type: "waitlist" }, title: "점프엑스 오픈 알림", desc: "점프엑스가 열리면 가장 먼저 알려드려요", cta: "오픈 알림 받기" },
-  { id: "signup", chip: "notice", audience: "guest", action: { type: "link", href: "/signup" }, title: "가입하면 새 매물을 알림으로 받아요", desc: "관심 카테고리만 골라 두면 돼요", cta: "가입하기" },
-  { id: "sell_guest", chip: "notice", audience: "guest", action: { type: "link", href: "/sell" }, title: "팔고 싶은 재고가 있으세요?", desc: "등록하면 점핑매니저가 검토 후 연락드려요", cta: "판매 등록하기" },
+  { id: "sell", icon: "📦", chip: "notice", audience: "member", action: { type: "link", href: "/sell" }, title: "팔고 싶은 재고가 있으세요?", desc: "등록하면 점핑매니저가 검토 후 연락드려요", cta: "판매 등록하기" },
+  { id: "buy", icon: "🔎", chip: "notice", audience: "member", action: { type: "link", href: "/buy" }, title: "찾는 상품이 있으세요?", desc: "구매 요청을 남기면 공급 제안을 점핑매니저가 전해 드려요", cta: "찾습니다 등록하기" },
+  { id: "partner", icon: "🤝", chip: "notice", audience: "member", action: { type: "link", href: "/share" }, title: "점핑파트너", desc: "추천 링크를 공유하고 공식 점핑파트너도 신청할 수 있어요", cta: "자세히 보기" },
+  { id: "kakao", icon: "💬", chip: "notice", audience: "member", action: { type: "kakao" }, title: "카카오 채널 추가", desc: "새 매물 소식을 카카오톡으로 받아보세요", cta: "채널 추가하기" },
+  { id: JUMPX_WAITLIST_ID, icon: "🔔", chip: "notice", audience: "member", action: { type: "waitlist" }, title: "점프엑스 오픈 알림", desc: "점프엑스가 열리면 가장 먼저 알려드려요", cta: "오픈 알림 받기" },
+  { id: "signup", icon: "✍️", chip: "notice", audience: "guest", action: { type: "link", href: "/signup" }, title: "가입하면 새 매물을 알림으로 받아요", desc: "관심 카테고리만 골라 두면 돼요", cta: "가입하기" },
+  { id: "sell_guest", icon: "📦", chip: "notice", audience: "guest", action: { type: "link", href: "/sell" }, title: "팔고 싶은 재고가 있으세요?", desc: "등록하면 점핑매니저가 검토 후 연락드려요", cta: "판매 등록하기" },
 ];
 
 /** 이 사용자에게 돌릴 항목 — 점프엑스 항목은 플래그(JUMPX_WAITLIST_SLOT_ENABLED)가 켜져 있을 때만, excludeIds는 지금 화면과 겹치는 항목 */

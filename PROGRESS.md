@@ -65,6 +65,8 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - **재검토 기록:** 알림판 회전 목록 확대 = 알림판 노출 2~4주 데이터 확인 후 재검토(PR 4 `/partnership`는 보류 확정이라 PR 4 이후가 아님).
 - **#134(`feat/partner-board-rotation`) merge 기록:** merge 커밋 `505c2a0` · CI build run 41291712125 · Deploy run 41363881128 · 운영 / · /deals · /logistics 200 · 운영 확인: 회원 홈 회전·비회원 노출 기록 확인.
 - **시험 정리 메모:** pw19 = 옛 관리자 구조 기준, 현행은 pwS19. 시험 정리 때 폐기 표시.
+- **도구함 날씨 탭 가로 밀림(실기기 제보, `fix/logistics-weather-overflow`):** 갤럭시 Z 폴드8 Chrome 홈 화면 앱(바깥 화면)에서 날씨 박스부터 오른쪽이 잘림. 시험 환경에서는 미재현(344~375px × 글꼴 100·130·160·200% × 긴 값, 이모지 2배도 넘침 0 — 이모지 폭을 자간으로 4~8배 넓힌 극단 조건에서만 보강 전 넘침 9건). 폭 계산 보강만 적용(날씨 이모지 고정 상자 · 텍스트 min-w-0 · 박스·2칸 minmax(0,1fr) · 부모 체인 min-w-0, overflow-x-hidden 미사용). **실기기 미재현 — 배포 후 대표 갤럭시 확인 필요, 그래도 밀리면 USB 디버깅으로 측정.**
+- **알림판·안내 카드 강조색(같은 PR):** 안내 항목만 연한 주황 바탕(`bg-brandOrange/10`)·주황 테두리·주황 칩(`bg-brandOrange text-navy` 5.57:1)·굵은 본문·항목별 이모지(`PARTNER_ITEMS.icon`), 카드 버튼은 남색 채움+흰 글씨(15.5:1), 알림판 항목 전환 0.3초 페이드(움직임 줄이기면 없음). 찾습니다(buy_notice)는 현행. 높이 44px·아래 요소 y 변화 0.
 
 ## 최근 작업 (2026-11-01) — 제휴·안내 칸 PR 2 (브랜치 `feat/partner-card-slots`)
 - **#132(`feat/stats-foundation`) merge 기록:** merge 커밋 `e4002a5` · CI build run 41279870110 · Deploy run 41282146757 · 운영 /deals 200 · `deal_view_daily_deal_idx` 컬럼 대조 일치((deal_id, stat_date)) · 운영 deal_view_daily 11/1 guest_views 3건 기록 확인.

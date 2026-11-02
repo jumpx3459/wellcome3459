@@ -99,7 +99,7 @@ function PartnerCardView({ slot, variant, item }: { slot: SlotId; variant: Partn
   const chip = (
     <span
       data-partner-chip
-      className="inline-block font-bold rounded-full whitespace-nowrap bg-gray100 text-gray500"
+      className="inline-block font-bold rounded-full whitespace-nowrap bg-brandOrange text-navy"
       style={{ fontSize: rem(12), padding: "2px 8px", lineHeight: 1.4 }}
     >
       {PARTNER_CHIP_LABEL[item.chip]}
@@ -164,16 +164,22 @@ function PartnerCardView({ slot, variant, item }: { slot: SlotId; variant: Partn
     return (
       <div ref={ref} {...dataAttrs}>
         {wrap(
-          "w-full flex items-center gap-2 text-left",
-          { minHeight: 44, padding: "6px 2px" },
+          "w-full flex items-center gap-2 text-left rounded-xl border border-brandOrange bg-brandOrange/10",
+          { minHeight: 44, padding: "6px 10px" },
           <>
             {chip}
-            <span className="flex-1 min-w-0" style={{ fontSize: rem(15), color: "#374151", lineHeight: 1.45 }}>
-              <span className="font-bold text-navy">{item.title}</span>
-              <span className="text-gray500"> · {isWaitlist && joined ? "신청 완료" : item.desc}</span>
+            <span className="flex-1 min-w-0" style={{ fontSize: rem(15), lineHeight: 1.45 }}>
+              <span className="font-bold text-navy">
+                <span aria-hidden>{item.icon} </span>
+                {item.title}
+              </span>
+              <span className="text-gray900"> · {isWaitlist && joined ? "신청 완료" : item.desc}</span>
             </span>
-            <span className="font-bold flex-shrink-0 text-navy" style={{ fontSize: rem(14) }}>
-              {ctaLabel} ›
+            <span
+              className={`font-bold flex-shrink-0 whitespace-nowrap rounded-full border-2 border-navy ${isWaitlist && joined ? "bg-white text-navy" : "bg-navy text-white"}`}
+              style={{ fontSize: rem(14), padding: "2px 10px" }}
+            >
+              {ctaLabel}
             </span>
           </>
         )}
@@ -184,16 +190,17 @@ function PartnerCardView({ slot, variant, item }: { slot: SlotId; variant: Partn
 
   // card — 이미지 없는 카드
   return (
-    <div ref={ref} {...dataAttrs} className="rounded-2xl border border-gray200 bg-white text-left" style={{ padding: "14px 16px" }}>
+    <div ref={ref} {...dataAttrs} className="rounded-2xl border border-brandOrange bg-brandOrange/10 text-left" style={{ padding: "14px 16px" }}>
       <div className="mb-1.5">{chip}</div>
       <p className="font-black text-navy" style={{ fontSize: rem(17), lineHeight: 1.4 }}>
+        <span aria-hidden>{item.icon} </span>
         {item.title}
       </p>
-      <p className="mt-1 text-gray500" style={{ fontSize: rem(15), lineHeight: 1.5 }}>
+      <p className="mt-1 text-gray900" style={{ fontSize: rem(15), lineHeight: 1.5 }}>
         {item.desc}
       </p>
       {wrap(
-        "w-full flex items-center justify-center text-center font-bold rounded-xl mt-3 border-2 border-navy text-navy bg-white disabled:opacity-60",
+        `w-full flex items-center justify-center text-center font-bold rounded-xl mt-3 border-2 border-navy ${isWaitlist && joined ? "bg-white text-navy" : "bg-navy text-white disabled:opacity-60"}`,
         { minHeight: 48, fontSize: rem(16), padding: "0 14px" },
         <>{ctaLabel}</>
       )}
