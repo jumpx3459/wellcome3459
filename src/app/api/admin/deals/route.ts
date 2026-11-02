@@ -4,7 +4,8 @@ import { sendDealPush } from "@/lib/sendPush";
 import { sanitizeManifest, sanitizePid } from "@/lib/parseCsv";
 import { checkAdminAuth, requirePerm } from "@/lib/adminAuth";
 import { isStockType } from "@/lib/stockType";
-import { isDealPriceUnit, isLumpSum } from "@/lib/priceUnit";
+import { isLumpSum } from "@/lib/priceUnit";
+import { checkPriceUnitValue, normalizeQuantityUnit } from "@/lib/units";
 import { resolveSellerDisplay } from "@/lib/sellerDisplay";
 import { checkDealVideoUrl } from "@/lib/videoUploadServer";
 import { normalizeTitle, checkTitle, checkDescription, DUPLICATE_TITLE_WARNING } from "@/lib/titleGuard";
@@ -129,8 +130,13 @@ export async function POST(req: NextRequest) {
   if (totalQty == null || totalQty === "") return bad("재고 총수량을 입력해주세요.", "totalQty");
   if (!isPositive(totalQty)) return bad("재고 총수량은 0보다 커야 해요.", "totalQty");
   // 2026-09-29: 단가 단위 — DB check와 같은 값만, 안 보내면 null(= 수량 단위 기준). 일괄이면 최소주문 없음
-  if (priceUnit != null && !isDealPriceUnit(priceUnit)) return bad("단가 단위가 올바르지 않아요.", "priceUnit");
-  const lumpSum = isLumpSum(priceUnit);
+  // 2026-11-02 단위: 목록 값 또는 직접 입력(1~6자·글자 포함·줄바꿈 불가), 총수량 단위에는 "일괄" 불가
+  const qtyUnitCheck = normalizeQuantityUnit(quantityUnit);
+  if (!qtyUnitCheck.ok) return bad(qtyUnitCheck.error, "quantityUnit");
+  const priceUnitCheck = priceUnit != null ? checkPriceUnitValue(priceUnit) : null;
+  if (priceUnitCheck && !priceUnitCheck.ok) return bad(priceUnitCheck.error, "priceUnit");
+  const priceUnitValue = priceUnitCheck?.ok ? priceUnitCheck.value : null;
+  const lumpSum = isLumpSum(priceUnitValue);
   if (!lumpSum && minOrderQty != null && (!isPositive(minOrderQty) || !Number.isInteger(minOrderQty))) return bad("최소 주문량은 1 이상의 정수로 입력해주세요.", "minOrderQty");
   if (!lumpSum && minOrderQty != null && minOrderQty > totalQty) return bad("최소주문량은 재고 총수량보다 클 수 없어요.", "minOrderQty");
   if (!closesAt || Number.isNaN(Date.parse(closesAt))) return bad("마감 시간이 올바르지 않아요.", "closesAt");
@@ -292,9 +298,9 @@ export async function POST(req: NextRequest) {
     ...(shipNote ? { shipping_note: shipNote } : {}),
     total_qty: totalQty,
     remaining_qty: remainingQty ?? totalQty,
-    quantity_unit: quantityUnit || "개",
+    quantity_unit: qtyUnitCheck.value,
     min_order_qty: lumpSum ? null : minOrderQty || null,
-    price_unit: priceUnit ?? null,
+    price_unit: priceUnitValue,
     location,
     closes_at: closesAt,
     status: "active",

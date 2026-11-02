@@ -8,7 +8,7 @@ import { pathToFileURL, fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dir = mkdtempSync(join(tmpdir(), "deal-edit-"));
 mkdirSync(join(dir, "lib"), { recursive: true });
-for (const f of ["dealEdit", "titleGuard", "dealFields", "priceUnit", "priceMode", "stockType", "format", "dealDeadline"]) {
+for (const f of ["dealEdit", "titleGuard", "dealFields", "priceUnit", "units", "shippingFee", "priceMode", "stockType", "format", "dealDeadline"]) {
   const src = readFileSync(join(root, "src/lib", `${f}.ts`), "utf8").replace(/from "@\/lib\/([A-Za-z]+)"/g, 'from "./$1.ts"');
   writeFileSync(join(dir, "lib", `${f}.ts`), src);
 }
@@ -42,7 +42,12 @@ eq(f({ minOrderQty: 101 }), "minOrderQty", "MOQ > 총수량 → 막음(기존 �
 eq(f({ totalQty: 5, priceUnit: "일괄" }), null, "일괄이면 MOQ 검사 없음");
 eq(f({ description: "설명만" }, { ...cur, min_order_qty: 500 }), null, "예전 데이터(MOQ>총수량)라도 다른 칸만 고치면 허용");
 // 단가 단위·재고 유형·보관
-eq(f({ priceUnit: "상자" }), "priceUnit", "알 수 없는 단가 단위 → 막음");
+eq(f({ priceUnit: "상자" }), null, "목록에 없는 단가 단위도 직접 입력 규칙(1~6자·글자)을 지키면 허용");
+eq(f({ priceUnit: "1234" }), "priceUnit", "숫자만인 단가 단위 → 막음");
+eq(f({ priceUnit: "일곱글자단위입니다" }), "priceUnit", "7자 넘는 단가 단위 → 막음");
+eq(f({ quantityUnit: "일괄" }), "quantityUnit", "총수량 단위로 일괄 → 막음");
+eq(f({ quantityUnit: "톤백" }), null, "총수량 단위 톤백 허용");
+eq(f({ quantityUnit: "##" }), "quantityUnit", "기호만인 총수량 단위 → 막음");
 eq(f({ priceUnit: "박스" }), null, "단가 단위 박스 → 허용");
 eq(f({ stockType: "weird" }), "stockType", "알 수 없는 재고 유형 → 막음");
 eq(f({ stockType: "near_expiry" }), "expiryDate", "소비기한 임박으로 바꾸는데 소비기한 없음 → 막음");

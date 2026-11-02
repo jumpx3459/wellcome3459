@@ -1,3 +1,5 @@
+import { LEGACY_PRICE_UNITS } from "@/lib/units";
+
 export function formatCountdown(closesAt: string): { label: string; urgent: boolean } {
   const diffMs = new Date(closesAt).getTime() - Date.now();
   if (diffMs <= 0) return { label: "마감", urgent: true };
@@ -89,7 +91,7 @@ export function formatRelativeTime(iso?: string | null): string | null {
 // 2026-09-29: 가격 기준 단위 — 구매 희망 단가(buy_requests.hope_price_unit).
 // sell 단가 단위(src/lib/priceUnit.ts DEAL_PRICE_UNITS)와 같은 목록·같은 저장값 — 전체 가격은 "일괄".
 // 예전 저장값 "총액"은 표시할 때 "일괄"로 보임(formatPriceWithUnit).
-export const PRICE_UNITS = ["개", "박스", "kg", "톤", "파렛트", "세트", "L", "일괄"] as const;
+export const PRICE_UNITS = LEGACY_PRICE_UNITS; // 값: 개·박스·kg·톤·파렛트·세트·L·일괄 (units.ts 한 곳, 변경 없음)
 export type PriceUnit = (typeof PRICE_UNITS)[number];
 
 // 선택지 라벨: "개당", "kg당" … / "일괄(전체)"

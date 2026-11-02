@@ -1,6 +1,7 @@
 import { normalizeTitle, checkTitle, checkDescription } from "@/lib/titleGuard";
 import { isValidExpiryDate, isStorageType, priceWarnings, EXPIRY_REQUIRED_MESSAGE } from "@/lib/dealFields";
-import { isLumpSum, isDealPriceUnit } from "@/lib/priceUnit";
+import { isLumpSum } from "@/lib/priceUnit";
+import { checkPriceUnitValue, normalizeQuantityUnit } from "@/lib/units";
 import { isStockType } from "@/lib/stockType";
 import { DEADLINE_MAX_MESSAGE, DEADLINE_MAX_MS, closesAfterExpiryMessage, expiryLimitMs } from "@/lib/dealDeadline";
 import { isPriceMode, type PriceMode } from "@/lib/priceMode";
@@ -104,7 +105,15 @@ export function validateDealEdit(
   if (input.category !== undefined && (typeof input.category !== "string" || !input.category.trim())) return bad("카테고리를 선택해주세요.", "category");
   if (input.region !== undefined && (typeof input.region !== "string" || !input.region.trim())) return bad("지역을 선택해주세요.", "region");
   if (input.totalQty !== undefined && !isPositive(input.totalQty)) return bad("재고 총수량은 0보다 커야 해요.", "totalQty");
-  if (input.priceUnit !== undefined && input.priceUnit != null && !isDealPriceUnit(input.priceUnit)) return bad("단가 단위가 올바르지 않아요.", "priceUnit");
+  // 2026-11-02 단위: 목록 값 또는 직접 입력(1~6자·글자 포함·줄바꿈 불가), 총수량 단위에는 "일괄" 불가
+  if (input.priceUnit !== undefined && input.priceUnit != null) {
+    const u = checkPriceUnitValue(input.priceUnit);
+    if (!u.ok) return bad(u.error, "priceUnit");
+  }
+  if (input.quantityUnit !== undefined) {
+    const u = normalizeQuantityUnit(input.quantityUnit);
+    if (!u.ok) return bad(u.error, "quantityUnit");
+  }
   if (input.stockType !== undefined && !isStockType(input.stockType)) return bad("재고 유형이 올바르지 않아요.", "stockType");
   if (input.storageType !== undefined && input.storageType != null && input.storageType !== "" && !isStorageType(input.storageType)) {
     return bad("보관 조건이 올바르지 않아요.", "storageType");
