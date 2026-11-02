@@ -8,13 +8,14 @@ import { pathToFileURL, fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dir = mkdtempSync(join(tmpdir(), "units-"));
 mkdirSync(join(dir, "lib"), { recursive: true });
-for (const f of ["units", "priceUnit", "format"]) {
+for (const f of ["units", "priceUnit", "format", "homeCard"]) {
   const src = readFileSync(join(root, "src/lib", `${f}.ts`), "utf8").replace(/from "@\/lib\/([A-Za-z]+)"/g, 'from "./$1.ts"');
   writeFileSync(join(dir, "lib", `${f}.ts`), src);
 }
 const U = await import(pathToFileURL(join(dir, "lib/units.ts")).href);
 const P = await import(pathToFileURL(join(dir, "lib/priceUnit.ts")).href);
 const F = await import(pathToFileURL(join(dir, "lib/format.ts")).href);
+const H = await import(pathToFileURL(join(dir, "lib/homeCard.ts")).href);
 
 let failed = 0;
 const eq = (got: unknown, want: unknown, msg: string) => {
@@ -95,6 +96,14 @@ eq(U.unitSelectValue({ unit: "kg", other: false }), "kg", "선택 상자 값: �
 eq(U.canAutoMatchUnits({ unit: "개", other: false }, { unit: "개", other: false }), true, "J: 둘 다 목록이면 자동 맞춤");
 eq(U.canAutoMatchUnits({ unit: "봉", other: true }, { unit: "개", other: false }), false, "J: 하나라도 직접 입력이면 자동 맞춤 끔");
 eq(U.canAutoMatchUnits({ unit: "개", other: false }, { unit: "봉", other: true }), false, "J: 반대쪽도 끔");
+
+// ── 표시(카드·상세 글자): 직접 입력·추가 단위가 그대로 이어 붙음
+eq(H.regionQtyText("경기", 30, "톤백"), "경기 · 30톤백", "홈 카드: 경기 · 30톤백");
+eq(H.qtyRegionText(30, "톤백", "경기"), "30톤백 · 경기", "/deals 카드: 30톤백 · 경기");
+eq(H.regionQtyText("경기", 1234, "가나다라마바"), "경기 · 1,234가나다라마바", "홈 카드: 6자 단위");
+eq(F.formatDealPrice(12000, "톤백", "드럼"), "12,000원/드럼", "가격 줄: 12,000원/드럼");
+eq(F.formatDealPrice(12000, "개", "사아자차카타"), "12,000원/사아자차카타", "가격 줄: 6자 단위");
+eq(F.formatDealPrice(12000, "개", null), "12,000원/개", "단가 단위 없으면 수량 단위");
 
 if (failed) {
   console.error(`\n${failed}건 실패`);

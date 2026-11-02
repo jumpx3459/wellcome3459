@@ -4,7 +4,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import { CheckCircle } from "lucide-react";
-import { mockCategories, mockRegions, categoryIcons, quantityUnits } from "@/lib/mockData";
+import { mockCategories, mockRegions, categoryIcons } from "@/lib/mockData";
 import ImageUploader, { type ImageUploadStatus, type ImageUploaderHandle, type PhotoRef } from "@/components/ImageUploader";
 import { BP_MESSAGES, BRAND_NAME_MAX, toProtectedRef } from "@/lib/brandProtected";
 import VideoUploader, { type VideoUploadStatus, type VideoUploaderHandle } from "@/components/VideoUploader";
@@ -49,7 +49,9 @@ import { isStockType, STOCK_TYPES, type StockType } from "@/lib/stockType";
 import FormAccordion, { FormSectionTitle, FORM_ROW2, FORM_ROW3 } from "@/components/FormAccordion";
 import StockTypeBadge from "@/components/StockTypeBadge";
 import { ADMIN_PHOTO_LIMIT } from "@/lib/photoLimit";
-import { DEAL_PRICE_UNITS, LUMP_SUM, isDealPriceUnit, isLumpSum, priceUnitSuffix } from "@/lib/priceUnit";
+import { LUMP_SUM, isLumpSum, priceUnitSuffix } from "@/lib/priceUnit";
+import { SELL_PRICE_UNITS, SELL_QUANTITY_UNITS, canAutoMatchUnits, checkPriceUnitValue, checkQuantityUnit, initUnitState, type UnitState } from "@/lib/units";
+import { CustomUnitInput, UnitSelect } from "@/components/UnitSelect";
 import { UI_SECTION, UI_CARD_TITLE, UI_LINK, BTN_CLASS, btnStyle } from "@/lib/uiText";
 import { FieldLabel, FORM_INPUT_FONT_SIZE } from "@/components/FormField";
 import { RatioMetric, DailyBars, FunnelBars, InlineBar, BIG_NUM, LABEL, CARD } from "@/components/admin/DashboardViz";
@@ -3564,17 +3566,34 @@ function DealFormInner({
   const [dealPrice, setDealPrice] = useState(prefill?.dealPrice ? String(prefill.dealPrice) : "");
   const [priceMode, setPriceMode] = useState<PriceMode>(prefill?.priceMode === "negotiable" ? "negotiable" : "fixed"); // 2026-10-04 가격 방식 — 가격 협의면 판매·정상 단가 없이 등록 (2026-10-05: 협의 신청이면 협의로 시작)
   const [totalQty, setTotalQty] = useState(prefill?.totalQty ? String(prefill.totalQty) : "");
-  const [quantityUnit, setQuantityUnit] = useState(prefill?.quantityUnit || quantityUnits[0]);
+  // 2026-11-02 단위: 목록 + "기타(직접 입력)" — qty/pu = { unit: 저장될 글자, other: 기타 선택 여부 } (src/lib/units.ts). 저장된 단위가 목록에 없으면 기타 + 입력칸에 그 값
+  const [qty, setQty] = useState<UnitState>(() => initUnitState(prefill?.quantityUnit, SELL_QUANTITY_UNITS, SELL_QUANTITY_UNITS[0]));
+  const quantityUnit = qty.unit;
   // 2026-10-28 J: 총수량 단위를 직접 고르기 전(신청서·수정 값이 아닐 때)에는 판매 단가 단위를 따라감
   const [quantityUnitTouched, setQuantityUnitTouched] = useState(!!prefill?.quantityUnit);
   // 2026-10-28 A: 배송비 안내(기본 별도) · 배송 메모(선택, 60자)
   const [shippingFeeType, setShippingFeeType] = useState<ShippingFeeType>(shippingFeeTypeOf(prefill?.shippingFeeType));
   const [shippingNote, setShippingNote] = useState(prefill?.shippingNote ?? "");
   // 2026-09-29: 단가 단위 — 신청서 값 이어받기, 없으면 수량 단위를 따라감(직접 고르면 유지). 정상가·판매가 공통
-  const [priceUnit, setPriceUnit] = useState<string>(
-    isDealPriceUnit(prefill?.priceUnit) ? prefill!.priceUnit! : prefill?.quantityUnit || quantityUnits[0]
+  const [pu, setPu] = useState<UnitState>(() =>
+    initUnitState(prefill?.priceUnit || prefill?.quantityUnit, SELL_PRICE_UNITS, SELL_QUANTITY_UNITS[0])
   );
-  const [priceUnitTouched, setPriceUnitTouched] = useState(isDealPriceUnit(prefill?.priceUnit));
+  const priceUnit = pu.unit;
+  const [priceUnitTouched, setPriceUnitTouched] = useState(!!prefill?.priceUnit?.trim());
+  const onPriceUnit = (n: UnitState) => {
+    setPu(n);
+    setPriceUnitTouched(true);
+    clearErr("priceUnit");
+    if (!n.other && n.unit === LUMP_SUM) setMinOrderQty("");
+    // 2026-10-28 J: 총수량 단위를 직접 고르지 않았으면 같은 값으로 맞춤(새 등록만, 일괄 제외) — 둘 중 하나라도 직접 입력이면 맞춤 끔
+    else if (!edit && !quantityUnitTouched && canAutoMatchUnits(n, qty) && SELL_QUANTITY_UNITS.includes(n.unit)) setQty({ unit: n.unit, other: false });
+  };
+  const onQuantityUnit = (n: UnitState) => {
+    setQty(n);
+    setQuantityUnitTouched(true);
+    clearErr("quantityUnit");
+    if (!priceUnitTouched && canAutoMatchUnits(n, pu) && SELL_PRICE_UNITS.includes(n.unit)) setPu({ unit: n.unit, other: false });
+  };
   const lumpSum = isLumpSum(priceUnit);
   const [minOrderQty, setMinOrderQty] = useState(
     prefill?.minOrderQty ? String(prefill.minOrderQty) : ""
@@ -3735,6 +3754,13 @@ function DealFormInner({
       if (originalPrice.trim() && (!orig || orig <= 0)) errs.originalPrice = "정상가는 0보다 커야 해요.";
     }
     if (shippingNote.trim().length > SHIPPING_NOTE_MAX) errs.shippingNote = SHIPPING_NOTE_ERROR;
+    // 2026-11-02 단위 직접 입력 검사 — 서버(등록·수정 API)도 같은 검사(units.ts)
+    const qUnitCheck = checkQuantityUnit(quantityUnit);
+    if (!qUnitCheck.ok) errs.quantityUnit = qUnitCheck.error;
+    if (priceMode === "fixed") {
+      const pUnitCheck = checkPriceUnitValue(priceUnit);
+      if (!pUnitCheck.ok) errs.priceUnit = pUnitCheck.error;
+    }
     if (!totalQty.trim()) errs.totalQty = "재고 총수량을 입력해주세요.";
     else if (!Number.isFinite(qty) || qty <= 0) errs.totalQty = "재고 총수량은 0보다 커야 해요.";
     if (!lumpSum && minOrderQty.trim() && !(Number(minOrderQty) > 0 && Number.isInteger(Number(minOrderQty)))) errs.minOrderQty = "최소 주문량은 1 이상의 정수로 입력해주세요.";
@@ -3841,8 +3867,9 @@ function DealFormInner({
       }
       const qtyNum = parsePriceInput(totalQty);
       if (qtyNum !== initial.total_qty) c.totalQty = qtyNum;
-      if (quantityUnit !== (initial.quantity_unit || "개")) c.quantityUnit = quantityUnit;
-      if (priceUnit !== initialPriceUnit) c.priceUnit = priceUnit;
+      if (quantityUnit.trim() !== (initial.quantity_unit || "개")) c.quantityUnit = quantityUnit.trim();
+      const puSave = checkPriceUnitValue(priceUnit);
+      if (puSave.ok && puSave.value !== initialPriceUnit) c.priceUnit = puSave.value;
       if (!lumpSum && minOrderQty !== (initial.min_order_qty ? String(initial.min_order_qty) : "")) c.minOrderQty = minOrderQty.trim() ? Number(minOrderQty) : null;
       if (category !== (initial.categories?.name ?? "")) c.category = category;
       if (region !== (initial.regions?.name ?? "")) c.region = region;
@@ -3899,8 +3926,8 @@ function DealFormInner({
           // 가격 협의면 가격 칸은 보내지 않음(서버·DB도 두 가격 null만 허용)
           ...(priceMode === "fixed" ? { originalPrice: orig, dealPrice: deal } : {}),
           totalQty: parsePriceInput(totalQty),
-          quantityUnit,
-          priceUnit,
+          quantityUnit: quantityUnit.trim(),
+          priceUnit: checkPriceUnitValue(priceUnit).ok ? priceUnit.trim() : null,
           minOrderQty: !lumpSum && minOrderQty ? Number(minOrderQty) : null,
           location,
           closesAt,
@@ -4298,26 +4325,17 @@ function DealFormInner({
                     }}
                   />
                   <span className="flex-shrink-0 flex items-center font-bold" style={{ fontSize: rem(15), color: "#0B2540", padding: "0 4px 0 6px" }}>원 /</span>
-                  <select
+                  <UnitSelect
                     id="deal-priceUnit"
-                    aria-label="판매 단가 단위"
+                    ariaLabel="판매 단가 단위"
                     className={GROUP_SELECT_CLS}
-                    value={priceUnit}
-                    onChange={(e) => {
-                      setPriceUnit(e.target.value);
-                      setPriceUnitTouched(true);
-                      if (e.target.value === LUMP_SUM) setMinOrderQty("");
-                      // 2026-10-28 J: 총수량 단위를 직접 고르지 않았으면 같은 값으로 맞춤(새 등록만, 일괄 제외)
-                      else if (!edit && !quantityUnitTouched && quantityUnits.includes(e.target.value)) setQuantityUnit(e.target.value);
-                    }}
-                  >
-                    {DEAL_PRICE_UNITS.map((u) => (
-                      <option key={u} value={u}>
-                        {u === LUMP_SUM ? "일괄(전체)" : u}
-                      </option>
-                    ))}
-                  </select>
+                    state={pu}
+                    options={SELL_PRICE_UNITS}
+                    labelOf={(u) => (u === LUMP_SUM ? "일괄(전체)" : u)}
+                    onChange={onPriceUnit}
+                  />
                 </div>
+                <CustomUnitInput state={pu} options={SELL_PRICE_UNITS} onChange={onPriceUnit} ariaLabel="판매 단가 단위 직접 입력" fontSize={rem(15)} error={fieldErrors.priceUnit} testId="deal-priceUnit-custom" />
                 {!edit && (
                 <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }}>
                   목록에 &quot;{formatDealPrice(30000, quantityUnit, priceUnit, { exact: true })}&quot;처럼 보여요 · {shippingFeeType === "included" ? "배송비 포함 가격" : shippingFeeType === "negotiable" ? "배송비 협의" : "창고 출고가(배송비 별도)"}{" "}
@@ -4373,29 +4391,21 @@ function DealFormInner({
                       clearErr("totalQty");
                     }}
                   />
-                  <select
+                  <UnitSelect
                     id="deal-quantityUnit"
-                    aria-label="재고 총수량 단위"
+                    ariaLabel="재고 총수량 단위"
                     className={GROUP_SELECT_CLS}
                     style={{ width: 84 }}
-                    value={quantityUnit}
-                    onChange={(e) => {
-                      setQuantityUnit(e.target.value);
-                      setQuantityUnitTouched(true);
-                      if (!priceUnitTouched && isDealPriceUnit(e.target.value)) setPriceUnit(e.target.value);
-                    }}
-                  >
-                    {quantityUnits.map((u) => (
-                      <option key={u} value={u}>
-                        {u}
-                      </option>
-                    ))}
-                  </select>
+                    state={qty}
+                    options={SELL_QUANTITY_UNITS}
+                    onChange={onQuantityUnit}
+                  />
                 </div>
+                <CustomUnitInput state={qty} options={SELL_QUANTITY_UNITS} onChange={onQuantityUnit} ariaLabel="재고 총수량 단위 직접 입력" fontSize={rem(15)} error={fieldErrors.quantityUnit} testId="deal-quantityUnit-custom" forbidLumpSum />
                 {!edit && <p className="mt-1 text-gray500" style={{ fontSize: rem(14) }} data-qty-hint>소수점은 작은 단위로 적어주세요 (1.5톤 → 1,500kg)</p>}
-                {priceMode === "fixed" && !lumpSum && priceUnit !== quantityUnit && (
+                {priceMode === "fixed" && !lumpSum && priceUnit.trim() && quantityUnit.trim() && priceUnit.trim() !== quantityUnit.trim() && (
                   <p className="mt-1 rounded-lg font-bold" role="status" data-unit-warn style={{ fontSize: rem(14), background: "#FFF8E1", border: "1.5px solid #F2D36B", color: "#7A5B00", padding: "6px 10px" }}>
-                    가격은 {priceUnit}, 수량은 {quantityUnit}예요
+                    가격은 {priceUnit.trim()}, 수량은 {quantityUnit.trim()}예요
                   </p>
                 )}
               </DealFormField>
@@ -4856,9 +4866,9 @@ function requestPrefill(r: SellerRequest) {
   };
 }
 
-type DealField = "title" | "brandName" | "category" | "region" | "originalPrice" | "dealPrice" | "totalQty" | "remainingQty" | "closesAt" | "minOrderQty" | "expiryDate" | "sellerPrivateCompany" | "sellerPrivatePhone" | "sellerPrivatePhone2" | "sellerPrivateName" | "businessCheckId" | "sourcedBy" | "shippingNote";
+type DealField = "title" | "brandName" | "category" | "region" | "originalPrice" | "dealPrice" | "totalQty" | "remainingQty" | "closesAt" | "minOrderQty" | "quantityUnit" | "priceUnit" | "expiryDate" | "sellerPrivateCompany" | "sellerPrivatePhone" | "sellerPrivatePhone2" | "sellerPrivateName" | "businessCheckId" | "sourcedBy" | "shippingNote";
 // 화면 위→아래 순서 (첫 누락 칸 포커스용) — 2026-10-01 2차: ① 매물명·판매/정상 단가·재고 총수량·지역 → 제품 상세(MOQ·소비기한) → 거래 조건(카테고리)
-const DEAL_FIELD_ORDER: DealField[] = ["title", "brandName", "dealPrice", "originalPrice", "shippingNote", "totalQty", "remainingQty", "closesAt", "region", "minOrderQty", "expiryDate", "category", "sellerPrivateCompany", "sellerPrivatePhone", "sellerPrivatePhone2", "sellerPrivateName", "businessCheckId", "sourcedBy"];
+const DEAL_FIELD_ORDER: DealField[] = ["title", "brandName", "dealPrice", "originalPrice", "priceUnit", "shippingNote", "totalQty", "quantityUnit", "remainingQty", "closesAt", "region", "minOrderQty", "expiryDate", "category", "sellerPrivateCompany", "sellerPrivatePhone", "sellerPrivatePhone2", "sellerPrivateName", "businessCheckId", "sourcedBy"];
 
 // 붙인 입력 그룹(한 테두리) — [입력 | 원 / 단위] (2026-10-01 2차)
 const GROUP_INPUT_CLS = "flex-1 min-w-0 px-3 py-2.5 text-[0.8889rem] outline-none bg-transparent";
