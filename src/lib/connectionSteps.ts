@@ -103,6 +103,19 @@ export const END_REASONS = [
 ] as const satisfies readonly { key: string; label: string; result: ConnectionResult }[];
 export type EndReasonKey = (typeof END_REASONS)[number]["key"];
 
+/** "판매자 재고 없음"으로 끝낸 건의 사유 문구(END_REASONS no_stock) — 종료 카드 [품절 안내 문구 복사] 판별용 */
+export const NO_STOCK_REASON = END_REASONS.find((r) => r.key === "no_stock")!.label;
+
+// 2026-11-02 종료 카드 번호·판매자 정보 보기: 종료일(closed_at)로부터 이 기간이 지나면 화면은 버튼을 숨기고 서버도 403.
+// 화면·서버가 같은 값을 씀(여기 한 곳). 종료 시각이 비어 있으면 마지막 변경 시각으로 셈.
+export const CLOSED_CONTACT_VIEW_DAYS = 365;
+export const CLOSED_CONTACT_EXPIRED_MESSAGE = "종료 후 1년이 지나 볼 수 없어요";
+export function closedContactViewExpired(status: ConnectionStatus, closedAt: string | null, updatedAt: string | null, now = Date.now()): boolean {
+  if (status !== "closed") return false;
+  const t = Date.parse(closedAt ?? updatedAt ?? "");
+  return !Number.isFinite(t) || now - t > CLOSED_CONTACT_VIEW_DAYS * 24 * 60 * 60 * 1000;
+}
+
 /** ③ 판매자에게 보내는 문구 */
 export function contactMessage(title: string, phone: string): string {
   return `[덤핑점핑] ${title} 구매 희망 고객 연락처입니다.\n구매자 번호: ${phone}\n거래 조건은 직접 협의해 주세요. 거래가 되면 덤핑점핑에 알려주세요.`;

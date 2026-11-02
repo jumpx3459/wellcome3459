@@ -69,6 +69,22 @@ eq(
   "문구 복사 내용"
 );
 
+// ── 종료 카드 번호·판매자 정보 보기 보존 기한(종료일로부터 1년)
+{
+  const DAY = 24 * 60 * 60 * 1000;
+  const now = Date.parse("2026-11-02T00:00:00Z");
+  const at = (days: number) => new Date(now - days * DAY).toISOString();
+  eq(L.CLOSED_CONTACT_VIEW_DAYS, 365, "보존 기한 상수 = 365일");
+  eq(L.closedContactViewExpired("closed", at(364), at(364), now), false, "종료 364일 → 볼 수 있음");
+  eq(L.closedContactViewExpired("closed", at(365), at(365), now), false, "종료 정확히 365일 → 볼 수 있음(1년이 '지나면')");
+  eq(L.closedContactViewExpired("closed", at(366), at(0), now), true, "종료 366일 → 막힘(마지막 변경이 최근이어도 종료일 기준)");
+  eq(L.closedContactViewExpired("closed", null, at(10), now), false, "종료 시각 없음 → 마지막 변경으로 셈(10일 → 볼 수 있음)");
+  eq(L.closedContactViewExpired("closed", null, at(400), now), true, "종료 시각 없음 + 마지막 변경 400일 → 막힘");
+  eq(L.closedContactViewExpired("closed", null, null, now), true, "시각이 전혀 없으면 막힘(안전한 쪽)");
+  eq(L.closedContactViewExpired("contact_sent", at(900), at(900), now), false, "진행 중 건은 기한 규칙 대상 아님");
+  eq(L.NO_STOCK_REASON, "판매자 재고 없음", "품절 안내 대상 사유 문구");
+}
+
 if (failed) {
   console.error(`\n${failed}건 실패`);
   process.exit(1);
