@@ -74,6 +74,8 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/admin/connec
   if (!deal) return NextResponse.json({ error: "연결 기록을 찾을 수 없어요." }, { status: 404 });
   const scoped = connectionScopeDenied(auth.admin, deal.assigned_admin_id); // 2026-10-10 점핑매니저는 배정된 건(= 담당 매물)만
   if (scoped) return scoped;
+  // 2026-11-02: 종료된 연결은 판매자 정보를 저장할 수 없음(화면도 읽기만) — 진행 중 건은 현행 그대로
+  if (deal.status === "closed") return NextResponse.json({ error: "종료된 거래라 판매자 정보를 저장할 수 없어요.", scope: "closed" }, { status: 403 });
 
   const { data: before } = await db
     .from("deal_seller_private")

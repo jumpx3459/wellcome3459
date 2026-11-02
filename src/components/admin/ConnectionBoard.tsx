@@ -137,7 +137,7 @@ export default function ConnectionBoard({
       }
       items={items ?? []}
       // 단계가 바뀌면 카드 안 상태(성사 금액 칸·끝내기 펼침 등)를 새로 — key에 status 포함
-      renderItem={(c) => <ConnectionRow key={`${c.id}-${c.status}`} item={c} adminKey={adminKey} onDone={done} assignees={assignees} />}
+      renderItem={(c) => <ConnectionRow key={`${c.id}-${c.status}`} item={c} adminKey={adminKey} onDone={done} assignees={assignees} isDesktop={isDesktop} />}
       after={
         closed.length > 0 && (
           <div className="flex flex-col gap-2">
@@ -179,7 +179,12 @@ function StepBar({ status }: { status: ConnectionStatus }) {
   );
 }
 
-function ConnectionRow({ item, adminKey, onDone, assignees }: { item: ConnectionItem; adminKey: string; onDone: () => void; assignees: Assignee[] | null }) {
+function ConnectionRow({ item, adminKey, onDone, assignees, isDesktop }: { item: ConnectionItem; adminKey: string; onDone: () => void; assignees: Assignee[] | null; isDesktop: boolean }) {
+  const [phoneCopied, setPhoneCopied] = useState(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (copiedTimer.current) clearTimeout(copiedTimer.current);
+  }, []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [memoOpen, setMemoOpen] = useState(false);
@@ -234,6 +239,19 @@ function ConnectionRow({ item, adminKey, onDone, assignees }: { item: Connection
     } finally {
       setPhoneBusy(false);
     }
+  };
+  // PC [번호 복사] — 이미 화면에 있는 번호를 복사하는 것이라 서버 요청·감사 기록 없음(조회는 [구매자 번호 보기]에서 1건 기록, 종료 카드와 같음)
+  const copyPhone = async () => {
+    if (!phone) return;
+    try {
+      await navigator.clipboard.writeText(formatPhone(phone));
+    } catch {
+      setError("복사가 막혀 있어요. 번호를 눌러 직접 복사하세요.");
+      return;
+    }
+    setPhoneCopied(true);
+    if (copiedTimer.current) clearTimeout(copiedTimer.current);
+    copiedTimer.current = setTimeout(() => setPhoneCopied(false), COPIED_MS);
   };
   // ③ [판매자용 문구 복사] — 문구에 구매자 전체 번호가 들어가므로 누를 때마다 서버에 {copy:true}(번호 보기와 같은 권한 검사·같은 감사 action, detail copy=true)
   const contactText = async (): Promise<string | null> => {
@@ -380,9 +398,15 @@ function ConnectionRow({ item, adminKey, onDone, assignees }: { item: Connection
       </div>
       <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 min-w-0" style={{ fontSize: rem(15), color: "#4B5563", fontVariantNumeric: "tabular-nums" }}>
         {phone ? (
-          <a href={`tel:${phone}`} className="font-bold text-navy whitespace-nowrap" data-testid="conn-phone-full">
-            {formatPhone(phone)}
-          </a>
+          isDesktop ? (
+            <span className="font-bold text-navy whitespace-nowrap" data-testid="conn-phone-full">
+              {formatPhone(phone)}
+            </span>
+          ) : (
+            <a href={`tel:${phone}`} className="font-bold text-navy whitespace-nowrap" data-testid="conn-phone-full">
+              {formatPhone(phone)}
+            </a>
+          )
         ) : (
           <span className="font-bold whitespace-nowrap" data-testid="conn-phone-masked">
             {item.buyer_phone_masked ?? (item.buyer_kind === "member" ? "번호 없음(탈퇴)" : "번호 없음")}
@@ -431,6 +455,11 @@ function ConnectionRow({ item, adminKey, onDone, assignees }: { item: Connection
             {tools.includes("buyer") && item.has_phone && (
               <ToolButton onClick={fetchPhone} disabled={phoneBusy || !!phone} testId="tool-buyer-phone">
                 {phone ? "✓ 구매자 번호 보는 중" : phoneBusy ? "불러오는 중..." : "구매자 번호 보기"}
+              </ToolButton>
+            )}
+            {tools.includes("buyer") && phone && isDesktop && (
+              <ToolButton onClick={copyPhone} testId="tool-phone-copy">
+                {phoneCopied ? "✓ 복사했어요" : "번호 복사"}
               </ToolButton>
             )}
             {tools.includes("seller") && (
