@@ -116,7 +116,7 @@ function LogisticsPageInner() {
         />
       </div>
 
-      <div className="flex-1 px-5 py-5">
+      <div className="flex-1 min-w-0 px-5 py-5">
         {tab === "fx" && <FxCalculator />}
         {tab === "weather" && <WeatherWidget />}
         {tab === "pallet" && <PalletCalculator />}
@@ -300,8 +300,10 @@ function WeatherWidget() {
   const rainWarning = data && data.precipProb >= 60;
   const windWarning = data && data.windSpeed >= 40;
 
+  // 2026-11-02: 실기기(갤럭시·글자 크게)에서 날씨 박스부터 오른쪽이 밀린 제보 — 이모지 폭은 기기 글꼴마다 달라
+  // 박스 폭이 이모지·텍스트의 최소 콘텐츠 폭으로 늘어나지 않게 폭 계산만 보강(숨김 아님): 이모지 고정 상자 · 텍스트 min-w-0 · 부모 기준 w-full · 2칸 minmax(0,1fr).
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5 w-full min-w-0">
       <div>
         <label className="text-sm font-bold text-navy mb-2 block">지역 선택</label>
         <div className="flex flex-wrap gap-2">
@@ -322,7 +324,7 @@ function WeatherWidget() {
         </div>
       </div>
 
-      <div className="rounded-2xl px-5 py-6" style={{ background: "#F5F6F8" }}>
+      <div className="rounded-2xl px-5 py-6 w-full min-w-0" style={{ background: "#F5F6F8" }}>
         {loading ? (
           <div className="text-center text-gray500 text-sm py-4">날씨 조회 중...</div>
         ) : error || !data || !info ? (
@@ -331,21 +333,27 @@ function WeatherWidget() {
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
                 <div className="text-xs font-bold text-gray500 mb-1">
                   {region} · 현재 날씨
                 </div>
-                <div className="font-display text-4xl text-navy">{data.temp}°</div>
+                <div className="font-display text-4xl text-navy whitespace-nowrap">{data.temp}°</div>
                 <div className="text-sm text-gray500 mt-1">체감 {data.feelsLike}°</div>
               </div>
-              <div className="text-center">
-                <div className="text-5xl leading-none">{info.icon}</div>
+              <div className="text-center min-w-0 shrink">
+                <div
+                  className="mx-auto flex items-center justify-center shrink-0 leading-none overflow-hidden"
+                  style={{ width: "3.5rem", height: "3.5rem", fontSize: "3rem" }}
+                  data-weather-icon
+                >
+                  {info.icon}
+                </div>
                 <div className="text-sm font-bold text-navy mt-2">{info.label}</div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 mt-5">
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2 mt-5 w-full">
               <div className="bg-white rounded-xl px-3 py-3 text-center">
                 <div className="text-[0.7222rem] text-gray500 mb-0.5">강수확률</div>
                 <div className="text-base font-bold text-navy">{data.precipProb}%</div>

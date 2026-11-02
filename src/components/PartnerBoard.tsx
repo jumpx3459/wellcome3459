@@ -101,6 +101,8 @@ export default function PartnerBoard({ slot }: { slot: BoardSlot }) {
     item = {
       tag: PARTNER_CHIP_LABEL.notice,
       ...TAG_STYLE,
+      accent: true,
+      icon: p?.icon,
       body: p?.title ?? "",
       href: p?.action.type === "link" ? p.action.href : kakao ? PARTNER_KAKAO_FRIEND_URL : "/",
       external: kakao,
@@ -132,7 +134,7 @@ function BoardItem({ slot, id, item }: { slot: BoardSlot; id: string; item: Noti
   const ref = useRef<HTMLDivElement>(null);
   usePartnerImpression(ref, slot, id);
   return (
-    <div ref={ref} style={{ height: 44 }}>
+    <div ref={ref} style={{ height: 44 }} className="board-fade">
       <NoticeBoard items={[item]} />
     </div>
   );

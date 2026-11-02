@@ -97,6 +97,15 @@ p {
 }
 
 /* 스크롤 가능함을 알려주는 손 모양 힌트 — 아래로 쭉 내려갔다가 다시 올라오는 동작 */
+/* 2026-11-02 알림판 항목이 바뀔 때 0.3초 페이드(움직임 줄이기면 없음) */
+@keyframes board-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .board-fade { animation: board-fade-in 0.3s ease-out; }
+}
+
 @keyframes scroll-hint {
   0% {
     opacity: 0;

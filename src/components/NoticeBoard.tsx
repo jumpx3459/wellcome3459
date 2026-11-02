@@ -9,6 +9,8 @@ export type NoticeItem = {
   tag: string;
   tagBg: string;
   tagColor: string;
+  accent?: boolean; // 안내 항목 강조(연한 주황 바탕·주황 테두리·주황 칩·굵은 본문)
+  icon?: string; // 칩 뒤·본문 앞 이모지
   body: ReactNode;
   href: string;
   external?: boolean;
@@ -18,19 +20,27 @@ export type NoticeItem = {
 export default function NoticeBoard({ items }: { items: NoticeItem[] }) {
   const item = items[0];
   if (!item) return null;
-  const className = "flex items-center rounded-xl";
-  const style = { height: 44, background: "#FFFFFF", border: "1px solid #cbd5e1", borderRadius: 12, padding: "0 12px", gap: 8 } as const;
+  const accent = !!item.accent;
+  const className = accent ? "flex items-center rounded-xl bg-brandOrange/10 border border-brandOrange" : "flex items-center rounded-xl";
+  const style = accent
+    ? ({ height: 44, borderRadius: 12, padding: "0 12px", gap: 8 } as const)
+    : ({ height: 44, background: "#FFFFFF", border: "1px solid #cbd5e1", borderRadius: 12, padding: "0 12px", gap: 8 } as const);
   const inner = (
     <>
       <span
-        className="flex-shrink-0 whitespace-nowrap"
-        style={{ fontSize: 12, fontWeight: 800, background: item.tagBg, color: item.tagColor, padding: "2px 7px", borderRadius: 6 }}
+        className={accent ? "flex-shrink-0 whitespace-nowrap bg-brandOrange text-navy" : "flex-shrink-0 whitespace-nowrap"}
+        style={accent ? { fontSize: 12, fontWeight: 800, padding: "2px 7px", borderRadius: 6 } : { fontSize: 12, fontWeight: 800, background: item.tagBg, color: item.tagColor, padding: "2px 7px", borderRadius: 6 }}
       >
         {item.tag}
       </span>
+      {item.icon && (
+        <span aria-hidden className="flex-shrink-0" style={{ fontSize: rem(15), lineHeight: 1 }}>
+          {item.icon}
+        </span>
+      )}
       <span
         className="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
-        style={{ fontSize: rem(15), fontWeight: 600, color: "#1A1F26" }}
+        style={{ fontSize: rem(15), fontWeight: accent ? 800 : 600, color: "#1A1F26" }}
         data-notice-body
       >
         {item.body}
