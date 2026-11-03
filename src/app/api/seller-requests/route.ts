@@ -3,7 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 import { checkContactPhone } from "@/lib/auth";
 import { sanitizeManifest, sanitizePid } from "@/lib/parseCsv";
 import { isStockType } from "@/lib/stockType";
-import { isDealPriceUnit, isLumpSum } from "@/lib/priceUnit";
+import { isLumpSum } from "@/lib/priceUnit";
+import { checkPriceUnitValue, normalizeQuantityUnit } from "@/lib/units";
 import { resolveSellerRequestPrice } from "@/lib/priceMode";
 import { getPhotoLimit, photoLimitError } from "@/lib/photoLimit";
 import { getMemberFromToken } from "@/lib/photoLimitServer";
@@ -88,10 +89,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "정상 단가는 0보다 커야 해요.", field: "originalPrice" }, { status: 400 });
   }
   // 단가 단위 — DB check와 같은 값만, 안 보내면 null(= 수량 단위 기준)
-  if (priceUnit != null && !isDealPriceUnit(priceUnit)) {
-    return NextResponse.json({ error: "단가 단위가 올바르지 않아요.", field: "priceUnit" }, { status: 400 });
+  // 2026-11-02 단위: 목록 값 또는 직접 입력(1~6자·글자 포함·줄바꿈 불가), 총수량 단위에는 "일괄" 불가
+  const qtyUnitCheck = normalizeQuantityUnit(quantityUnit);
+  if (!qtyUnitCheck.ok) {
+    return NextResponse.json({ error: qtyUnitCheck.error, field: "quantityUnit" }, { status: 400 });
   }
-  const lumpSum = isLumpSum(priceUnit);
+  const priceUnitCheck = priceUnit != null ? checkPriceUnitValue(priceUnit) : null;
+  if (priceUnitCheck && !priceUnitCheck.ok) {
+    return NextResponse.json({ error: priceUnitCheck.error, field: "priceUnit" }, { status: 400 });
+  }
+  const priceUnitValue = priceUnitCheck?.ok ? priceUnitCheck.value : null;
+  const lumpSum = isLumpSum(priceUnitValue);
   // 2026-09-29: 사무실 번호도 허용 (휴대폰 전용 검증은 로그인 OTP에만) · 2026-10-06: 휴대폰은 010 + 8자리만 — 화면(sell/page.tsx)과 같은 checkContactPhone
   const contactProblem = checkContactPhone(contactPhone);
   if (contactProblem) {
@@ -214,9 +222,9 @@ export async function POST(req: NextRequest) {
     region_id: regRow?.id ?? null,
     product_name: cleanName,
     quantity,
-    quantity_unit: quantityUnit || "개",
+    quantity_unit: qtyUnitCheck.value,
     min_order_qty: lumpSum ? null : minOrderQty || null, // 일괄 판매면 최소주문 없음
-    price_unit: priceUnit ?? null,
+    price_unit: priceUnitValue,
     price_mode: price.priceMode,
     hope_price: price.hopePrice,
     original_price: price.originalPrice,

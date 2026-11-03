@@ -6,7 +6,7 @@ import TabLink from "@/components/TabLink";
 import { hasAppHistory, goHome } from "@/lib/appNav";
 import { CheckCircle } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { mockRegions, categoryIcons, quantityUnits, guessCategory, logUnmatchedProductName } from "@/lib/mockData";
+import { mockRegions, categoryIcons, guessCategory, logUnmatchedProductName } from "@/lib/mockData";
 import ImageUploader, { type ImageUploadStatus, type ImageUploaderHandle } from "@/components/ImageUploader";
 import VideoUploader, { type VideoUploadStatus, type VideoUploaderHandle } from "@/components/VideoUploader";
 import VideoNotUploadedSheet, { PHOTO_FAILED_DESCRIPTION, uploadingLabel, videoNotUploaded } from "@/components/VideoNotUploadedSheet";
@@ -30,7 +30,9 @@ import {
 import { SuggestInput, StorageTypeButtons } from "@/components/DealFormInputs";
 import { UUID_RE } from "@/lib/buyExposure";
 import { isPriceMode, type PriceMode } from "@/lib/priceMode";
-import { DEAL_PRICE_UNITS, LUMP_SUM, isDealPriceUnit, isLumpSum, priceUnitSuffix, type DealPriceUnit } from "@/lib/priceUnit";
+import { LUMP_SUM, isLumpSum, priceUnitSuffix } from "@/lib/priceUnit";
+import { SELL_PRICE_UNITS, SELL_QUANTITY_UNITS, canAutoMatchUnits, checkPriceUnitValue, checkQuantityUnit, initUnitState, type UnitState } from "@/lib/units";
+import { CustomUnitInput, UnitSelect } from "@/components/UnitSelect";
 import CategoryChips from "@/components/CategoryChips";
 import FloatingCTA, { FloatingCTANote, FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
 import { BTN_CLASS, btnStyle } from "@/lib/uiText";
@@ -176,7 +178,9 @@ export default function SellPage() {
   }, [productName, categoryTouched]);
   const [quantity, setQuantity] = useState("");
   const [quantityError, setQuantityError] = useState<string | null>(null);
-  const [quantityUnit, setQuantityUnit] = useState(quantityUnits[0]);
+  // 2026-11-02 단위: 목록 + "기타(직접 입력)" — qty/pu = { unit: 저장될 글자, other: 기타 선택 여부 } (src/lib/units.ts)
+  const [qty, setQty] = useState<UnitState>({ unit: SELL_QUANTITY_UNITS[0], other: false });
+  const quantityUnit = qty.unit;
   const [minOrderQty, setMinOrderQty] = useState("");
   const [moqError, setMoqError] = useState<string | null>(null);
   const showMoqError = (msg: string) => {
@@ -191,8 +195,19 @@ export default function SellPage() {
   const [originalPrice, setOriginalPrice] = useState(""); // 2026-10-01 PR-B [3]: 정상 단가(선택) — 할인율 표시
   const [priceWarns, setPriceWarns] = useState<string[]>([]); // [12] 할인율 80% 이상
   // 2026-09-29: 단가 단위 — 수량 단위와 따로. 기본은 수량 단위를 따라가고, 직접 고르면 그 값 유지
-  const [priceUnit, setPriceUnit] = useState<DealPriceUnit>(quantityUnits[0] as DealPriceUnit);
+  const [pu, setPu] = useState<UnitState>({ unit: SELL_QUANTITY_UNITS[0], other: false });
+  const priceUnit = pu.unit;
   const [priceUnitTouched, setPriceUnitTouched] = useState(false);
+  const onPriceUnit = (n: UnitState) => {
+    setPu(n);
+    setPriceUnitTouched(true);
+    if (!n.other && n.unit === LUMP_SUM) setMinOrderQty("");
+  };
+  // 단가·수량 단위 맞춤(J): 단가 단위를 직접 고르기 전에는 수량 단위를 따라감 — 둘 중 하나라도 직접 입력이면 맞춤 끔
+  const onQuantityUnit = (n: UnitState) => {
+    setQty(n);
+    if (!priceUnitTouched && canAutoMatchUnits(n, pu) && SELL_PRICE_UNITS.includes(n.unit)) setPu({ unit: n.unit, other: false });
+  };
   const [priceError, setPriceError] = useState<string | null>(null);
   const lumpSum = !negotiable && isLumpSum(priceUnit); // 협의면 단가 단위 칸이 없어 "일괄"이 남아 최소주문 칸이 숨겨지는 일이 없게
   const [hopeDurationHours, setHopeDurationHours] = useState("24");
@@ -280,12 +295,12 @@ export default function SellPage() {
       if (typeof d.region === "string") setRegion(d.region);
       if (typeof d.productName === "string") setProductName(d.productName);
       if (typeof d.quantity === "string") setQuantity(d.quantity);
-      if (typeof d.quantityUnit === "string") setQuantityUnit(d.quantityUnit);
+      if (typeof d.quantityUnit === "string") setQty(initUnitState(d.quantityUnit, SELL_QUANTITY_UNITS, SELL_QUANTITY_UNITS[0]));
       if (typeof d.minOrderQty === "string") setMinOrderQty(d.minOrderQty);
       if (isPriceMode(d.priceMode)) setPriceMode(d.priceMode);
       if (typeof d.hopePrice === "string") setHopePrice(d.hopePrice);
       if (typeof d.originalPrice === "string") setOriginalPrice(d.originalPrice);
-      if (typeof d.priceUnit === "string" && isDealPriceUnit(d.priceUnit)) setPriceUnit(d.priceUnit);
+      if (typeof d.priceUnit === "string" && d.priceUnit) setPu(initUnitState(d.priceUnit, SELL_PRICE_UNITS, SELL_QUANTITY_UNITS[0]));
       if (typeof d.priceUnitTouched === "boolean") setPriceUnitTouched(d.priceUnitTouched);
       if (typeof d.hopeDurationHours === "string") setHopeDurationHours(d.hopeDurationHours);
       if (typeof d.description === "string") setDescription(d.description);
@@ -470,6 +485,21 @@ export default function SellPage() {
       scrollTo("sell-productName");
       return;
     }
+    // 2026-11-02: 단위 직접 입력 검사 — 서버(/api/seller-requests)도 같은 검사(units.ts)
+    const qUnit = checkQuantityUnit(quantityUnit);
+    if (!qUnit.ok) {
+      setQuantityError(qUnit.error);
+      setError("빨간 안내가 있는 칸을 확인해주세요.");
+      scrollTo("sell-quantityUnit");
+      return;
+    }
+    const pUnit = negotiable ? null : checkPriceUnitValue(priceUnit);
+    if (pUnit && !pUnit.ok) {
+      setPriceError(pUnit.error);
+      setError("빨간 안내가 있는 칸을 확인해주세요.");
+      scrollTo("sell-priceUnit");
+      return;
+    }
     // 2026-09-29: 판매(희망) 단가 필수 — 서버(/api/seller-requests)도 같은 검증
     const price = negotiable ? null : parsePriceInput(hopePrice);
     if (!negotiable && (!price || price <= 0)) {
@@ -537,9 +567,9 @@ export default function SellPage() {
           region: region || null,
           productName: cleanName,
           quantity: parsePriceInput(quantity),
-          quantityUnit,
+          quantityUnit: qUnit.value,
           minOrderQty: !lumpSum && minOrderQty ? Number(minOrderQty) : null, // 일괄 판매면 최소주문 없음
-          priceUnit: negotiable ? null : priceUnit,
+          priceUnit: pUnit?.ok ? pUnit.value : null,
           priceMode: supply ? (negotiable ? "negotiable" : "fixed") : priceMode,
           hopePrice: negotiable ? null : parsePriceInput(hopePrice) ?? null,
           originalPrice: negotiable ? null : orig ?? null,
@@ -858,26 +888,18 @@ export default function SellPage() {
                   placeholder="비우면 가격 협의"
                 />
                 <span className="flex-shrink-0 flex items-center font-bold" style={{ padding: "0 4px 0 6px", fontSize: DEAL_INPUT_FONT_SIZE, color: "#0B2540" }}>원 /</span>
-                <select
+                <UnitSelect
                   id="sell-priceUnit"
-                  aria-label="제안 단가 단위"
+                  ariaLabel="제안 단가 단위"
                   className="flex-shrink-0 outline-none"
                   style={{ border: "none", borderLeft: "1px solid #E4E7EB", padding: "0 6px", fontSize: DEAL_INPUT_FONT_SIZE, fontWeight: 700, color: "#0B2540", background: "#FAFBFC" }}
-                  value={priceUnit}
-                  onChange={(e) => {
-                    if (!isDealPriceUnit(e.target.value)) return;
-                    setPriceUnit(e.target.value);
-                    setPriceUnitTouched(true);
-                    if (e.target.value === LUMP_SUM) setMinOrderQty("");
-                  }}
-                >
-                  {DEAL_PRICE_UNITS.map((u) => (
-                    <option key={u} value={u}>
-                      {u === LUMP_SUM ? "일괄(전체)" : u}
-                    </option>
-                  ))}
-                </select>
+                  state={pu}
+                  options={SELL_PRICE_UNITS}
+                  labelOf={(u) => (u === LUMP_SUM ? "일괄(전체)" : u)}
+                  onChange={onPriceUnit}
+                />
               </div>
+              <CustomUnitInput state={pu} options={SELL_PRICE_UNITS} onChange={onPriceUnit} ariaLabel="제안 단가 단위 직접 입력" fontSize={DEAL_INPUT_FONT_SIZE} errorColor={BLOCK_COLOR} testId="sell-price-unit-custom" />
               <p className="mt-1" style={DEAL_HINT_STYLE}>비우면 가격은 협의로 전달돼요 · 가격은 점핑매니저가 구매자와 협의해요</p>
             </div>
             )}
@@ -904,26 +926,18 @@ export default function SellPage() {
                   />
                   <span className="flex-shrink-0 flex items-center font-bold" style={{ padding: "0 4px 0 6px", fontSize: DEAL_INPUT_FONT_SIZE, color: "#0B2540" }}>원 /</span>
                   {/* 2026-09-29: 단가 단위 — 수량 단위와 따로 (예: 수량은 박스, 가격은 kg당 / 일괄=전체 가격). 2026-10-01: "단가 기준" 칸을 여기로 */}
-                  <select
+                  <UnitSelect
                     id="sell-priceUnit"
-                    aria-label="판매 단가 단위"
+                    ariaLabel="판매 단가 단위"
                     className="flex-shrink-0 outline-none"
                     style={{ border: "none", borderLeft: "1px solid #E4E7EB", padding: "0 6px", fontSize: DEAL_INPUT_FONT_SIZE, fontWeight: 700, color: "#0B2540", background: "#FAFBFC" }}
-                    value={priceUnit}
-                    onChange={(e) => {
-                      if (!isDealPriceUnit(e.target.value)) return;
-                      setPriceUnit(e.target.value);
-                      setPriceUnitTouched(true);
-                      if (e.target.value === LUMP_SUM) setMinOrderQty("");
-                    }}
-                  >
-                    {DEAL_PRICE_UNITS.map((u) => (
-                      <option key={u} value={u}>
-                        {u === LUMP_SUM ? "일괄(전체)" : u}
-                      </option>
-                    ))}
-                  </select>
+                    state={pu}
+                    options={SELL_PRICE_UNITS}
+                    labelOf={(u) => (u === LUMP_SUM ? "일괄(전체)" : u)}
+                    onChange={onPriceUnit}
+                  />
                 </div>
+                <CustomUnitInput state={pu} options={SELL_PRICE_UNITS} onChange={onPriceUnit} ariaLabel="판매 단가 단위 직접 입력" fontSize={DEAL_INPUT_FONT_SIZE} errorColor={BLOCK_COLOR} testId="sell-price-unit-custom" />
                 {priceError && <p className="font-medium mt-1" style={{ fontSize: rem(14), color: BLOCK_COLOR }}>{priceError}</p>}
                 {/* 2026-10-03 A안: 비회원에겐 가격 비공개("회원가 보기") — 판매자에게 미리 알림 */}
                 <p className="mt-1" style={DEAL_HINT_STYLE}>가격은 가입 회원에게만 공개돼요 · 브랜드 없이 올리고 싶으시면 추가 설명에 적어 주세요</p>
@@ -974,21 +988,17 @@ export default function SellPage() {
                     }}
                     placeholder="55"
                   />
-                  <select
-                    aria-label="재고 총수량 단위"
+                  <UnitSelect
+                    id="sell-quantityUnit"
+                    ariaLabel="재고 총수량 단위"
                     className="flex-shrink-0 outline-none"
                     style={{ width: 86, border: "none", borderLeft: "1px solid #E4E7EB", padding: "13px 6px", fontSize: DEAL_INPUT_FONT_SIZE, fontWeight: 700, color: "#0B2540", background: "#FAFBFC", textAlign: "center" }}
-                    value={quantityUnit}
-                    onChange={(e) => {
-                      setQuantityUnit(e.target.value);
-                      if (!priceUnitTouched && isDealPriceUnit(e.target.value)) setPriceUnit(e.target.value);
-                    }}
-                  >
-                    {quantityUnits.map((u) => (
-                      <option key={u} value={u}>{u}</option>
-                    ))}
-                  </select>
+                    state={qty}
+                    options={SELL_QUANTITY_UNITS}
+                    onChange={onQuantityUnit}
+                  />
                 </div>
+                <CustomUnitInput state={qty} options={SELL_QUANTITY_UNITS} onChange={onQuantityUnit} ariaLabel="재고 총수량 단위 직접 입력" fontSize={DEAL_INPUT_FONT_SIZE} errorColor={BLOCK_COLOR} testId="sell-quantity-unit-custom" forbidLumpSum />
                 {quantityError && <p className="font-medium mt-1" style={{ fontSize: rem(14), color: BLOCK_COLOR }}>{quantityError}</p>}
               </div>
               <div className="min-w-0">
@@ -1084,7 +1094,7 @@ export default function SellPage() {
                     }}
                     placeholder="예: 5"
                   />
-                  <span className="flex-shrink-0 font-bold" style={{ color: "#0B2540", padding: "0 14px", fontSize: DEAL_INPUT_FONT_SIZE }}>{quantityUnit} 이상</span>
+                  <span className="flex-shrink-0 font-bold" style={{ color: "#0B2540", padding: "0 14px", fontSize: DEAL_INPUT_FONT_SIZE }}>{quantityUnit.trim() || "개"} 이상</span>
                 </div>
                 {moqError && <p className="font-medium mt-1.5" style={{ fontSize: rem(14), color: BLOCK_COLOR }}>{moqError}</p>}
               </div>

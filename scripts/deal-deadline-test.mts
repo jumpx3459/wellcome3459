@@ -8,7 +8,7 @@ import { pathToFileURL, fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dir = mkdtempSync(join(tmpdir(), "deadline-"));
 mkdirSync(join(dir, "lib"), { recursive: true });
-for (const f of ["dealDeadline", "dealEdit", "titleGuard", "dealFields", "priceUnit", "priceMode", "stockType", "format"]) {
+for (const f of ["dealDeadline", "dealEdit", "titleGuard", "dealFields", "priceUnit", "units", "shippingFee", "priceMode", "stockType", "format"]) {
   const src = readFileSync(join(root, "src/lib", `${f}.ts`), "utf8").replace(/from "@\/lib\/([A-Za-z]+)"/g, 'from "./$1.ts"');
   writeFileSync(join(dir, "lib", `${f}.ts`), src);
 }

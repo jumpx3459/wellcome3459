@@ -6,6 +6,7 @@ import { resolveSellerDisplay } from "@/lib/sellerDisplay";
 import { checkDealVideoUrl } from "@/lib/videoUploadServer";
 import { normalizeTitle, DUPLICATE_TITLE_WARNING } from "@/lib/titleGuard";
 import { isLumpSum } from "@/lib/priceUnit";
+import { checkPriceUnitValue, normalizeQuantityUnit } from "@/lib/units";
 import { cleanShippingNote } from "@/lib/shippingFee";
 import { storageSummary, isStorageType } from "@/lib/dealFields";
 import { sanitizeManifest, sanitizePid } from "@/lib/parseCsv";
@@ -214,12 +215,17 @@ export async function PATCH(req: NextRequest) {
       else if (edit.dealPrice !== undefined && current.original_price === current.deal_price) update.original_price = dealPrice;
     }
     // 단가 단위(일괄 여부)는 바뀐 값 기준 — 일괄이면 최소 주문량 없음(등록과 같음)
-    const lumpAfter = isLumpSum(edit.priceUnit !== undefined ? edit.priceUnit : current.price_unit);
-    if (edit.priceUnit !== undefined) update.price_unit = edit.priceUnit ?? null;
+    // 단위는 앞에서 validateDealEdit가 검사함 — 저장은 앞뒤 공백을 뗀 값
+    const priceUnitSaved = edit.priceUnit != null ? checkPriceUnitValue(edit.priceUnit) : null;
+    const lumpAfter = isLumpSum(edit.priceUnit !== undefined ? (priceUnitSaved?.ok ? priceUnitSaved.value : null) : current.price_unit);
+    if (edit.priceUnit !== undefined) update.price_unit = priceUnitSaved?.ok ? priceUnitSaved.value : null;
     if (edit.minOrderQty !== undefined) update.min_order_qty = lumpAfter ? null : edit.minOrderQty || null;
     else if (edit.priceUnit !== undefined && lumpAfter) update.min_order_qty = null;
     if (edit.totalQty !== undefined) update.total_qty = edit.totalQty;
-    if (edit.quantityUnit !== undefined) update.quantity_unit = (typeof edit.quantityUnit === "string" && edit.quantityUnit.trim()) || "개";
+    if (edit.quantityUnit !== undefined) {
+      const qu = normalizeQuantityUnit(edit.quantityUnit);
+      update.quantity_unit = qu.ok ? qu.value : "개";
+    }
     if (edit.location !== undefined) update.location = edit.location ?? null;
     if (edit.stockType !== undefined) update.stock_type = edit.stockType;
     if (edit.packageUnit !== undefined) update.package_unit = edit.packageUnit || null;
