@@ -1,4 +1,5 @@
 // 거래 연결 단계별 안내 문구(문자 복사용) — 2026-11-02. 문구는 이 파일 한 곳에만 둠(화면에서 직접 문자열을 만들지 않음).
+// 문구 5종: ① 재고 확인 ② 구매자 확인 ③ 연락처 전달 ④ 품절 안내(종료 · 판매자 재고 없음) ⑤ 취소 안내(종료 · 구매자 취소, 판매자에게). 2026-11-03 v2: ②에 취소 안내 줄·④ "상품은"·⑤ 신설.
 // 자동 채움: {상품명} = 매물 제목, {구매자번호} = 구매자 전체 번호(③만). 판매자 상호·연락처는 문구에 넣지 않음(상호 허락 여부와 무관하게 수동).
 // 다른 모듈 import 없음(단위 시험용). 경매·입찰·낙찰·검증·점프엑스 표현 금지(시험으로 확인).
 export const MESSAGE_INQUIRY_TEL = "070-4006-0890";
@@ -40,6 +41,8 @@ const BUYER_CONFIRM = [
   "",
   "확인되면 판매자분께 고객님 연락처를 전달해 드립니다. 거래 조건은 판매자분과 직접 협의하시면 됩니다.",
   "",
+  "구매 계획이 바뀌셨으면 '취소'라고만 답장 주셔도 됩니다.",
+  "",
   TEL_LINE,
 ].join("\n");
 
@@ -58,7 +61,7 @@ const CONTACT_SENT = [
 /** 종료 카드(사유 "판매자 재고 없음") — 품절 안내 (구매자에게) */
 const SOLD_OUT = [
   "[덤핑점핑] 안녕하세요, 덤핑점핑 점핑매니저입니다.",
-  "문의하신 '{상품명}'는 판매자분 확인 결과 아쉽게도 품절되었습니다. 기다려 주셨는데 죄송합니다.",
+  "문의하신 '{상품명}' 상품은 판매자분 확인 결과 아쉽게도 품절되었습니다. 기다려 주셨는데 죄송합니다.",
   "",
   "비슷한 상품을 찾아봐 드릴까요? 아래만 이 문자에 답장 주시면 들어오는 대로 먼저 연락드리겠습니다.",
   "1) 필요 수량",
@@ -68,7 +71,19 @@ const SOLD_OUT = [
   TEL_LINE,
 ].join("\n");
 
+/** 종료 카드(사유 "구매자 취소") — 취소 안내 (판매자에게) */
+const BUYER_CANCEL = [
+  "[덤핑점핑] 안녕하세요, 덤핑점핑 점핑매니저입니다.",
+  "재고 확인해 주신 '{상품명}' 건은 구매자분 사정으로 이번에는 진행되지 않게 되었습니다.",
+  "바쁘신데 확인해 주셔서 감사합니다.",
+  "",
+  "매물은 그대로 노출되고 있으며, 다른 구매 문의가 들어오면 다시 연락드리겠습니다.",
+  "",
+  TEL_LINE,
+].join("\n");
+
 export const sellerStockMessage = (dealTitle: string) => fill(SELLER_STOCK, { 상품명: title(dealTitle) });
 export const buyerConfirmMessage = (dealTitle: string) => fill(BUYER_CONFIRM, { 상품명: title(dealTitle) });
 export const contactSentMessage = (dealTitle: string, buyerPhone: string) => fill(CONTACT_SENT, { 상품명: title(dealTitle), 구매자번호: buyerPhone });
 export const soldOutMessage = (dealTitle: string) => fill(SOLD_OUT, { 상품명: title(dealTitle) });
+export const buyerCancelMessage = (dealTitle: string) => fill(BUYER_CANCEL, { 상품명: title(dealTitle) });

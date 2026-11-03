@@ -105,6 +105,8 @@ export type EndReasonKey = (typeof END_REASONS)[number]["key"];
 
 /** "판매자 재고 없음"으로 끝낸 건의 사유 문구(END_REASONS no_stock) — 종료 카드 [품절 안내 문구 복사] 판별용 */
 export const NO_STOCK_REASON = END_REASONS.find((r) => r.key === "no_stock")!.label;
+/** "구매자 취소"로 끝낸 건의 사유 문구(END_REASONS buyer_cancel) — 종료 카드 [취소 안내 문구 복사] 판별용 */
+export const BUYER_CANCEL_REASON = END_REASONS.find((r) => r.key === "buyer_cancel")!.label;
 
 // 2026-11-02 종료 카드 번호·판매자 정보 보기: 종료일(closed_at)로부터 이 기간이 지나면 화면은 버튼을 숨기고 서버도 403.
 // 화면·서버가 같은 값을 씀(여기 한 곳). 종료 시각이 비어 있으면 마지막 변경 시각으로 셈.
