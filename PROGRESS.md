@@ -67,6 +67,9 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - **시험 정리 메모:** pw19 = 옛 관리자 구조 기준, 현행은 pwS19. 시험 정리 때 폐기 표시.
 - **도구함 날씨 탭 가로 밀림(실기기 제보, `fix/logistics-weather-overflow`):** 갤럭시 Z 폴드8 Chrome 홈 화면 앱(바깥 화면)에서 날씨 박스부터 오른쪽이 잘림. 시험 환경에서는 미재현(344~375px × 글꼴 100·130·160·200% × 긴 값, 이모지 2배도 넘침 0 — 이모지 폭을 자간으로 4~8배 넓힌 극단 조건에서만 보강 전 넘침 9건). 폭 계산 보강만 적용(날씨 이모지 고정 상자 · 텍스트 min-w-0 · 박스·2칸 minmax(0,1fr) · 부모 체인 min-w-0, overflow-x-hidden 미사용). **실기기 미재현 — 배포 후 대표 갤럭시 확인 필요, 그래도 밀리면 USB 디버깅으로 측정.**
 - **알림판·안내 카드 강조색(같은 PR):** 안내 항목만 연한 주황 바탕(`bg-brandOrange/10`)·주황 테두리·주황 칩(`bg-brandOrange text-navy` 5.57:1)·굵은 본문·항목별 이모지(`PARTNER_ITEMS.icon`), 카드 버튼은 남색 채움+흰 글씨(15.5:1), 알림판 항목 전환 0.3초 페이드(움직임 줄이기면 없음). 찾습니다(buy_notice)는 현행. 높이 44px·아래 요소 y 변화 0.
+- **#137(`feat/unit-custom`) merge 기록:** merge 커밋 `b13423a`(squash) · CI 41418079743 / 41520156710(마지막) · Deploy 41556535886 성공 · 운영 `/`·`/deals`·`/sell` 200.
+- **정정(#137):** `*_quantity_unit_len` 제약은 NULL을 막지 않는다(CHECK 결과가 NULL이면 통과). 수량 단위 NULL 방지는 DB가 아니라 코드의 "개" 기본값(`normalizeQuantityUnit`)이 담당한다. 선택 상자 맨 끝의 보이는 글자는 "직접 입력"(내부 값 `기타(직접 입력)` 유지).
+- **내 견적함 카드 "준비 중" 칩 제거(`fix/quotes-teaser-chip`, #138, 2026-11-03):** `QuotesTeaserCard`(compact·my·home)의 미신청 알약 "준비 중"을 그리지 않음 — "✓ 신청함" 알약·"신청 ›"·시트("내 견적함 (준비 중)")·신청 흐름·`QUOTES_ENABLED=false` 그대로. 1개 파일, DB·API 없음. merge 정보는 merge 후 다음 PR 커밋 0에 기록.
 - **단위 목록 + "기타(직접 입력)"(`feat/unit-custom`, 2026-11-02):**
   - **DB(운영 SQL 실행 완료·대표):** `deals`·`seller_requests`의 `price_unit` 목록 check 제거 → `*_price_unit_len`·`*_quantity_unit_len`(1~6자). `quantity_unit`은 원래 칸 제약 없음. 별도 칸 없음 — 직접 입력한 글자를 그대로 두 칸에 저장. `supabase/schema.sql`에 같은 내용 반영.
   - **목록(`src/lib/units.ts` 한 곳):** 총수량 = 개·박스·kg·톤·파렛트·세트·L·**톤백·드럼·평·㎡**·기타(직접 입력) / 단가 = 개·박스·kg·톤·파렛트·세트·L·일괄·**톤백·드럼·평·㎡**·기타(직접 입력). 찾습니다(`/buy`·`mockData.quantityUnits`·`format.PRICE_UNITS`)는 값 변화 없음(단가 목록 중복은 `units.ts`의 `LEGACY_PRICE_UNITS` 한 곳으로 정리).
