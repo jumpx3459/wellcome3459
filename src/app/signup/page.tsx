@@ -8,7 +8,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { sendOtp, verifyOtp, isValidKoreanPhone, toLocalPhone, formatPhoneTyping } from "@/lib/auth";
 import { mockCategories, categoryIcons, categoryColors } from "@/lib/mockData";
-import { subscribeToPush, savePushSubscription } from "@/lib/pushClient";
 import { generateRefCode } from "@/lib/refCode";
 import { clearSavedRef, resolveSignupRef } from "@/lib/refStore";
 import { clearSavedUtm, savedUtmColumns } from "@/lib/utmStore";
@@ -16,9 +15,6 @@ import Toast, { useToast } from "@/components/Toast";
 import { debugLog } from "@/lib/debugLog"; // TEMP DEBUG — 세션 소실 버그 진단용, 원인 확인되면 제거
 import { fmtLeft } from "@/lib/format";
 import RotatingUrgencyTag from "@/components/RotatingUrgencyTag";
-import { SITE_URL, isCanonicalHost } from "@/lib/siteUrl";
-import { getPushBlocker, type PushBlocker } from "@/lib/browserEnv";
-import PushBlockerNotice from "@/components/PushBlockerNotice";
 import { rem } from "@/lib/rem";
 import { clearReturningMember } from "@/lib/returningMember";
 import FloatingCTA, { FloatingCTANote, FLOATING_CTA_BUTTON_CLASS, FLOATING_CTA_SPACE, floatingCtaButtonStyle } from "@/components/FloatingCTA";
@@ -26,6 +22,7 @@ import { BTN_CLASS, btnStyle } from "@/lib/uiText";
 import { CONSENT_TEXT } from "@/lib/consent";
 import { announceConsents, saveConsents } from "@/lib/consentClient";
 import PrivacyConsentTextSheet from "@/components/PrivacyConsentTextSheet";
+import SignupAlertStep from "@/components/SignupAlertStep";
 
 // "01012345678" -> "010****5678" 형태로 화면에만 일부 가려서 보여줍니다
 function maskPhone(phone: string): string {
@@ -102,29 +99,17 @@ function SignupPageInner() {
   // 2026-09-30: [필수] 사업 목적 이용·만 14세 이상 확인 (eligibility, 약관 제4조)
   const [agreeEligibility, setAgreeEligibility] = useState(false);
   const [viewingPrivacyText, setViewingPrivacyText] = useState(false);
-  // 2026-09-30: [선택] 광고성 정보 수신 동의 — 기본 false. 매물 알림 동의가 앱 푸시 켜기를 겸함(예전 push 토글 대체)
-  const [agreeDealAlert, setAgreeDealAlert] = useState(false);
+  // 2026-09-30: [선택] 광고성 정보 수신 동의 — 기본 false.
+  // 2026-11-03: 매물 알림(deal_alert_ad) 동의는 이 상자에서 뺌 — 미체크도 agreed=false로 저장돼 "거절"과 "미응답"이 섞였음. 가입 직후 선택 화면(SignupAlertStep)에서 따로 묻는다.
   const [agreeKakaoMkt, setAgreeKakaoMkt] = useState(false);
+  // 가입 저장이 끝나면 홈으로 가기 전에 알림 선택 화면 1장(새로고침하면 다시 안 뜸 — 상태만, 저장 기록 없음)
+  const [alertStep, setAlertStep] = useState(false);
 
   // 사업자 회원 여부 + 업체명 — 별도 화면 없이 2단계(휴대폰 인증) 하단에 그대로 유지합니다.
   const [isBusiness, setIsBusiness] = useState(true);
   const [companyName, setCompanyName] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
-  const [pushStatus, setPushStatus] = useState<"idle" | "granted" | "denied" | "unsupported" | "noncanonical">(
-    "idle"
-  );
-  // 비정식 주소(xxx.vercel.app 등)에선 구독을 막으므로(src/lib/pushClient.ts), 제출
-  // 전에 알림 토글 옆에 정식 주소 링크를 미리 보여준다 — 제출 후엔 곧바로 다른
-  // 화면으로 넘어가서 그때 안내하면 거의 안 보임.
-  const [nonCanonicalHost, setNonCanonicalHost] = useState(false);
-  // 2026-09-28: 카톡 등 인앱 브라우저·iPhone 미설치는 웹푸시 불가 — 알림 토글 아래에 미리 안내하고
-  // 제출 때 구독 시도도 하지 않음 (예전엔 결과가 "granted"로 잘못 표시될 수 있었음)
-  const [pushBlocker, setPushBlocker] = useState<PushBlocker | null>(null);
-  useEffect(() => {
-    setNonCanonicalHost(!isCanonicalHost(window.location.hostname));
-    setPushBlocker(getPushBlocker());
-  }, []);
   const [error, setError] = useState<string | null>(null);
 
   const applySession = (user: { id: string; phone?: string | null } | null | undefined) => {
@@ -302,22 +287,11 @@ function SignupPageInner() {
 
     setSubmitting(true);
 
-    // 버그 수정: 예전엔 이 시점에 곧바로 subscribeToPush()를 기다렸는데,
-    // 이 함수는 브라우저 알림 권한 요청(Notification.requestPermission())을
-    // 포함해서 사용자가 응답할 때까지 무한정 멈춰 있을 수 있다. 그러는 동안
-    // 위에서 미리 열어둔 카카오 창은 리다이렉트되지 않은 채 about:blank로
-    // 방치돼 "빈 화면으로 이동한 채 멈췄다"처럼 보인다. 그래서 푸시 권한
-    // 요청은 카카오 창의 운명(리다이렉트 또는 닫기)이 결정된 뒤로 미룬다.
+    // (2026-11-03) 푸시 권한 요청은 가입 화면이 아니라 가입 직후 알림 선택 화면(SignupAlertStep)의 [새 매물 알림 받기] 클릭에서만 한다 —
+    // 예전엔 여기서 권한 요청을 기다리는 동안 미리 열어둔 카카오 창이 about:blank로 방치되는 문제가 있었는데 그 경로가 없어짐.
     if (!isSupabaseConfigured || !supabase) {
       // 데모 모드: 실제 저장 없이 다음 화면으로 이동
       if (kakaoWindow) kakaoWindow.close();
-      if (agreeDealAlert && !pushBlocker) {
-        const pushResult = await subscribeToPush();
-        if (pushResult.status === "denied") setPushStatus("denied");
-        else if (pushResult.status === "unsupported") setPushStatus("unsupported");
-        else if (pushResult.status === "noncanonical") setPushStatus("noncanonical");
-        else if (pushResult.status === "subscribed") setPushStatus("granted");
-      }
       await new Promise((r) => setTimeout(r, 500));
       setSubmitting(false);
       router.push(returnTo || "/"); // 2026-10-06: returnTo 없으면 회원 홈(내 조건 매물) — 예전 /deals
@@ -397,21 +371,11 @@ function SignupPageInner() {
         { type: "tos" as const, agreed: agreeTos },
         { type: "privacy" as const, agreed: agreePrivacy },
         { type: "eligibility" as const, agreed: agreeEligibility },
-        { type: "deal_alert_ad" as const, agreed: agreeDealAlert },
         { type: "kakao_marketing" as const, agreed: agreeKakaoMkt },
       ];
       const consentSaved = await saveConsents(consents, "signup");
       if (consentSaved.ok) announceConsents(consents.filter((c) => c.agreed), consentSaved.recordedAt);
       else debugLog("[signup] consent save failed");
-
-      let pushResult: Awaited<ReturnType<typeof subscribeToPush>> | null = null;
-      if (agreeDealAlert && !pushBlocker) {
-        pushResult = await subscribeToPush();
-        if (pushResult.status === "denied") setPushStatus("denied");
-        else if (pushResult.status === "unsupported") setPushStatus("unsupported");
-        else if (pushResult.status === "noncanonical") setPushStatus("noncanonical");
-        else if (pushResult.status === "subscribed") setPushStatus("granted");
-      }
 
       const { data: catRows, error: catLookupError } = await supabase
         .from("categories")
@@ -434,19 +398,13 @@ function SignupPageInner() {
         return;
       }
 
-      if (pushResult?.status === "subscribed" && pushResult.subscription.endpoint) {
-        // 저장 실패해도 가입 자체는 진행 — 기기엔 구독이 남아 있어서 마이페이지 알림 카드가
-        // 열릴 때 조용히 다시 저장한다(PushStatusCard).
-        // 가입 화면에서 앱 푸시를 켜고 제출한 것 자체가 명시적 동의라 explicit (토큰은 authFetch가 처리)
-        const saved = await savePushSubscription(pushResult.subscription, { explicit: true });
-        if (saved !== "saved") debugLog(`[signup] push subscription save failed result=${saved}`);
-      }
-
       try {
         localStorage.removeItem("dj_signup_pending");
       } catch {}
 
-      router.push(returnTo || "/"); // 2026-10-06: returnTo 없으면 회원 홈(내 조건 매물) — 예전 /deals
+      // 2026-11-03: 바로 홈으로 가지 않고 알림 선택 화면 1장(returnTo || "/" 이동은 onDone)
+      setSubmitting(false);
+      setAlertStep(true);
     } catch (e) {
       debugLog(`[signup] submit catch ${e instanceof Error ? e.message : String(e)} closing kakaoWindow=${!!(kakaoWindow && !kakaoRedirected)}`);
       if (kakaoWindow && !kakaoRedirected) kakaoWindow.close();
@@ -456,18 +414,12 @@ function SignupPageInner() {
     }
   };
 
-  // ---- 파생 값 (Claude Design 원안의 estAlerts/condCats/condRegions 로직과 동일) ----
+  // ---- 파생 값 ----
   const reqAgreed = agreeTos && agreePrivacy && agreeEligibility;
-  const allAgreed = reqAgreed && agreeDealAlert && agreeKakaoMkt;
+  const allAgreed = reqAgreed && agreeKakaoMkt; // 2026-11-03: 매물 알림은 전체 동의에 포함하지 않음(가입 직후 선택 화면에서 따로)
   const verified = Boolean(authUserId);
   // 2026-09-30: 앱 푸시(매물 알림 동의)는 선택 — 필수 3개(약관·개인정보·이용 대상) + 휴대폰 인증만으로 가입 가능
   const step4Ready = verified && reqAgreed;
-  const estAlerts = Math.max(2, categories.length * 4 + 6);
-  const condCats =
-    categories.length > 0
-      ? categories.slice(0, 2).join("·") + (categories.length > 2 ? ` 외 ${categories.length - 2}` : "")
-      : "전체 카테고리";
-  const myCondText = condCats; // 2026-10-04: 매물 알림은 카테고리만(지역 선택 없음)
 
   const obCtaLabel =
     obStep === 1
@@ -482,6 +434,18 @@ function SignupPageInner() {
         : "동의하고 시작하기"
       : "다음";
   const obCtaDisabled = (obStep === 1 && categories.length === 0) || (obStep === 2 && !step4Ready);
+
+  // 알림 선택 화면의 이동(받기·다음에·토스트 뒤) — 기존과 같은 이동 대상
+  const goHomeAfterSignup = () => router.push(returnTo || "/"); // 2026-10-06: returnTo 없으면 회원 홈(내 조건 매물) — 예전 /deals
+
+  // 알림 선택 화면에서 뒤로가기 = 그 화면을 다시 보여 주지 않고 홈으로(가입은 이미 끝남) — 같은 주소의 기록 한 칸을 얹고, 뒤로가면 이동
+  useEffect(() => {
+    if (!alertStep) return;
+    window.history.pushState({ djAlertStep: true }, "");
+    const onPop = () => router.replace(returnTo || "/");
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [alertStep, router, returnTo]);
 
   const goBack = () => {
     if (obStep <= 1) {
@@ -543,6 +507,15 @@ function SignupPageInner() {
   const toggleAllCategories = () => setCategories(allCategoriesPicked ? [] : [...mockCategories]);
 
   if (!authChecked) return null;
+
+  if (alertStep) {
+    return (
+      <>
+        <SignupAlertStep categoryCount={categories.length} onDone={goHomeAfterSignup} showToast={showToast} />
+        <Toast message={toastMessage} fitWidth bottom="calc(var(--nav-bottom) + 12px)" />
+      </>
+    );
+  }
 
   return (
     <main className="flex flex-col min-h-screen bg-white">
@@ -842,10 +815,9 @@ function SignupPageInner() {
               </div>
             )}
 
-            {/* 2026-09-30: 동의 항목 정리 — 앱 푸시는 [선택] 매물 알림 수신 동의(광고성 정보)로 받고, 동의하면
-                제출 때 알림 권한을 요청한다(예전엔 앱 푸시 토글이 필수 조건이었음). 카카오톡 채널 추가(친구 추가 링크)는
-                마케팅 동의와 분리한 별도 토글(기본 꺼짐). 선택 항목은 모두 기본 false, 필수는 이용약관·개인정보 2개.
-                동의 기록은 제출 때 /api/consents(member_consents, source signup)로 저장. */}
+            {/* 2026-09-30: 동의 항목 정리 — 카카오톡 채널 추가(친구 추가 링크)는 마케팅 동의와 분리한 별도 토글(기본 꺼짐).
+                선택 항목은 모두 기본 false. 동의 기록은 제출 때 /api/consents(member_consents, source signup)로 저장.
+                2026-11-03: [선택] 매물 알림 줄은 여기서 뺌 — 가입 직후 알림 선택 화면(SignupAlertStep)에서 [받기]/[다음에]로 묻는다(미응답이면 행을 저장하지 않음). */}
             <div ref={agreeAreaRef} className="mt-5 rounded-2xl overflow-hidden" style={{ border: "1.5px solid #E4E7EB", scrollMarginTop: 16 }}>
               <button
                 onClick={() => {
@@ -853,7 +825,6 @@ function SignupPageInner() {
                   setAgreeTos(!all);
                   setAgreePrivacy(!all);
                   setAgreeEligibility(!all);
-                  setAgreeDealAlert(!all);
                   setAgreeKakaoMkt(!all);
                 }}
                 className="flex items-center gap-2.5 w-full text-left"
@@ -878,7 +849,6 @@ function SignupPageInner() {
                 { key: "tos", label: CONSENT_TEXT.tos.label, tag: "필수", on: agreeTos, toggle: () => setAgreeTos(!agreeTos), href: CONSENT_TEXT.tos.href },
                 { key: "privacy", label: CONSENT_TEXT.privacy.label, tag: "필수", on: agreePrivacy, toggle: () => setAgreePrivacy(!agreePrivacy), view: () => setViewingPrivacyText(true) },
                 { key: "eligibility", label: CONSENT_TEXT.eligibility.label, tag: "필수", on: agreeEligibility, toggle: () => setAgreeEligibility(!agreeEligibility) },
-                { key: "deal_alert_ad", label: CONSENT_TEXT.deal_alert_ad.label, desc: CONSENT_TEXT.deal_alert_ad.desc, tag: "선택", on: agreeDealAlert, toggle: () => setAgreeDealAlert(!agreeDealAlert) },
                 { key: "kakao_marketing", label: CONSENT_TEXT.kakao_marketing.label, desc: CONSENT_TEXT.kakao_marketing.desc, tag: "선택", on: agreeKakaoMkt, toggle: () => setAgreeKakaoMkt(!agreeKakaoMkt) },
               ].map((a) => (
                 <div key={a.key} className="flex items-start w-full" style={{ borderBottom: "1px solid #F1F3F5", background: "#fff" }}>
@@ -915,25 +885,6 @@ function SignupPageInner() {
             </div>
             {viewingPrivacyText && <PrivacyConsentTextSheet onClose={() => setViewingPrivacyText(false)} />}
 
-            {agreeDealAlert && pushBlocker && (
-              <div className="mt-2">
-                <PushBlockerNotice kind={pushBlocker} context="signup" />
-              </div>
-            )}
-            {agreeDealAlert && !pushBlocker && nonCanonicalHost && (
-              <div className="text-xs rounded-xl mt-2 leading-relaxed" style={{ color: "#6B7480", background: "#F5F6F8", padding: "10px 14px" }}>
-                이 주소에서는 알림을 켤 수 없어요. 정식 주소에서 알림을 켜주세요 →{" "}
-                <a href={`${SITE_URL}/signup`} className="font-bold underline" style={{ color: "#E25100" }}>
-                  {SITE_URL.replace(/^https?:\/\//, "")}
-                </a>
-              </div>
-            )}
-            {agreeDealAlert && (
-              <p className="mt-2" style={{ fontSize: rem(14), color: "#6B7480" }}>
-                {myCondText} · 주간 약 {estAlerts}건
-              </p>
-            )}
-
             {/* 카카오톡 채널 추가 — 친구 추가 링크를 여는 것뿐이라 수신 동의와 별개 (기본 꺼짐) */}
             <button
               onClick={() => setKakao(!kakao)}
@@ -962,32 +913,6 @@ function SignupPageInner() {
               개인정보는 회원 관리·매물 알림 발송·본인 확인에 사용하며, 탈퇴 시 관계 법령에 따라 보관하는 항목을 제외하고 지체 없이 파기합니다.
             </p>
 
-            {pushStatus === "denied" && (
-              <div className="text-sm rounded-lg mt-3" style={{ color: "var(--color-orange)", background: "var(--color-dangerBg)", padding: "12px 16px" }}>
-                브라우저 알림이 차단돼 있어요. 주소창 왼쪽 자물쇠 아이콘에서 알림을 허용해주세요.
-              </div>
-            )}
-            {pushStatus === "noncanonical" && (
-              <div className="text-sm rounded-lg mt-3 leading-relaxed" style={{ color: "#6B7480", background: "#F5F6F8", padding: "12px 16px" }}>
-                정식 주소에서 알림을 켜주세요 →{" "}
-                <a href={`${SITE_URL}/mypage`} className="font-bold underline" style={{ color: "#E25100" }}>
-                  {SITE_URL.replace(/^https?:\/\//, "")}
-                </a>
-              </div>
-            )}
-            {pushStatus === "unsupported" && (
-              <div className="text-sm rounded-lg mt-3 leading-relaxed" style={{ color: "#6B7480", background: "#F5F6F8", padding: "12px 16px" }}>
-                {typeof navigator !== "undefined" && /iPhone|iPad/.test(navigator.userAgent) ? (
-                  <>
-                    아이폰은 <b style={{ color: "#1A1F26" }}>공유 버튼 → &quot;홈 화면에 추가&quot;</b>로 앱을 설치해야
-                    알림을 받을 수 있어요. 지금은 가입만 진행하고, 나중에 홈 화면에 추가한 뒤 다시 접속하시면
-                    알림이 활성화돼요.
-                  </>
-                ) : (
-                  "현재 브라우저에서는 기기 알림을 지원하지 않아요. 매물은 리스트에서 계속 확인할 수 있어요."
-                )}
-              </div>
-            )}
             {error && <div className="text-sm font-medium mt-3" style={{ color: "var(--color-orange)" }}>{error}</div>}
           </div>
         )}
