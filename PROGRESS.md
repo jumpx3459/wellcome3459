@@ -69,6 +69,7 @@ Next.js 16 (App Router) + Supabase + Tailwind CSS v4. 자세한 배포/구조 �
 - **알림판·안내 카드 강조색(같은 PR):** 안내 항목만 연한 주황 바탕(`bg-brandOrange/10`)·주황 테두리·주황 칩(`bg-brandOrange text-navy` 5.57:1)·굵은 본문·항목별 이모지(`PARTNER_ITEMS.icon`), 카드 버튼은 남색 채움+흰 글씨(15.5:1), 알림판 항목 전환 0.3초 페이드(움직임 줄이기면 없음). 찾습니다(buy_notice)는 현행. 높이 44px·아래 요소 y 변화 0.
 - **#137(`feat/unit-custom`) merge 기록:** merge 커밋 `b13423a`(squash) · CI 41418079743 / 41520156710(마지막) · Deploy 41556535886 성공 · 운영 `/`·`/deals`·`/sell` 200.
 - **정정(#137):** `*_quantity_unit_len` 제약은 NULL을 막지 않는다(CHECK 결과가 NULL이면 통과). 수량 단위 NULL 방지는 DB가 아니라 코드의 "개" 기본값(`normalizeQuantityUnit`)이 담당한다. 선택 상자 맨 끝의 보이는 글자는 "직접 입력"(내부 값 `기타(직접 입력)` 유지).
+- **#138(`fix/quotes-teaser-chip`) merge 기록:** merge 커밋 `9415432`(squash) · CI 41558284618(마지막; 코드 커밋 CI 41557378957) · Deploy 41558459568 성공 · 운영 `/`·`/mypage` 200.
 - **내 견적함 카드 "준비 중" 칩 제거(`fix/quotes-teaser-chip`, #138, 2026-11-03):** `QuotesTeaserCard`(compact·my·home)의 미신청 알약 "준비 중"을 그리지 않음 — "✓ 신청함" 알약·"신청 ›"·시트("내 견적함 (준비 중)")·신청 흐름·`QUOTES_ENABLED=false` 그대로. 1개 파일, DB·API 없음. merge 정보는 merge 후 다음 PR 커밋 0에 기록.
 - **단위 목록 + "기타(직접 입력)"(`feat/unit-custom`, 2026-11-02):**
   - **DB(운영 SQL 실행 완료·대표):** `deals`·`seller_requests`의 `price_unit` 목록 check 제거 → `*_price_unit_len`·`*_quantity_unit_len`(1~6자). `quantity_unit`은 원래 칸 제약 없음. 별도 칸 없음 — 직접 입력한 글자를 그대로 두 칸에 저장. `supabase/schema.sql`에 같은 내용 반영.
