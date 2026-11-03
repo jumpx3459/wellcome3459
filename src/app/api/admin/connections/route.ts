@@ -70,14 +70,14 @@ export async function GET(req: NextRequest) {
   const dealIds = [...new Set(all.map((r) => r.deal_id))];
   const [adminsRes, membersRes, privRes, testLookup] = await Promise.all([
     adminIds.length ? db.from("admin_users").select("id, name").in("id", adminIds) : Promise.resolve({ data: [], error: null }),
-    memberIds.length ? db.from("members").select("id, phone, member_no").in("id", memberIds) : Promise.resolve({ data: [], error: null }),
+    memberIds.length ? db.from("members").select("id, phone, member_no, company_name").in("id", memberIds) : Promise.resolve({ data: [], error: null }),
     dealIds.length ? db.from("deal_seller_private").select("deal_id, name_disclosure_ok").in("deal_id", dealIds) : Promise.resolve({ data: [], error: null }),
     getTestBuyerLookup(db, memberIds),
   ]);
   for (const r of [adminsRes, membersRes, privRes]) if (r.error) console.error("[admin/connections] 부가 조회 실패", r.error.code, r.error.message);
   const adminName = new Map((adminsRes.data ?? []).map((a: { id: string; name: string }) => [a.id, a.name]));
   const member = new Map(
-    (membersRes.data ?? []).map((m: { id: string; phone: string | null; member_no: number | null }) => [m.id, m])
+    (membersRes.data ?? []).map((m: { id: string; phone: string | null; member_no: number | null; company_name: string | null }) => [m.id, m])
   );
   const disclosure = new Map(
     (privRes.data ?? []).map((p: { deal_id: string; name_disclosure_ok: boolean }) => [p.deal_id, p.name_disclosure_ok])
@@ -93,6 +93,7 @@ export async function GET(req: NextRequest) {
       deal_title: r.deal_title_snapshot,
       buyer_kind: r.buyer_member_id ? ("member" as const) : r.buyer_phone ? ("guest" as const) : ("unknown" as const),
       buyer_member_no: m?.member_no ?? null,
+      buyerCompanyName: m?.company_name?.trim() || null, // 2026-11-03 회원 상호(보기 전용) — 비었거나 공백뿐이면 null
       buyer_phone_masked: phone ? maskPhone(phone) : null,
       has_phone: !!phone,
       source: r.source,

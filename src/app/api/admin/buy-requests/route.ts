@@ -43,7 +43,18 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ items: rows.map((r) => ({ ...r, supply_pending: supplyPending.get(r.id) ?? 0 })) });
+  // 2026-11-03 회원 식별(보기 전용): member_id 목록으로 members(id, member_no) 1회 조회 → 각 행에 member_no. 조회가 실패해도 목록은 그대로(번호 없음)
+  const memberNo = new Map<string, number | null>();
+  const memberIds = [...new Set(rows.map((r) => r.member_id).filter((v): v is string => typeof v === "string" && !!v))];
+  if (memberIds.length) {
+    const { data: ms, error: mErr } = await supabaseAdmin.from("members").select("id, member_no").in("id", memberIds);
+    if (mErr) console.error("[admin/buy-requests] 회원번호 조회 실패", mErr.code, mErr.message);
+    for (const m of (ms ?? []) as { id: string; member_no: number | null }[]) memberNo.set(m.id, m.member_no ?? null);
+  }
+
+  return NextResponse.json({
+    items: rows.map((r) => ({ ...r, supply_pending: supplyPending.get(r.id) ?? 0, member_no: typeof r.member_id === "string" ? memberNo.get(r.member_id) ?? null : null })),
+  });
 }
 
 // 연락 완료 체크 / 매칭 성사·불발 처리

@@ -484,6 +484,8 @@ type BuyRequest = {
   categories: { name: string } | null;
   regions: { name: string } | null;
   supply_pending?: number; // 2026-10-26 대기 중인 공급 제안 건수(판매 신청 pending 중 이 요청에 연결된 것)
+  member_id?: string | null; // 2026-11-03 회원 식별(보기 전용) — null이면 비회원(탈퇴 회원도 null이라 구분 못 함)
+  member_no?: number | null;
 };
 
 function SessionCountdown({ expiresAt }: { expiresAt: number }) {
@@ -2325,6 +2327,10 @@ function AdminDashboard({
               ) : (
                 <span>연락처 삭제됨 (수집 90일 경과)</span>
               )}
+              <span className="whitespace-nowrap" data-buy-member>
+                {" · "}
+                {b.member_id ? (b.member_no != null ? formatMemberNo(b.member_no) : "회원") : "비회원"}
+              </span>
               {b.quantity ? ` · 희망수량 ${b.quantity}` : ""}
               {b.hope_price ? ` · 희망가 ${formatPriceWithUnit(b.hope_price, b.hope_price_unit, { exact: true })} 이하` : ""}
             </div>
