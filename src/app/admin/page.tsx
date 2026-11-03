@@ -19,7 +19,7 @@ import { fetchCopySeller, COPY_PROTECTED_NOTE } from "@/lib/dealCopy";
 import { clearDealDraft, dealDraftKey, DEAL_DRAFT_DEBOUNCE_MS, draftSavedLabel, readDealDraft, sanitizeDraft, writeDealDraft, type DealDraftFields, type StoredDealDraft } from "@/lib/dealDraft";
 import DealSellerPrivateEditor from "@/components/admin/DealSellerPrivateEditor";
 import AdminFullscreenPanel from "@/components/admin/AdminFullscreenPanel";
-import { formatMoq, moqUnit } from "@/lib/moq";
+import { formatMoq, moqUnit, syncMoqOnTotalChange, toggleWholeLotMoq, wholeLotChipOn } from "@/lib/moq";
 import {
   SHIPPING_FEE_TYPES, SHIPPING_FEE_LABELS, SHIPPING_NOTE_MAX, SHIPPING_NOTE_ERROR, DEFAULT_SHIPPING_FEE_TYPE, shippingFeeTypeOf, type ShippingFeeType,
 } from "@/lib/shippingFee";
@@ -38,7 +38,7 @@ import {
   isStorageType, discountPercent, priceWarnings, HIGH_DISCOUNT_PCT, storageSummary, formatExpiry, EXPIRY_REQUIRED_MESSAGE,
   PACKAGE_UNIT_ADMIN_EXAMPLES, SPEC_EXAMPLES, ORIGIN_EXAMPLES, type StorageType,
 } from "@/lib/dealFields";
-import { SuggestInput, StorageTypeButtons } from "@/components/DealFormInputs";
+import { SuggestInput, StorageTypeButtons, MoqWholeLotChip } from "@/components/DealFormInputs";
 import ManifestUploader from "@/components/ManifestUploader";
 import Toast, { useToast } from "@/components/Toast";
 import { formatPriceInput, parsePriceInput, formatMemberNo, formatPriceWithUnit, formatDealPrice } from "@/lib/format";
@@ -1974,7 +1974,7 @@ function AdminDashboard({
             </div>
             <div className="text-sm text-gray500 mt-1">
               수량 {r.quantity}{r.quantity_unit || "개"}
-              {r.min_order_qty ? ` (${formatMoq(r.min_order_qty, r.quantity_unit)})` : ""}
+              {r.min_order_qty ? ` (${formatMoq(r.min_order_qty, r.quantity_unit, null, r.quantity)})` : ""}
               {isNegotiable(r) ? ` · ${NEGOTIABLE_LABEL}` : r.hope_price ? ` · 희망단가 ${formatDealPrice(r.hope_price, r.quantity_unit, r.price_unit, { exact: true })}` : ""}
               {r.hope_duration_hours
                 ? ` · 희망 마감 ${
@@ -3601,6 +3601,7 @@ function DealFormInner({
     if (!priceUnitTouched && canAutoMatchUnits(n, pu) && SELL_PRICE_UNITS.includes(n.unit)) setPu({ unit: n.unit, other: false });
   };
   const lumpSum = isLumpSum(priceUnit);
+  const totalNum = parsePriceInput(totalQty) ?? 0; // [전량 일괄] 칩 기준 총수량 — 칩 선택 = MOQ 칸 값이 총수량과 같음(src/lib/moq.ts)
   const [minOrderQty, setMinOrderQty] = useState(
     prefill?.minOrderQty ? String(prefill.minOrderQty) : ""
   );
@@ -4393,6 +4394,7 @@ function DealFormInner({
                     placeholder="예: 100"
                     value={formatPriceInput(totalQty)}
                     onChange={(e) => {
+                      setMinOrderQty((m) => syncMoqOnTotalChange(m, totalNum, parsePriceInput(e.target.value) ?? 0)); // 칩 선택 중이면 MOQ도 따라감
                       setTotalQty(e.target.value);
                       clearErr("totalQty");
                     }}
@@ -4548,6 +4550,14 @@ function DealFormInner({
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 font-bold whitespace-nowrap" style={{ fontSize: rem(15), color: "#0B2540" }}>{moqUnit(quantityUnit)} 이상</span>
                   </div>
+                  <MoqWholeLotChip
+                    active={wholeLotChipOn(minOrderQty, totalNum)}
+                    disabled={totalNum <= 0}
+                    onClick={() => {
+                      setMinOrderQty(toggleWholeLotMoq(minOrderQty, totalNum));
+                      clearErr("minOrderQty");
+                    }}
+                  />
                 </DealFormField>
                 )}
                 {!edit && (

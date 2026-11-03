@@ -27,7 +27,8 @@ import {
   isStorageType, isValidExpiryDate, discountPercent, priceWarnings, HIGH_DISCOUNT_PCT, formatExpiry, EXPIRY_REQUIRED_MESSAGE,
   PACKAGE_UNIT_EXAMPLES, SPEC_EXAMPLES, ORIGIN_EXAMPLES, type StorageType,
 } from "@/lib/dealFields";
-import { SuggestInput, StorageTypeButtons } from "@/components/DealFormInputs";
+import { SuggestInput, StorageTypeButtons, MoqWholeLotChip } from "@/components/DealFormInputs";
+import { syncMoqOnTotalChange, toggleWholeLotMoq, wholeLotChipOn } from "@/lib/moq";
 import { UUID_RE } from "@/lib/buyExposure";
 import { isPriceMode, type PriceMode } from "@/lib/priceMode";
 import { LUMP_SUM, isLumpSum, priceUnitSuffix } from "@/lib/priceUnit";
@@ -210,6 +211,7 @@ export default function SellPage() {
   };
   const [priceError, setPriceError] = useState<string | null>(null);
   const lumpSum = !negotiable && isLumpSum(priceUnit); // 협의면 단가 단위 칸이 없어 "일괄"이 남아 최소주문 칸이 숨겨지는 일이 없게
+  const totalNum = parsePriceInput(quantity) ?? 0; // [전량 일괄] 칩 기준 총수량 — 칩 선택 = MOQ 칸 값이 총수량과 같음(src/lib/moq.ts)
   const [hopeDurationHours, setHopeDurationHours] = useState("24");
   const [description, setDescription] = useState("");
   const [packageUnit, setPackageUnit] = useState("");
@@ -983,6 +985,7 @@ export default function SellPage() {
                     style={{ border: "none", padding: "13px 12px", fontSize: DEAL_INPUT_FONT_SIZE }}
                     value={formatPriceInput(quantity)}
                     onChange={(e) => {
+                      setMinOrderQty((m) => syncMoqOnTotalChange(m, totalNum, parsePriceInput(e.target.value) ?? 0)); // 칩 선택 중이면 MOQ도 따라감
                       setQuantity(e.target.value);
                       setQuantityError(null);
                     }}
@@ -1096,6 +1099,14 @@ export default function SellPage() {
                   />
                   <span className="flex-shrink-0 font-bold" style={{ color: "#0B2540", padding: "0 14px", fontSize: DEAL_INPUT_FONT_SIZE }}>{quantityUnit.trim() || "개"} 이상</span>
                 </div>
+                <MoqWholeLotChip
+                  active={wholeLotChipOn(minOrderQty, totalNum)}
+                  disabled={totalNum <= 0}
+                  onClick={() => {
+                    setMinOrderQty(toggleWholeLotMoq(minOrderQty, totalNum));
+                    setMoqError(null);
+                  }}
+                />
                 {moqError && <p className="font-medium mt-1.5" style={{ fontSize: rem(14), color: BLOCK_COLOR }}>{moqError}</p>}
               </div>
               )}
