@@ -28,6 +28,7 @@ export type ConnectionItem = {
   deal_title: string;
   buyer_kind: "member" | "guest" | "unknown";
   buyer_member_no: number | null;
+  buyerCompanyName?: string | null; // 2026-11-03 구매자 회원 상호(없으면 null — 아무것도 표시 안 함)
   buyer_phone_masked: string | null;
   has_phone: boolean;
   source: string;
@@ -416,6 +417,11 @@ function ConnectionRow({ item, adminKey, onDone, assignees, isDesktop }: { item:
           · {item.buyer_kind === "guest" ? "비회원" : "회원"}
           {item.buyer_member_no != null && ` ${formatMemberNo(item.buyer_member_no)}`}
         </span>
+        {item.buyerCompanyName?.trim() && (
+          <span className="min-w-0 truncate" style={{ ...LABEL, maxWidth: "100%" }} data-testid="conn-buyer-company">
+            · {item.buyerCompanyName.trim()}
+          </span>
+        )}
         {item.stuck && !item.is_test && (
           <span className="font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={chip("#FDECEC", "#B91C1C")} data-testid="conn-stuck">
             ⏸ 24시간 멈춤
