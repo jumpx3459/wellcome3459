@@ -130,13 +130,16 @@ export default function QuotesTeaserCard({ memberId, variant = "my" }: { memberI
           <span className="flex-1 min-w-0 truncate" style={{ fontSize: rem(15), fontWeight: 800, color: "#0f1f3d" }}>
             내 견적함
           </span>
-          <span
-            className="flex-shrink-0 rounded-full font-bold whitespace-nowrap"
-            style={{ fontSize: rem(13), padding: "3px 9px", background: joined ? "#E8F8EC" : "#FDEEE8", color: joined ? "#1D8A44" : "#C2410C" }}
-            data-quotes-pill
-          >
-            {joined ? "✓ 신청함" : "준비 중"}
-          </span>
+          {/* 2026-11-03: 미신청 "준비 중" 알약 제거 — "✓ 신청함"만 남김 */}
+          {joined && (
+            <span
+              className="flex-shrink-0 rounded-full font-bold whitespace-nowrap"
+              style={{ fontSize: rem(13), padding: "3px 9px", background: "#E8F8EC", color: "#1D8A44" }}
+              data-quotes-pill
+            >
+              ✓ 신청함
+            </span>
+          )}
           {!joined && (
             <span className="flex-shrink-0 font-bold whitespace-nowrap" style={{ fontSize: rem(14), color: "#C2410C" }} data-quotes-apply>
               신청 ›
@@ -158,13 +161,15 @@ export default function QuotesTeaserCard({ memberId, variant = "my" }: { memberI
           {/* 2026-10-14: 알약을 제목 줄로(오른쪽 칸 없음 → 본문이 아이콘 옆 남은 폭 전부). 넘치면 줄바꿈(flex-wrap) — 제목은 말줄임 없이 한 덩어리 */}
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1" data-quotes-title-row>
             <span className="whitespace-nowrap" style={isHome ? { fontSize: rem(17), fontWeight: 800, color: "#0f1f3d" } : MY_CARD_TITLE}>내 견적함</span>
-            <span
-              className="flex-shrink-0 rounded-full font-bold whitespace-nowrap"
-              style={{ fontSize: rem(15), padding: "4px 10px", background: joined ? "#E8F8EC" : "#FDEEE8", color: joined ? "#1D8A44" : "#C2410C" }}
-              data-quotes-pill
-            >
-              {joined ? "✓ 신청함" : "준비 중"}
-            </span>
+            {joined && (
+              <span
+                className="flex-shrink-0 rounded-full font-bold whitespace-nowrap"
+                style={{ fontSize: rem(15), padding: "4px 10px", background: "#E8F8EC", color: "#1D8A44" }}
+                data-quotes-pill
+              >
+                ✓ 신청함
+              </span>
+            )}
           </span>
           <span className="block mt-0.5" style={isHome ? { fontSize: rem(15), color: "#64748b", lineHeight: 1.45 } : MY_DESC} data-quotes-desc>
             카톡·문자로 주고받은 견적, 한곳에 모아 단가를 비교하세요
