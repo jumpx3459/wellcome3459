@@ -7,13 +7,13 @@ import { LABEL } from "@/components/admin/DashboardViz";
 import { UI_CARD_TITLE } from "@/lib/uiText";
 import { rem } from "@/lib/rem";
 import { formatPhone } from "@/lib/phone";
-import { buyerConfirmMessage, contactSentMessage, sellerStockMessage, soldOutMessage } from "@/lib/connectionMessages";
+import { buyerCancelMessage, buyerConfirmMessage, contactSentMessage, sellerStockMessage, soldOutMessage } from "@/lib/connectionMessages";
 import { formatMemberNo, formatPriceInput, parsePriceInput } from "@/lib/format";
 import { formatConsentDate } from "@/lib/consent";
 import { ADMIN_TEXT } from "@/lib/adminText";
 import {
   BOARD_STEPS, END_REASONS, MEMO_MAX, MEMO_PLACEHOLDER, RESULT_LABEL,
-  NO_STOCK_REASON, boardStep, resultDueAt, type ConnectionResult, type ConnectionStatus, type EndReasonKey,
+  BUYER_CANCEL_REASON, NO_STOCK_REASON, boardStep, resultDueAt, type ConnectionResult, type ConnectionStatus, type EndReasonKey,
 } from "@/lib/connectionSteps";
 
 // 2026-10-04 F-4 거래 연결 보드 — 관리자 페이지 "거래 연결" 카드(리드 카드 바로 아래).
@@ -776,6 +776,7 @@ function ClosedRow({ item, adminKey, isDesktop }: { item: ConnectionItem; adminK
   };
 
   const soldOut = item.result === "failed" && item.result_reason === NO_STOCK_REASON;
+  const buyerCancel = item.result === "cancelled" && item.result_reason === BUYER_CANCEL_REASON; // 구매자 취소(결과 cancelled)
   return (
     <div className="bg-white border border-gray200 rounded-2xl px-4 py-3 min-w-0" data-testid="conn-closed-row" data-conn-id={item.id}>
       <div className="truncate font-bold" style={{ fontSize: rem(16), color: "#1F2937" }}>
@@ -829,6 +830,7 @@ function ClosedRow({ item, adminKey, isDesktop }: { item: ConnectionItem; adminK
             {sellerOpen ? "판매자 정보 접기 ▲" : "판매자 정보 보기"}
           </ToolButton>
           {soldOut && <CopyMessageButton label="품절 안내 문구 복사" testId="closed-copy-soldout" getText={async () => soldOutMessage(item.deal_title)} />}
+          {buyerCancel && <CopyMessageButton label="취소 안내 문구 복사" testId="closed-copy-cancel" getText={async () => buyerCancelMessage(item.deal_title)} />}
         </div>
       )}
       {!expired && sellerOpen && (
