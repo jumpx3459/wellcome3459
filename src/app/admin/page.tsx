@@ -19,7 +19,7 @@ import { fetchCopySeller, COPY_PROTECTED_NOTE } from "@/lib/dealCopy";
 import { clearDealDraft, dealDraftKey, DEAL_DRAFT_DEBOUNCE_MS, draftSavedLabel, readDealDraft, sanitizeDraft, writeDealDraft, type DealDraftFields, type StoredDealDraft } from "@/lib/dealDraft";
 import DealSellerPrivateEditor from "@/components/admin/DealSellerPrivateEditor";
 import AdminFullscreenPanel from "@/components/admin/AdminFullscreenPanel";
-import { formatMoq, moqUnit, syncMoqOnTotalChange, toggleWholeLotMoq, wholeLotChipOn } from "@/lib/moq";
+import { formatMoq, isWholeLot, moqUnit, syncMoqOnTotalChange, toggleWholeLotMoq, wholeLotChipOn } from "@/lib/moq";
 import {
   SHIPPING_FEE_TYPES, SHIPPING_FEE_LABELS, SHIPPING_NOTE_MAX, SHIPPING_NOTE_ERROR, DEFAULT_SHIPPING_FEE_TYPE, shippingFeeTypeOf, type ShippingFeeType,
 } from "@/lib/shippingFee";
@@ -1974,7 +1974,11 @@ function AdminDashboard({
             </div>
             <div className="text-sm text-gray500 mt-1">
               수량 {r.quantity}{r.quantity_unit || "개"}
-              {r.min_order_qty ? ` (${formatMoq(r.min_order_qty, r.quantity_unit, null, r.quantity)})` : ""}
+              {r.min_order_qty
+                ? isWholeLot(r.min_order_qty, r.quantity)
+                  ? ` · ${formatMoq(r.min_order_qty, r.quantity_unit, null, r.quantity, { omitQty: true })}`
+                  : ` (${formatMoq(r.min_order_qty, r.quantity_unit, null, r.quantity)})`
+                : ""}
               {isNegotiable(r) ? ` · ${NEGOTIABLE_LABEL}` : r.hope_price ? ` · 희망단가 ${formatDealPrice(r.hope_price, r.quantity_unit, r.price_unit, { exact: true })}` : ""}
               {r.hope_duration_hours
                 ? ` · 희망 마감 ${

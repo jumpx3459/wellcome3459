@@ -9,17 +9,19 @@ export const isWholeLot = (moq: number | null | undefined, totalQty: number | nu
   !!moq && !!totalQty && moq > 0 && totalQty > 0 && moq === totalQty;
 
 /** "최소 5박스 이상" / "최소 5박스 이상 · 포장 20kg 박스" / 전량 일괄이면 "전량 일괄 판매 (100박스)". MOQ가 없으면(0·null) null.
- *  totalQty를 넘기지 않으면(null·undefined) 전량 일괄 판정 없이 기존 문구 */
+ *  totalQty를 넘기지 않으면(null·undefined) 전량 일괄 판정 없이 기존 문구.
+ *  opts.omitQty — 수량이 바로 옆에 이미 표시된 곳(관리자 신청 카드)용: 전량 일괄이면 괄호·수량 없이 "전량 일괄 판매" */
 export function formatMoq(
   moq: number | null | undefined,
   quantityUnit: string | null | undefined,
   packageUnit?: string | null,
   totalQty?: number | null,
+  opts?: { omitQty?: boolean },
 ): string | null {
   if (!moq || !(moq > 0)) return null;
   const pack = (packageUnit ?? "").trim();
   const tail = pack ? ` · 포장 ${pack}` : "";
-  if (isWholeLot(moq, totalQty)) return `전량 일괄 판매 (${moq}${moqUnit(quantityUnit)})${tail}`;
+  if (isWholeLot(moq, totalQty)) return opts?.omitQty ? `전량 일괄 판매${tail}` : `전량 일괄 판매 (${moq}${moqUnit(quantityUnit)})${tail}`;
   return `최소 ${moq}${moqUnit(quantityUnit)} 이상${tail}`;
 }
 

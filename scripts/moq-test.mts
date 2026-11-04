@@ -70,6 +70,13 @@ eq(m.syncMoqOnTotalChange("100", 100, 0), "", "선택 중 총수량 비움 → M
 eq(m.syncMoqOnTotalChange("30", 100, 200), "30", "선택 아님 → MOQ 그대로");
 eq(m.syncMoqOnTotalChange("", 0, 50), "", "칸 모두 비어 있음 → 그대로");
 
+// omitQty — 관리자 신청 카드용(수량이 옆에 이미 있음): 전량 일괄이면 괄호·수량 없이, 그 외는 기존 문구 그대로
+eq(m.formatMoq(100, "박스", null, 100, { omitQty: true }), "전량 일괄 판매", "omitQty: 전량 일괄 → 수량·괄호 없음");
+eq(m.formatMoq(100, "박스", "20kg 박스", 100, { omitQty: true }), "전량 일괄 판매 · 포장 20kg 박스", "omitQty: 포장 문구는 뒤에");
+eq(m.formatMoq(30, "박스", null, 100, { omitQty: true }), "최소 30박스 이상", "omitQty: 전량 아님 → 기존 문구");
+eq(m.formatMoq(100, "박스", null, null, { omitQty: true }), "최소 100박스 이상", "omitQty: total 없음 → 기존 문구");
+eq(m.formatMoq(100, "박스", null, 100), "전량 일괄 판매 (100박스)", "옵션 없으면 회원 상세 표시 그대로");
+
 // 수정 API 검증 — 1 이상 정수, ≤ 총수량
 const NOW = Date.parse("2026-10-23T00:00:00Z");
 const cur = { deal_price: 1000, price_mode: "fixed", original_price: 1000, total_qty: 100, price_unit: "개", stock_type: "general", expiry_date: null, closes_at: "2026-10-30T00:00:00Z", min_order_qty: null };
