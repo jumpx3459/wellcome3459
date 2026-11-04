@@ -711,7 +711,7 @@ function DealDetailPageInner() {
                 {isLumpSum(deal.price_unit)
                   ? "전체 일괄 판매"
                   : deal.min_order_qty
-                    ? formatMoq(deal.min_order_qty, deal.quantity_unit, deal.package_unit)
+                    ? formatMoq(deal.min_order_qty, deal.quantity_unit, deal.package_unit, deal.total_qty)
                     : null}
               </span>
               <button
@@ -752,7 +752,7 @@ function DealDetailPageInner() {
                 {isLumpSum(deal.price_unit)
                   ? "전체 일괄 판매"
                   : deal.min_order_qty
-                    ? formatMoq(deal.min_order_qty, deal.quantity_unit, deal.package_unit)
+                    ? formatMoq(deal.min_order_qty, deal.quantity_unit, deal.package_unit, deal.total_qty)
                     : null}
               </span>
               <button
@@ -795,7 +795,7 @@ function DealDetailPageInner() {
                 {isLumpSum(deal.price_unit)
                   ? `${hasDiscount ? " · " : ""}전체 일괄 판매`
                   : deal.min_order_qty
-                    ? `${hasDiscount ? " · " : ""}${formatMoq(deal.min_order_qty, deal.quantity_unit, deal.package_unit)}`
+                    ? `${hasDiscount ? " · " : ""}${formatMoq(deal.min_order_qty, deal.quantity_unit, deal.package_unit, deal.total_qty)}`
                     : null}
               </span>
               <button

@@ -40,6 +40,43 @@ eq(m.formatMoq(0, "박스"), null, "MOQ 0 → null");
 eq(m.moqUnit("kg"), "kg", "moqUnit kg");
 eq(m.moqUnit(null), "개", "moqUnit null → 개");
 
+// 전량 일괄(2026-11-03 feat/moq-whole-lot) — moq === total_qty 면 "전량 일괄 판매 (총수량+단위)"
+eq(m.formatMoq(100, "박스", null, 100), "전량 일괄 판매 (100박스)", "일치 → 전량 일괄 판매");
+eq(m.formatMoq(100, "박스", "20kg 박스", 100), "전량 일괄 판매 (100박스) · 포장 20kg 박스", "일치 + 포장 단위 유지");
+eq(m.formatMoq(100, "박스", "  ", 100), "전량 일괄 판매 (100박스)", "일치 + 포장 단위 공백 → 안 붙임");
+eq(m.formatMoq(100, null, null, 100), "전량 일괄 판매 (100개)", "일치 + 단위 null → 개");
+eq(m.formatMoq(50, "박스", null, 100), "최소 50박스 이상", "불일치 → 기존 문구");
+eq(m.formatMoq(50, "박스", "20kg 박스", 100), "최소 50박스 이상 · 포장 20kg 박스", "불일치 + 포장 → 기존 문구");
+eq(m.formatMoq(100, "박스", null, null), "최소 100박스 이상", "total_qty null → 기존 문구");
+eq(m.formatMoq(100, "박스", null, undefined), "최소 100박스 이상", "total_qty 생략 → 기존 문구");
+eq(m.formatMoq(100, "박스", null, 0), "최소 100박스 이상", "total_qty 0 → 기존 문구");
+eq(m.formatMoq(null, "박스", null, 100), null, "MOQ 없음 + total_qty → null");
+eq(m.formatMoq(0, "박스", null, 0), null, "MOQ 0 + total_qty 0 → null");
+eq(m.isWholeLot(5, 5), true, "isWholeLot 일치");
+eq(m.isWholeLot(5, 6), false, "isWholeLot 불일치");
+eq(m.isWholeLot(null, null), false, "isWholeLot null");
+eq(m.isWholeLot(0, 0), false, "isWholeLot 0");
+// 칩 로직(문자열 입력값 기준)
+eq(m.wholeLotChipOn("100", 100), true, "칩: MOQ=총수량 → 선택");
+eq(m.wholeLotChipOn("99", 100), false, "칩: 다르면 해제");
+eq(m.wholeLotChipOn("", 0), false, "칩: 둘 다 빔 → 해제");
+eq(m.wholeLotChipOn("0", 0), false, "칩: 0 = 0 → 해제(총수량 0)");
+eq(m.toggleWholeLotMoq("", 100), "100", "칩 누름: MOQ = 총수량");
+eq(m.toggleWholeLotMoq("100", 100), "", "칩 다시 누름: 해제 + MOQ 비움");
+eq(m.toggleWholeLotMoq("30", 100), "100", "칩 누름: 직접 입력값 → 총수량으로");
+eq(m.toggleWholeLotMoq("30", 0), "30", "칩 누름: 총수량 없음 → 그대로");
+eq(m.syncMoqOnTotalChange("100", 100, 200), "200", "선택 중 총수량 변경 → MOQ 동기화");
+eq(m.syncMoqOnTotalChange("100", 100, 0), "", "선택 중 총수량 비움 → MOQ도 비움");
+eq(m.syncMoqOnTotalChange("30", 100, 200), "30", "선택 아님 → MOQ 그대로");
+eq(m.syncMoqOnTotalChange("", 0, 50), "", "칸 모두 비어 있음 → 그대로");
+
+// omitQty — 관리자 신청 카드용(수량이 옆에 이미 있음): 전량 일괄이면 괄호·수량 없이, 그 외는 기존 문구 그대로
+eq(m.formatMoq(100, "박스", null, 100, { omitQty: true }), "전량 일괄 판매", "omitQty: 전량 일괄 → 수량·괄호 없음");
+eq(m.formatMoq(100, "박스", "20kg 박스", 100, { omitQty: true }), "전량 일괄 판매 · 포장 20kg 박스", "omitQty: 포장 문구는 뒤에");
+eq(m.formatMoq(30, "박스", null, 100, { omitQty: true }), "최소 30박스 이상", "omitQty: 전량 아님 → 기존 문구");
+eq(m.formatMoq(100, "박스", null, null, { omitQty: true }), "최소 100박스 이상", "omitQty: total 없음 → 기존 문구");
+eq(m.formatMoq(100, "박스", null, 100), "전량 일괄 판매 (100박스)", "옵션 없으면 회원 상세 표시 그대로");
+
 // 수정 API 검증 — 1 이상 정수, ≤ 총수량
 const NOW = Date.parse("2026-10-23T00:00:00Z");
 const cur = { deal_price: 1000, price_mode: "fixed", original_price: 1000, total_qty: 100, price_unit: "개", stock_type: "general", expiry_date: null, closes_at: "2026-10-30T00:00:00Z", min_order_qty: null };

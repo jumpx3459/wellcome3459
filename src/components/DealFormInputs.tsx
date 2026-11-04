@@ -70,6 +70,32 @@ export function SuggestInput({
   );
 }
 
+// MOQ 칸 아래 [전량 일괄] 칩 (2026-11-03 feat/moq-whole-lot) — 포장 단위 예시 칩과 같은 모양. 선택 = MOQ가 총수량과 같음(src/lib/moq.ts)
+// 총수량이 없거나 0이면 비활성
+export function MoqWholeLotChip({ active, disabled, onClick }: { active: boolean; disabled: boolean; onClick: () => void }) {
+  return (
+    <div className="flex flex-wrap gap-1.5 mt-1.5">
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        aria-pressed={active}
+        data-moq-whole
+        className="rounded-full font-bold disabled:opacity-50"
+        style={{
+          fontSize: rem(13),
+          padding: "4px 10px",
+          background: active ? "#E9ECEF" : "#fff",
+          border: active ? "1.5px solid #6B7480" : "1px solid #E4E7EB",
+          color: active ? "#1A1F26" : "#4B5563",
+        }}
+      >
+        {active ? "✓ " : ""}전량 일괄
+      </button>
+    </div>
+  );
+}
+
 // 보관 조건 — 상온/냉장/냉동 (다시 누르면 선택 해제) [6]
 export function StorageTypeButtons({
   id,
