@@ -5,7 +5,7 @@ import { rem } from "@/lib/rem";
 import { formatMemberNo } from "@/lib/format";
 import { formatPhone } from "@/lib/phone";
 import { PanelColumn } from "@/components/admin/AdminFullscreenPanel";
-import type { MemberDetail } from "@/lib/adminMemberDetail";
+import { selfCheckText, type MemberDetail } from "@/lib/adminMemberDetail";
 import { ADMIN_TEXT } from "@/lib/adminText";
 
 // 2026-10-23 관리자 회원 상세(보기 전용) 본문 — PC는 전체 화면 패널의 3열(PanelColumn), 모바일·📱는 카드 아래 한 줄로 쌓아 펼침.
@@ -159,6 +159,16 @@ export default function MemberDetailView({
           {b.state === "verified" ? <Chip tone="green">인증</Chip> : b.state === "license_only" ? <Chip tone="orange">등록증만 있음(승인 전)</Chip> : <Chip>없음</Chip>}
         </Row>
         {b.state === "verified" && <Row label="인증일">{b.verified_at ? fmt(b.verified_at) : "인증일 기록 없음"}</Row>}
+        {data.self_check && (
+          <Row label="셀프 확인">
+            <span data-self-check>{selfCheckText(data.self_check)}</span>
+            {data.self_check.same_bno_members > 0 && (
+              <span className="ml-1.5" data-self-check-same>
+                <Chip tone="orange">같은 사업자번호 {data.self_check.same_bno_members}명</Chip>
+              </span>
+            )}
+          </Row>
+        )}
       </Section>
       <Section title="동의">
         {data.consents.map((c) => (

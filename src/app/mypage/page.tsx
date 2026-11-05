@@ -11,6 +11,8 @@ import { formatMemberNo, formatRelativeTime, dealUrgencyState } from "@/lib/form
 import { dealPriceLabel, isNegotiable } from "@/lib/priceMode";
 import Toast, { useToast } from "@/components/Toast";
 import BusinessLicenseUploader from "@/components/BusinessLicenseUploader";
+import BusinessSelfCheckCard from "@/components/BusinessSelfCheckCard";
+import { selfBizCheckOn } from "@/lib/memberBusinessCheck";
 import { SERVICE_TILES, SERVICES_ANCHOR_ID, scrollToServicesIfHash } from "@/components/EcosystemGrid";
 import PushStatusCard from "@/components/PushStatusCard";
 import ConsentToggles from "@/components/ConsentToggles";
@@ -875,6 +877,17 @@ export default function MyPage() {
               placeholder="example@company.com"
             />
           </div>
+
+          {/* 2026-11-05 1단계: 사업자 셀프 확인 — NEXT_PUBLIC_SELF_BIZ_CHECK=on일 때만(기본 off). 사업자등록증 업로드는 아래 보조 경로 */}
+          {selfBizCheckOn(process.env.NEXT_PUBLIC_SELF_BIZ_CHECK) && (
+            <BusinessSelfCheckCard
+              verified={businessVerified}
+              onVerified={() => {
+                setBusinessVerified(true);
+                showToast("사업자 확인이 완료됐어요.");
+              }}
+            />
+          )}
 
           <BusinessLicenseUploader
             status={businessVerified ? "verified" : hasBusinessLicense ? "pending" : "none"}

@@ -4,7 +4,9 @@ import { can } from "@/lib/adminPerms";
 import { maskPhone, normalizePhone } from "@/lib/phone";
 import { phoneTail, writeAudit } from "@/lib/adminAudit";
 import { UUID_RE } from "@/lib/rateLimit";
-import { businessState, DETAIL_LIST_LIMIT, latestConsents, onlyOwn, type ConsentRow, type MemberDetail } from "@/lib/adminMemberDetail";
+import { businessState, countOtherMembers, DETAIL_LIST_LIMIT, latestConsents, onlyOwn, type ConsentRow, type MemberDetail, type SelfCheckLine } from "@/lib/adminMemberDetail";
+import { dbStatusCode } from "@/lib/memberBusinessCheck";
+import { maskBizNo } from "@/lib/nts";
 
 // 2026-10-23 관리자 회원 상세(보기 전용) — 회원 1명의 가입·사업자·동의·알림·활동을 한 번에.
 // 권한: members(최고관리자·관리자, 점핑매니저 403). 번호: 최고관리자 전체 / 관리자 가린 번호(기존 목록과 같은 규칙, 전체는 [번호 보기]).
@@ -64,6 +66,26 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     for (const d of (ds ?? []) as Row[]) dealsById.set(d.id as string, d);
   }
 
+  // 2026-11-05 1단계: 회원 셀프 확인 최신 일치 1건 + 같은 사업자번호로 일치한 다른 회원 수. 표 조회가 실패해도 상세는 그대로(self_check null)
+  let selfCheck: SelfCheckLine | null = null;
+  const lastCheck = await db
+    .from("member_business_checks")
+    .select("b_no, status_code, created_at, member_id")
+    .eq("member_id", id)
+    .eq("validate_result", "01")
+    .order("created_at", { ascending: false })
+    .limit(1);
+  const lc = (lastCheck.data ?? [])[0] as Row | undefined;
+  if (lc) {
+    const same = await db.from("member_business_checks").select("member_id").eq("b_no", lc.b_no as string).eq("validate_result", "01").neq("member_id", id).limit(200);
+    selfCheck = {
+      checked_at: lc.created_at as string,
+      status_code: dbStatusCode(lc.status_code as string | null),
+      b_no_masked: maskBizNo(lc.b_no as string),
+      same_bno_members: countOtherMembers((same.data ?? []) as { member_id: string | null }[], id),
+    };
+  }
+
   const meta = (authUser as { data?: { user?: { user_metadata?: Record<string, unknown> } } })?.data?.user?.user_metadata;
   const nickname = (meta?.name as string) || (meta?.full_name as string) || (meta?.nickname as string) || (meta?.user_name as string) || null;
   const ref = one(referrer.data as Row | Row[] | null);
@@ -94,6 +116,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       partner_request: partnerRow ? { status: partnerRow.status as string, created_at: partnerRow.created_at as string } : null,
     },
     business: businessState({ business_verified: m.business_verified === true, has_license: Boolean(m.business_license_path) }, verifiedAt),
+    self_check: selfCheck,
     consents: latestConsents((consents.data ?? []) as ConsentRow[]),
     push_device_count: pushCnt.count ?? 0,
     categories: ((cats.data ?? []) as Row[]).map((r) => one(r.categories as Named | Named[] | null)?.name ?? "").filter(Boolean),

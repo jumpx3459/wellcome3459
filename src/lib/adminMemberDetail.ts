@@ -31,6 +31,27 @@ export function businessState(m: { business_verified: boolean | null; has_licens
   return { state: m.has_license ? "license_only" : "none", verified_at: null };
 }
 
+/** 2026-11-05 1단계: 회원 셀프 확인(member_business_checks) 최신 일치 기록 1건 — 사업자번호는 마스킹 값만(원문 칸 없음) */
+export type SelfCheckLine = {
+  checked_at: string;
+  status_code: "01" | "02" | "03" | null;
+  b_no_masked: string | null;
+  /** 같은 사업자번호로 일치 확인된 다른 회원 수(차단 없음, 표시만) */
+  same_bno_members: number;
+};
+
+/** 같은 사업자번호로 일치(01) 확인된 "다른" 회원 수 — 같은 회원 중복·회원 키 없는 행은 셈에서 뺌 */
+export function countOtherMembers(rows: { member_id: string | null }[] | null | undefined, memberId: string): number {
+  return new Set((rows ?? []).map((r) => r.member_id).filter((v): v is string => !!v && v !== memberId)).size;
+}
+
+/** 관리자 상세 문구 — "국세청 자동 확인 M/D · 계속사업자 · 123-45-*****" (KST 월/일) */
+export function selfCheckText(c: Pick<SelfCheckLine, "checked_at" | "status_code" | "b_no_masked">): string {
+  const d = new Date(Date.parse(c.checked_at) + 9 * 3600e3);
+  const word = c.status_code === "01" ? "계속" : c.status_code === "02" ? "휴업" : c.status_code === "03" ? "폐업" : null;
+  return ["국세청 자동 확인 " + (d.getUTCMonth() + 1) + "/" + d.getUTCDate(), word, c.b_no_masked].filter(Boolean).join(" · ");
+}
+
 /** 이 회원의 행만 — 회원 키가 정확히 같은 행. 키가 null인 비회원 행·다른 회원 행은 번호가 같아도 버림(조회 쿼리 + 이중 방어) */
 export function onlyOwn<T extends Record<string, unknown>>(rows: T[] | null | undefined, key: string, memberId: string): T[] {
   return (rows ?? []).filter((r) => r[key] != null && r[key] === memberId);
@@ -58,6 +79,7 @@ export type MemberDetail = {
     partner_request: { status: string; created_at: string } | null;
   };
   business: BusinessState;
+  self_check: SelfCheckLine | null;
   consents: ConsentState[];
   push_device_count: number;
   categories: string[];
