@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { maskBizNo, normalizeBizNo, normalizeOpenDate, ntsValidate } from "@/lib/nts";
 import {
-  GLOBAL_DAILY_LIMIT, MEMBER_DAILY_LIMIT, dbStatusCode, kstDayStartIso, openDateToDb, type SelfCheckResponse,
+  GLOBAL_DAILY_LIMIT, MEMBER_DAILY_LIMIT, dbStatusCode, kstDayStartIso, openDateToDb, selfBizCheckOn, type SelfCheckResponse,
 } from "@/lib/memberBusinessCheck";
 
 // 2026-11-05 1단계: 회원 사업자 셀프 확인 — 회원 본인이 사업자번호·대표자명·개업일자를 넣으면 국세청 진위확인(+상태조회)을 부르고
@@ -12,11 +12,14 @@ import {
 // 횟수 제한은 DB 집계(서버 인스턴스 메모리 아님): 회원당 KST 하루 01·02 결과 MEMBER_DAILY_LIMIT회 넘으면 429, 전체 하루 GLOBAL_DAILY_LIMIT행 넘으면 503.
 // 사업자번호 원문은 응답·로그에 남기지 않음(maskBizNo만).
 // 게이트 아님 — 연락처 보기·연결 흐름과 연결하지 않음.
+// NEXT_PUBLIC_SELF_BIZ_CHECK가 "on"이 아니면(기본) 404 — 처리방침 반영 전에는 화면뿐 아니라 수집 경로 자체를 닫음(인증·형식 검사보다 먼저, 국세청 호출·저장·갱신 0).
 
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status });
 const bad = (error: string, field?: string) => json({ error, ...(field ? { field } : {}) }, 400);
 
 export async function POST(req: NextRequest) {
+  if (!selfBizCheckOn(process.env.NEXT_PUBLIC_SELF_BIZ_CHECK)) return json({ error: "Not found" }, 404);
+
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   const { accessToken, check } = body ?? {};
 

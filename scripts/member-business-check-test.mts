@@ -70,6 +70,10 @@ eq(/overLimit|rateLimit/.test(route), false, "메모리 rateLimit 사용 안 함
 eq(/import[^;]*ntsStatus/.test(route), false, "라우트는 ntsValidate만 import(상태조회는 nts.ts 안에서)");
 eq(/console\.\w+\([^)]*bNo[^)]*\)/.test(route.replace(/maskBizNo\(bNo\)/g, "")), false, "로그에 사업자번호 원문 없음(maskBizNo만)");
 eq(/"member_business_checks"/.test(route) && !/seller_business_checks/.test(route), true, "member_business_checks만 사용(seller_business_checks 미변경)");
+const postStart = route.indexOf("export async function POST");
+const guard = route.indexOf("selfBizCheckOn(process.env.NEXT_PUBLIC_SELF_BIZ_CHECK)", postStart);
+eq(guard > postStart && guard < route.indexOf("req.json()", postStart) && guard < route.indexOf("accessToken", postStart + 40), true, "POST 맨 앞(본문·인증 검사 전)에서 플래그 off면 404");
+eq(/selfBizCheckOn\(process\.env\.NEXT_PUBLIC_SELF_BIZ_CHECK\)\) return json\(\{ error: "Not found" \}, 404\)/.test(route), true, "플래그 off → 404 반환");
 const consent = readFileSync(join(root, "src/lib/consent.ts"), "utf8");
 eq(/CONNECTION_CONSENT_VERSION = "2026-10-09"/.test(consent), true, "consent.ts 연결 동의 버전 그대로");
 const detail = readFileSync(join(root, "src/lib/adminMemberDetail.ts"), "utf8");
