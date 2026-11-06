@@ -160,6 +160,57 @@ function CreditGrantForm({ adminKey, memberId, onDone }: { adminKey: string; mem
   );
 }
 
+/** 열람권 회수 — 지급 줄 1개에서 N개(남은 수까지). 최고관리자 전용(서버가 다시 막음), 사유 필수. 남은 수 판정은 서버(SQL 함수)가 잠금 안에서 */
+function CreditRevokeForm({ adminKey, memberId, grantId, left, onDone }: { adminKey: string; memberId: string; grantId: string; left: number; onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [qty, setQty] = useState(String(left));
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const submit = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch(`/api/admin/members/${memberId}/view-credits/revoke`, { method: "POST", headers: { "x-admin-key": adminKey, "content-type": "application/json" }, body: JSON.stringify({ grant_id: grantId, quantity: Number(qty), reason }) });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) setMsg(body.error ?? "회수하지 못했어요.");
+      else {
+        setOpen(false);
+        setReason("");
+        onDone();
+      }
+    } catch {
+      setMsg("회수하지 못했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (!open)
+    return (
+      <button type="button" onClick={() => { setQty(String(left)); setOpen(true); }} className={`${BTN_CLS} mt-1.5`} data-credit-revoke-open>
+        회수
+      </button>
+    );
+  return (
+    <div className="flex flex-col gap-1.5 mt-1.5" data-credit-revoke-form>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <input value={qty} onChange={(e) => setQty(e.target.value)} inputMode="numeric" aria-label="회수 수량" className={INPUT_CLS} style={{ width: 80, fontSize: rem(15) }} data-credit-revoke-qty />
+        <span className="text-gray500">개 (남은 {left}개까지)</span>
+      </div>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={CREDIT_REASON_MAX} placeholder="회수 사유(필수)" className={`${INPUT_CLS} flex-1`} style={{ fontSize: rem(15) }} data-credit-revoke-reason />
+        <button type="button" onClick={submit} disabled={busy || !qty.trim() || !reason.trim()} className={BTN_CLS} data-credit-revoke-submit>
+          {busy ? "회수 중..." : "회수 확정"}
+        </button>
+        <button type="button" onClick={() => { setOpen(false); setMsg(null); }} disabled={busy} className={BTN_CLS}>
+          취소
+        </button>
+      </div>
+      {msg && <p className="font-bold" style={{ color: "#B91C1C" }} data-credit-revoke-msg>{msg}</p>}
+    </div>
+  );
+}
+
 export default function MemberDetailView({
   adminKey,
   memberId,
@@ -298,6 +349,9 @@ export default function MemberDetailView({
                       {g.revoked > 0 && ` · 회수 ${g.revoked}`}
                       {g.reason && ` · ${g.reason}`}
                     </div>
+                    {data.view_credits?.can_manage && !g.expired && g.left > 0 && (
+                      <CreditRevokeForm adminKey={adminKey} memberId={memberId} grantId={g.id} left={g.left} onDone={() => setReloadKey((k) => k + 1)} />
+                    )}
                   </Item>
                 ))}
               </div>

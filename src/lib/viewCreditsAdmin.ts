@@ -72,5 +72,18 @@ export function parseGrantInput(body: { quantity?: unknown; reason?: unknown } |
   return { ok: true, quantity: q, reason };
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** 회수 입력 검증 — 지급 줄 id(uuid)·수량 정수 1~ADMIN_GRANT_MAX·사유 필수. 남은 수 초과는 SQL 함수 view_credit_revoke가 잠금 안에서 판정(exceeds) */
+export function parseRevokeInput(body: { grant_id?: unknown; quantity?: unknown; reason?: unknown } | null | undefined):
+  | { ok: true; grantId: string; quantity: number; reason: string }
+  | { ok: false; error: string; field: "grant_id" | "quantity" | "reason" } {
+  const gid = body?.grant_id;
+  if (typeof gid !== "string" || !UUID.test(gid)) return { ok: false, error: "회수할 지급 내역을 찾을 수 없어요.", field: "grant_id" };
+  const q = parseGrantInput({ quantity: body?.quantity, reason: body?.reason });
+  if (!q.ok) return q;
+  return { ok: true, grantId: gid, quantity: q.quantity, reason: q.reason };
+}
+
 /** 수동 지급 만료 시각 — 지급 시각 + 90일 */
 export const adminGrantExpiresAt = (now: number = Date.now()): string => new Date(now + ADMIN_GRANT_DAYS * 86400e3).toISOString();

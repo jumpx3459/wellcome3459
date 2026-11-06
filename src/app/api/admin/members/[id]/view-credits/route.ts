@@ -5,8 +5,8 @@ import { UUID_RE } from "@/lib/rateLimit";
 import { adminGrantExpiresAt, parseGrantInput } from "@/lib/viewCreditsAdmin";
 
 // 2026-11-06 열람권 수동 지급 — view_credit_grants에 source='admin' 1행(수량 1~100, 사유 필수, 지급 시각 + 90일, created_by = 이 관리자).
-// 권한: viewCreditManage(최고관리자 전용). 지급은 INSERT뿐이라 consume과의 동시성 문제 없음(잔여를 읽고 쓰는 판단이 없음).
-// 회수는 같은 폴더의 revoke 라우트(잔량 검사·회수 행 insert를 한 트랜잭션에서 하는 SQL 함수 필요 — 별도).
+// 권한: viewCreditManage(최고관리자 전용). 대상: 사업자 인증된 회원만(미인증은 409). 지급은 INSERT뿐이라 consume과의 동시성 문제 없음(잔여를 읽고 쓰는 판단이 없음).
+// 회수는 같은 폴더의 revoke 라우트(SQL 함수 view_credit_revoke).
 // body: { quantity, reason }
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status });
 
@@ -23,9 +23,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if (!input.ok) return json({ error: input.error, field: input.field }, 400);
 
   const db = auth.db;
-  const { data: member, error: memberErr } = await db.from("members").select("id").eq("id", id).maybeSingle();
+  const { data: member, error: memberErr } = await db.from("members").select("id, business_verified").eq("id", id).maybeSingle();
   if (memberErr) return json({ error: "회원 정보를 불러오지 못했어요." }, 500);
   if (!member) return json({ error: "회원을 찾을 수 없어요." }, 404);
+  // 미인증 회원에게 주면 쓰지도 못한 채 90일만 흘러감 — 인증 회원(business_verified=true)만
+  if (member.business_verified !== true) return json({ error: "사업자 인증이 승인된 회원에게만 지급할 수 있어요." }, 409);
 
   const { data: saved, error } = await db
     .from("view_credit_grants")

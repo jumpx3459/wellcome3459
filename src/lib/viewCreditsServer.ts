@@ -41,6 +41,19 @@ export async function consumeViewCredit(db: SupabaseClient, memberId: string, de
   return { result, remaining };
 }
 
+export type RevokeResult = "revoked" | "not_found" | "expired" | "exceeds" | "invalid";
+export type ViewCreditRevoke = { result: RevokeResult; remainingAfter: number };
+
+/** 열람권 회수(관리자) — SQL 함수 view_credit_revoke가 회원 advisory lock 안에서 잔량 검사 + 회수 행 insert를 한 트랜잭션으로. revoked · not_found(다른 회원 지급 줄 포함) · expired · exceeds(remainingAfter = 현재 남은 수) · invalid */
+export async function revokeViewCredit(db: SupabaseClient, memberId: string, grantId: string, quantity: number, reason: string, adminId: string): Promise<ViewCreditRevoke> {
+  const { data, error } = await db.rpc("view_credit_revoke", { p_member: memberId, p_grant: grantId, p_quantity: quantity, p_reason: reason, p_admin: adminId });
+  const row = firstRow("view_credit_revoke", data, error);
+  const { result, remaining_after: after } = row;
+  if (result !== "revoked" && result !== "not_found" && result !== "expired" && result !== "exceeds" && result !== "invalid") throw new Error("view_credit_revoke rpc 결과 값 오류");
+  if (!isCount(after)) throw new Error("view_credit_revoke rpc 응답 형식 오류");
+  return { result, remainingAfter: after };
+}
+
 /** 관리자 조회용 — 지급·사용·회수 기록을 표에서 그대로 읽음(쓰기·지급 없음). 사용·회수는 최신 events 상한까지만 내역으로 쓰고, 잔여 계산은 전체 events로 해야 하므로 상한 없이 읽는다(회원 1명 기준 소량) */
 export async function listViewCredits(db: SupabaseClient, memberId: string): Promise<{ grants: GrantRow[]; events: EventRow[] }> {
   const [g, e] = await Promise.all([
