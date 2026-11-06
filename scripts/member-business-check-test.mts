@@ -79,4 +79,39 @@ eq(/CONNECTION_CONSENT_VERSION = "2026-10-09"/.test(consent), true, "consent.ts 
 const detail = readFileSync(join(root, "src/lib/adminMemberDetail.ts"), "utf8");
 eq(/\bb_no\b\s*:/.test(detail.replace(/b_no_masked/g, "")), false, "관리자 상세 타입에 사업자번호 원문 칸 없음");
 
+// ---- 2026-11-06 수동 입력(method='manual') ----
+eq(m.manualCheckFields({ result: "ok", status: { code: "01", text: "계속사업자", taxType: "일반과세자" } }), { status_code: "01", status_text: "계속사업자", tax_type: "일반과세자", error_kind: null }, "수동: 계속사업자 → 상태 01·문구·과세유형 저장");
+eq(m.manualCheckFields({ result: "ok", status: { code: "02", text: "휴업자", taxType: null } }).status_code, "02", "수동: 휴업 → 02");
+eq(m.manualCheckFields({ result: "ok", status: { code: "03", text: "폐업자", taxType: null } }).status_code, "03", "수동: 폐업 → 03");
+eq(m.manualCheckFields({ result: "ok", status: { code: "", text: "국세청에 등록되지 않은 사업자등록번호입니다.", taxType: "국세청에 등록되지 않은 사업자등록번호입니다." } }), { status_code: null, status_text: "미등록", tax_type: "국세청에 등록되지 않은 사업자등록번호입니다.", error_kind: null }, "수동: 미등록(code '') → status_code null · status_text '미등록'");
+eq(m.manualCheckFields({ result: "error", errorKind: "timeout" }), { status_code: null, status_text: null, tax_type: null, error_kind: "timeout" }, "수동: 국세청 오류 → 상태 칸 null · error_kind만");
+const mc = (o: Partial<import("../src/lib/adminMemberDetail").ManualCheckLine> = {}) => ({ checked_at: "2026-11-05T15:30:00Z", status_code: "01" as const, status_text: "계속사업자", error_kind: null, b_no_masked: "123-45-*****", same_bno_members: 0, ...o });
+eq(d.manualCheckText(mc()), "수동 입력(등록증 대조) 11/6 · 계속 · 123-45-*****", "관리자 문구: 수동 입력(등록증 대조) M/D · 계속 · 마스킹 번호(KST 날짜)");
+eq(d.manualCheckText(mc({ status_code: null })), "수동 입력(등록증 대조) 11/6 · 미등록 · 123-45-*****", "관리자 문구: 미등록");
+eq(d.manualCheckText(mc({ status_code: null, error_kind: "timeout" })), "수동 입력(등록증 대조) 11/6 · 123-45-*****", "관리자 문구: 오류는 상태 단어 없음");
+eq(d.manualCheckText(mc({ status_code: "03" })).includes("셀프"), false, "수동 문구에 '셀프' 없음(구분)");
+eq(d.selfCheckText({ checked_at: "2026-11-05T15:30:00Z", status_code: "01", b_no_masked: "123-45-*****" }).startsWith("국세청 자동 확인"), true, "셀프 문구는 기존 그대로(국세청 자동 확인)");
+eq(d.manualCheckWarning(mc()), null, "경고: 계속사업자는 경고 없음");
+eq(d.manualCheckWarning(mc({ status_code: "02" })), "휴업", "경고: 휴업");
+eq(d.manualCheckWarning(mc({ status_code: "03" })), "폐업", "경고: 폐업");
+eq(d.manualCheckWarning(mc({ status_code: null })), "국세청 미등록 번호", "경고: 미등록");
+eq(d.manualCheckWarning(mc({ status_code: null, error_kind: "http_5xx" })), "국세청 조회 실패 — 상태 확인 안 됨", "경고: 조회 실패");
+eq(d.manualInputAvailable(true, 0), true, "입력 노출: 인증 + 기록 0건");
+eq(d.manualInputAvailable(true, 1), false, "입력 숨김: 기록이 이미 있음(재입력은 범위 밖)");
+eq(d.manualInputAvailable(false, 0), false, "입력 숨김: 미인증");
+eq(d.countOtherMembers([{ member_id: "a" }, { member_id: "b" }, { member_id: "b" }, { member_id: null }], "a"), 1, "같은 번호 집계: 자기 자신·같은 회원 중복·회원 키 없는 행 제외");
+
+// 라우트 소스 규칙(수동 입력·열람권 지급)
+const manualRoute = readFileSync(join(root, "src/app/api/admin/members/[id]/business-manual/route.ts"), "utf8");
+eq(/requirePerm\(auth\.admin, "businessLicense"\)/.test(manualRoute), true, "수동 입력 권한 = businessLicense");
+eq(/business_verified:\s*true|\.update\(/.test(manualRoute), false, "수동 입력은 members를 갱신하지 않음(business_verified 변경 없음)");
+eq(/method: "manual"/.test(manualRoute) && /validate_result: "manual"/.test(manualRoute), true, "수동 행: method·validate_result = manual");
+eq(/ntsValidate/.test(manualRoute), false, "수동 입력은 진위확인(ntsValidate) 호출 없음 — ntsStatus만");
+eq(/console\.\w+\([^)]*bNo[^)]*\)/.test(manualRoute.replace(/maskBizNo\(bNo\)/g, "")), false, "수동 입력 로그에 사업자번호 원문 없음");
+const grantRoute = readFileSync(join(root, "src/app/api/admin/members/[id]/view-credits/route.ts"), "utf8");
+eq(/requirePerm\(auth\.admin, "viewCreditManage"\)/.test(grantRoute), true, "열람권 지급 권한 = viewCreditManage(최고관리자 전용)");
+eq(/same_bno_members/.test(detail) && /validate_result", SAME_BNO/.test(readFileSync(join(root, "src/app/api/admin/members/[id]/route.ts"), "utf8")), true, "같은 번호 집계가 일치(01)+수동(manual) 둘 다 셈");
+const perms = readFileSync(join(root, "src/lib/adminPerms.ts"), "utf8");
+eq(/viewCreditManage: SUPER/.test(perms), true, "권한표: viewCreditManage는 최고관리자 전용(SUPER)");
+
 console.log(`\n${n}건 통과`);

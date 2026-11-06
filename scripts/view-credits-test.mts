@@ -73,7 +73,37 @@ await ok("balance: rpc 오류 throw", () => rejects(v.getViewCreditBalance(mockD
 await ok("balance: remaining 형식 오류 throw", () => rejects(v.getViewCreditBalance(mockDb({ data: [{ remaining: null, next_expires_at: null }], error: null }).db, "m1"), /형식 오류/));
 await ok("balance: next_expires_at 형식 오류 throw", () => rejects(v.getViewCreditBalance(mockDb({ data: [{ remaining: 3, next_expires_at: 123 }], error: null }).db, "m1"), /형식 오류/));
 
-// ---- 클라이언트 번들 금지(소스 검사) + 호출처 0 ----
+// ---- listViewCredits: 표 읽기(목) ----
+type TableReply = Record<string, Reply>;
+function mockTables(replies: TableReply) {
+  const seen: string[] = [];
+  const db = {
+    from: (t: string) => {
+      seen.push(t);
+      const chain = {
+        select: () => chain,
+        eq: () => chain,
+        order: () => chain,
+        limit: async () => replies[t],
+      };
+      return chain;
+    },
+  };
+  return { db: db as unknown as import("@supabase/supabase-js").SupabaseClient, seen };
+}
+await ok("listViewCredits: grants·events 두 표를 읽어 돌려줌", async () => {
+  const m = mockTables({ view_credit_grants: { data: [{ id: "g1" }], error: null }, view_credit_events: { data: [{ id: "e1" }], error: null } });
+  assert.deepEqual(await v.listViewCredits(m.db, "m1"), { grants: [{ id: "g1" }], events: [{ id: "e1" }] });
+  assert.deepEqual([...m.seen].sort(), ["view_credit_events", "view_credit_grants"]);
+});
+await ok("listViewCredits: 데이터 null이면 빈 배열", async () => {
+  const m = mockTables({ view_credit_grants: { data: null, error: null }, view_credit_events: { data: null, error: null } });
+  assert.deepEqual(await v.listViewCredits(m.db, "m1"), { grants: [], events: [] });
+});
+await ok("listViewCredits: grants 조회 오류 throw", () => rejects(v.listViewCredits(mockTables({ view_credit_grants: { data: null, error: { message: "x" } }, view_credit_events: { data: [], error: null } }).db, "m1"), /view_credit_grants 조회 오류/));
+await ok("listViewCredits: events 조회 오류 throw", () => rejects(v.listViewCredits(mockTables({ view_credit_grants: { data: [], error: null }, view_credit_events: { data: null, error: { message: "y" } } }).db, "m1"), /view_credit_events 조회 오류/));
+
+// ---- 클라이언트 번들 금지(소스 검사) ----
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const p = join(dir, name);
@@ -88,9 +118,20 @@ const isClientFile = (text: string) => /^\s*(?:\/\/[^\n]*\n|\/\*[\s\S]*?\*\/\s*)
 await ok("소스 검사: 이 검사 자체가 파일을 찾는지(src 파일 100개 이상)", () => {
   assert.ok(srcFiles.length > 100, String(srcFiles.length));
 });
-await ok("소스 검사: viewCreditsServer를 import하는 파일 0개(호출처 없음, 모듈 자기 자신 제외)", () => {
+await ok("소스 검사: viewCreditsServer를 import하는 파일은 관리자 회원 상세 API 하나뿐(회원용 라우트 없음, 모듈 자기 자신 제외)", () => {
   const users = srcFiles.filter((p) => !rel(p).endsWith("src/lib/viewCreditsServer.ts")).filter((p) => importsIt(readFileSync(p, "utf8")));
-  assert.deepEqual(users.map(rel), []);
+  assert.deepEqual(users.map(rel), ["src/app/api/admin/members/[id]/route.ts"]);
+});
+await ok("소스 검사: 관리자 상세 API는 view_credit_balance·view_credit_consume(지급·차감 부수효과)를 호출하지 않고 listViewCredits만 씀", () => {
+  const text = readFileSync(join(root, "src/app/api/admin/members/[id]/route.ts"), "utf8");
+  assert.ok(/listViewCredits/.test(text));
+  const code = text.replace(/\/\/.*$/gm, ""); // 주석 속 설명은 제외
+  assert.ok(!/getViewCreditBalance|consumeViewCredit|view_credit_balance|view_credit_consume|view_credit_ensure/.test(code));
+});
+await ok("소스 검사: listViewCredits는 읽기만(insert·update·rpc 없음)", () => {
+  const text = readFileSync(join(root, "src/lib/viewCreditsServer.ts"), "utf8");
+  const body = text.slice(text.indexOf("export async function listViewCredits"));
+  assert.ok(!/\.insert\(|\.update\(|\.upsert\(|\.delete\(|\.rpc\(/.test(body));
 });
 await ok("소스 검사: \"use client\" 파일 / src/components/** / src/app/**/page.tsx 가 import하지 않음", () => {
   const bad = srcFiles.filter((p) => {

@@ -31,6 +31,7 @@ const TABLE: Record<string, string> = {
   leads: "O O X",
   buyRequests: "O O X",
   businessLicense: "O O X",
+  viewCreditManage: "O X X", // 2026-11-06 열람권 수동 지급·회수 — 최고관리자만
   partnerApprove: "O X X",
   partnerView: "O O X",
   noticeSend: "O X X",
