@@ -73,6 +73,23 @@ await ok("balance: rpc 오류 throw", () => rejects(v.getViewCreditBalance(mockD
 await ok("balance: remaining 형식 오류 throw", () => rejects(v.getViewCreditBalance(mockDb({ data: [{ remaining: null, next_expires_at: null }], error: null }).db, "m1"), /형식 오류/));
 await ok("balance: next_expires_at 형식 오류 throw", () => rejects(v.getViewCreditBalance(mockDb({ data: [{ remaining: 3, next_expires_at: 123 }], error: null }).db, "m1"), /형식 오류/));
 
+// ---- revokeViewCredit: 결과 매핑·rpc 인자·throw ----
+for (const [result, after] of [["revoked", 1], ["not_found", 0], ["expired", 0], ["exceeds", 3], ["invalid", 0]] as const) {
+  await ok(`revoke: ${result} → { ${result}, ${after} }`, async () => {
+    const m = mockDb({ data: [{ result, remaining_after: after }], error: null });
+    assert.deepEqual(await v.revokeViewCredit(m.db, "m1", "g1", 2, "사유", "a1"), { result, remainingAfter: after });
+  });
+}
+await ok("revoke: rpc 이름·인자(p_member·p_grant·p_quantity·p_reason·p_admin)", async () => {
+  const m = mockDb({ data: [{ result: "revoked", remaining_after: 1 }], error: null });
+  await v.revokeViewCredit(m.db, "m1", "g1", 2, "사유", "a1");
+  assert.deepEqual(m.calls, [{ fn: "view_credit_revoke", args: { p_member: "m1", p_grant: "g1", p_quantity: 2, p_reason: "사유", p_admin: "a1" } }]);
+});
+await ok("revoke: 빈 배열 throw", () => rejects(v.revokeViewCredit(mockDb({ data: [], error: null }).db, "m1", "g1", 1, "x", "a1"), /비었어요/));
+await ok("revoke: rpc 오류 throw", () => rejects(v.revokeViewCredit(mockDb({ data: null, error: { message: "boom" } }).db, "m1", "g1", 1, "x", "a1"), /rpc 오류: boom/));
+await ok("revoke: 모르는 result 값 throw", () => rejects(v.revokeViewCredit(mockDb({ data: [{ result: "ok", remaining_after: 1 }], error: null }).db, "m1", "g1", 1, "x", "a1"), /결과 값 오류/));
+await ok("revoke: remaining_after 형식 오류 throw", () => rejects(v.revokeViewCredit(mockDb({ data: [{ result: "revoked", remaining_after: null }], error: null }).db, "m1", "g1", 1, "x", "a1"), /형식 오류/));
+
 // ---- listViewCredits: 표 읽기(목) ----
 type TableReply = Record<string, Reply>;
 function mockTables(replies: TableReply) {
@@ -118,9 +135,14 @@ const isClientFile = (text: string) => /^\s*(?:\/\/[^\n]*\n|\/\*[\s\S]*?\*\/\s*)
 await ok("소스 검사: 이 검사 자체가 파일을 찾는지(src 파일 100개 이상)", () => {
   assert.ok(srcFiles.length > 100, String(srcFiles.length));
 });
-await ok("소스 검사: viewCreditsServer를 import하는 파일은 관리자 회원 상세 API 하나뿐(회원용 라우트 없음, 모듈 자기 자신 제외)", () => {
+await ok("소스 검사: viewCreditsServer를 import하는 파일은 관리자 회원 상세·회수 API 둘뿐(회원용 라우트 없음 — 2-3에서 추가 시 이 목록 갱신, 모듈 자기 자신 제외)", () => {
   const users = srcFiles.filter((p) => !rel(p).endsWith("src/lib/viewCreditsServer.ts")).filter((p) => importsIt(readFileSync(p, "utf8")));
-  assert.deepEqual(users.map(rel), ["src/app/api/admin/members/[id]/route.ts"]);
+  assert.deepEqual(users.map(rel).sort(), ["src/app/api/admin/members/[id]/route.ts", "src/app/api/admin/members/[id]/view-credits/revoke/route.ts"]);
+});
+await ok("소스 검사: 회수 API는 SQL 함수(revokeViewCredit)만 쓰고 원장 표를 직접 쓰지 않음 · SUPER 전용", () => {
+  const text = readFileSync(join(root, "src/app/api/admin/members/[id]/view-credits/revoke/route.ts"), "utf8").replace(/\/\/.*$/gm, "");
+  assert.ok(/revokeViewCredit\(/.test(text) && /requirePerm\(auth\.admin, "viewCreditManage"\)/.test(text));
+  assert.ok(!/\.insert\(|\.update\(|\.from\("view_credit/.test(text));
 });
 await ok("소스 검사: 관리자 상세 API는 view_credit_balance·view_credit_consume(지급·차감 부수효과)를 호출하지 않고 listViewCredits만 씀", () => {
   const text = readFileSync(join(root, "src/app/api/admin/members/[id]/route.ts"), "utf8");

@@ -58,6 +58,16 @@ eq(a.parseGrantInput({ quantity: 3, reason: "가".repeat(201) }).ok, false, "지
 eq(a.parseGrantInput({ quantity: 3, reason: "가".repeat(200) }).ok, true, "지급: 사유 200자 허용");
 eq(a.parseGrantInput(null).ok, false, "지급: 본문 없음 거부");
 
+// 회수 입력 검증
+const GID = "00000000-0000-4000-8000-0000000000b1";
+eq(a.parseRevokeInput({ grant_id: GID, quantity: 2, reason: " 오지급 " }), { ok: true, grantId: GID, quantity: 2, reason: "오지급" }, "회수: 정상(사유 공백 제거)");
+for (const gid of [undefined, null, "", "abc", 5, GID + "x"]) eq((a.parseRevokeInput({ grant_id: gid, quantity: 1, reason: "x" }) as { field?: string }).field, "grant_id", `회수: grant_id ${JSON.stringify(gid)} 거부`);
+eq((a.parseRevokeInput({ grant_id: GID, quantity: 0, reason: "x" }) as { field?: string }).field, "quantity", "회수: 수량 0 거부");
+eq((a.parseRevokeInput({ grant_id: GID, quantity: 1.5, reason: "x" }) as { field?: string }).field, "quantity", "회수: 수량 소수 거부");
+eq((a.parseRevokeInput({ grant_id: GID, quantity: "2", reason: "x" }) as { field?: string }).field, "quantity", "회수: 수량 문자열 거부");
+eq((a.parseRevokeInput({ grant_id: GID, quantity: 2, reason: "  " }) as { field?: string }).field, "reason", "회수: 사유 공백 거부");
+eq(a.parseRevokeInput(null).ok, false, "회수: 본문 없음 거부");
+
 // 만료 시각 = 지급 시각 + 90일
 eq(a.adminGrantExpiresAt(NOW), iso(NOW + 90 * day), "수동 지급 만료 = 지급 시각 + 90일");
 eq([a.ADMIN_GRANT_MAX, a.ADMIN_GRANT_DAYS], [100, 90], "상수: 최대 100 · 90일(DB check와 같음)");
