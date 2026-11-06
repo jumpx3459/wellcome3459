@@ -1,5 +1,6 @@
-// 관리자 회원 상세(보기 전용) 조립 규칙 (2026-10-23 feat/admin-member-detail) — 서버 API와 단위 시험이 같이 씀. 다른 모듈 import 없음.
+// 관리자 회원 상세(보기 전용) 조립 규칙 (2026-10-23 feat/admin-member-detail) — 서버 API와 단위 시험이 같이 씀. 다른 모듈은 타입만 import(실행 코드 없음).
 // 개인정보 원칙: 응답에 신청서 연락처(contact_phone)·사업자등록번호 원문·등록증 경로를 넣지 않는다(이 파일의 타입에도 칸이 없음).
+import type { GrantLine } from "@/lib/viewCreditsAdmin";
 
 /** 상세에 보여 주는 동의 종류(night_ad는 아직 안 받음) — 순서 그대로 화면에 */
 export const DETAIL_CONSENT_TYPES = ["tos", "privacy", "eligibility", "deal_alert_ad", "kakao_marketing", "seller_terms", "biz_info"] as const;
@@ -40,10 +41,51 @@ export type SelfCheckLine = {
   same_bno_members: number;
 };
 
-/** 같은 사업자번호로 일치(01) 확인된 "다른" 회원 수 — 같은 회원 중복·회원 키 없는 행은 셈에서 뺌 */
+/** 같은 사업자번호로 일치(01) 또는 수동 입력(manual)된 "다른" 회원 수 — 같은 회원 중복·회원 키 없는 행은 셈에서 뺌 */
 export function countOtherMembers(rows: { member_id: string | null }[] | null | undefined, memberId: string): number {
   return new Set((rows ?? []).map((r) => r.member_id).filter((v): v is string => !!v && v !== memberId)).size;
 }
+
+/** 2026-11-06 수동 입력(method='manual') 최신 1건 — 관리자가 등록증과 대조해 입력한 번호의 국세청 상태조회. 진위확인 아님. 사업자번호는 마스킹 값만 */
+export type ManualCheckLine = {
+  checked_at: string;
+  status_code: "01" | "02" | "03" | null;
+  status_text: string | null;
+  error_kind: string | null;
+  b_no_masked: string | null;
+  /** 같은 사업자번호로 일치(01) 또는 수동 입력(manual)된 다른 회원 수(차단 없음, 표시만) */
+  same_bno_members: number;
+};
+
+/** 수동 입력 경고 문구 — 계속사업자(01)면 null. 오류·미등록·휴업·폐업이면 사유. business_verified는 바꾸지 않았음을 화면이 함께 안내 */
+export function manualCheckWarning(c: Pick<ManualCheckLine, "status_code" | "status_text" | "error_kind">): string | null {
+  if (c.error_kind) return "국세청 조회 실패 — 상태 확인 안 됨";
+  if (c.status_code === "01") return null;
+  if (c.status_code === "02") return "휴업";
+  if (c.status_code === "03") return "폐업";
+  return "국세청 미등록 번호";
+}
+
+/** 관리자 상세 문구 — "수동 입력(등록증 대조) M/D · 계속사업자 · 123-45-*****" (KST 월/일, 경고는 따로) */
+export function manualCheckText(c: Pick<ManualCheckLine, "checked_at" | "status_code" | "b_no_masked" | "error_kind">): string {
+  const d = new Date(Date.parse(c.checked_at) + 9 * 3600e3);
+  const word = c.error_kind ? null : c.status_code === "01" ? "계속" : c.status_code === "02" ? "휴업" : c.status_code === "03" ? "폐업" : "미등록";
+  return ["수동 입력(등록증 대조) " + (d.getUTCMonth() + 1) + "/" + d.getUTCDate(), word, c.b_no_masked].filter(Boolean).join(" · ");
+}
+
+/** [사업자번호 입력] 노출 — 인증된 회원이면서 member_business_checks 기록이 하나도 없을 때만(재입력은 이번 범위 밖) */
+export const manualInputAvailable = (businessVerified: boolean, checkRowCount: number): boolean => businessVerified && checkRowCount === 0;
+
+/** 열람권 구역 — state: pending = 인증 회원인데 아직 지급 행 없음(첫 열람 때 월 5 + 웰컴 5 지급 예정), not_verified = 인증 전·지급 없음, active = 지급 행 있음 */
+export type ViewCreditsDetail = {
+  state: "not_verified" | "pending" | "active";
+  remaining: number;
+  next_expires_at: string | null;
+  grants: GrantLine[];
+  events: { id: string; kind: "use" | "revoke"; quantity: number; deal_title: string | null; reason: string | null; created_at: string }[];
+  /** 수동 지급·회수 버튼 노출 — 최고관리자만(서버가 다시 막음) */
+  can_manage: boolean;
+};
 
 /** 관리자 상세 문구 — "국세청 자동 확인 M/D · 계속사업자 · 123-45-*****" (KST 월/일) */
 export function selfCheckText(c: Pick<SelfCheckLine, "checked_at" | "status_code" | "b_no_masked">): string {
@@ -80,6 +122,12 @@ export type MemberDetail = {
   };
   business: BusinessState;
   self_check: SelfCheckLine | null;
+  /** 2026-11-06 수동 입력 최신 1건 — 없으면 null */
+  manual_check: ManualCheckLine | null;
+  /** [사업자번호 입력] 노출 여부(서버 판정: 인증된 회원 + 기록 0건 + businessLicense 권한) */
+  manual_input_available: boolean;
+  /** 열람권 구역 — 조회 실패면 null(화면이 안내) */
+  view_credits: ViewCreditsDetail | null;
   consents: ConsentState[];
   push_device_count: number;
   categories: string[];

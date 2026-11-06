@@ -37,6 +37,9 @@ export type AuditAction =
   | "connection_assign" // 2026-10-10: 거래 연결 담당 지정·변경 (detail: 이전·새 담당 id·이름)
   | "member_phone_view" // 2026-10-10: 회원 전체 번호 보기 (detail: phoneTail만)
   | "member_detail_view" // 2026-10-23: 회원 상세(보기 전용) 열람 (detail: phoneTail만 — 대상 회원은 target_id)
+  | "business_manual_check" // 2026-11-06: 수동 승인 회원 사업자번호 입력(국세청 상태조회, 진위확인 아님) (detail: 마스킹 번호, status_code, 오류 종류 — 번호 원문은 member_business_checks에만)
+  | "view_credit_grant" // 2026-11-06: 열람권 수동 지급 (detail: quantity, reason, grant_id)
+  | "view_credit_revoke" // 2026-11-06: 열람권 회수 (detail: quantity, reason, grant_id)
   | "seller_private_save"; // 2026-10-04 F-4: 판매자 비공개 정보 저장 (detail: via[deal_create|deal_edit|seller_request_approve|connection_board], 바뀐 칸 이름, 연락처는 phoneTail, 조회 행 연결 시 linked_check_id)
 
 export const phoneTail = (p: string | null | undefined) => {

@@ -46,3 +46,28 @@ export function kstMonthDay(iso: string): string {
 
 /** MY 카드 환경 플래그(NEXT_PUBLIC_SELF_BIZ_CHECK) — "on"일 때만 켬, 기본 off */
 export const selfBizCheckOn = (v: string | undefined): boolean => v === "on";
+
+// ---- 2026-11-06 수동 입력(method='manual') — 관리자가 등록증과 대조해 입력한 번호의 국세청 상태조회 결과를 행 칸으로 ----
+/** nts.ts NtsStatusResult와 같은 모양(이 파일은 다른 모듈을 import하지 않음) */
+export type StatusLookup =
+  | { result: "ok"; status: { code: string; text: string | null; taxType: string | null } }
+  | { result: "error"; errorKind: string };
+
+export type ManualCheckFields = {
+  status_code: "01" | "02" | "03" | null;
+  status_text: string | null;
+  tax_type: string | null;
+  error_kind: string | null;
+};
+
+/** 상태조회 결과 → member_business_checks 칸. 미등록(code '')은 status_code null·status_text '미등록', 오류는 error_kind만 */
+export function manualCheckFields(r: StatusLookup): ManualCheckFields {
+  if (r.result === "error") return { status_code: null, status_text: null, tax_type: null, error_kind: r.errorKind };
+  const code = dbStatusCode(r.status.code);
+  return {
+    status_code: code,
+    status_text: r.status.code === "" ? "미등록" : r.status.text,
+    tax_type: r.status.taxType,
+    error_kind: null,
+  };
+}

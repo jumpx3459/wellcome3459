@@ -26,6 +26,7 @@ export const ADMIN_PERMS = {
   memberPhoneFull: SUPER, //      회원 목록에 전체 번호 그대로
   leads: STAFF, //                리드 목록·변경 (interests)
   buyRequests: STAFF, //          재고 문의
+  viewCreditManage: SUPER, //     회원 열람권 수동 지급·회수 (members/[id]/view-credits) — 2026-11-06. 수동 사업자번호 입력은 businessLicense와 같은 등급
   businessLicense: STAFF, //      사업자 등록증 열람·인증 승인
   partnerApprove: SUPER, //       공식 파트너 지정 (partner-requests PATCH)
   partnerView: STAFF, //          파트너 신청 목록·실적 (partner-requests GET, partners-overview)
