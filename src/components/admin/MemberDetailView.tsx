@@ -371,7 +371,8 @@ export default function MemberDetailView({
                 ))}
               </div>
             )}
-            {data.view_credits.can_manage && <CreditGrantForm adminKey={adminKey} memberId={memberId} onDone={() => setReloadKey((k) => k + 1)} />}
+            {/* 미인증 회원은 지급 칸을 숨김(서버도 409) */}
+            {data.view_credits.can_manage && data.view_credits.state !== "not_verified" && <CreditGrantForm adminKey={adminKey} memberId={memberId} onDone={() => setReloadKey((k) => k + 1)} />}
           </>
         )}
       </Section>
