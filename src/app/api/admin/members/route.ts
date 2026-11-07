@@ -5,8 +5,11 @@ import { can } from "@/lib/adminPerms";
 import { maskPhone } from "@/lib/phone";
 import { writeAudit } from "@/lib/adminAudit";
 import { loadAdminMembers } from "@/lib/adminLists";
+import { isServerSearch, parseMemberSearch } from "@/lib/adminMemberSearch";
 
 // 최근 가입 회원 목록 (관리자용 - 신규 가입 현황 파악)
+// 2026-11-07: ?include_test=1 이면 테스트 계정(is_test) 포함(기본 제외). ?q= 가 회원 코드(JX-00013·13)·숫자(전화 일부)면 서버에서 검색
+// (최근 300명보다 오래된 회원도 찾음). 그 밖의 문자는 서버가 쓰지 않음(화면이 상호·닉네임으로 거름).
 export async function GET(req: NextRequest) {
   const auth = await checkAdminAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -21,7 +24,12 @@ export async function GET(req: NextRequest) {
 
   const supabaseAdmin = createClient(supabaseUrl, serviceKey);
 
-  const result = await loadAdminMembers(supabaseAdmin);
+  const sp = req.nextUrl.searchParams;
+  const parsed = parseMemberSearch(sp.get("q"));
+  const result = await loadAdminMembers(supabaseAdmin, {
+    includeTest: sp.get("include_test") === "1",
+    search: isServerSearch(parsed) ? parsed : undefined,
+  });
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: 500 });
   // 2026-10-01: 회원 연락처가 담긴 목록 조회 — 호출 단위로 감사 로그
   // 2026-10-10 권한표: 전체 번호는 최고관리자만. 관리자(일반)는 가운데를 가린 번호(010-****-1234) + [번호 보기](members/[id]/phone, 감사 기록)
@@ -29,7 +37,7 @@ export async function GET(req: NextRequest) {
   const items = full
     ? result.items
     : result.items.map((m) => ({ ...m, phone: maskPhone(m.phone), referrer_phone: m.referrer_phone ? maskPhone(m.referrer_phone) : null, phone_masked: true }));
-  await writeAudit(supabaseAdmin, req, { admin: auth.admin, action: "members_list_view", targetType: "members", detail: { count: result.items.length, masked: !full } });
+  await writeAudit(supabaseAdmin, req, { admin: auth.admin, action: "members_list_view", targetType: "members", detail: { count: result.items.length, masked: !full, searched: isServerSearch(parsed), include_test: sp.get("include_test") === "1" } });
 
   return NextResponse.json({ items });
 }

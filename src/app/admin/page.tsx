@@ -41,6 +41,7 @@ import {
 import { SuggestInput, StorageTypeButtons, MoqWholeLotChip } from "@/components/DealFormInputs";
 import ManifestUploader from "@/components/ManifestUploader";
 import Toast, { useToast } from "@/components/Toast";
+import { isServerSearch, parseMemberSearch } from "@/lib/adminMemberSearch";
 import { formatPriceInput, parsePriceInput, formatMemberNo, formatPriceWithUnit, formatDealPrice } from "@/lib/format";
 import type { ManifestRow } from "@/lib/parseCsv";
 import { SITE_URL } from "@/lib/siteUrl";
@@ -226,6 +227,7 @@ type Member = {
   push_subscribed: boolean;
   business_verified: boolean;
   has_business_license: boolean;
+  is_test?: boolean; // 2026-11-07: 내부(테스트) 계정 — 목록 기본은 제외, [테스트 계정 포함]을 켜면 '내부' 칩과 함께 보임
   created_at: string;
   categories: string[];
   regions: string[];
@@ -607,6 +609,10 @@ function AdminDashboard({
   const [authError, setAuthError] = useState<string | null>(null);
   const [licenseLoadingId, setLicenseLoadingId] = useState<string | null>(null);
   const [memberSearch, setMemberSearch] = useState("");
+  // 2026-11-07: 테스트 계정 포함 토글(기본 꺼짐) + 회원 코드·숫자 검색은 서버 결과(최근 300명 밖의 회원도 찾음)
+  const [includeTest, setIncludeTest] = useState(false);
+  const [searchResults, setSearchResults] = useState<{ q: string; includeTest: boolean; items: Member[] } | null>(null);
+  const membersFetched = useRef(false);
   const [memberFilter, setMemberFilter] = useState<"all" | "business" | "subscribed" | "unsubscribed">("all");
   // 2026-10-28: 기본 = 진행중(pending) — 끝난(성사·불발) 건과 아직 안 시작한 건이 섞여 길어지던 목록을 줄임. [전체] 칩으로 해제
   const [leadFilter, setLeadFilter] = useState<"all" | "uncontacted" | "pending" | "completed" | "no_deal">("pending");
@@ -826,7 +832,7 @@ function AdminDashboard({
       allowed("buyRequests", "/api/admin/buy-requests").then((res) =>
         res.json()
       ),
-      allowed("members", "/api/admin/members").then((res) =>
+      allowed("members", `/api/admin/members?include_test=${includeTest ? 1 : 0}`).then((res) =>
         res.json()
       ),
       allowed("partnerView", "/api/admin/partner-requests")
@@ -879,13 +885,48 @@ function AdminDashboard({
       .finally(() => setLoading(false));
   };
 
+  // load는 includeTest(테스트 계정 포함)를 읽지만, 토글은 아래 별도 효과가 목록만 다시 받으므로 여기 의존성에 넣지 않음
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(load, [adminKey, role]);
 
-  const filteredMembers = members.filter((m) => {
+  // 회원 코드(JX-00013·13)·숫자(전화 일부)는 서버가 찾고, 그 밖의 문자(상호·닉네임)는 불러온 최근 회원을 화면에서 거름
+  const parsedMemberSearch = parseMemberSearch(memberSearch);
+  const serverQ = isServerSearch(parsedMemberSearch) ? memberSearch.trim() : "";
+  const serverResult = serverQ && searchResults?.q === serverQ && searchResults.includeTest === includeTest ? searchResults.items : null;
+  const memberSearching = Boolean(serverQ) && serverResult === null;
+
+  useEffect(() => {
+    if (!adminKey) return;
+    // 기본 상태(검색 없음·테스트 제외)는 load()가 이미 채워 둠
+    if (!includeTest && !serverQ && !membersFetched.current) return;
+    membersFetched.current = true;
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      const qs = new URLSearchParams();
+      if (serverQ) qs.set("q", serverQ);
+      qs.set("include_test", includeTest ? "1" : "0");
+      const res = await fetch(`/api/admin/members?${qs.toString()}`, { headers: { "x-admin-key": adminKey } }).catch(() => null);
+      if (cancelled) return;
+      const data = res?.ok ? await res.json().catch(() => null) : null;
+      if (!data) {
+        showDashToast("회원 목록을 불러오지 못했어요. 다시 시도해주세요");
+        return;
+      }
+      if (serverQ) setSearchResults({ q: serverQ, includeTest, items: (data.items ?? []) as Member[] });
+      else setMembers((data.items ?? []) as Member[]);
+    }, serverQ ? 300 : 0);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminKey, includeTest, serverQ]);
+
+  const filteredMembers = (serverQ ? serverResult ?? [] : members).filter((m) => {
     if (memberFilter === "business" && !m.is_business) return false;
     if (memberFilter === "subscribed" && !m.push_subscribed) return false;
     if (memberFilter === "unsubscribed" && m.push_subscribed) return false;
-    if (memberSearch) {
+    if (memberSearch && !serverQ) {
       const q = memberSearch.replace(/-/g, "");
       const hay = `${m.phone}${m.company_name ?? ""}${m.nickname ?? ""}`.replace(/-/g, "");
       if (!hay.includes(q)) return false;
@@ -923,8 +964,8 @@ function AdminDashboard({
   // 2026-10-06: 데이터 내보내기는 최고관리자만 — CSV 버튼도 최고관리자에게만 보이고, 내용은 서버(/api/admin/export, 역할 검사)
   // 응답으로 만든다(화면 목록 데이터를 그대로 쓰지 않음). 지금 화면의 필터·검색 결과에 있는 행만 담음.
   const isSuperAdmin = role === "최고관리자";
-  async function fetchExport<T>(type: "members" | "leads"): Promise<T[] | null> {
-    const res = await fetch(`/api/admin/export?type=${type}`, { headers: { "x-admin-key": adminKey } }).catch(() => null);
+  async function fetchExport<T>(type: "members" | "leads", extra = ""): Promise<T[] | null> {
+    const res = await fetch(`/api/admin/export?type=${type}${extra}`, { headers: { "x-admin-key": adminKey } }).catch(() => null);
     if (res?.status === 403) {
       showDashToast(SUPER_ONLY_MESSAGE);
       return null;
@@ -938,7 +979,8 @@ function AdminDashboard({
   }
 
   const exportMembersCsv = async () => {
-    const items = await fetchExport<Member>("members");
+    // 화면과 같은 조건(테스트 포함 여부·회원 코드/숫자 검색)으로 가져옴
+    const items = await fetchExport<Member>("members", `&include_test=${includeTest ? 1 : 0}${serverQ ? `&q=${encodeURIComponent(serverQ)}` : ""}`);
     if (!items) return;
     const shown = new Set(filteredMembers.map((m) => m.id));
     downloadCsv(`members_${new Date().toISOString().slice(0, 10)}.csv`, [
@@ -1228,9 +1270,10 @@ function AdminDashboard({
         <input
           value={memberSearch}
           onChange={(e) => setMemberSearch(e.target.value)}
-          placeholder="번호/상호명 검색"
+          placeholder="번호/상호명/회원코드(JX-00013) 검색"
           className="border-2 border-gray200 rounded-xl px-3 text-sm outline-none focus:border-orange"
           style={{ height: "40px" }}
+          data-member-search
         />
         <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
           {(
@@ -1255,6 +1298,10 @@ function AdminDashboard({
             </button>
           ))}
         </div>
+        <label className="flex items-center gap-1.5 text-xs font-bold self-start" style={{ color: ADMIN_TEXT.muted }}>
+          <input type="checkbox" checked={includeTest} onChange={(e) => setIncludeTest(e.target.checked)} data-member-include-test />
+          테스트 계정 포함
+        </label>
         {isSuperAdmin && (
           <button onClick={exportMembersCsv} className="self-end text-xs font-bold text-navy underline">
             CSV 내보내기 ({filteredMembers.length}건)
@@ -1265,7 +1312,7 @@ function AdminDashboard({
         empty={
           !loading && (
             <div className="text-center text-gray500 py-6 text-sm">
-              {members.length === 0 ? "아직 가입한 회원이 없어요." : "검색/필터 결과가 없어요."}
+              {memberSearching ? "검색 중이에요…" : members.length === 0 && !serverQ ? "아직 가입한 회원이 없어요." : "검색/필터 결과가 없어요."}
             </div>
           )
         }
@@ -1299,6 +1346,11 @@ function AdminDashboard({
                 {m.nickname && <span className="text-sm font-medium text-gray500 ml-1.5">{m.nickname}</span>}
               </div>
               <div className="flex items-center gap-1.5 flex-wrap">
+                {m.is_test && (
+                  <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background: "#F1F1F4", color: "#52525B" }} data-member-test-chip>
+                    내부
+                  </span>
+                )}
                 <span
                   className="text-xs font-bold px-2 py-1 rounded-full"
                   style={{
