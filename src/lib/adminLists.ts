@@ -1,17 +1,43 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { MemberSearch } from "@/lib/adminMemberSearch";
 
 // 관리자 회원·리드 목록 조립 (2026-10-06 fix/admin-super-only) — 목록 조회(GET /api/admin/members·interests)와
 // 최고관리자 전용 내보내기(GET /api/admin/export)가 같은 칸을 쓰도록 한 곳에 둠. 인증·감사 로그는 부르는 라우트가 처리.
 
 // 최근 가입 회원 300명 + 카테고리·지역·구독 여부·닉네임·추천인 번호
-export async function loadAdminMembers(supabaseAdmin: SupabaseClient) {
-  const { data: members, error } = await supabaseAdmin
-    .from("members")
-    .select(
-      "id, phone, is_business, company_name, member_no, referred_by, created_at, business_verified, business_license_path"
-    )
-    .order("created_at", { ascending: false })
-    .limit(300);
+// opts 없으면 전부(테스트 계정 포함) 최근 300명 — 내보내기가 이 모양을 그대로 씀.
+// 2026-11-07: includeTest=false면 테스트 계정(is_test) 제외, search(code·digits)가 있으면 서버에서 조건을 걸어 300명보다 오래된 회원도 찾음.
+//   code   → member_no 일치만 / digits → member_no 일치 + 전화번호 부분 일치(둘 다 결과에 나옴, 번호 일치가 맨 위)
+export type AdminMembersOpts = { includeTest?: boolean; search?: MemberSearch };
+
+export async function loadAdminMembers(supabaseAdmin: SupabaseClient, opts: AdminMembersOpts = {}) {
+  const search = opts.search ?? { kind: "none" };
+  // 'JX' 뒤가 번호 모양이 아니거나, 번호로 쓸 수 없는 값이면 DB를 부르지 않고 결과 없음
+  if (search.kind === "code" && search.no == null) return { items: [] };
+
+  const cols =
+    "id, phone, is_business, company_name, member_no, referred_by, created_at, business_verified, business_license_path, is_test";
+  const base = () => {
+    const q = supabaseAdmin.from("members").select(cols);
+    return opts.includeTest === false ? q.eq("is_test", false) : q;
+  };
+  let members: Awaited<ReturnType<typeof base>>["data"];
+  let error: { message: string } | null;
+  if (search.kind === "digits") {
+    // 번호 일치를 따로 먼저 가져와 맨 위에 둠 — 짧은 숫자(13)는 전화번호 일치가 수백 건이라 300명 상한에 번호 일치가 밀려나지 않게.
+    // digits는 숫자만이라 ilike 패턴에 그대로 넣어도 안전.
+    const [byNo, byPhone] = await Promise.all([
+      search.no != null ? base().eq("member_no", search.no).limit(5) : Promise.resolve({ data: [], error: null }),
+      base().ilike("phone", `%${search.digits}%`).order("created_at", { ascending: false }).limit(300),
+    ]);
+    error = byNo.error ?? byPhone.error;
+    const seen = new Set<string>();
+    members = [...(byNo.data ?? []), ...(byPhone.data ?? [])].filter((m) => (seen.has(m.id) ? false : (seen.add(m.id), true))).slice(0, 300);
+  } else {
+    let q = base();
+    if (search.kind === "code") q = q.eq("member_no", search.no as number);
+    ({ data: members, error } = await q.order("created_at", { ascending: false }).limit(300));
+  }
 
   if (error) return { error: error.message };
 
@@ -73,6 +99,7 @@ export async function loadAdminMembers(supabaseAdmin: SupabaseClient) {
     member_no: m.member_no,
     business_verified: m.business_verified,
     has_business_license: Boolean(m.business_license_path),
+    is_test: m.is_test === true,
     nickname: nicknameByMember[m.id] ?? null,
     referrer_phone: m.referred_by ? referrerPhoneById[m.referred_by] ?? null : null,
     push_subscribed: subscribedMemberIds.has(m.id),
