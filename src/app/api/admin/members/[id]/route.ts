@@ -4,7 +4,9 @@ import { can } from "@/lib/adminPerms";
 import { maskPhone, normalizePhone } from "@/lib/phone";
 import { phoneTail, writeAudit } from "@/lib/adminAudit";
 import { UUID_RE } from "@/lib/rateLimit";
-import { businessState, countOtherMembers, DETAIL_LIST_LIMIT, latestConsents, onlyOwn, type ConsentRow, type MemberDetail, type SelfCheckLine } from "@/lib/adminMemberDetail";
+import { businessState, countOtherMembers, DETAIL_LIST_LIMIT, latestConsents, manualInputAvailable, onlyOwn, type ConsentRow, type ManualCheckLine, type MemberDetail, type SelfCheckLine, type ViewCreditsDetail } from "@/lib/adminMemberDetail";
+import { listViewCredits } from "@/lib/viewCreditsServer";
+import { summarizeCredits } from "@/lib/viewCreditsAdmin";
 import { dbStatusCode } from "@/lib/memberBusinessCheck";
 import { maskBizNo } from "@/lib/nts";
 
@@ -67,23 +69,70 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   }
 
   // 2026-11-05 1단계: 회원 셀프 확인 최신 일치 1건 + 같은 사업자번호로 일치한 다른 회원 수. 표 조회가 실패해도 상세는 그대로(self_check null)
+  // 2026-11-06: 수동 입력(method='manual') 최신 1건·기록 수 추가. "같은 번호"는 일치(01) + 수동 입력(manual) 둘 다 셈
+  const SAME_BNO = ["01", "manual"];
+  const [lastCheck, lastManual, checkCount] = await Promise.all([
+    db.from("member_business_checks").select("b_no, status_code, created_at, member_id").eq("member_id", id).eq("validate_result", "01").order("created_at", { ascending: false }).limit(1),
+    db.from("member_business_checks").select("b_no, status_code, status_text, error_kind, created_at, member_id").eq("member_id", id).eq("validate_result", "manual").order("created_at", { ascending: false }).limit(1),
+    db.from("member_business_checks").select("id", { count: "exact", head: true }).eq("member_id", id),
+  ]);
+  const sameCount = async (bNo: string) => {
+    const same = await db.from("member_business_checks").select("member_id").eq("b_no", bNo).in("validate_result", SAME_BNO).neq("member_id", id).limit(200);
+    return countOtherMembers((same.data ?? []) as { member_id: string | null }[], id);
+  };
   let selfCheck: SelfCheckLine | null = null;
-  const lastCheck = await db
-    .from("member_business_checks")
-    .select("b_no, status_code, created_at, member_id")
-    .eq("member_id", id)
-    .eq("validate_result", "01")
-    .order("created_at", { ascending: false })
-    .limit(1);
   const lc = (lastCheck.data ?? [])[0] as Row | undefined;
   if (lc) {
-    const same = await db.from("member_business_checks").select("member_id").eq("b_no", lc.b_no as string).eq("validate_result", "01").neq("member_id", id).limit(200);
     selfCheck = {
       checked_at: lc.created_at as string,
       status_code: dbStatusCode(lc.status_code as string | null),
       b_no_masked: maskBizNo(lc.b_no as string),
-      same_bno_members: countOtherMembers((same.data ?? []) as { member_id: string | null }[], id),
+      same_bno_members: await sameCount(lc.b_no as string),
     };
+  }
+  let manualCheck: ManualCheckLine | null = null;
+  const lm = (lastManual.data ?? [])[0] as Row | undefined;
+  if (lm) {
+    manualCheck = {
+      checked_at: lm.created_at as string,
+      status_code: dbStatusCode(lm.status_code as string | null),
+      status_text: (lm.status_text as string | null) ?? null,
+      error_kind: (lm.error_kind as string | null) ?? null,
+      b_no_masked: maskBizNo(lm.b_no as string),
+      same_bno_members: await sameCount(lm.b_no as string),
+    };
+  }
+  // 기록 수 조회가 실패하면 입력 버튼을 숨김(이미 기록이 있는 회원에게 중복 입력이 열리지 않게)
+  const manualInput = !checkCount.error && manualInputAvailable(m.business_verified === true, checkCount.count ?? 0) && can(auth.admin.role, "businessLicense");
+
+  // 2026-11-06 열람권: 표를 직접 읽어 계산(view_credit_balance는 월·웰컴 지급까지 하므로 쓰지 않음). 조회 실패면 null(화면이 안내)
+  let viewCredits: ViewCreditsDetail | null = null;
+  try {
+    const { grants, events } = await listViewCredits(db, id);
+    const sum = summarizeCredits(grants, events);
+    const dealIds2 = [...new Set(events.map((e) => e.deal_id).filter((v): v is string => !!v))];
+    const titles = new Map<string, string>();
+    if (dealIds2.length) {
+      const { data: ds2 } = await db.from("deals").select("id, title").in("id", dealIds2.slice(0, 200));
+      for (const d of (ds2 ?? []) as Row[]) titles.set(d.id as string, d.title as string);
+    }
+    viewCredits = {
+      state: grants.length > 0 ? "active" : m.business_verified === true ? "pending" : "not_verified",
+      remaining: sum.remaining,
+      next_expires_at: sum.next_expires_at,
+      grants: sum.grants.slice(0, DETAIL_LIST_LIMIT),
+      events: events.slice(0, DETAIL_LIST_LIMIT).map((e) => ({
+        id: e.id,
+        kind: e.kind === "revoke" ? "revoke" : "use",
+        quantity: e.quantity,
+        deal_title: e.deal_id ? titles.get(e.deal_id) ?? null : null,
+        reason: e.reason,
+        created_at: e.created_at,
+      })),
+      can_manage: can(auth.admin.role, "viewCreditManage"),
+    };
+  } catch (e) {
+    console.error("[admin/members/detail] 열람권 조회 실패", e instanceof Error ? e.message : e);
   }
 
   const meta = (authUser as { data?: { user?: { user_metadata?: Record<string, unknown> } } })?.data?.user?.user_metadata;
@@ -117,6 +166,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     },
     business: businessState({ business_verified: m.business_verified === true, has_license: Boolean(m.business_license_path) }, verifiedAt),
     self_check: selfCheck,
+    manual_check: manualCheck,
+    manual_input_available: manualInput,
+    view_credits: viewCredits,
     consents: latestConsents((consents.data ?? []) as ConsentRow[]),
     push_device_count: pushCnt.count ?? 0,
     categories: ((cats.data ?? []) as Row[]).map((r) => one(r.categories as Named | Named[] | null)?.name ?? "").filter(Boolean),

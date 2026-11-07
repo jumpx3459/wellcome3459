@@ -5,7 +5,8 @@ import { rem } from "@/lib/rem";
 import { formatMemberNo } from "@/lib/format";
 import { formatPhone } from "@/lib/phone";
 import { PanelColumn } from "@/components/admin/AdminFullscreenPanel";
-import { selfCheckText, type MemberDetail } from "@/lib/adminMemberDetail";
+import { manualCheckText, manualCheckWarning, selfCheckText, type MemberDetail } from "@/lib/adminMemberDetail";
+import { ADMIN_GRANT_MAX, CREDIT_REASON_MAX, SOURCE_LABEL } from "@/lib/viewCreditsAdmin";
 import { ADMIN_TEXT } from "@/lib/adminText";
 
 // 2026-10-23 관리자 회원 상세(보기 전용) 본문 — PC는 전체 화면 패널의 3열(PanelColumn), 모바일·📱는 카드 아래 한 줄로 쌓아 펼침.
@@ -84,6 +85,132 @@ function Item({ children }: { children: ReactNode }) {
   );
 }
 
+const INPUT_CLS = "rounded-lg border border-gray200 px-3 py-2 min-w-0";
+const BTN_CLS = "text-xs font-bold rounded-lg px-3 py-2 border border-gray200 text-navy disabled:opacity-60 whitespace-nowrap";
+
+/** [사업자번호 입력] — 등록증 수동 승인 회원(기록 없음) 전용. 국세청 상태조회만(진위확인 아님), 결과 저장 뒤 상세를 다시 읽음 */
+function ManualBizForm({ adminKey, memberId, onDone }: { adminKey: string; memberId: string; onDone: () => void }) {
+  const [bNo, setBNo] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const submit = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch(`/api/admin/members/${memberId}/business-manual`, { method: "POST", headers: { "x-admin-key": adminKey, "content-type": "application/json" }, body: JSON.stringify({ b_no: bNo }) });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) setMsg(body.error ?? "저장하지 못했어요.");
+      else onDone();
+    } catch {
+      setMsg("저장하지 못했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="flex flex-col gap-1.5 rounded-lg border border-gray200 px-3 py-2" style={{ fontSize: rem(14) }} data-manual-biz-form>
+      <p className="text-gray500">등록증과 대조한 사업자등록번호를 입력하면 국세청 상태(계속·휴업·폐업)를 조회해 저장해요. 진위확인이 아니며, 인증 상태는 바뀌지 않아요.</p>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <input value={bNo} onChange={(e) => setBNo(e.target.value)} inputMode="numeric" placeholder="사업자등록번호 10자리" className={`${INPUT_CLS} flex-1`} style={{ fontSize: rem(15) }} data-manual-biz-input />
+        <button type="button" onClick={submit} disabled={busy || !bNo.trim()} className={BTN_CLS} data-manual-biz-submit>
+          {busy ? "조회 중..." : "상태 조회·저장"}
+        </button>
+      </div>
+      {msg && <p className="font-bold" style={{ color: "#B91C1C" }} data-manual-biz-msg>{msg}</p>}
+    </div>
+  );
+}
+
+/** 열람권 수동 지급 — 최고관리자 전용(서버가 다시 막음). 수량·사유 필수, 지급 시각 + 90일 */
+function CreditGrantForm({ adminKey, memberId, onDone }: { adminKey: string; memberId: string; onDone: () => void }) {
+  const [qty, setQty] = useState("");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const submit = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch(`/api/admin/members/${memberId}/view-credits`, { method: "POST", headers: { "x-admin-key": adminKey, "content-type": "application/json" }, body: JSON.stringify({ quantity: Number(qty), reason }) });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) setMsg(body.error ?? "지급하지 못했어요.");
+      else {
+        setQty("");
+        setReason("");
+        onDone();
+      }
+    } catch {
+      setMsg("지급하지 못했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="flex flex-col gap-1.5 rounded-lg border border-gray200 px-3 py-2" style={{ fontSize: rem(14) }} data-credit-grant-form>
+      <div className="font-bold">수동 지급 (90일 유효)</div>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <input value={qty} onChange={(e) => setQty(e.target.value)} inputMode="numeric" placeholder={`수량 1~${ADMIN_GRANT_MAX}`} className={INPUT_CLS} style={{ width: 120, fontSize: rem(15) }} data-credit-qty />
+        <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={CREDIT_REASON_MAX} placeholder="사유(필수)" className={`${INPUT_CLS} flex-1`} style={{ fontSize: rem(15) }} data-credit-reason />
+        <button type="button" onClick={submit} disabled={busy || !qty.trim() || !reason.trim()} className={BTN_CLS} data-credit-grant-submit>
+          {busy ? "지급 중..." : "지급"}
+        </button>
+      </div>
+      {msg && <p className="font-bold" style={{ color: "#B91C1C" }} data-credit-msg>{msg}</p>}
+    </div>
+  );
+}
+
+/** 열람권 회수 — 지급 줄 1개에서 N개(남은 수까지). 최고관리자 전용(서버가 다시 막음), 사유 필수. 남은 수 판정은 서버(SQL 함수)가 잠금 안에서 */
+function CreditRevokeForm({ adminKey, memberId, grantId, left, onDone }: { adminKey: string; memberId: string; grantId: string; left: number; onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [qty, setQty] = useState(String(left));
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const submit = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch(`/api/admin/members/${memberId}/view-credits/revoke`, { method: "POST", headers: { "x-admin-key": adminKey, "content-type": "application/json" }, body: JSON.stringify({ grant_id: grantId, quantity: Number(qty), reason }) });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) setMsg(body.error ?? "회수하지 못했어요.");
+      else {
+        setOpen(false);
+        setReason("");
+        onDone();
+      }
+    } catch {
+      setMsg("회수하지 못했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (!open)
+    return (
+      <button type="button" onClick={() => { setQty(String(left)); setOpen(true); }} className={`${BTN_CLS} mt-1.5`} data-credit-revoke-open>
+        회수
+      </button>
+    );
+  return (
+    <div className="flex flex-col gap-1.5 mt-1.5" data-credit-revoke-form>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <input value={qty} onChange={(e) => setQty(e.target.value)} inputMode="numeric" aria-label="회수 수량" className={INPUT_CLS} style={{ width: 80, fontSize: rem(15) }} data-credit-revoke-qty />
+        <span className="text-gray500">개 (남은 {left}개까지)</span>
+      </div>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={CREDIT_REASON_MAX} placeholder="회수 사유(필수)" className={`${INPUT_CLS} flex-1`} style={{ fontSize: rem(15) }} data-credit-revoke-reason />
+        <button type="button" onClick={submit} disabled={busy || !qty.trim() || !reason.trim()} className={BTN_CLS} data-credit-revoke-submit>
+          {busy ? "회수 중..." : "회수 확정"}
+        </button>
+        <button type="button" onClick={() => { setOpen(false); setMsg(null); }} disabled={busy} className={BTN_CLS}>
+          취소
+        </button>
+      </div>
+      {msg && <p className="font-bold" style={{ color: "#B91C1C" }} data-credit-revoke-msg>{msg}</p>}
+    </div>
+  );
+}
+
 export default function MemberDetailView({
   adminKey,
   memberId,
@@ -99,6 +226,8 @@ export default function MemberDetailView({
   const [data, setData] = useState<MemberDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // 수동 입력·지급 뒤 상세를 다시 읽기 위한 숫자(처음 불러오기만 "불러오는 중" 표시)
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -118,7 +247,7 @@ export default function MemberDetailView({
     return () => {
       cancelled = true;
     };
-  }, [adminKey, memberId]);
+  }, [adminKey, memberId, reloadKey]);
 
   const span = layout === "panel" ? "lg:col-span-3" : "";
   if (loading) return <div className={`text-gray500 py-6 ${span}`} data-detail-loading>불러오는 중...</div>;
@@ -168,6 +297,82 @@ export default function MemberDetailView({
               </span>
             )}
           </Row>
+        )}
+        {data.manual_check && (
+          <Row label="수동 입력">
+            <span data-manual-check>{manualCheckText(data.manual_check)}</span>
+            {(() => {
+              const warn = manualCheckWarning(data.manual_check);
+              return warn ? (
+                <span className="ml-1.5" data-manual-check-warn>
+                  <Chip tone="orange">{warn}</Chip>
+                </span>
+              ) : null;
+            })()}
+            {data.manual_check.same_bno_members > 0 && (
+              <span className="ml-1.5" data-manual-check-same>
+                <Chip tone="orange">같은 사업자번호 {data.manual_check.same_bno_members}명</Chip>
+              </span>
+            )}
+            <span className="block text-gray500" style={{ fontSize: rem(13) }}>진위확인 아님 · 인증 상태는 그대로</span>
+          </Row>
+        )}
+        {data.manual_input_available && <ManualBizForm adminKey={adminKey} memberId={memberId} onDone={() => setReloadKey((k) => k + 1)} />}
+      </Section>
+      <Section title="열람권">
+        {!data.view_credits ? (
+          <p className="text-gray500" style={{ fontSize: rem(14) }} data-credits-error>열람권 정보를 불러오지 못했어요.</p>
+        ) : (
+          <>
+            <Row label="잔여">
+              {data.view_credits.state === "pending" ? (
+                <span data-credits-pending>첫 열람 시 월 5 + 웰컴 5 지급 예정</span>
+              ) : data.view_credits.state === "not_verified" ? (
+                <span className="text-gray500" data-credits-notverified>사업자 인증 전 · 지급 없음</span>
+              ) : (
+                <span data-credits-remaining>{data.view_credits.remaining}개</span>
+              )}
+            </Row>
+            {data.view_credits.next_expires_at && <Row label="가장 빠른 만료">{fmtDay(data.view_credits.next_expires_at)}</Row>}
+            {data.view_credits.grants.length > 0 && (
+              <div className="flex flex-col gap-1" data-credit-grants>
+                {data.view_credits.grants.map((g) => (
+                  <Item key={g.id}>
+                    <div className="font-bold">
+                      {SOURCE_LABEL[g.source] ?? g.source}
+                      {g.period_month ? ` · ${g.period_month.slice(0, 7)}` : ""} · {g.left}/{g.quantity}개 남음
+                      {g.expired && <span className="ml-1.5"><Chip>만료</Chip></span>}
+                    </div>
+                    <div className="text-gray500">
+                      지급 {fmtDay(g.created_at)} · 만료 {fmtDay(g.expires_at)}
+                      {g.used > 0 && ` · 사용 ${g.used}`}
+                      {g.revoked > 0 && ` · 회수 ${g.revoked}`}
+                      {g.reason && ` · ${g.reason}`}
+                    </div>
+                    {data.view_credits?.can_manage && !g.expired && g.left > 0 && (
+                      <CreditRevokeForm adminKey={adminKey} memberId={memberId} grantId={g.id} left={g.left} onDone={() => setReloadKey((k) => k + 1)} />
+                    )}
+                  </Item>
+                ))}
+              </div>
+            )}
+            {data.view_credits.events.length > 0 && (
+              <div className="flex flex-col gap-1" data-credit-events>
+                {data.view_credits.events.map((e) => (
+                  <Item key={e.id}>
+                    <div className="font-bold">
+                      {e.kind === "use" ? "열람" : "회수"} {e.quantity}개{e.deal_title ? ` · ${e.deal_title}` : ""}
+                    </div>
+                    <div className="text-gray500">
+                      {fmt(e.created_at)}
+                      {e.reason && ` · ${e.reason}`}
+                    </div>
+                  </Item>
+                ))}
+              </div>
+            )}
+            {data.view_credits.can_manage && <CreditGrantForm adminKey={adminKey} memberId={memberId} onDone={() => setReloadKey((k) => k + 1)} />}
+          </>
         )}
       </Section>
       <Section title="동의">
